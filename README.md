@@ -1,5 +1,5 @@
 
-![](CHAL_Front.png)
+![](CHAL.png)
 
 <h1 align="center">
   - CHAL -  <br/>
