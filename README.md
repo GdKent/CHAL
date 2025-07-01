@@ -2,6 +2,6 @@
 ![](CHAL_Front.png)
 
 <h1 align="center">
-  - CHAL -  
+  - CHAL -  <br/>
   Council of Hierarchical Agentic Logos
 </h1>
