@@ -1,2 +1,4 @@
-# CHAL
-The Dialectic Council of HAL
+# CHAL: The Council of HAL
+
+![](CHAL.png)
+
