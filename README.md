@@ -3,5 +3,5 @@
 
 <h1 align="center">
   - CHAL -  <br/>
-  Council of Hierarchical Agentic Logos
+  Council of Hierarchical Agentic Language
 </h1>
