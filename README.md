@@ -2,6 +2,6 @@
 ![](CHAL.png)
 
 <h1 align="center">
-  - CHAL -  <br/>
+  C-HAL  <br/>
   Council of Hierarchical Agentic Language
 </h1>
