@@ -50,7 +50,7 @@ It is designed for:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/c-hal.git
+git clone https://github.com/GdKent/C-HAL.git
 cd c-hal
 ```
 
