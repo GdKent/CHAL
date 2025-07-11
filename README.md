@@ -138,7 +138,7 @@ Planned docs:
 
 ---
 
-## 🛠 Technologies Used
+## Technologies Used
 
 - **Python 3.10+**
 - **Poetry** for dependency management
