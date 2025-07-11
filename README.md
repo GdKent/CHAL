@@ -40,7 +40,7 @@ It is designed for:
 
 ---
 
-## 📦 Installation
+## Installation
 
 > **Note:** Python 3.10+ and [Poetry](https://python-poetry.org/) 2.1.3+ are required.
 
@@ -165,7 +165,7 @@ Please see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for more detailed guidelines.
 
 ---
 
-## 📬 Contact
+## Contact
 
 Created by **Griffin Dean Kent**. For questions, reach out via GitHub or [g.hal.dkent@gmail.com].
 
