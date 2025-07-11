@@ -11,7 +11,7 @@
 
 ## Purpose
 
-C-HAL serves as both a philosophical exploration tool as well as a direction of research in agentic AI. It simulates how a council of intelligent agents might reason, argue, and converge toward truth when equipped with different assumptions and reasoning styles - partly inspired by complex reasoning systems in brains and complex societies, similar to Minsky's "Society of Mind".
+C-HAL serves as both a philosophical exploration tool as well as an active direction of research in agentic AI. It simulates how a council of intelligent agents might reason, argue, and converge toward truth when equipped with different assumptions and reasoning styles - partly inspired by complex reasoning systems in brains and complex societies, similar to Minsky's "Society of Mind".
 
 It is designed for:
 - Researchers studying multi-agent alignment, reasoning, and analyzing the evolution of complex belief systems in AI
