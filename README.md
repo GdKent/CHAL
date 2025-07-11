@@ -5,6 +5,8 @@
   C-HAL: Council of Hierarchical Agentic Language
 </h1>
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
 **C-HAL** (pronounced "kal") is a modular framework for orchestrating structured dialectic debates between multiple large language model (LLM) agents. Each agent represents a distinct philosophical, logical, or epistemological position. The system manages multi-stage debates  that consist of challenges, rebuttals, adjudication, and synthesis, with the goal of resolving disagreements, generating insight, refining collective understanding, and work toward a unified internal belief convergence among the agents.
 
 ---
