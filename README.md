@@ -18,7 +18,7 @@ This repository serves as the official open-source implementation of C-HAL. For 
 
 ## Table of Contents
 
-- [Purpose](#-purpose)
+- [Purpose](#-Purpose)
 - [Core Features](#-core-features)
 - [Installation](#-installation)
   - [1. Clone the Repository](#1-clone-the-repository)
@@ -31,8 +31,8 @@ This repository serves as the official open-source implementation of C-HAL. For 
 - [Future Plans](#-future-plans)
 - [Technologies Used](#-technologies-used)
 - [License](#-license)
-- [Contributing](#-contributing)
-- [Contact](#-contact)
+- [Contributing](#-Contributing)
+- [Contact](#-Contact)
 
 ---
 
