@@ -108,6 +108,12 @@ You can now run the project with standard Python commands.
 
 ---
 
+## Quick Start
+
+
+---
+
+
 ## Running Tests
 
 Tests will be placed in the `tests/` folder. To run them:
