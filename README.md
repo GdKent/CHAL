@@ -15,6 +15,27 @@ This repository serves as the official open-source implementation of C-HAL. For 
 
 ---
 
+
+## Table of Contents
+
+- [Purpose](#-purpose)
+- [Core Features](#-core-features)
+- [Installation](#-installation)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Install Poetry](#2-install-poetry)
+  - [3. Install Project Dependencies](#3-install-project-dependencies)
+  - [4. Activate the Environment](#4-activate-the-environment)
+- [Running Tests](#-running-tests)
+- [Project Structure](#-project-structure)
+- [Documentation](#-documentation)
+- [Future Plans](#-future-plans)
+- [Technologies Used](#-technologies-used)
+- [License](#-license)
+- [Contributing](#-contributing)
+- [Contact](#-contact)
+
+---
+
 ## Purpose
 
 C-HAL serves as both a philosophical exploration tool as well as an active direction of research in agentic AI. It simulates how a council of intelligent agents might reason, argue, and converge toward truth when equipped with different assumptions and reasoning styles - partly inspired by complex reasoning systems in the human brain as well as complex societies, similar to Minsky's "Society of Mind".
