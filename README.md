@@ -19,7 +19,7 @@ This repository serves as the official open-source implementation of C-HAL. For 
 ## Table of Contents
 
 - [Purpose](#purpose)
-- [Core Features](#primary-features)
+  - [Primary Features](#primary-features)
 - [Installation](#installation)
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Install Poetry](#2-install-poetry)
@@ -49,7 +49,7 @@ It is designed for:
 
 ---
 
-## Primary Features
+### Primary Features
 
 - **Structured Multi-Stage Debate Orchestration**  
   Includes univeral briefing, opening positions, critique generation, rebuttals, adjudication, internal belief updates, and a final synthesis for clear expositional prose.
