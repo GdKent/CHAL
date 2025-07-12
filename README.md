@@ -8,38 +8,37 @@
 
 
 
-**C-HAL** (pronounced "kal") is a modular framework for orchestrating structured dialectic debates between multiple large language model (LLM) agents. Each agent represents a distinct philosophical, logical, or epistemological position. The system manages multi-stage debates  that consist of challenges, rebuttals, adjudication, and synthesis, with the goal of resolving disagreements, generating insight, refining collective understanding, and work toward a unified internal belief convergence among the agents.
+**C-HAL** (pronounced "kal") is a framework for orchestrating structured dialectic debates between multiple large language model (LLM) agents. Each agent represents a distinct philosophical, logical, or epistemological position. The system manages multi-stage debates that consist of challenges, rebuttals, adjudication, and synthesis, with the goal of resolving disagreements, generating insight, refining collective understanding, and working toward a unified internal belief convergence among the agents.
+
+This repository serves as the official open-source implementation of C-HAL. For more thorough details regarding the scientific development and workings of C-HAL, please see the paper (**INSERT PAPER HERE**).
 
 ---
 
 ## Purpose
 
-C-HAL serves as both a philosophical exploration tool as well as an active direction of research in agentic AI. It simulates how a council of intelligent agents might reason, argue, and converge toward truth when equipped with different assumptions and reasoning styles - partly inspired by complex reasoning systems in brains and complex societies, similar to Minsky's "Society of Mind".
+C-HAL serves as both a philosophical exploration tool as well as an active direction of research in agentic AI. It simulates how a council of intelligent agents might reason, argue, and converge toward truth when equipped with different assumptions and reasoning styles - partly inspired by complex reasoning systems in the human brain as well as complex societies, similar to Minsky's "Society of Mind".
 
 It is designed for:
-- Researchers studying multi-agent alignment, reasoning, and analyzing the evolution of complex belief systems in AI
-- Philosophers interested in formalized dialectics
-- Prompt engineers building complex agent architectures
-- Developers exploring LLM debates and optimization in latent prompt spaces
+- Researchers studying multi-agent alignment, reasoning, and the evolution of complex belief systems in AI
+- Philosophers interested in formalized dialectics as well as thoughtful exploration of deep, enigmatic, and unanswered questions at the heart of humanity
+- Prompt engineers building complex agentic architectures
+- Developers exploring LLM capabilities and optimization in latent prompt spaces
 
 ---
 
-## Core Features
+## Primary Features
 
-- **Multi-Stage Debate Orchestration**  
-  Includes briefing, opening positions, critique generation, rebuttals, adjudication, belief updates, and a final synthesis for clear expositional prose.
+- **Structured Multi-Stage Debate Orchestration**  
+  Includes univeral briefing, opening positions, critique generation, rebuttals, adjudication, internal belief updates, and a final synthesis for clear expositional prose.
 
 - **Agent Prompt Architecture**  
-  Agents are instantiated via a combination of a *universal prompt* and a *persona-specific prompt*, allowing for structured diversity.
+  Agents are instantiated via a combination of a *universal prompt* and a *persona-specific prompt*, allowing for structured diversity. Each agent maintains a current internal belief system that is altered throughout the course of the dialect.
 
 - **Belief Trajectories & Visualization**  
-  Track agent belief embeddings over the course of the dialect using attention-driven (BERT-like) embeddings and dimensionality reduction techniques (e.g., UMAP).
+  Track agent internal belief embeddings over the course of the dialect using attention-based (BERT-like) embeddings along with dimensionality reduction techniques (e.g., UMAP).
 
 - **Support for Multiple LLM Providers**  
-  Easily integrate OpenAI, Anthropic, and other model APIs.
-
-- **Extensible Pipeline**  
-  Each stage is modular and customizable for research or philosophical use cases.
+  Easily integrate OpenAI, Anthropic, Google, and other model APIs.
 
 ---
 
@@ -138,7 +137,7 @@ Planned docs:
 
 ---
 
-## Technologies Used
+## Python Libraries Used
 
 - **Python 3.10+**
 - **Poetry** for dependency management
