@@ -1,7 +1,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](./LICENSE)
 
 <p align="center">
-  <img src="C-HAL.png" alt="CHAL Logo" width="340"/>
+  <img src="C-HAL.png" alt="CHAL Logo" width="300"/>
 </p>
 
 <h1 align="center">
