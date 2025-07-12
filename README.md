@@ -1,4 +1,3 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](./LICENSE)
 
 <p align="center">
   <img src="C-HAL.png" alt="CHAL Logo" width="300"/>
