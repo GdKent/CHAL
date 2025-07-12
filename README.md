@@ -25,6 +25,7 @@ This repository serves as the official open-source implementation of C-HAL. For 
   - [2. Install Poetry](#2-install-poetry)
   - [3. Install Project Dependencies](#3-install-project-dependencies)
   - [4. Activate the Environment](#4-activate-the-environment)
+- [Quick Start](#quick-start)
 - [Running Tests](#running-tests)
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
