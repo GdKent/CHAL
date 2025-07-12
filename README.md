@@ -47,8 +47,6 @@ It is designed for:
 - Prompt engineers building complex agentic architectures
 - Developers exploring LLM capabilities and optimization in latent prompt spaces
 
----
-
 ### Primary Features
 
 - **Structured Multi-Stage Debate Orchestration**  
