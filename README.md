@@ -18,21 +18,21 @@ This repository serves as the official open-source implementation of C-HAL. For 
 
 ## Table of Contents
 
-- [Purpose](#-purpose)
-- [Core Features](#-primary-features)
-- [Installation](#-installation)
+- [Purpose](#purpose)
+- [Core Features](#primary-features)
+- [Installation](#installation)
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Install Poetry](#2-install-poetry)
   - [3. Install Project Dependencies](#3-install-project-dependencies)
   - [4. Activate the Environment](#4-activate-the-environment)
-- [Running Tests](#-running-tests)
-- [Project Structure](#-project-structure)
-- [Documentation](#-documentation)
-- [Future Plans](#-future-plans)
-- [Technologies Used](#-python-libraries-used)
-- [License](#-license)
-- [Contributing](#-contributing)
-- [Contact](#-contact)
+- [Running Tests](#running-tests)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
+- [Future Plans](#future-plans)
+- [Technologies Used](#python-libraries-used)
+- [License](#license)
+- [Contributing](#contributing)
+- [Contact](#contact)
 
 ---
 
