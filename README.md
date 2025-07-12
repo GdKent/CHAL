@@ -1,6 +1,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](./LICENSE)
 
-![](C-HAL.png)
+<img src="C-HAL.png" alt="CHAL Logo" width="220"/>
 
 <h1 align="center">
   C-HAL: Council of Hierarchical Agentic Language
