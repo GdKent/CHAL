@@ -302,24 +302,8 @@ CHAL/
 
 Documentation is currently under development and will live in the `docs/` directory.
 
-Planned docs:
-- Agent prompting strategies
-- Debate pipeline stages
-- Adjudication subprotocols
-- Visualization tooling
-- Optimizing in latent prompt space (experimental)
-
 ---
 
-## Future Plans
-
-- Latent space prompt optimization
-- Dialectic score metrics (truth-seeking, novelty, coherence)
-- Richer visualizations of debate structure
-- Interactive front-end for public debates
-- Auto-generated expository essays from debates
-
----
 
 ## Python Libraries Used
 
