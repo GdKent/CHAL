@@ -4,14 +4,14 @@
 </p>
 
 <h1 align="center">
-  C-HAL: Council of Hierarchical Agentic Language
+  CHAL: Council of Hierarchical Agentic Language
 </h1>
 
 
 
-**C-HAL** (pronounced "kal") is a framework for orchestrating structured dialectic debates between multiple large language model (LLM) agents. Each agent represents a distinct philosophical, logical, or epistemological position. The system manages multi-stage debates that consist of challenges, rebuttals, adjudication, and synthesis, with the goal of resolving disagreements, generating insight, refining collective understanding, and working toward a unified internal belief convergence among the agents.
+**CHAL** (pronounced "kal") is a framework for orchestrating structured dialectic debates between multiple large language model (LLM) agents. Each agent represents a distinct philosophical, logical, or epistemological position. The system manages multi-stage debates that consist of challenges, rebuttals, adjudication, and synthesis, with the goal of resolving disagreements, generating insight, refining collective understanding, and working toward a unified internal belief convergence among the agents.
 
-This repository serves as the official open-source implementation of C-HAL. For more thorough details regarding the scientific development and workings of C-HAL, please see the paper "CHAL: Council of Hierarchical Agentic Language".
+This repository serves as the official open-source implementation of CHAL. For more thorough details regarding the scientific development and workings of CHAL, please see the paper "CHAL: Council of Hierarchical Agentic Language".
 
 ---
 
@@ -39,7 +39,7 @@ This repository serves as the official open-source implementation of C-HAL. For 
 
 ## Purpose
 
-C-HAL serves as both a philosophical exploration tool as well as an active direction of research in agentic AI. It simulates how a council of intelligent agents might reason, argue, and converge toward truth when equipped with different assumptions and reasoning styles - partly inspired by complex reasoning systems in the human brain as well as complex societies, similar to Minsky's "Society of Mind".
+CHAL serves as both a philosophical exploration tool as well as an active direction of research in agentic AI. It simulates how a council of intelligent agents might reason, argue, and converge toward truth when equipped with different assumptions and reasoning styles - partly inspired by complex reasoning systems in the human brain as well as complex societies, similar to Minsky's "Society of Mind".
 
 It is designed for:
 - Researchers studying multi-agent alignment, reasoning, and the evolution of complex belief systems in AI
