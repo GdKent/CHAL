@@ -1,8 +1,8 @@
 # Contributing to C-HAL
 
-Thank you for your interest in contributing to **C-HAL**!
+Thank you for your interest in contributing to **CHAL**!
 
-C-HAL is a modular framework for orchestrating structured debates between large language model (LLM) agents. Whether you're fixing bugs, proposing features, improving documentation, or crafting new prompt personas, we welcome your contributions.
+CHAL is a modular framework for orchestrating structured debates between large language model (LLM) agents. Whether you're fixing bugs, proposing features, improving documentation, or crafting new prompt personas, we welcome your contributions.
 
 ---
 
@@ -13,8 +13,8 @@ To contribute, follow these steps:
 1. **Fork** the repository on GitHub and **clone** it locally:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/c-hal.git
-   cd c-hal
+   git clone https://github.com/GdKent/CHAL.git
+   cd CHAL
    ```
 
 2. **Create a new branch** for your feature or fix:
