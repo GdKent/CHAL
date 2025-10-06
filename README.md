@@ -112,7 +112,7 @@ Then type:
 
 ```bash
 git clone https://github.com/GdKent/CHAL.git
-cd C-HAL
+cd CHAL
 ```
 
 This will download the repository and move you into its directory.
