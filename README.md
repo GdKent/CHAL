@@ -223,7 +223,7 @@ This means you’re now inside the CHAL environment.
 ---
 
 
-### Step 5: Verify Installation
+### 5: Verify Installation
 
 Run Python within the active environment:
 
@@ -246,7 +246,7 @@ exit()
 ---
 
 
-### Step 6: Run the Test Suite (Optional)
+### 6: Run the Test Suite (Optional)
 
 To make sure everything is working as expected, run:
 
@@ -264,7 +264,7 @@ everything is functioning correctly.
 ---
 
 
-### Step 7: Updating Your Environment (Optional)
+### 7: Updating Your Environment (Optional)
 
 If the repository is updated with new code or dependencies, you can refresh your local setup:
 
