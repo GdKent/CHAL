@@ -21,15 +21,16 @@ This repository serves as the official open-source implementation of CHAL. For m
 - [Purpose](#purpose)
   - [Primary Features](#primary-features)
 - [Installation](#installation)
+  - [0. Prerequisites](#0-prerequisites)
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Install Poetry](#2-install-poetry)
   - [3. Install Project Dependencies](#3-install-project-dependencies)
   - [4. Activate the Environment](#4-activate-the-environment)
-- [Quick Start](#quick-start)
-- [Running Tests](#running-tests)
+  - [5. Verify Installation](#5-verify-installation)
+  - [6. Run the Test Suite (Optional)](#6-run-the-test-suite-(optional))
+  - [7. Updating Your Environment (Optional)](#7-updating-your-environment-(optional))
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
-- [Future Plans](#future-plans)
 - [Technologies Used](#python-libraries-used)
 - [License](#license)
 - [Contributing](#contributing)
@@ -199,7 +200,7 @@ Package operations: 12 installs, 0 updates, 0 removals
 
 ---
 
-### 4. Activate the Virtual Environment
+### 4. Activate the Environment
 
 To start using the environment Poetry created:
 
