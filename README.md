@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="C-HAL.png" alt="CHAL Logo" width="300"/>
+  <img src="CHAL.png" alt="CHAL Logo" width="300"/>
 </p>
 
 <h1 align="center">
@@ -111,7 +111,7 @@ Open your **terminal** (macOS/Linux), **PowerShell or Git Bash** (Windows), or *
 Then type:
 
 ```bash
-git clone https://github.com/GdKent/C-HAL.git
+git clone https://github.com/GdKent/CHAL.git
 cd C-HAL
 ```
 
@@ -213,7 +213,7 @@ You’ll see your terminal prompt change to something like:
 (chal-py3.10) $
 ```
 
-This means you’re now inside the C-HAL environment.
+This means you’re now inside the CHAL environment.
 
 > 💡 **Anaconda users:**  
 > If you used `conda create` earlier, your environment is already active (you’ll see `(chal)` before your prompt).  
@@ -263,7 +263,7 @@ everything is functioning correctly.
 ---
 
 
-### Step 7: Updating Your Environment
+### Step 7: Updating Your Environment (Optional)
 
 If the repository is updated with new code or dependencies, you can refresh your local setup:
 
@@ -277,13 +277,13 @@ This pulls the latest changes and installs any new dependencies.
 ---
 
 > 💬 If you encounter any installation issues, please open a GitHub issue here:  
-> [https://github.com/GdKent/C-HAL/issues](https://github.com/GdKent/C-HAL/issues)
+> [https://github.com/GdKent/CHAL/issues](https://github.com/GdKent/C-HAL/issues)
 
 
 ## Project Structure
 
 ```text
-C-HAL/
+CHAL/
 ├── .github/              # GitHub workflows, issue templates, etc.
 ├── docs/                 # Documentation and design notes
 ├── src/
