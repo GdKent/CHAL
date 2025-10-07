@@ -25,10 +25,9 @@ This repository serves as the official open-source implementation of CHAL. For m
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Install Poetry](#2-install-poetry)
   - [3. Install Project Dependencies](#3-install-project-dependencies)
-  - [4. Activate the Environment](#4-activate-the-environment)
-  - [5. Verify Installation](#5-verify-installation)
-  - [6. Run the Test Suite (Optional)](#6-run-the-test-suite-optional)
-  - [7. Updating Your Environment (Optional)](#7-updating-your-environment-optional)
+  - [4. Verify Installation](#5-verify-installation)
+  - [5. Run the Test Suite (Optional)](#6-run-the-test-suite-optional)
+  - [6. Updating Your Environment (Optional)](#7-updating-your-environment-optional)
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
 - [Technologies Used](#python-libraries-used)
@@ -214,53 +213,28 @@ Package operations: 12 installs, 0 updates, 0 removals
 
 ---
 
-### 4. Activate the Environment
 
-To start using the environment Poetry created:
+### 4: Verify Installation
+
+To start using the environment Poetry created, use "poetry run" commands. For example, try importing the chal library in Python within the active environment:
 
 ```bash
-poetry shell
+poetry run python -c "import chal"
 ```
 
-You’ll see your terminal prompt change to something like:
+If no errors appear, your installation is successful. To run the debate_driver.py:
 
+```bash
+poetry run python src\chal\orchestrator\debate_driver.py
 ```
-(chal-py3.10) $
-```
-
-This means you’re now inside the CHAL environment.
 
 > 💡 **Anaconda users:**  
-> If you used `conda create` earlier, your environment is already active (you’ll see `(chal)` before your prompt).  
-> You do **not** need to run `poetry shell` — stay in the conda environment and use `poetry run` commands instead.
+> If you used `conda create` earlier, your environment is already active (you’ll see `(chal)` before your prompt), simply use `poetry run` commands.
 
 ---
 
 
-### 5: Verify Installation
-
-Run Python within the active environment:
-
-```bash
-python
-```
-
-Then type:
-```python
-import chal
-chal.__version__
-```
-
-If no errors appear and a version number prints, your installation is successful.  
-Exit Python:
-```python
-exit()
-```
-
----
-
-
-### 6: Run the Test Suite (Optional)
+### 5: Run the Test Suite (Optional)
 
 To make sure everything is working as expected, run:
 
@@ -278,7 +252,7 @@ everything is functioning correctly.
 ---
 
 
-### 7: Updating Your Environment (Optional)
+### 6: Updating Your Environment (Optional)
 
 If the repository is updated with new code or dependencies, you can refresh your local setup:
 
