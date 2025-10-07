@@ -70,6 +70,20 @@ This section explains exactly how to download, install, and set up **CHAL** on y
 
 > **Note:** Python 3.10+ and [Poetry](https://python-poetry.org/) 2.1.3+ are required.
 
+### 🖥️ Terminal and Command Conventions
+
+Throughout this guide, here's how to interpret the command labels that are used:
+
+| Label | Meaning | Where to Type It |
+|--------|----------|------------------|
+| `bash` | A **system terminal** command | macOS/Linux Terminal, Windows PowerShell, or Git Bash |
+| `python` | Python code run **inside** the Python interpreter | After typing `python` or `python3` |
+| `poetry` | Poetry dependency or environment command | Terminal (inside your project folder) |
+
+> **If you’re using Anaconda**, you’ll run commands in the **Anaconda Prompt** instead of a normal terminal.  
+> It behaves the same way for almost all commands.
+
+
 ### 0. Prerequisites
 
 Before you begin, make sure that you have the following installed:
