@@ -76,7 +76,7 @@ Throughout this guide, here's how to interpret the command labels that are used:
 
 | Label | Meaning | Where to Type It |
 |--------|----------|------------------|
-| `bash` | A (Born Again SHell)**system terminal** command | macOS/Linux Terminal, Windows PowerShell, or Git Bash |
+| `bash` | (Born Again SHell) A **system terminal** command | macOS/Linux Terminal, Windows PowerShell, or Git Bash |
 | `python` | Python code run **inside** the Python interpreter | After typing `python` or `python3` |
 | `poetry` | Poetry dependency or environment command | Terminal (inside your project folder) |
 
