@@ -70,7 +70,7 @@ This section explains exactly how to download, install, and set up **CHAL** on y
 
 > **Note:** Python 3.10+ and [Poetry](https://python-poetry.org/) 2.1.3+ are required.
 
-### 🖥️ Terminal and Command Conventions
+#### 🖥️ Terminal and Command Conventions
 
 Throughout this guide, here's how to interpret the command labels that are used:
 
