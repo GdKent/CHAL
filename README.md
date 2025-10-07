@@ -123,14 +123,14 @@ If you do not have Python or Git installed, please install them first:
 ### 1. Clone the Repository
 
 Open your **terminal** (macOS/Linux), **PowerShell or Git Bash** (Windows), or **Anaconda Prompt** (if using Anaconda).  
-Then type:
+Once you navigate to the desired directory that you would like to work out of, then type:
 
 ```bash
 git clone https://github.com/GdKent/CHAL.git
 cd CHAL
 ```
 
-This will download the repository and move you into its directory.
+This will download the repository into your desired working directory and move you into the CHAL directory.
 
 
 ### 2. Install Poetry
@@ -139,7 +139,7 @@ CHAL is distributed as a modular Python package using [Poetry](https://python-po
 
 #### 🟩 If You’re Using Standard Python:
 
-Run this command in your **system terminal** (macOS/Linux) or **PowerShell** (Windows):
+Run this command in your **system terminal** (macOS/Linux) or **PowerShell or Git Bash** (Windows):
 
 ```bash
 curl -sSL https://install.python-poetry.org | python3 -
