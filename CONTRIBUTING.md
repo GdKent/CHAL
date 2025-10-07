@@ -63,7 +63,6 @@ curl -sSL https://install.python-poetry.org | python3 -
 
 ```bash
 poetry install
-poetry shell
 ```
 
 **If you are using Anaconda:**
