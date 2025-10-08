@@ -229,7 +229,7 @@ If no errors appear, your installation is successful.
 ---
 
 
-### 5: Run the Test Suite (Optional) ```diff + (Under Development)```
+### 5: Run the Test Suite (Optional) **(Under Development)**
 
 To make sure everything is working as expected, run:
 
@@ -264,15 +264,15 @@ This pulls the latest changes and installs any new dependencies.
 > [https://github.com/GdKent/CHAL/issues](https://github.com/GdKent/C-HAL/issues)
 
 
-## Project Structure <span style="color:red">(Under Development)</span>
+## Project Structure **(Under Development)**
 
 ```text
 CHAL/
-├── .github/              # GitHub workflows, issue templates, etc. <span style="color:red">(to be added)</span>
-├── docs/                 # Documentation and design notes <span style="color:red">(to be added)</span>
+├── .github/              # GitHub workflows, issue templates, etc. **(to be added)**
+├── docs/                 # Documentation and design notes **(to be added)**
 ├── src/
 │   └── chal/             # Core Python package code
-├── tests/                # Unit and integration tests <span style="color:red">(to be added)</span>
+├── tests/                # Unit and integration tests **(to be added)**
 ├── README.md             # Project description and usage
 ├── pyproject.toml        # Poetry config and dependencies
 ├── poetry.lock           # Poetry lockfile (auto-generated)
