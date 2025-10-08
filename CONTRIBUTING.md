@@ -68,8 +68,9 @@ conda activate chal
 pip install poetry==2.1.3
 ```
 
-Then, run this command to create or activate a virtual environment:
+### 2.3 Create or activate a virtual environment
 
+Once poetry is installed, run the following command:
 ```bash
 poetry install
 ```
