@@ -229,7 +229,7 @@ If no errors appear, your installation is successful.
 ---
 
 
-### 5: Run the Test Suite (Optional) <span style="color:red">(Under Development)</span>
+### 5: Run the Test Suite (Optional) ```diff + (Under Development)```
 
 To make sure everything is working as expected, run:
 
