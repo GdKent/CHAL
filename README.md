@@ -294,7 +294,7 @@ This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE)
 
 ---
 
-## Contributing <span style="color:red">(Under Development)</span>
+## Contributing **(Under Development)**
 
 We welcome contributions, suggestions, and critiques.
 
