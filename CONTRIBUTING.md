@@ -27,12 +27,12 @@ git clone https://github.com/GdKent/CHAL.git
 cd CHAL
 ```
 
-> 💡 Tip: Run `git remote -v` afterward to confirm that your remote is correct.  
+> Tip: Run `git remote -v` afterward to confirm that your remote is correct.  
 > You should see either your username’s fork or `GdKent/CHAL`.
 
 ---
 
-## 🏗️ 2. Setting Up Your Development Environment
+## 2. Setting Up Your Development Environment
 
 ### 2.1 Verify Prerequisites
 
@@ -48,29 +48,29 @@ git --version
 poetry --version
 ```
 
-If Poetry is missing, install it:
+### 2.2 If Poetry is missing, install it
+
+**If You’re Using Standard Python**
+
+Run this command in your **system terminal** (macOS/Linux) or **PowerShell or Git Bash** (Windows):
+
 ```bash
 curl -sSL https://install.python-poetry.org | python3 -
 ```
 
-> 🧠 Windows users: You can also use PowerShell or Anaconda Prompt.
-
----
-
-### 2.2 Create or Activate a Virtual Environment
-
-**If you are using Poetry (recommended):**
-
-```bash
-poetry install
-```
-
 **If you are using Anaconda:**
+
+Run this command in your **Anaconda Prompt**:
 
 ```bash
 conda create -n chal python=3.10
 conda activate chal
 pip install poetry==2.1.3
+```
+
+Then, run this command to create or activate a virtual environment:
+
+```bash
 poetry install
 ```
 
