@@ -30,7 +30,6 @@ This repository serves as the official open-source implementation of CHAL. For m
   - [6. Updating Your Environment (Optional)](#7-updating-your-environment-optional)
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
-- [Technologies Used](#python-libraries-used)
 - [License](#license)
 - [Contributing](#contributing)
 - [Contact](#contact)
@@ -88,7 +87,7 @@ Throughout this guide, here's how to interpret the command labels that are used:
 Before you begin, make sure that you have the following installed:
 
 - **Python 3.10 or later**  
-  You can verify by opening your system terminal (macOS/Linux) or Command Prompt (Windows) within the desired directory (or cd to the desired directory) and running:
+  You can verify by opening your system terminal (macOS/Linux), Command Prompt (Windows), or Anaconda Prompt (Anaconda) within the desired directory (or cd to the desired directory) and running:
   ```bash
   python --version
   ```
@@ -201,7 +200,7 @@ poetry install
 ```
 
 This command:
-- Creates a virtual environment automatically (if you’re not using conda)
+- Creates a virtual environment (.venv) automatically (if you’re not using conda)
 - Installs all dependencies listed in `pyproject.toml`
 - Locks dependency versions for reproducibility (`poetry.lock`)
 
@@ -222,19 +221,15 @@ To start using the environment Poetry created, use "poetry run" commands. For ex
 poetry run python -c "import chal"
 ```
 
-If no errors appear, your installation is successful. To run the debate_driver.py:
-
-```bash
-poetry run python src\chal\orchestrator\debate_driver.py
-```
+If no errors appear, your installation is successful.
 
 > 💡 **Anaconda users:**  
-> If you used `conda create` earlier, your environment is already active (you’ll see `(chal)` before your prompt), simply use `poetry run` commands.
+> If you used `conda create` earlier, your environment is already active (you’ll see `(chal_env)` before your prompt), simply use `poetry run` commands.
 
 ---
 
 
-### 5: Run the Test Suite (Optional)
+### 5: Run the Test Suite (Optional) <span style="color:red">(Under Development)</span>
 
 To make sure everything is working as expected, run:
 
@@ -254,7 +249,7 @@ everything is functioning correctly.
 
 ### 6: Updating Your Environment (Optional)
 
-If the repository is updated with new code or dependencies, you can refresh your local setup:
+If the repository is updated with new code or dependencies, you can refresh your local setup by running the following in your **terminal** (macOS/Linux), **PowerShell or Git Bash** (Windows), or **Anaconda Prompt** (if using Anaconda):
 
 ```bash
 git pull
@@ -269,15 +264,15 @@ This pulls the latest changes and installs any new dependencies.
 > [https://github.com/GdKent/CHAL/issues](https://github.com/GdKent/C-HAL/issues)
 
 
-## Project Structure
+## Project Structure <span style="color:red">(Under Development)</span>
 
 ```text
 CHAL/
-├── .github/              # GitHub workflows, issue templates, etc.
-├── docs/                 # Documentation and design notes
+├── .github/              # GitHub workflows, issue templates, etc. <span style="color:red">(to be added)</span>
+├── docs/                 # Documentation and design notes <span style="color:red">(to be added)</span>
 ├── src/
 │   └── chal/             # Core Python package code
-├── tests/                # Unit and integration tests
+├── tests/                # Unit and integration tests <span style="color:red">(to be added)</span>
 ├── README.md             # Project description and usage
 ├── pyproject.toml        # Poetry config and dependencies
 ├── poetry.lock           # Poetry lockfile (auto-generated)
@@ -287,20 +282,9 @@ CHAL/
 
 ---
 
-## Documentation
+## Documentation <span style="color:red">(Under Development)</span>
 
 Documentation is currently under development and will live in the `docs/` directory.
-
----
-
-
-## Python Libraries Used
-
-- **Python 3.10+**
-- **Poetry** for dependency management
-- **OpenAI API** (GPT-4, GPT-4o, etc.)
-- **tiktoken** for token accounting
-- **UMAP**, **matplotlib**, and **scikit-learn** for visualization
 
 ---
 
@@ -310,7 +294,7 @@ This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE)
 
 ---
 
-## Contributing
+## Contributing <span style="color:red">(Under Development)</span>
 
 We welcome contributions, suggestions, and critiques.
 
