@@ -135,6 +135,8 @@ This will download the repository into your desired working directory and move y
 
 CHAL is distributed as a modular Python package using [Poetry](https://python-poetry.org/) for clean dependency and environment management. Poetry will ensure that all collaborators will have the same package versions and isolated environments.
 
+---
+
 #### 🟩 If You’re Using Standard Python:
 
 Run this command in your **system terminal** (macOS/Linux) or **PowerShell or Git Bash** (Windows):
@@ -154,7 +156,7 @@ You should see something like:
 Poetry (version 2.1.3)
 ```
 
-> ⚠️ **Windows Note:**  
+> **Windows Note:**  
 > If `poetry` is not recognized, add Poetry’s installation path to your system PATH environment variable.  
 > The installer usually tells you the correct path when it finishes.
 
