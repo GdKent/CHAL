@@ -1,0 +1,28 @@
+# Ignore the Poetry virtual environment
+.venv/
+
+# Ignore environment secrets
+.env
+*.env
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore VS Code settings (optional)
+.vscode/
+
+# Test artifacts
+.coverage
+pytest_cache/
+.cache/
+
+# Build and packaging
+dist/
+build/
+
+# Logs
+*.log
+
+# macOS system file
+.DS_Store
