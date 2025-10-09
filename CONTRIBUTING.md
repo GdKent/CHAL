@@ -79,7 +79,7 @@ This installs all project dependencies defined in `pyproject.toml` and places yo
 
 ---
 
-## 🌿 3. Branching and Workflow
+## 3. Branching and Workflow
 
 ### 3.1 Main Branches
 
@@ -109,7 +109,7 @@ Use clear, descriptive names for branches.
 
 ---
 
-## 💻 4. Making Changes
+## 4. Making Changes (Under Development)
 
 ### 4.1 Code Style
 
@@ -149,11 +149,11 @@ poetry run pytest
 
 If you add new functionality, include corresponding tests.
 
-> ✅ Passing tests are required before merging to `dev` or `main`.
+> Passing tests are required before merging to `dev` or `main`.
 
 ---
 
-## 🧾 5. Committing Your Changes
+## 5. Committing Your Changes (Under Development)
 
 ### 5.1 Add and Commit
 
@@ -194,7 +194,7 @@ If it’s your first push for that branch, Git will tell you the exact command t
 
 ---
 
-## 🔀 6. Submitting a Pull Request (PR)
+## 6. Submitting a Pull Request (PR) (Under Development)
 
 1. Go to your fork or the main CHAL repository on GitHub.
 2. Click **Compare & pull request**.
@@ -207,7 +207,7 @@ If it’s your first push for that branch, Git will tell you the exact command t
 
 ---
 
-## 👀 7. Code Review Process
+## 7. Code Review Process (Under Development)
 
 - Every PR must be reviewed by at least **one other collaborator** before merging.
 - Reviewers will:
@@ -219,7 +219,7 @@ If it’s your first push for that branch, Git will tell you the exact command t
 
 ---
 
-## 🧹 8. Keeping Your Branch Up-to-Date
+## 8. Keeping Your Branch Up-to-Date (Under Development)
 
 While working on a feature, keep your branch synchronized with `dev` to avoid merge conflicts:
 
@@ -235,24 +235,7 @@ Resolve any conflicts if prompted, then continue your work.
 
 ---
 
-## 🧩 9. Project Structure Reference
-
-```
-CHAL/
-├── src/
-│   └── chal/              # Core package code
-├── tests/                 # Unit and integration tests
-├── docs/                  # Documentation (optional)
-├── README.md              # Main project overview
-├── INSTALLATION.md        # Installation instructions
-├── CONTRIBUTING.md        # This file
-├── LICENSE                # MIT License
-└── pyproject.toml         # Poetry configuration
-```
-
----
-
-## 🧠 10. Helpful Git Commands Summary
+## 9. Helpful Git Commands Summary (Under Development)
 
 | Action | Command |
 |--------|----------|
@@ -268,7 +251,7 @@ CHAL/
 
 ---
 
-## 🧭 11. After a Successful Merge
+## 10. After a Successful Merge (Under Development)
 
 After your pull request is merged:
 1. Switch back to `dev`:
@@ -287,7 +270,7 @@ After your pull request is merged:
 
 ---
 
-## 💬 12. Questions or Issues
+## 11. Questions or Issues
 
 If you encounter problems or have suggestions:
 - Open an **Issue** in the GitHub repository.
@@ -296,12 +279,12 @@ If you encounter problems or have suggestions:
 
 ---
 
-> 🧩 **In summary:**  
+> **In summary:**  (Under Development)
 > - Work on a branch (never directly on `main`).  
 > - Follow the coding standards.  
 > - Run all tests before committing.  
 > - Use clear, conventional commit messages.  
 > - Submit PRs into `dev` for review and integration.  
 
-Your contributions help make CHAL a rigorous, transparent, and collaborative platform for epistemic AI research.  
+Your contributions help make CHAL a rigorous, transparent, and collaborative platform for epistemic and multi-agentic AI research.  
 Thank you for helping build it!
