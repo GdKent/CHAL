@@ -26,7 +26,7 @@ This repository serves as the official open-source implementation of CHAL. For m
   - [2. Install Poetry](#2-install-poetry)
   - [3. Install Project Dependencies](#3-install-project-dependencies)
   - [4. Verify Installation](#4-verify-installation)
-  - [5. Run the Test Suite (Optional)](#5-run-the-test-suite-optional)
+  - [5. Run the Test Suite (Optional) (Under Development)](#5-run-the-test-suite-optional-under-development)
   - [6. Updating Your Environment (Optional)](#6-updating-your-environment-optional)
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
