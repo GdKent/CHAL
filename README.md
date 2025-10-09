@@ -130,6 +130,8 @@ cd CHAL
 
 This will download the repository into your desired working directory and move you into the CHAL directory.
 
+There is a placeholder file .env.example that you must rename to .env. You must then input your own API key in this file before you can run chal. Never hard-code or push your API keys to a repository!
+
 
 ### 2. Install Poetry
 
