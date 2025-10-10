@@ -230,6 +230,12 @@ If no errors appear, your installation is successful.
 > 💡 **Anaconda users:**  
 > If you used `conda create` earlier, your environment is already active (you’ll see `(chal_env)` before your prompt), simply use `poetry run` commands.
 
+Now, to initiate your first full chal debate, run the following command:
+
+```bash
+poetry run python src/chal/orchestrator/debate_driver.py
+```
+
 ---
 
 
