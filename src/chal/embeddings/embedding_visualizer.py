@@ -3,8 +3,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import umap
-from typing import Dict, List
+from typing import Dict, List, Optional
 from itertools import cycle
+from pathlib import Path
 
 class BeliefTrajectoryPlotter:
     """
@@ -42,9 +43,13 @@ class BeliefTrajectoryPlotter:
 
         return reduced_by_agent
 
-    def plot_trajectories(self, reduced_by_agent: Dict[str, List[np.ndarray]]):
+    def plot_trajectories(self, reduced_by_agent: Dict[str, List[np.ndarray]], output_path: Optional[Path] = None):
         """
         Plots 2D trajectories with color-matched arrows and labeled start/end points.
+
+        Args:
+            reduced_by_agent: Dictionary mapping agent names to their reduced coordinate trajectories
+            output_path: Optional path to save the plot. If None, displays interactively (not recommended for CLI)
         """
         if self.n_components != 2:
             raise ValueError("Arrowed plotting is currently only supported in 2D.")
@@ -81,4 +86,11 @@ class BeliefTrajectoryPlotter:
         ax.set_ylabel("UMAP Dimension 2")
         ax.legend()
         plt.tight_layout()
-        plt.show()
+
+        # Save to file or show interactively
+        if output_path:
+            plt.savefig(output_path, dpi=150, bbox_inches='tight')
+            plt.close(fig)  # Close the figure to free memory
+            print(f"      [Trajectory] Plot saved to {output_path}")
+        else:
+            plt.show()

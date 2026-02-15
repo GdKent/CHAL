@@ -46,8 +46,9 @@ class OpenAIAgent(Agent):
         self.name = name  # Used for display/debugging
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")  # Pull from env if not passed
         self.system_prompt = system_prompt
-        self.internal_belief = ""  # Tracks agent’s evolving belief over time
+        self.internal_belief = ""  # Tracks agent's evolving belief over time
         self.internal_belief_obj = None   # dict for json-structured belief
+        self.belief_graph = None  # Persistent BeliefGraph object (derived from internal_belief_obj)
         self.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
         self.all_beliefs_held = [] # A list of internal_belief objects that the agent has held. This is to help enable the agent to form a solid conclusion when the debat ends
     
@@ -66,14 +67,37 @@ class OpenAIAgent(Agent):
     def set_internal_belief_obj(self, belief_obj: dict | None) -> None:
         """
         Stores the structured CBS-v1 belief object (JSON as Python dict).
+        Auto-rebuilds the persistent belief graph when the belief object changes.
         """
         self.internal_belief_obj = belief_obj
+
+        # Auto-rebuild persistent graph when belief changes
+        if belief_obj:
+            try:
+                from chal.beliefs.belief_graph import BeliefGraph
+                self.belief_graph = BeliefGraph(belief_obj)
+            except Exception as e:
+                # If graph construction fails, log but don't crash
+                print(f"Warning: Could not build belief graph for {self.name}: {e}")
+                self.belief_graph = None
+        else:
+            self.belief_graph = None
     
     def get_internal_belief_obj(self) -> dict | None:
         """
         Returns the structured belief object if available.
         """
         return self.internal_belief_obj
+
+    def get_belief_graph(self):
+        """
+        Returns the persistent BeliefGraph object if available.
+        The graph is automatically rebuilt when set_internal_belief_obj() is called.
+
+        Returns:
+            BeliefGraph object or None if no belief object is set or graph construction failed.
+        """
+        return self.belief_graph
 
     def receive_system_prompt(self, prompt: str) -> None:
         """

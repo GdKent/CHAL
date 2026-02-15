@@ -1,0 +1,203 @@
+# ============================================================================
+# CHAL Debate Configuration - Default
+# ============================================================================
+# This is the standard configuration for a full-featured philosophical debate
+# with all outputs and analysis enabled.
+
+metadata:
+  name: "Default Debate"
+  description: "Standard 2-agent philosophical debate with full analysis"
+  version: "1.0"
+
+# ============================================================================
+# DEBATE SETUP
+# ============================================================================
+debate:
+  # The central topic or question being debated
+  topic: "Does free will exist?"
+
+  # Number of debate rounds. Each round includes:
+  # - Stage 2: Cross-Examination (questions)
+  # - Stage 3: Rebuttals (answers)
+  # - Stage 4: Adjudication (evaluation)
+  # - Stage 5: Belief Updates (revision)
+  max_rounds: 1
+
+# ============================================================================
+# AGENT CONFIGURATION
+# ============================================================================
+# Define the debating agents and their personas.
+# Available personas: EMPIRICIST, RATIONALIST, SUPERNATURALIST, SKEPTIC,
+#                     PHENOMENOLOGIST, PRAGMATIST, CONSTRUCTIVIST, NIHILIST,
+#                     BAYESIAN, PANPSYCHIST, SIMULATIONIST
+agents:
+  - name: "Agent-Empiricist"
+    persona: "EMPIRICIST"              # Requires empirical evidence
+    model: "gpt-4o"                    # OpenAI model to use
+    temperature: 0.7                   # Agent creativity (0.0-1.0, higher = more creative)
+
+  - name: "Agent-Supernaturalist"
+    persona: "SUPERNATURALIST"         # Accepts non-empirical truths
+    model: "gpt-4o"
+    temperature: 0.7
+
+# ============================================================================
+# ADJUDICATION SETTINGS
+# ============================================================================
+# Controls how the neutral adjudicator evaluates challenge-rebuttal pairs
+adjudication:
+  # RECOMMENDED: Use "o1-mini" for superior logical reasoning at low cost
+  # - o1-mini: Best for pure logic evaluation (faster, cheaper, excellent reasoning)
+  # - o1: More thorough but slower and more expensive (use for high-stakes debates)
+  # - gpt-4o: Adequate but less rigorous than reasoning models
+  model: "o1-mini"                     # Model for the adjudicator
+
+  # Weighting for evaluation criteria (should sum to 1.0)
+  logic_weight: 1.0                    # Weight for logical rigor (0.0-1.0)
+  ethics_weight: 0.0                   # Weight for ethical considerations (0.0-1.0)
+
+  # Framework descriptions for adjudication
+  logic_system: "Classical logic + Bayesian reasoning for inductive support; reject contradictions; prefer simpler hypotheses (Occam's Razor)."
+  ethics_system: "None. Only prioritize logical rigor and soundness, not ethical implications"
+
+# ============================================================================
+# STAGE PARAMETERS
+# ============================================================================
+# Fine-tune the behavior of each debate stage
+stages:
+  # Stage 2: Cross-Examination
+  max_questions_per_cross_exam: 5      # Max questions each agent asks per opponent
+  max_question_length_chars: 1000       # Character limit per question
+
+  # Stage 3: Rebuttals
+  max_rebuttals_per_response: 5        # Max rebuttals per agent per round
+  max_rebuttal_length_chars: 1000       # Character limit per rebuttal
+
+  # Generation settings for structured outputs
+  generation_temperature: 0.2          # Low temperature for precise JSON (0.0-1.0)
+
+  # Text length limits
+  short_note_max_chars: 140            # Twitter-style short notes (conclusions, adjudication)
+
+# ============================================================================
+# PERFORMANCE SCORING
+# ============================================================================
+# Weighted scoring system to evaluate agent performance during debate
+performance_scoring:
+  # Enable/disable performance scoring calculations
+  enabled: true
+
+  # Weights for different debate outcomes
+  weights:
+    successful_critique: 3.0       # Critiques that won (critique_valid) - highest reward
+    successful_rebuttal: 2.0       # Rebuttals that won (rebuttal_valid) - moderate reward
+    failed_rebuttal: -2.0          # Rebuttals that lost (critique_valid) - moderate penalty
+    unresolved_argument: -0.5      # Arguments with unclear outcomes - minor penalty
+
+  # Calculate normalized score (score / total_arguments)
+  # Useful for comparing agents across debates with different argument counts
+  normalize_by_total_arguments: false
+
+  # Display options
+  display_in_round_summary: true   # Show performance scores after each round
+  display_in_final_summary: true   # Show performance scores in final statistics
+
+# ============================================================================
+# CONVERGENCE METRICS
+# ============================================================================
+# Measures semantic convergence by analyzing claim-level agreement between agents
+# Complements trajectory visualization with quantitative convergence scores
+convergence:
+  # Enable/disable convergence analysis
+  enabled: true
+
+  # Semantic similarity threshold for claim matching (0.0-1.0)
+  # Higher = stricter matching (claims must be more semantically similar)
+  # 0.75 recommended: captures paraphrased claims without false matches
+  # 0.85 = very strict (only nearly identical claims match)
+  # 0.65 = more lenient (related claims may match)
+  similarity_threshold: 0.75
+
+  # Display options
+  display_in_round_summary: true   # Show convergence analysis after each round
+  display_in_final_summary: true   # Show convergence trajectory in final statistics
+
+  # Track convergence history over rounds
+  track_history: true
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+outputs:
+  # Directory where all outputs will be saved
+  storage_dir: "src/chal/storage"
+
+  # --- Narrative Outputs ---
+
+  # Scribed narrative synthesis (requires scribe.enabled = true)
+  save_synthesis: true
+  synthesis_file: "debate_synthesis.txt"
+
+  # Clean markdown transcript of the debate (human-readable)
+  save_transcript: true
+  transcript_file: "debate_transcript.txt"
+
+  # --- Belief Snapshots ---
+
+  # Save initial agent beliefs from Stage 1
+  save_initial_beliefs: true
+  initial_beliefs_file: "initial_beliefs.txt"
+
+  # Save final agent beliefs after all updates
+  save_final_beliefs: true
+  final_beliefs_file: "final_beliefs.txt"
+
+  # --- Analysis Outputs ---
+
+  # Generate belief embeddings for trajectory visualization
+  # (Enables semantic analysis of belief evolution)
+  generate_embeddings: true
+  embeddings_file: "embeddings.npz"
+
+  # Plot 2D visualization of belief trajectories over time
+  # (Requires generate_embeddings = true)
+  plot_trajectories: true
+  trajectory_plot_file: "belief_trajectories.png"
+
+  # Generate interactive HTML belief graph visualization
+  # (Shows argument structure as interactive node-edge graph using Cytoscape.js)
+  generate_graph_visualization: false
+  graph_file: "belief_graph.html"
+
+  # Save statistics about agent performance (wins, losses, etc.)
+  save_agent_stats: true
+  stats_file: "agent_stats.json"
+
+  # --- Debug Logging ---
+
+  # Save comprehensive debug log with all prompts, responses, and parsing details
+  # (Essential for debugging - shows complete model I/O)
+  save_debug_log: true
+  debug_log_file: "log.txt"
+
+# ============================================================================
+# SCRIBE CONFIGURATION
+# ============================================================================
+# The scribe generates a flowing narrative synthesis of the entire debate
+scribe:
+  # Enable/disable Stage 7 scribing
+  # (Disable to save time during development)
+  enabled: true
+
+  # Model to use for narrative generation
+  model: "gpt-4o"
+
+  # Chunking parameters for long transcripts
+  max_chars_per_chunk: 15000           # Max characters per chunk (stay within context limits)
+  overlap_chars: 1000                  # Overlap between chunks for continuity
+
+  # Scribe generation settings
+  scribe_temperature: 0.3              # Slightly higher than generation_temperature for natural prose
+
+  # Style guidance for the narrative
+  style_hint: "formal, expository, research-paper tone with clear sectioning and didactic explanations"

@@ -1,0 +1,93 @@
+{
+  "update_thesis_weaken": [
+    {"op": "update_thesis", "change": "weaken"}
+  ],
+  "update_thesis_strengthen": [
+    {"op": "update_thesis", "change": "strengthen"}
+  ],
+  "update_claim_confidence": [
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "confidence": 0.6
+      }
+    }
+  ],
+  "update_claim_status": [
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "status": "revised"
+      }
+    }
+  ],
+  "update_claim_multiple": [
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "confidence": 0.65,
+        "status": "revised",
+        "known_weaknesses": ["Weakness identified in debate"]
+      }
+    }
+  ],
+  "retire_claim": [
+    {
+      "op": "retire_claim",
+      "target_id": "C1"
+    }
+  ],
+  "add_evidence": [
+    {
+      "op": "add_evidence",
+      "item": {
+        "id": "E3",
+        "type": "empirical",
+        "summary": "New evidence from recent study",
+        "citation": "Smith et al. (2026)"
+      }
+    }
+  ],
+  "update_assumption": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "new_statement": "Revised assumption statement"
+    }
+  ],
+  "multiple_patches": [
+    {"op": "update_thesis", "change": "weaken"},
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "confidence": 0.55,
+        "status": "under_review"
+      }
+    },
+    {
+      "op": "add_evidence",
+      "item": {
+        "id": "E4",
+        "type": "conceptual",
+        "summary": "Additional supporting evidence",
+        "citation": "Jones (2026)"
+      }
+    }
+  ],
+  "invalid_missing_op": [
+    {
+      "target_id": "C1",
+      "changes": {"confidence": 0.5}
+    }
+  ],
+  "invalid_unknown_op": [
+    {
+      "op": "delete_everything",
+      "target_id": "C1"
+    }
+  ]
+}

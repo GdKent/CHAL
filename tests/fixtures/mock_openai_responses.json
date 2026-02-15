@@ -1,0 +1,63 @@
+{
+  "belief_minimal": {
+    "role": "assistant",
+    "content": "```json\n{\n  \"schema_version\": \"CBS-v1\",\n  \"belief_id\": \"BELIEF-MOCK-001\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Test topic\",\n    \"agent_persona\": \"Test Persona\",\n    \"created_at\": \"2026-02-15T12:00:00Z\"\n  },\n  \"thesis\": {\n    \"stance\": \"Test stance\",\n    \"summary_bullets\": [\"Test bullet 1\", \"Test bullet 2\"],\n    \"confidence\": 0.75\n  }\n}\n```\n\nHere is my belief structure in CBS-v1 format."
+  },
+  "belief_complete": {
+    "role": "assistant",
+    "content": "```json\n{\n  \"schema_version\": \"CBS-v1\",\n  \"belief_id\": \"BELIEF-MOCK-002\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Does free will exist?\",\n    \"agent_persona\": \"Rationalist\",\n    \"created_at\": \"2026-02-15T12:00:00Z\"\n  },\n  \"thesis\": {\n    \"stance\": \"Free will exists within a compatibilist framework.\",\n    \"summary_bullets\": [\n      \"Determinism and free will are compatible\",\n      \"Rational deliberation grounds moral responsibility\"\n    ],\n    \"confidence\": 0.80\n  },\n  \"assumptions\": [\n    {\"id\": \"A1\", \"statement\": \"Rational deliberation is real\"}\n  ],\n  \"claims\": [\n    {\n      \"id\": \"C1\",\n      \"type\": \"deductive\",\n      \"statement\": \"Humans can make choices based on reasons\",\n      \"depends_on\": [\"A1\"],\n      \"backing_evidence_ids\": [\"E1\"],\n      \"confidence\": 0.85,\n      \"status\": \"accepted\"\n    }\n  ],\n  \"evidence\": [\n    {\n      \"id\": \"E1\",\n      \"type\": \"empirical\",\n      \"summary\": \"Studies show rational deliberation\",\n      \"citation\": \"Test et al. (2026)\"\n    }\n  ]\n}\n```"
+  },
+  "cross_examination_3": {
+    "role": "assistant",
+    "content": "1. What empirical evidence supports your first assumption?\n2. How do you address the counterargument from determinism?\n3. Can you clarify the logical connection between your claims and thesis?"
+  },
+  "cross_examination_5": {
+    "role": "assistant",
+    "content": "1. What empirical evidence supports your central claim?\n2. How do you address potential circular reasoning in your argument?\n3. Can you provide examples that illustrate your thesis?\n4. What are the weakest points in your argumentation?\n5. How does your position differ from alternative frameworks?"
+  },
+  "rebuttals_3": {
+    "role": "assistant",
+    "content": "Critique 1:\nWhat empirical evidence supports your first assumption?\n\nResponse 1:\nMultiple studies demonstrate that rational deliberation occurs before action. See the cited research in my evidence section.\n\nCritique 2:\nHow do you address the counterargument from determinism?\n\nResponse 2:\nDeterminism is compatible with free will when we understand free will as acting according to one's own reasons, not as uncaused causation.\n\nCritique 3:\nCan you clarify the logical connection between your claims and thesis?\n\nResponse 3:\nThe claims build from assumptions through evidence to support the thesis. Each inference is justified in the claim's inference_chain field."
+  },
+  "belief_update_patches": {
+    "role": "assistant",
+    "content": "Based on the adjudication outcomes, I'm revising my position:\n\n```json\n[\n  {\"op\": \"update_thesis\", \"change\": \"weaken\"},\n  {\n    \"op\": \"update_claim\",\n    \"target_id\": \"C1\",\n    \"changes\": {\n      \"confidence\": 0.70,\n      \"known_weaknesses\": [\"Does not fully address deterministic objections\"]\n    }\n  }\n]\n```\n\nI acknowledge the strength of the critique regarding determinism."
+  },
+  "concluding_remarks": {
+    "role": "assistant",
+    "content": "## Concluding Remarks\n\nThroughout this debate, my position has evolved in response to the critiques raised. While I initially held a strong compatibilist view with 0.80 confidence, the challenges regarding determinism have led me to moderate my stance to 0.70 confidence.\n\nKey points I maintain:\n- Rational deliberation is a real phenomenon\n- Moral responsibility can be grounded in the right kind of causal process\n\nAreas where my position has been weakened:\n- The relationship between determinism and genuine alternatives\n- The interpretation of neuroscientific evidence\n\nThis debate has demonstrated the value of rigorous cross-examination in refining philosophical positions."
+  },
+  "scribe_synthesis": {
+    "role": "assistant",
+    "content": "# Debate Synthesis: The Nature of Free Will\n\n## Overview\nThis debate examined the compatibility of free will with determinism through a structured exchange between agents with differing philosophical perspectives.\n\n## Key Positions\n\n**Rationalist Position (Agent-A):**\n- Initially argued for strong compatibilism (confidence: 0.80)\n- Maintained that free will means acting according to one's reasons\n- Revised position to moderate confidence (0.70) after challenges\n\n**Empiricist Position (Agent-B):**\n- Argued that determinism undermines genuine free will\n- Emphasized neuroscientific evidence (Libet experiments)\n- Maintained that compatibilism is semantic redefinition\n\n## Evolution of Positions\nThe debate demonstrated convergence on some empirical facts but persistent disagreement on their interpretation, reflecting a fundamental philosophical divide about the nature of agency and responsibility.\n\n## Conclusion\nWhile neither position was fully vindicated, the structured format enabled precise identification of the exact points of disagreement and the evidential standards required to resolve them."
+  },
+  "malformed_json": {
+    "role": "assistant",
+    "content": "```json\n{\"schema_version\": \"CBS-v1\", \"belief_id\": \"BROKEN\",\n```\nThis JSON is incomplete and malformed."
+  },
+  "no_json_block": {
+    "role": "assistant",
+    "content": "I believe that free will exists, but this response contains no JSON code block, so it cannot be parsed as a CBS-v1 belief structure."
+  },
+  "rate_limit_error": {
+    "error": {
+      "message": "Rate limit exceeded",
+      "type": "rate_limit_error",
+      "code": "rate_limit_exceeded"
+    }
+  },
+  "authentication_error": {
+    "error": {
+      "message": "Invalid API key",
+      "type": "invalid_request_error",
+      "code": "invalid_api_key"
+    }
+  },
+  "timeout_error": {
+    "error": {
+      "message": "Request timed out",
+      "type": "timeout",
+      "code": "timeout"
+    }
+  }
+}

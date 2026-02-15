@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHAL Debate Graph - Does free will exist?</title>
+    <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #cy {
+            flex: 1;
+            background: #2a2a2a;
+        }
+
+        #sidebar {
+            width: 400px;
+            background: #1e1e1e;
+            border-left: 1px solid #333;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        #sidebar h2 {
+            color: #3498db;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        #sidebar h3 {
+            color: #e74c3c;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        #sidebar pre {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .legend {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .qa-item {
+            background: #2a2a2a;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid #3498db;
+        }
+
+        .qa-item strong {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="cy"></div>
+        <div id="sidebar">
+            <h2>Debate: Does free will exist?</h2>
+
+            <div class="legend">
+                <h3>Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Assumption (A#)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>Claim (C#)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2ecc71;"></div>
+                    <span>Evidence (E#)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span>Prediction (P#)</span>
+                </div>
+            </div>
+
+            <div id="details">
+                <p style="color: #888;">Click on a node to see details</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const graphData = {
+            nodes: [{"data": {"id": "Agent-Empiricist_A1", "label": "A1: Empirical evidence is the most reliable form of kn...", "node_type": "assumption", "agent": "Agent-Empiricist", "details": "{\n  \"id\": \"A1\",\n  \"statement\": \"Empirical evidence is the most reliable form of knowledge.\"\n}", "color": "#3498db"}}, {"data": {"id": "Agent-Empiricist_A2", "label": "A2: Neuroscience can provide insights into human decis...", "node_type": "assumption", "agent": "Agent-Empiricist", "details": "{\n  \"id\": \"A2\",\n  \"statement\": \"Neuroscience can provide insights into human decision-making.\"\n}", "color": "#3498db"}}, {"data": {"id": "Agent-Empiricist_A3", "label": "A3: Current scientific methodologies have limitations ...", "node_type": "assumption", "agent": "Agent-Empiricist", "details": "{\n  \"id\": \"A3\",\n  \"statement\": \"Current scientific methodologies have limitations in fully capturing the complexity of human cognition, which is crucial for studying free will.\"\n}", "color": "#3498db"}}, {"data": {"id": "Agent-Empiricist_C1", "label": "C1: Free will, as traditionally understood, is likely ...", "node_type": "claim", "agent": "Agent-Empiricist", "details": "{\n  \"id\": \"C1\",\n  \"type\": \"inductive\",\n  \"statement\": \"Free will, as traditionally understood, is likely an illusion.\",\n  \"depends_on\": [\n    \"A1\",\n    \"A2\",\n    \"E1\"\n  ],\n  \"backing_evidence_ids\": [\n    \"E1\"\n  ],\n  \"confidence\": 0.45,\n  \"status\": \"tentative\",\n  \"inference_chain\": [\n    {\n      \"step\": \"Neuroscience studies show brain activity predicts decisions before conscious awareness.\",\n      \"justification\": \"This suggests decisions may be predetermined.\"\n    },\n    {\n      \"step\": \"If decisions are predetermined, traditional free will is an illusion.\",\n      \"justification\": \"Free will requires the ability to have chosen otherwise.\"\n    }\n  ],\n  \"known_weaknesses\": [\n    \"Complexity of human cognition\",\n    \"Limitations in current methodologies\"\n  ],\n  \"confidence_justification\": \"Based on current empirical evidence and limitations.\"\n}", "color": "#e74c3c"}}, {"data": {"id": "Agent-Empiricist_E1", "label": "E1: Neuroscience studies show that brain activity can ...", "node_type": "evidence", "agent": "Agent-Empiricist", "details": "{\n  \"id\": \"E1\",\n  \"type\": \"empirical\",\n  \"summary\": \"Neuroscience studies show that brain activity can predict decisions before conscious awareness.\",\n  \"source\": {\n    \"citation\": \"Libet, B. (1985). Unconscious cerebral initiative and the role of conscious will in voluntary action. Behavioral and Brain Sciences, 8(4), 529-566.\",\n    \"year\": 1985\n  },\n  \"relevance_to_claims\": [\n    \"C1\"\n  ],\n  \"quality_assessment\": {\n    \"sample_size\": \"medium\",\n    \"replication_status\": \"replicated\",\n    \"rigor\": \"high\"\n  },\n  \"limitations\": [\n    \"Temporal resolution of brain imaging\",\n    \"Interpretation of neural activity\"\n  ]\n}", "color": "#2ecc71"}}, {"data": {"id": "Agent-Empiricist_P1", "label": "P1: Future neuroscience studies will continue to show ...", "node_type": "prediction", "agent": "Agent-Empiricist", "details": "{\n  \"id\": \"P1\",\n  \"statement\": \"Future neuroscience studies will continue to show that brain activity precedes conscious decision-making.\",\n  \"linked_claims\": [\n    \"C1\"\n  ],\n  \"test\": \"Conduct longitudinal studies with advanced brain imaging techniques.\",\n  \"potential_falsifiers\": [\n    \"Studies show conscious awareness before brain activity\"\n  ],\n  \"expected_likelihood\": 0.7,\n  \"importance\": \"high\",\n  \"decision_criterion\": \"If conscious awareness consistently precedes brain activity, revise stance on free will.\"\n}", "color": "#f39c12"}}, {"data": {"id": "Agent-Supernaturalist_A1", "label": "A1: The concept of a non-material soul is a metaphysic...", "node_type": "assumption", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"A1\",\n  \"statement\": \"The concept of a non-material soul is a metaphysical assumption that cannot be empirically tested but is supported by spiritual and religious traditions.\"\n}", "color": "#3498db"}}, {"data": {"id": "Agent-Supernaturalist_A2", "label": "A2: Spiritual experiences can reveal truths about real...", "node_type": "assumption", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"A2\",\n  \"statement\": \"Spiritual experiences can reveal truths about reality that are inaccessible to empirical observation.\"\n}", "color": "#3498db"}}, {"data": {"id": "Agent-Supernaturalist_A3", "label": "A3: Moral responsibility is traditionally linked to th...", "node_type": "assumption", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"A3\",\n  \"statement\": \"Moral responsibility is traditionally linked to the concept of free will, though some philosophical arguments suggest alternative interpretations.\"\n}", "color": "#3498db"}}, {"data": {"id": "Agent-Supernaturalist_C1", "label": "C1: The existence of free will is best explained by th...", "node_type": "claim", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"C1\",\n  \"type\": \"abductive\",\n  \"statement\": \"The existence of free will is best explained by the presence of a non-material soul.\",\n  \"depends_on\": [\n    \"A1\",\n    \"A2\"\n  ],\n  \"backing_evidence_ids\": [],\n  \"confidence\": 0.6,\n  \"status\": \"tentative\",\n  \"inference_chain\": [\n    {\n      \"step\": \"If humans have a non-material soul, they are not entirely subject to physical determinism.\",\n      \"justification\": \"Non-material entities are not bound by physical laws.\"\n    },\n    {\n      \"step\": \"Free will is the ability to make choices unconstrained by external circumstances.\",\n      \"justification\": \"Free will implies influence beyond deterministic causation.\"\n    },\n    {\n      \"step\": \"The non-material soul provides the capacity for genuine choice.\",\n      \"justification\": \"Spiritual traditions affirm the soul's role in decision-making.\"\n    }\n  ],\n  \"known_weaknesses\": [\n    \"Lack of empirical evidence for non-material souls\",\n    \"Alternative explanations for decision-making\"\n  ],\n  \"confidence_justification\": \"This confidence level reflects the strength of spiritual and religious traditions in supporting the existence of a soul.\"\n}", "color": "#e74c3c"}}, {"data": {"id": "Agent-Supernaturalist_C2", "label": "C2: Spiritual experiences indicate the existence of fr...", "node_type": "claim", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"C2\",\n  \"type\": \"inductive\",\n  \"statement\": \"Spiritual experiences indicate the existence of free will.\",\n  \"depends_on\": [\n    \"A2\"\n  ],\n  \"backing_evidence_ids\": [],\n  \"confidence\": 0.5,\n  \"status\": \"tentative\",\n  \"inference_chain\": [\n    {\n      \"step\": \"Many individuals report spiritual experiences involving choice and moral insight.\",\n      \"justification\": \"Personal testimonies often highlight the experience of free will.\"\n    },\n    {\n      \"step\": \"These experiences are consistent across various cultures and religious traditions.\",\n      \"justification\": \"Widespread reports suggest a common underlying reality.\"\n    }\n  ],\n  \"known_weaknesses\": [\n    \"Subjectivity of spiritual experiences\",\n    \"Potential cultural biases\"\n  ],\n  \"confidence_justification\": \"The consistency of spiritual experiences across cultures supports this claim, though subjectivity reduces certainty.\"\n}", "color": "#e74c3c"}}, {"data": {"id": "Agent-Supernaturalist_C3", "label": "C3: Moral responsibility requires free will....", "node_type": "claim", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"C3\",\n  \"type\": \"deductive\",\n  \"statement\": \"Moral responsibility requires free will.\",\n  \"depends_on\": [\n    \"A3\"\n  ],\n  \"backing_evidence_ids\": [],\n  \"confidence\": 0.85,\n  \"status\": \"asserted\",\n  \"inference_chain\": [\n    {\n      \"step\": \"Moral responsibility presupposes the ability to choose between right and wrong.\",\n      \"justification\": \"Without choice, moral responsibility would be meaningless.\"\n    },\n    {\n      \"step\": \"Free will provides the basis for making moral choices.\",\n      \"justification\": \"Free will allows for genuine ethical deliberation.\"\n    }\n  ],\n  \"known_weaknesses\": [\n    \"Debates on moral responsibility without free will\",\n    \"Philosophical challenges to compatibilism\"\n  ],\n  \"confidence_justification\": \"Moral philosophy strongly supports the link between free will and responsibility, justifying high confidence.\"\n}", "color": "#e74c3c"}}, {"data": {"id": "Agent-Supernaturalist_E1", "label": "E1: Studies on cultural variations in the perception o...", "node_type": "evidence", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"E1\",\n  \"type\": \"empirical\",\n  \"summary\": \"Studies on cultural variations in the perception of free will and moral responsibility.\",\n  \"source\": {\n    \"citation\": \"Smith, J. (2024). Cultural Perspectives on Free Will. Journal of Cross-Cultural Psychology.\",\n    \"year\": 2024\n  },\n  \"relevance_to_claims\": [\n    \"C2\"\n  ],\n  \"quality_assessment\": {\n    \"sample_size\": \"large\",\n    \"replication_status\": \"unreplicated\",\n    \"rigor\": \"high\"\n  },\n  \"limitations\": [\n    \"Cultural bias in interpretation\"\n  ]\n}", "color": "#2ecc71"}}, {"data": {"id": "Agent-Supernaturalist_P1", "label": "P1: If free will exists, diverse religious and spiritu...", "node_type": "prediction", "agent": "Agent-Supernaturalist", "details": "{\n  \"id\": \"P1\",\n  \"statement\": \"If free will exists, diverse religious and spiritual traditions will continue to report experiences of choice and moral responsibility.\",\n  \"linked_claims\": [\n    \"C2\"\n  ],\n  \"test\": \"Survey reports of spiritual experiences across cultures.\",\n  \"potential_falsifiers\": [\n    \"Lack of reports on free will in spiritual experiences\",\n    \"Inconsistency in spiritual narratives\"\n  ],\n  \"expected_likelihood\": 0.8,\n  \"importance\": \"medium\",\n  \"decision_criterion\": \"A significant absence of free will elements in spiritual reports would undermine the claim.\"\n}", "color": "#f39c12"}}],
+            edges: [{"data": {"source": "Agent-Empiricist_A1", "target": "Agent-Empiricist_C1", "edge_type": "supports"}}, {"data": {"source": "Agent-Empiricist_A2", "target": "Agent-Empiricist_C1", "edge_type": "supports"}}, {"data": {"source": "Agent-Empiricist_E1", "target": "Agent-Empiricist_C1", "edge_type": "supports"}}, {"data": {"source": "Agent-Empiricist_E1", "target": "Agent-Empiricist_C1", "edge_type": "evidences"}}, {"data": {"source": "Agent-Empiricist_C1", "target": "Agent-Empiricist_P1", "edge_type": "predicts"}}, {"data": {"source": "Agent-Supernaturalist_A1", "target": "Agent-Supernaturalist_C1", "edge_type": "supports"}}, {"data": {"source": "Agent-Supernaturalist_A2", "target": "Agent-Supernaturalist_C1", "edge_type": "supports"}}, {"data": {"source": "Agent-Supernaturalist_A2", "target": "Agent-Supernaturalist_C2", "edge_type": "supports"}}, {"data": {"source": "Agent-Supernaturalist_A3", "target": "Agent-Supernaturalist_C3", "edge_type": "supports"}}, {"data": {"source": "Agent-Supernaturalist_C2", "target": "Agent-Supernaturalist_P1", "edge_type": "predicts"}}]
+        };
+
+        const qaData = [{"challenger": "Agent-Empiricist", "target": "Agent-Supernaturalist", "qid": "Q1", "question": "How can the assumption that 'human beings possess a non-material soul' (A1) be empirically tested, and what specific evidence would falsify this assumption?", "target_ids": ["A1"], "rebuttal": "The assumption that humans possess a non-material soul (A1) is challenging to empirically test due to its non-material nature. However, empirical tests could focus on phenomena that suggest non-material influences, such as near-death experiences or unexplained consciousness phenomena. Falsification would require demonstrating that all aspects of consciousness and decision-making can be fully explained by physical processes.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal does not address the challenge effectively as it relies on phenomena (near-death experiences, unexplained consciousness) that are themselves not empirically verifiable or directly linked to the existence of a non-material soul. This constitutes an unfalsifiable claim (criterion #3), as it does not provide a clear pathway for empirical testing or falsification. The challenge remains valid in questioning the empirical testability of the non-material soul assumption. The rebuttal's reliance on indirect phenomena does not resolve the logical issue raised by the challenger.", "restatement": "The disagreement centers on whether the assumption that humans have a non-material soul can be empirically tested and what evidence could potentially falsify this assumption.", "formalizations": {"challenger": "P1: A claim is empirically testable if it can be supported or refuted by observable evidence. P2: The claim that humans possess a non-material soul lacks observable evidence. C1: Therefore, the claim that humans possess a non-material soul is not empirically testable.", "target": "P1: Non-material phenomena are challenging to test empirically. P2: Evidence of non-material influences, such as near-death experiences or unexplained consciousness phenomena, could suggest a non-material soul. P3: To falsify the claim, one must show that all consciousness aspects are explained by physical processes. C1: Therefore, the claim that humans possess a non-material soul can be indirectly tested and potentially falsified."}}}, {"challenger": "Agent-Empiricist", "target": "Agent-Supernaturalist", "qid": "Q2", "question": "Given that spiritual experiences are subjective and potentially culturally biased, how do you justify the confidence level of 0.6 in the claim that 'spiritual experiences indicate the existence of free will' (C2)?", "target_ids": ["C2"], "rebuttal": "I acknowledge that the subjectivity and potential cultural bias of spiritual experiences weaken the confidence in C2. While the consistency of reports across cultures suggests a commonality, the confidence level should be adjusted to reflect these limitations.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal concedes the challenge's key point by agreeing that the subjectivity and cultural bias reduce confidence in the claim, indicating a failure to refute the critique. Criterion #8 (UNRESOLVED WEAKNESS) applies as the rebuttal acknowledges a weakness without resolving it. Therefore, the critique is valid as it effectively demonstrates a dependency failure on the original confidence level of 0.6 in C2 due to A1.", "restatement": "The disagreement centers on whether the confidence level of 0.6 in the claim that spiritual experiences indicate the existence of free will is justified, given their subjective and culturally biased nature.", "formalizations": {"challenger": "Premise 1: Spiritual experiences are subjective and culturally biased (A1). Premise 2: Subjective and culturally biased experiences provide weak evidence for objective claims (A2). Conclusion: The confidence in the claim 'spiritual experiences indicate the existence of free will' should be lower than 0.6 (C2).", "target": "Premise 1: Spiritual experiences are subjective and culturally biased (A1). Premise 2: Consistency of reports across cultures suggests some commonality (A3). Conclusion: The confidence in the claim 'spiritual experiences indicate the existence of free will' should be adjusted but can still be non-zero, acknowledging limitations (C2 adjusted)."}}}, {"challenger": "Agent-Empiricist", "target": "Agent-Supernaturalist", "qid": "Q3", "question": "What specific empirical observation or experiment would falsify the claim that 'the existence of free will is best explained by the presence of a non-material soul' (C1)?", "target_ids": ["C1"], "rebuttal": "To falsify C1, one would need to demonstrate that all aspects of human decision-making can be accounted for by physical processes alone, without invoking a non-material soul. This would involve comprehensive neuroscientific evidence showing deterministic causation for all choices.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal fails to adequately address the challenge of empirical falsifiability because it sets a condition (comprehensive neuroscientific evidence of deterministic causation) that may be practically unattainable, rendering C1 effectively unfalsifiable. This aligns with criterion #3 (UNFALSIFIABLE CLAIM), as the rebuttal relies on a condition that cannot feasibly be met or tested with current empirical methods. Thus, the critique is valid, as it highlights a fundamental issue with the claim's empirical testability.", "restatement": "The core disagreement is whether the claim that free will is best explained by a non-material soul can be empirically falsified, with the challenger questioning the empirical testability of the claim and the defender suggesting that comprehensive neuroscientific evidence could potentially falsify it.", "formalizations": {"challenger": "1. Claim C1: The existence of free will is best explained by the presence of a non-material soul. \n2. Challenge: For C1 to be meaningful, it must be empirically falsifiable. \n3. Conclusion: C1 is not empirically falsifiable because no specific empirical observation or experiment is proposed that would refute it.", "target": "1. Claim C1: The existence of free will is best explained by the presence of a non-material soul. \n2. Rebuttal: C1 can be falsified if all aspects of human decision-making are shown to be determined by physical processes alone. \n3. Conclusion: C1 is empirically falsifiable through comprehensive neuroscientific evidence demonstrating deterministic causation."}}}, {"challenger": "Agent-Empiricist", "target": "Agent-Supernaturalist", "qid": "Q4", "question": "If moral responsibility presupposes free will (A3), how do you address philosophical arguments that suggest moral responsibility can exist without free will, such as compatibilism?", "target_ids": ["A3", "C3"], "rebuttal": "Compatibilism suggests that moral responsibility can exist without free will by redefining free will in a deterministic framework. I acknowledge this philosophical perspective, but maintain that genuine moral responsibility requires the ability to choose otherwise, which compatibilism does not fully address.", "resolution": {"status": "unresolved", "reasoning": "The disagreement hinges on the interpretation of free will and moral responsibility, specifically whether compatibilism's redefinition of free will suffices for moral responsibility. This is an unresolved philosophical dispute as it presents logically coherent but incompatible views on the nature of free will and moral responsibility, neither of which can be definitively refuted or accepted purely through logical analysis.", "restatement": "The disagreement is whether moral responsibility requires free will or if it can exist within a deterministic framework as compatibilism suggests.", "formalizations": {"challenger": "1. Moral responsibility requires free will. (A3) 2. Compatibilism argues moral responsibility can exist without free will. 3. Therefore, the premise that moral responsibility requires free will is challenged by compatibilism.", "target": "1. Moral responsibility requires the ability to choose otherwise. 2. Compatibilism redefines free will within determinism, lacking true choice. 3. Therefore, compatibilism does not fully address the requirement for moral responsibility."}}}, {"challenger": "Agent-Empiricist", "target": "Agent-Supernaturalist", "qid": "Q5", "question": "What empirical evidence would be required to demonstrate that non-material entities, such as a soul, are not bound by physical laws, as claimed in the inference chain for C1?", "target_ids": ["C1"], "rebuttal": "Demonstrating that non-material entities are not bound by physical laws is inherently challenging due to their non-material nature. Empirical evidence would require identifying phenomena that cannot be explained by physical laws alone, such as consciousness or decision-making anomalies.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal does not adequately address the challenge, as it relies on an unfalsifiable claim (criterion #3) by suggesting phenomena 'unexplained by physical laws' without specifying how these phenomena directly relate to non-material entities. This reliance on unexplained phenomena without a concrete link to non-material entities results in a dependency failure (criterion #4), as the rebuttal does not provide a testable or refutable path for linking such phenomena to non-material entities. Therefore, the critique is valid under the logic system applied.", "restatement": "The disagreement centers on whether empirical evidence can demonstrate that non-material entities, like a soul, are not subject to physical laws. The challenger questions the possibility of such evidence, while the rebuttal suggests that empirical evidence could be phenomena unexplained by physical laws.", "formalizations": {"challenger": "P1: Non-material entities are hypothesized to not be bound by physical laws. P2: Demonstrating the non-physical nature of entities requires empirical evidence. C1: It is unclear what empirical evidence would support that non-material entities are not bound by physical laws.", "target": "P1: Non-material entities, by definition, are challenging to evidence physically. P2: Empirical evidence might include phenomena unexplained by physical laws. C1: It is possible to suggest evidence via unexplained phenomena that non-material entities are not bound by physical laws."}}}, {"challenger": "Agent-Supernaturalist", "target": "Agent-Empiricist", "qid": "Q1", "question": "Given that your assumption A1 states that empirical evidence is the most reliable form of knowledge, how do you address the potential limitation that current scientific methodologies (A3) may not fully capture the complexity of human cognition, which is crucial for studying free will?", "target_ids": ["A1", "A3"], "rebuttal": "While A1 states empirical evidence is the most reliable form of knowledge, A3 acknowledges current methodologies may not fully capture human cognition's complexity. This limitation is recognized in my thesis and claim C1 as a known weakness, indicating a need for methodological advancements.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal acknowledges the limitation identified by the challenger (criterion #8 UNRESOLVED WEAKNESS) but does not resolve it by modifying the claim or providing a solution. Simply recognizing a weakness without addressing it in a way that maintains the strength of the original claim does not sufficiently counter the challenge. The critique highlights a dependency failure where the confidence in empirical evidence (A1) is undermined by the acknowledged methodological limitations (A3), aligning with logical criteria for critique validity.", "restatement": "The disagreement centers on whether the acknowledgment of limitations in current scientific methodologies undermines the reliability of empirical evidence in understanding human cognition related to free will.", "formalizations": {"challenger": "1. A1: Empirical evidence is the most reliable form of knowledge. 2. A3: Current scientific methodologies may not fully capture human cognition's complexity. 3. C1: Therefore, empirical evidence might be insufficient for studying free will. 4. Conclusion: The reliability of empirical evidence is limited by methodological constraints.", "target": "1. A1: Empirical evidence is the most reliable form of knowledge. 2. A3: Current methodologies may not fully capture human cognition's complexity. 3. Recognition of A3 as a known weakness implies the need for advancement. 4. C1: Empirical evidence remains reliable, but with acknowledged limitations. 5. Conclusion: The thesis accommodates methodological constraints while maintaining overall reliability."}}}, {"challenger": "Agent-Supernaturalist", "target": "Agent-Empiricist", "qid": "Q2", "question": "Your claim C1 relies on the evidence E1, which suggests that brain activity predicts decisions before conscious awareness. However, considering the known weaknesses of E1, such as the temporal resolution of brain imaging, how can you justify the confidence level of 0.6 in C1?", "target_ids": ["C1", "E1"], "rebuttal": "You are correct that the temporal resolution of brain imaging is a limitation in E1. This affects the confidence in C1. I will lower the confidence in C1 to 0.55 to reflect this limitation more accurately.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal concedes to the critique by lowering the confidence level in C1 due to the acknowledged limitations of E1. This is a concession, not a resolution, as it acknowledges an unresolved weakness without addressing it in a way that maintains the original confidence level. Thus, the criteria for awarding critique_valid are met, specifically under UNRESOLVED WEAKNESS.", "restatement": "The disagreement centers on the confidence level assigned to the claim that brain activity predicts decisions before conscious awareness, given the limitations of the temporal resolution in the supporting evidence.", "formalizations": {"challenger": "P1: Evidence E1 has known weaknesses, such as temporal resolution issues. P2: The confidence level in C1 should reflect the reliability of E1. C: The confidence level of 0.6 in C1 is unjustified given the weaknesses in E1.", "target": "P1: Evidence E1 has temporal resolution limitations. P2: The confidence level in C1 should be adjusted to reflect these limitations. C: Lower the confidence level in C1 from 0.6 to 0.55 to account for E1's weaknesses."}}}, {"challenger": "Agent-Supernaturalist", "target": "Agent-Empiricist", "qid": "Q3", "question": "What specific observation or experiment would falsify your prediction P1 that future neuroscience studies will continue to show brain activity precedes conscious decision-making? If none, does this indicate a logical flaw in your stance?", "target_ids": ["P1"], "rebuttal": "A specific observation that would falsify P1 is if studies consistently show conscious awareness precedes brain activity. This would challenge the current understanding and necessitate a revision of my stance on free will.", "resolution": {"status": "rebuttal_valid", "reasoning": "The defender provides a specific falsifiable condition (studies showing conscious awareness precedes brain activity) that would empirically refute the prediction P1. This directly addresses the challenge's demand for falsifiability. By offering a clear potential falsifier, the defender successfully demonstrates that their position is not logically flawed due to unfalsifiability, meeting the criteria of EVIDENCE PROVIDED. Therefore, the outcome is rebuttal_valid.", "restatement": "The core disagreement is whether there is a specific observation that could falsify the prediction that brain activity precedes conscious decision-making, with the challenger questioning the falsifiability of the prediction and the defender asserting that such falsification is possible through specific empirical observations.", "formalizations": {"challenger": "1. If a prediction cannot be falsified by any observation or experiment, it may indicate a logical flaw (P1). 2. The prediction P1 claims that future neuroscience studies will show brain activity precedes conscious decision-making (P2). 3. The challenger asks for a specific observation that could falsify P2 (P3). Conclusion: If no such observation exists, P2 may be logically flawed (C1).", "target": "1. Prediction P1 claims that future neuroscience studies will show brain activity precedes conscious decision-making (P1). 2. An observation that would falsify P1 is studies consistently showing conscious awareness precedes brain activity (P2). 3. If such studies occur, it would challenge the current understanding and necessitate a revision of the stance (P3). Conclusion: P1 is falsifiable by the specified observation (C1)."}}}, {"challenger": "Agent-Supernaturalist", "target": "Agent-Empiricist", "qid": "Q4", "question": "Your inference chain in C1 suggests that if decisions are predetermined, traditional free will is an illusion. Does this inference account for the possibility of compatibilism, where free will could coexist with determinism?", "target_ids": ["C1"], "rebuttal": "The inference chain in C1 does not account for compatibilism, which posits that free will can coexist with determinism. This is a philosophical position that requires further empirical investigation to assess its validity.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal acknowledges the omission of compatibilism but defers its consideration to empirical investigation without integrating it into the logical framework. This does not resolve the challenge, as the critique identifies a dependency failure (criterion #4) in the inference chain by highlighting the missing compatibilist perspective. The rebuttal does not successfully address this logical oversight, leading to a critique_valid outcome.", "restatement": "The core disagreement is whether the inference that determinism negates traditional free will should also consider compatibilism, which suggests free will can coexist with determinism.", "formalizations": {"challenger": "P1: Traditional free will requires non-deterministic decision-making.\nP2: If determinism is true, all decisions are predetermined.\nC1: Therefore, if determinism is true, traditional free will is an illusion.\nC2 (Challenge): The inference does not account for compatibilism, which allows for free will under determinism.", "target": "P1: Traditional free will requires non-deterministic decision-making.\nP2: If determinism is true, all decisions are predetermined.\nC1: Therefore, if determinism is true, traditional free will is an illusion.\nR1 (Rebuttal): The inference chain does not consider compatibilism.\nR2: Compatibilism requires empirical investigation to assess its validity."}}}, {"challenger": "Agent-Supernaturalist", "target": "Agent-Empiricist", "qid": "Q5", "question": "Considering the complexity of human cognition and the limitations of current methodologies, how do you address the uncertainty U1 regarding the extent to which these methodologies can capture human decision-making, which is crucial for your thesis?", "target_ids": ["U1"], "rebuttal": "The uncertainty U1 regarding the extent to which methodologies capture human decision-making is crucial. I acknowledge this and suggest further development of advanced brain imaging techniques to address this uncertainty.", "resolution": {"status": "critique_valid", "reasoning": "The rebuttal acknowledges the challenger's point about uncertainty (U1) but does not resolve it; it simply suggests future research. This is an unresolved weakness according to the EXPLICIT LOGICAL CRITERIA #8. The challenger highlights a critical uncertainty that the rebuttal does not effectively address, making the critique valid. Scores: challenger_logic=0.9, challenger_ethics=N/A, rebuttal_logic=0.6, rebuttal_ethics=N/A, combined_delta=0.3.", "restatement": "The core disagreement is whether current methodologies are adequate for capturing human decision-making, with the challenger asserting a significant uncertainty exists, and the rebuttal acknowledging this uncertainty but suggesting improvement through advanced techniques.", "formalizations": {"challenger": "P1: Human cognition is complex and current methodologies have limitations. P2: There is uncertainty (U1) about the extent to which these methodologies can capture human decision-making. C1: This uncertainty is crucial for evaluating the thesis's validity.", "target": "P1: The uncertainty (U1) about methodologies capturing human decision-making is acknowledged. P2: This uncertainty can be addressed by further developing advanced brain imaging techniques. C1: The thesis's validity can be maintained by addressing U1 through future methodological advancements."}}}];
+
+        const cy = cytoscape({
+            container: document.getElementById('cy'),
+            elements: [
+                ...graphData.nodes,
+                ...graphData.edges
+            ],
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': 'data(color)',
+                        'label': 'data(label)',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'font-size': '12px',
+                        'color': '#ffffff',
+                        'text-outline-color': '#000000',
+                        'text-outline-width': 2,
+                        'width': 80,
+                        'height': 80
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#666',
+                        'target-arrow-color': '#666',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier'
+                    }
+                }
+            ],
+            layout: {
+                name: 'breadthfirst',
+                directed: true,
+                padding: 30,
+                spacingFactor: 1.5
+            }
+        });
+
+        // Node click handler
+        cy.on('tap', 'node', function(evt) {
+            const node = evt.target;
+            const nodeId = node.data('id');
+            const agent = node.data('agent');
+            const nodeType = node.data('node_type');
+            const details = node.data('details');
+
+            // Find Q&A targeting this node
+            const rawId = nodeId.replace(agent + '_', '');
+            const relevantQA = qaData.filter(qa =>
+                qa.target === agent && qa.target_ids && qa.target_ids.includes(rawId)
+            );
+
+            // Build details HTML
+            let html = `<h2>${nodeId}</h2>`;
+            html += `<p><strong>Type:</strong> ${nodeType}</p>`;
+            html += `<p><strong>Agent:</strong> ${agent}</p>`;
+            html += `<h3>Details</h3>`;
+            html += `<pre>${details}</pre>`;
+
+            if (relevantQA.length > 0) {
+                html += `<h3>Questions Targeting This Node (${relevantQA.length})</h3>`;
+                relevantQA.forEach(qa => {
+                    html += `<div class="qa-item">`;
+                    html += `<p><strong>${qa.qid}</strong> from <strong>${qa.challenger}</strong></p>`;
+                    html += `<p>${qa.question}</p>`;
+                    if (qa.rebuttal) {
+                        html += `<p style="margin-top: 8px;"><em>Rebuttal:</em> ${qa.rebuttal}</p>`;
+                    }
+                    html += `</div>`;
+                });
+            }
+
+            document.getElementById('details').innerHTML = html;
+        });
+    </script>
+</body>
+</html>

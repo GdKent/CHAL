@@ -1,0 +1,180 @@
+{
+  "minimal_valid": {
+    "schema_version": "CBS-v1",
+    "belief_id": "BELIEF-FIXTURE-001",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Does free will exist?",
+      "agent_persona": "Empiricist",
+      "created_at": "2026-02-15T12:00:00Z"
+    },
+    "thesis": {
+      "stance": "Free will is an illusion created by deterministic processes.",
+      "summary_bullets": [
+        "Neuroscience shows decisions occur before conscious awareness",
+        "Physical determinism governs all events"
+      ],
+      "confidence": 0.75
+    }
+  },
+  "complete_valid": {
+    "schema_version": "CBS-v1",
+    "belief_id": "BELIEF-FIXTURE-002",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Does free will exist?",
+      "agent_persona": "Rationalist",
+      "created_at": "2026-02-15T12:00:00Z",
+      "last_updated": "2026-02-15T12:30:00Z",
+      "scope_conditions": "Discussion limited to compatibilist framework",
+      "definitions": [
+        {
+          "term": "free will",
+          "definition": "The ability to choose between alternatives without external coercion"
+        }
+      ]
+    },
+    "thesis": {
+      "stance": "Free will exists within a compatibilist framework.",
+      "summary_bullets": [
+        "Determinism and free will are compatible",
+        "Humans have the capacity for rational deliberation"
+      ],
+      "confidence": 0.80
+    },
+    "assumptions": [
+      {
+        "id": "A1",
+        "statement": "Rational deliberation is a real phenomenon"
+      },
+      {
+        "id": "A2",
+        "statement": "Causation does not eliminate agency"
+      }
+    ],
+    "claims": [
+      {
+        "id": "C1",
+        "type": "deductive",
+        "statement": "Humans can make choices based on reasons",
+        "depends_on": ["A1"],
+        "backing_evidence_ids": ["E1"],
+        "inference_chain": [
+          {
+            "step": "P1: Rational beings deliberate",
+            "justification": "Empirical observation"
+          },
+          {
+            "step": "P2: Deliberation involves choice",
+            "justification": "Conceptual analysis"
+          }
+        ],
+        "confidence": 0.85,
+        "confidence_justification": "Strong empirical support",
+        "status": "accepted",
+        "known_weaknesses": ["Does not address hard incompatibilism"],
+        "known_rebuttals": []
+      },
+      {
+        "id": "C2",
+        "type": "inductive",
+        "statement": "Free will is compatible with determinism",
+        "depends_on": ["A2", "C1"],
+        "backing_evidence_ids": ["E2"],
+        "confidence": 0.75,
+        "confidence_justification": "Philosophical consensus among compatibilists",
+        "status": "accepted",
+        "known_weaknesses": [],
+        "known_rebuttals": []
+      }
+    ],
+    "evidence": [
+      {
+        "id": "E1",
+        "type": "empirical",
+        "summary": "Studies show humans consider alternatives before deciding",
+        "citation": "Libet et al. (1983)"
+      },
+      {
+        "id": "E2",
+        "type": "conceptual",
+        "summary": "Compatibilist arguments from Hume and Dennett",
+        "citation": "Dennett (2003)"
+      }
+    ],
+    "predictions": [
+      {
+        "id": "P1",
+        "statement": "People will report feeling in control when making deliberate choices",
+        "linked_claims": ["C1"]
+      }
+    ],
+    "normative_implications": [
+      {
+        "id": "N1",
+        "statement": "Moral responsibility requires free will in the compatibilist sense"
+      }
+    ]
+  },
+  "invalid_circular": {
+    "schema_version": "CBS-v1",
+    "belief_id": "BELIEF-INVALID-001",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Test topic",
+      "agent_persona": "Test",
+      "created_at": "2026-02-15T12:00:00Z"
+    },
+    "thesis": {
+      "stance": "Test stance",
+      "summary_bullets": ["Test bullet"],
+      "confidence": 0.5
+    },
+    "claims": [
+      {
+        "id": "C1",
+        "type": "deductive",
+        "statement": "Claim 1 depends on Claim 2",
+        "depends_on": ["C2"],
+        "backing_evidence_ids": [],
+        "confidence": 0.7,
+        "status": "accepted"
+      },
+      {
+        "id": "C2",
+        "type": "deductive",
+        "statement": "Claim 2 depends on Claim 1",
+        "depends_on": ["C1"],
+        "backing_evidence_ids": [],
+        "confidence": 0.7,
+        "status": "accepted"
+      }
+    ]
+  },
+  "invalid_orphan": {
+    "schema_version": "CBS-v1",
+    "belief_id": "BELIEF-INVALID-002",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Test topic",
+      "agent_persona": "Test",
+      "created_at": "2026-02-15T12:00:00Z"
+    },
+    "thesis": {
+      "stance": "Test stance",
+      "summary_bullets": ["Test bullet"],
+      "confidence": 0.5
+    },
+    "claims": [
+      {
+        "id": "C1",
+        "type": "deductive",
+        "statement": "Orphaned claim with no support",
+        "depends_on": [],
+        "backing_evidence_ids": [],
+        "confidence": 0.7,
+        "status": "accepted"
+      }
+    ]
+  }
+}

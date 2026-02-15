@@ -1,0 +1,20 @@
+{
+  "Agent-Empiricist": {
+    "successful_critiques": 4,
+    "failed_critiques": 1,
+    "successful_rebuttals": 2,
+    "failed_rebuttals": 3,
+    "unresolved_arguments": 0,
+    "total_arguments": 10,
+    "performance_score": 10.0
+  },
+  "Agent-Supernaturalist": {
+    "successful_critiques": 3,
+    "failed_critiques": 2,
+    "successful_rebuttals": 1,
+    "failed_rebuttals": 4,
+    "unresolved_arguments": 0,
+    "total_arguments": 10,
+    "performance_score": 3.0
+  }
+}

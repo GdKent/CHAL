@@ -1,0 +1,28 @@
+# Sample Cross-Examination Challenges
+
+## Single Challenge
+How can you justify this claim without empirical evidence?
+
+## Multiple Numbered Challenges
+1. What empirical evidence supports your assumption about rational deliberation?
+2. How do you address the problem of hard determinism in your framework?
+3. Can you provide specific examples where free will manifests independently of causal chains?
+
+## Three Challenges (Standard)
+1. Your argument relies on compatibilism, but doesn't this just redefine free will to avoid the contradiction?
+2. The Libet experiments suggest decisions occur before conscious awareness. How does your model account for this?
+3. If all events are causally determined, how can moral responsibility exist in the meaningful sense you claim?
+
+## Five Challenges (Extended)
+1. What distinguishes "rational deliberation" from deterministic neural processes?
+2. How do you respond to the critique that compatibilism is merely semantic sleight-of-hand?
+3. Can you provide a non-circular definition of "agency" that doesn't presuppose free will?
+4. Your evidence from Dennett is philosophical, not empirical. Where is the neuroscientific support?
+5. If free will is compatible with determinism, what would count as evidence against your position?
+
+## Whitespace Challenge
+   1.   How    can   you   justify    this?
+   2.   What   evidence   supports   your   claim?
+
+## Unnumbered Paragraph
+Your entire argument seems to rest on an equivocation between "freedom from external coercion" and "metaphysical free will." These are fundamentally different concepts. The former is trivially true while the latter remains deeply problematic under determinism.

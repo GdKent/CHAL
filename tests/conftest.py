@@ -1,0 +1,334 @@
+"""
+Pytest configuration and shared fixtures for CHAL test suite.
+
+This module provides common fixtures, test data, and configuration
+used across all test modules.
+"""
+
+import pytest
+import json
+from pathlib import Path
+from typing import Dict, Any, List
+from unittest.mock import Mock, MagicMock
+
+
+# ========================================
+# Test Data Paths
+# ========================================
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+# ========================================
+# Pytest Configuration
+# ========================================
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", "unit: Unit tests for individual components"
+    )
+    config.addinivalue_line(
+        "markers", "integration: Integration tests across modules"
+    )
+    config.addinivalue_line(
+        "markers", "e2e: End-to-end workflow tests"
+    )
+    config.addinivalue_line(
+        "markers", "slow: Tests that take significant time to run"
+    )
+
+
+# ========================================
+# Sample Belief Fixtures
+# ========================================
+
+@pytest.fixture
+def sample_minimal_belief() -> Dict[str, Any]:
+    """
+    Minimal valid CBS-v1 belief structure with only required fields.
+    """
+    return {
+        "schema_version": "CBS-v1",
+        "belief_id": "BELIEF-TEST-001",
+        "version": 1,
+        "metadata": {
+            "topic_query": "Does free will exist?",
+            "agent_persona": "Empiricist",
+            "created_at": "2026-02-15T12:00:00Z"
+        },
+        "thesis": {
+            "stance": "Free will is an illusion created by deterministic processes.",
+            "summary_bullets": [
+                "Neuroscience shows decisions occur before conscious awareness",
+                "Physical determinism governs all events"
+            ],
+            "confidence": 0.75
+        }
+    }
+
+
+@pytest.fixture
+def sample_complete_belief() -> Dict[str, Any]:
+    """
+    Complete CBS-v1 belief structure with all optional fields populated.
+    """
+    return {
+        "schema_version": "CBS-v1",
+        "belief_id": "BELIEF-TEST-002",
+        "version": 1,
+        "metadata": {
+            "topic_query": "Does free will exist?",
+            "agent_persona": "Rationalist",
+            "created_at": "2026-02-15T12:00:00Z",
+            "last_updated": "2026-02-15T12:30:00Z",
+            "scope_conditions": "Discussion limited to compatibilist framework",
+            "definitions": [
+                {"term": "free will", "definition": "The ability to choose between alternatives without external coercion"}
+            ]
+        },
+        "thesis": {
+            "stance": "Free will exists within a compatibilist framework.",
+            "summary_bullets": [
+                "Determinism and free will are compatible",
+                "Humans have the capacity for rational deliberation"
+            ],
+            "confidence": 0.80
+        },
+        "assumptions": [
+            {"id": "A1", "statement": "Rational deliberation is a real phenomenon"}
+        ],
+        "claims": [
+            {
+                "id": "C1",
+                "type": "deductive",
+                "statement": "Humans can make choices based on reasons",
+                "depends_on": ["A1"],
+                "backing_evidence_ids": ["E1"],
+                "inference_chain": [
+                    {"step": "P1: Rational beings deliberate", "justification": "Empirical observation"}
+                ],
+                "confidence": 0.85,
+                "confidence_justification": "Strong empirical support",
+                "status": "accepted",
+                "known_weaknesses": [],
+                "known_rebuttals": []
+            }
+        ],
+        "evidence": [
+            {
+                "id": "E1",
+                "type": "empirical",
+                "summary": "Studies show humans consider alternatives before deciding",
+                "citation": "Libet et al. (1983)"
+            }
+        ],
+        "predictions": [
+            {
+                "id": "P1",
+                "statement": "People will report feeling in control when making deliberate choices",
+                "linked_claims": ["C1"]
+            }
+        ],
+        "normative_implications": [
+            {
+                "id": "N1",
+                "statement": "Moral responsibility requires free will"
+            }
+        ]
+    }
+
+
+@pytest.fixture
+def sample_belief_with_cycle() -> Dict[str, Any]:
+    """
+    Invalid belief with circular dependency (C1 → C2 → C1).
+    """
+    return {
+        "schema_version": "CBS-v1",
+        "belief_id": "BELIEF-INVALID-001",
+        "version": 1,
+        "metadata": {
+            "topic_query": "Test topic",
+            "agent_persona": "Test",
+            "created_at": "2026-02-15T12:00:00Z"
+        },
+        "thesis": {
+            "stance": "Test stance",
+            "summary_bullets": ["Test bullet"],
+            "confidence": 0.5
+        },
+        "claims": [
+            {
+                "id": "C1",
+                "type": "deductive",
+                "statement": "Claim 1 depends on Claim 2",
+                "depends_on": ["C2"],
+                "backing_evidence_ids": [],
+                "confidence": 0.7,
+                "status": "accepted"
+            },
+            {
+                "id": "C2",
+                "type": "deductive",
+                "statement": "Claim 2 depends on Claim 1",
+                "depends_on": ["C1"],
+                "backing_evidence_ids": [],
+                "confidence": 0.7,
+                "status": "accepted"
+            }
+        ]
+    }
+
+
+@pytest.fixture
+def sample_belief_with_orphan() -> Dict[str, Any]:
+    """
+    Invalid belief with orphaned claim (no supporting evidence or assumptions).
+    """
+    return {
+        "schema_version": "CBS-v1",
+        "belief_id": "BELIEF-INVALID-002",
+        "version": 1,
+        "metadata": {
+            "topic_query": "Test topic",
+            "agent_persona": "Test",
+            "created_at": "2026-02-15T12:00:00Z"
+        },
+        "thesis": {
+            "stance": "Test stance",
+            "summary_bullets": ["Test bullet"],
+            "confidence": 0.5
+        },
+        "claims": [
+            {
+                "id": "C1",
+                "type": "deductive",
+                "statement": "Orphaned claim with no support",
+                "depends_on": [],
+                "backing_evidence_ids": [],
+                "confidence": 0.7,
+                "status": "accepted"
+            }
+        ]
+    }
+
+
+# ========================================
+# Patch Fixtures
+# ========================================
+
+@pytest.fixture
+def sample_patches_update_thesis() -> List[Dict[str, Any]]:
+    """Sample patches for updating thesis confidence."""
+    return [
+        {"op": "update_thesis", "change": "weaken"}
+    ]
+
+
+@pytest.fixture
+def sample_patches_update_claim() -> List[Dict[str, Any]]:
+    """Sample patches for updating claim properties."""
+    return [
+        {
+            "op": "update_claim",
+            "target_id": "C1",
+            "changes": {
+                "confidence": 0.6,
+                "status": "revised"
+            }
+        }
+    ]
+
+
+# ========================================
+# Mock Agent Fixtures
+# ========================================
+
+@pytest.fixture
+def mock_openai_agent():
+    """Create a mock OpenAI agent for testing."""
+    from chal.agents.base import Message
+
+    agent = Mock()
+    agent.name = "MockAgent"
+    agent.model = "gpt-4o"
+    agent.temperature = 0.7
+    agent.current_belief = None
+
+    # Mock generate method
+    def mock_generate(messages: List[Message]) -> Message:
+        return Message(
+            role="assistant",
+            content='{"response": "Mock response"}'
+        )
+
+    agent.generate = Mock(side_effect=mock_generate)
+    agent.update_current_belief = Mock()
+
+    return agent
+
+
+@pytest.fixture
+def mock_adjudicator_agent():
+    """Create a mock adjudicator agent for testing."""
+    from chal.agents.base import Message
+
+    agent = Mock()
+    agent.name = "MockAdjudicator"
+
+    def mock_adjudicate(messages):
+        return Message(
+            role="assistant",
+            content='''```json
+{
+  "restatement": "Test disagreement",
+  "formalization_challenger": "P1 → Q",
+  "formalization_target": "¬Q",
+  "outcome": "rebuttal_valid",
+  "reasoning": "Test reasoning"
+}
+```'''
+        )
+
+    agent.generate = Mock(side_effect=mock_adjudicate)
+
+    return agent
+
+
+# ========================================
+# Configuration Fixtures
+# ========================================
+
+@pytest.fixture
+def sample_config():
+    """Sample debate configuration for testing."""
+    from chal.config import DebateConfig, AgentConfig, AdjudicationConfig
+
+    config = DebateConfig(
+        name="Test Debate",
+        topic="Test topic",
+        max_rounds=1,
+        agents=[
+            AgentConfig(name="Agent-A", persona="EMPIRICIST"),
+            AgentConfig(name="Agent-B", persona="RATIONALIST")
+        ],
+        adjudication=AdjudicationConfig(
+            logic_weight=1.0,
+            ethics_weight=0.0
+        )
+    )
+
+    return config
+
+
+# ========================================
+# Helper Fixtures
+# ========================================
+
+@pytest.fixture
+def temp_storage_dir(tmp_path):
+    """Create a temporary storage directory for test outputs."""
+    storage = tmp_path / "storage"
+    storage.mkdir()
+    return storage

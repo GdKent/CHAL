@@ -1,0 +1,70 @@
+# Sample Rebuttal Responses
+
+## Single Response Format
+Response:
+I disagree with your characterization. Compatibilism is not semantic sleight-of-hand but rather a careful analysis of what "freedom" actually means in practice.
+
+## Three Critique-Response Pairs (Standard)
+Critique 1:
+Your argument relies on compatibilism, but doesn't this just redefine free will?
+
+Response 1:
+This mischaracterizes compatibilism. We're not redefining free will arbitrarily—we're analyzing what meaningful freedom actually requires. Freedom from external coercion is the freedom that matters for moral responsibility, not some metaphysical notion of causeless causation.
+
+Critique 2:
+The Libet experiments suggest decisions occur before conscious awareness.
+
+Response 2:
+The Libet experiments are often overinterpreted. The readiness potential occurs before conscious awareness of the urge to act, but the conscious mind still has veto power. Moreover, the experiments involve trivial decisions (when to flex a wrist), not the kind of deliberative reasoning relevant to moral agency.
+
+Critique 3:
+If all events are causally determined, how can moral responsibility exist?
+
+Response 3:
+Moral responsibility doesn't require indeterminism—it requires that our actions flow from our values, beliefs, and rational deliberation. A person is morally responsible when their action is caused by their own character and reasoning, regardless of whether that character itself has prior causes.
+
+## Five Critique-Response Pairs (Extended)
+Critique 1:
+What distinguishes rational deliberation from deterministic neural processes?
+
+Response 1:
+This is a false dichotomy. Rational deliberation *is* a deterministic neural process, but it's a specific kind characterized by evaluating reasons, considering alternatives, and responding to evidence. The process being deterministic doesn't make it any less rational.
+
+Critique 2:
+Compatibilism is merely semantic sleight-of-hand.
+
+Response 2:
+This is an assertion without argument. Compatibilism analyzes the actual conditions under which we attribute moral responsibility in practice. Courts don't ask "was this act causally determined?" but rather "did this person act from their own reasoning?" That's not semantics—it's getting clear on what actually matters.
+
+Critique 3:
+Can you provide a non-circular definition of agency?
+
+Response 3:
+Agency is the capacity for an entity's behavior to be governed by its representation of reasons and goals. This is operationalizable in cognitive science and doesn't presuppose libertarian free will—it only requires information-processing systems that model their environment and optimize for outcomes.
+
+Critique 4:
+Where is the neuroscientific support for your position?
+
+Response 4:
+Neuroscience shows that deliberative prefrontal regions modulate behavior, that damage to these regions impairs moral reasoning, and that conscious deliberation causally influences action (even if it doesn't uniquely initiate it). This supports the compatibilist view that the right kind of causal process—rational deliberation—grounds responsibility.
+
+Critique 5:
+What would count as evidence against your position?
+
+Response 5:
+If it could be shown that conscious deliberation never influences behavior, or that moral judgments don't track the distinction between free and coerced action, that would undermine compatibilism. But the evidence consistently shows the opposite: we do distinguish these cases, and rightly so.
+
+## Numbered Response Format (Alternative)
+1. I disagree with this characterization of rational deliberation.
+2. The Libet experiments are often misinterpreted in this context.
+3. Moral responsibility does not require indeterminism.
+
+## Response Without Critique
+Response 1:
+Your critique rests on a misunderstanding of the compatibilist position.
+
+Response 2:
+The empirical evidence actually supports my framework.
+
+Response 3:
+This objection confuses metaphysical and practical freedom.

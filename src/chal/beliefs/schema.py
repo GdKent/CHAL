@@ -172,6 +172,9 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
         "X": "counterposition_map"
     }
 
+    # Track all IDs across all collections for duplicate detection
+    all_ids: set[str] = set()
+
     for field in id_fields:
         for item in belief.get(field, []) or []:
             _id = item.get("id")
@@ -189,5 +192,11 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
                 errors.append(
                     f"ID '{_id}' has wrong prefix for field '{field}'"
                 )
+            # Check for duplicate IDs
+            if _id in all_ids:
+                errors.append(
+                    f"Duplicate ID '{_id}' found in '{field}'. IDs must be unique across all collections."
+                )
+            all_ids.add(_id)
 
     return errors

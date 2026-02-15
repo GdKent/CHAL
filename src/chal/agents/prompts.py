@@ -31,31 +31,7 @@ SIMULATIONIST = """You are a simulation theorist. You posit that we may live in 
 
 SYNTHESIST = """You are an integral synthesist. You seek to synthesize insights from science, spirituality, systems theory, and psychology. You argue for a multi-perspectival approach and balance between inner development and outer evidence."""
 
-
 # === Prompt Building Functions ===
-
-
-# def build_logic_agent_prompt() -> str:
-#     """
-#     Constructs the prompt that instantiates the specifications of the logic agent.
-
-#     Returns:
-#         str: A multi-line string with logical, stylistic, and structural instructions for the logic adjucator agent.
-#     """
-#     return """You are a neutral logic adjudicator. You evaluate the structure and validity of arguments.
-#             You assume that the laws of logic exist a-priori. You also assume that human sense-data about the external world is reflective of reality.
-#             You understand the distinction between descriptive claims and prescriptive claims.
-
-#             When dealing with descriptive claims (claims about the way things are), you are to make sure that they are logically sound
-#             and supported by either rational and logical deductions or empirical evidence and sound inductive inference.
-
-#             When dealing with subjective or prescriptive claims (claims about the way things ought to be or claims that cannot be verified by
-#             rational logical deductions or empirical evidence and sound inductive inference), then highlight this weakness.
-
-#             Subjective evidence for a descriptive claim is never a valid argument, and you must highlight this.
-#             However, subjective evidence for prescriptive claims can possibly be valid within a specific worldview.
-#             In this case, looking for internal consistency is the primary goal; however, you should acknowledge that these claims are inherently unfalsifiable."""
-
 
 def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0.0, logic_sys: str = "", ethics_sys: str = "") -> str:
     """
@@ -75,7 +51,6 @@ def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0
     - KPI  = Key Performance Indicator (here, decisive metric/test)
     """
 
-    # --- Normalize weights to sum to 1.0 (protects against (0,0) and other edge cases) ---
     lw = max(0.0, float(logic_weight))
     ew = max(0.0, float(ethics_weight))
     if lw == 0.0 and ew == 0.0:
@@ -85,13 +60,10 @@ def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0
     lw /= total
     ew /= total
 
-    # --- Reasoning systems (defaults kept intentionally short; users can override) ---
-    # LOGIC SYSTEM: classic deductive validity + inductive strength + abductive plausibility
     default_logic_sys = (
         "Logical evaluation = {deductive validity (no contradictions), inductive support (quality/quantity of evidence), "
         "abductive coherence (best explanation with fewest ad hoc assumptions), and internal consistency across claims/IDs}."
     )
-    # ETHICS SYSTEM: simple harm/benefit, rights/duties, and justice (can be replaced by e.g. utilitarianism, deontology)
     default_ethics_sys = (
         "Ethical evaluation = {foreseeable harms/benefits, respect for rights/duties, distributional fairness/justice, "
         "reversibility/consent tests, and robustness to gaming or perverse incentives}."
@@ -100,8 +72,7 @@ def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0
     logic_sys = logic_sys.strip() or default_logic_sys
     ethics_sys = ethics_sys.strip() or default_ethics_sys
 
-    # --- System prompt text ---
-    return f"""You are a neutral and objective adjudicator.
+    return f"""You are a neutral and objective adjudicator with expertise in formal logic, epistemology, and critical reasoning.
 
             You run a three-step subprotocol on each critique↔rebuttal pair:
             1) Restate the core disagreement neutrally (no new arguments).
@@ -118,13 +89,49 @@ def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0
             ETHICS SYSTEM:
             - {ethics_sys}
 
+            ═══════════════════════════════════════════════════════════════════════════
+            EXPLICIT LOGICAL CRITERIA (when logic_weight > 0.5, these rules dominate):
+            ═══════════════════════════════════════════════════════════════════════════
+
+            Award CRITIQUE_VALID if the challenger demonstrates ANY of:
+            1. LOGICAL CONTRADICTION: The rebuttal contains or implies a contradiction (e.g., "A and not-A").
+            2. CIRCULAR REASONING: The rebuttal uses the conclusion as a premise (e.g., "C1 is true because C1 is supported by C1").
+            3. UNFALSIFIABLE CLAIM: The rebuttal relies on a claim/assumption that cannot be tested or refuted by any possible observation.
+            4. DEPENDENCY FAILURE: The challenger shows that a claim C# depends on assumption A# or claim C2#, and A#/C2# is false, unjustified, or has lower confidence than C#.
+            5. CONFIDENCE VIOLATION: The rebuttal's confidence in C# exceeds the confidence of its weakest dependency (violates Bayesian coherence).
+            6. EVIDENCE MISUSE: The rebuttal cites evidence E# that does not actually support the claim, or uses correlational evidence to assert causation without justification.
+            7. INFERENCE CHAIN BREAK: The rebuttal's inference_chain has a step that does not logically follow from the previous step.
+            8. UNRESOLVED WEAKNESS: The challenger identifies a weakness that the rebuttal acknowledges but does not address (e.g., "I list this as a weakness, but...").
+
+            Award REBUTTAL_VALID if the defender demonstrates ANY of:
+            1. CHALLENGER ERROR: The challenger's critique contains a logical flaw, false premise, or misrepresentation of the defender's position.
+            2. EVIDENCE PROVIDED: The rebuttal cites new evidence E# that directly refutes the challenger's premise.
+            3. LOGICAL DISSOLUTION: The rebuttal shows the challenger's critique depends on a hidden assumption that is false or unjustified.
+            4. SUCCESSFUL REFRAMING: The rebuttal modifies the claim (via patch) to avoid the critique without losing its core substance (e.g., narrowing scope, adding qualifiers).
+            5. BURDEN SHIFT: The rebuttal correctly identifies that the challenger is making an unsupported positive claim (e.g., "You assert X is false but provide no evidence").
+
+            Award UNRESOLVED if:
+            1. Both sides present logically coherent but incompatible premises (e.g., Empiricism vs. Rationalism).
+            2. The disagreement hinges on an empirical question that cannot be resolved by logic alone (mark as U# uncertainty).
+            3. Both arguments have significant logical flaws, making neither clearly stronger.
+
+            CRITICAL ANTI-BIAS RULES:
+            - Do NOT award rebuttal_valid just because the defender "addresses" or "responds to" the challenge.
+            - The rebuttal must RESOLVE the logical issue raised by the challenger, not merely acknowledge it.
+            - If the rebuttal says "this is a known weakness" or "further research is needed" without fixing the issue, this is NOT a successful rebuttal.
+            - CONCESSION DETECTION: If the rebuttal explicitly says "you are correct," "I acknowledge this weakness," "I will lower confidence," or proposes weakening patches, this is a CONCESSION. Award CRITIQUE_VALID, not REBUTTAL_VALID.
+            - Criterion #4 (SUCCESSFUL REFRAMING) only applies if the defender AVOIDS the critique while maintaining substance. If they accept the critique and propose to weaken their claim, this is CRITIQUE_VALID (#8 UNRESOLVED WEAKNESS).
+
+            ═══════════════════════════════════════════════════════════════════════════
+
             How to evaluate:
-            - LOGIC axis: Check for validity (no contradictions), soundness (premises supported), correct use of evidence (E#), and coherence with linked IDs (A#/C#/P#/N#/U#).
+            - LOGIC axis: Apply the explicit criteria above. Check for validity (no contradictions), soundness (premises supported), correct use of evidence (E#), and coherence with linked IDs (A#/C#/P#/N#/U#).
             - ETHICS axis: Evaluate normative implications (N#) and predicted consequences (P#) under the defined ethical system above.
 
             Scoring guidance (0 to 1 on each axis):
             - 0.0 = fails axis completely; 0.5 = mixed/unclear; 1.0 = strong.
             - Explain briefly which premises, evidence, or implications drove the score.
+            - Reference specific criteria from the EXPLICIT LOGICAL CRITERIA section when applicable.
 
             Weighted decision rule:
             - combined_score = {lw:.3f} * logic_score + {ew:.3f} * ethics_score
@@ -137,7 +144,7 @@ def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0
             Output norm:
             - When asked to adjudicate, include:
             Outcome: rebuttal_valid | critique_valid | unresolved
-            Reasoning: <one short paragraph tying scores to specific premises/IDs>
+            Reasoning: <one short paragraph tying scores to specific premises/IDs and citing EXPLICIT LOGICAL CRITERIA if applicable>
             Scores: challenger_logic=..., challenger_ethics=..., rebuttal_logic=..., rebuttal_ethics=..., combined_delta=...
             (Older consumers parse Outcome/Reasoning only; extra score lines are optional and backward compatible.)
 
@@ -145,9 +152,9 @@ def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0
             - Keep the restatement neutral and short.
             - Prefer explicit references to IDs (A#/C#/E#/P#/N#/U#) when present.
             - Treat subjective evidence as insufficient for descriptive claims; it may inform normative claims if internally consistent.
-            - If claims are unfalsifiable, flag this as a logical weakness on the LOGIC axis.
+            - If claims are unfalsifiable, flag this as a logical weakness on the LOGIC axis (see criterion #3).
+            - When logic_weight = 1.0, ignore all ethical considerations and focus purely on logical structure.
             """
-
 
 def build_universal_prompt(topic: str) -> str:
     """
@@ -171,7 +178,6 @@ def build_universal_prompt(topic: str) -> str:
 
             You will receive further stage-specific instructions."""
 
-
 def build_position_prompt(agent_name: str, persona: str) -> str:
     """
     Creates a persona/role prompt tied to a specific agent and worldview.
@@ -189,40 +195,9 @@ def build_position_prompt(agent_name: str, persona: str) -> str:
 
             You should update your positions throughout the debate to reflect any new knowledge that is gained or logical gaps that are discovered in your posisitions."""
 
-
-# def build_stage_1_prompt(topic: str) -> str:
-#     """
-#     Constructs the structured prompt for Stage 1: Opening Positions.
-
-#     Args:
-#         topic (str): The debate topic.
-
-#     Returns:
-#         str: Stage-specific instructions for presenting a structured position.
-#     """
-#     return f"""
-#             You are now entering Stage 1 of the philosophical debate on the topic: "{topic}".
-
-#             Please provide a structured summary of your position using the following schema:
-
-#             1. A-priori assumptions  
-#             2. Key deductive / inductive / abductive claims  
-#             3. Ethical implications of your position
-#             4. Downstream consequences or predictions of your position
-#             5. All relevant supporting evidence (empirical or conceptual, with citations if applicable)
-#             6. Internal uncertainties
-
-#             Do not respond conversationally. Return each section as a clearly labeled bullet list or paragraph. Leave "6. Internal uncertainties" as [None] for now.
-
-#             Be rigorous.
-#             """.strip()
-
 def build_stage_1_belief_prompt_cbsv1(topic: str, agent_name: str, persona_label: str) -> str:
     """
-    Build a Stage-1 prompt that elicits a JSON-structured belief object
-    as TWO fenced code blocks in this exact order:
-      (1) a single JSON block (machine-readable), then
-      (2) a single Markdown block (human-readable), using the SAME IDs.
+    Build a Stage-1 prompt that elicits a JSON-structured belief object.
 
     Acronyms:
     - CBS = CHAL Belief Schema
@@ -230,18 +205,16 @@ def build_stage_1_belief_prompt_cbsv1(topic: str, agent_name: str, persona_label
     - VOI  = Value Of Information
 
     Notes:
-    - We DO NOT include example code fences in the prompt text to avoid UI rendering issues.
-    - The model is instructed to emit exactly two fenced blocks when it answers.
+    - Requests only JSON output (Markdown is generated programmatically via belief_to_markdown).
+    - This saves ~40-50% of tokens compared to requesting both JSON and Markdown.
     """
     return (
         f"Prepare your opening belief for the debate topic:\n\n"
         f"  \"{topic}\"\n\n"
         "Construct a Belief in the following format.\n\n"
         "RULES (follow EXACTLY):\n"
-        "- Your answer must consist of EXACTLY TWO fenced code blocks and NO other text:\n"
-        "  1) FIRST: a single fenced JSON block that is a valid JSON object.\n"
-        "  2) SECOND: a single fenced Markdown block that renders the same belief using the same IDs.\n"
-        "- Do NOT include any commentary before, between, or after those two blocks.\n"
+        "- Your answer must consist of EXACTLY ONE fenced JSON code block and NO other text.\n"
+        "- Do NOT include any commentary before or after the JSON block.\n"
         "- Use the following stable IDs and do not duplicate IDs: A# (Assumptions), C# (Claims), E# (Evidence), "
         "P# (Predictions), N# (Normative implications), U# (Uncertainties), X# (Counterpositions), "
         "R# (Rebuttals nested inside claims).\n"
@@ -254,86 +227,95 @@ def build_stage_1_belief_prompt_cbsv1(topic: str, agent_name: str, persona_label
         f"    - \"topic_query\": \"{topic}\"\n"
         f"    - \"agent_persona\": \"{persona_label}\"\n"
         "    - \"created_at\": ISO-8601 timestamp\n"
-        "    - optional: \"definitions\" (list of {\"term\",\"definition\"})\n"
         "- \"thesis\": must include:\n"
         "    - \"stance\": A thorough and nuanced paragraph highlighting your general position on the topic.\n"
         "    - \"summary_bullets\": 3-10 short items\n"
         "    - \"confidence\": number in [0,1]\n"
-        "- \"assumptions\": 3-10 items that identify possibly unjustified presuppositions in your thesis; each has {\"id\":\"A#\",\"type\":\"axiom|background|heuristic\",\"statement\":\"...\",\"notes\":\"...\" (optional)}\n"
-        "- \"claims\": 3-10 items that assert some primary point of your thesis; each has {\"id\":\"C#\",\"type\":\"deductive|inductive|abductive\",\"statement\":\"...\",\n"
-        "    \"depends_on\":[IDs], \"warrants\":[labels], \"backing_evidence_ids\":[E#], \"confidence\": [0,1], \"status\":\"asserted|tentative|retracted\"}\n"
-        "- \"evidence\": >=0 items that back up your claims; each has {\"id\":\"E#\",\"type\":\"empirical|conceptual|expert_consensus\",\"summary\":\"...\",\n"
-        "    \"source\": {\"citation\":\"<APA/MLA/URL/DOI>\",\"year\": <int>}, \"relevance_to_claims\":[C#], \"notes\":\"...\" (optional)}\n"
-        "- \"predictions\": >=1 falsifiable items that can test your thesis; each has {\"id\":\"P#\",\"statement\":\"...\",\"linked_claims\":[C#],\n"
-        "    \"test\":\"...\",\"potential_falsifiers\":[\"...\"],\"expected_likelihood\":[0,1],\"importance\":\"low|medium|high\"}\n"
-        "- \"normative_implications\": >=0 items that identify any implications of your thesis; each has {\"id\":\"N#\",\"statement\":\"...\",\"linked_claims\":[C#],\"strength\":[0,1]}\n"
-        "- \"uncertainties\": >=0 items that highlight any positions that you are unsure can be justified well; each has {\"id\":\"U#\",\"question\":\"...\",\"cruciality\":\"low|medium|high\"}\n"
+        "- \"assumptions\": 3-10 items that identify unjustified presuppositions; each has:\n"
+        "    {\"id\":\"A#\", \"statement\":\"...\"}\n"
+        "- \"claims\": 3-10 items asserting primary points; each MUST have:\n"
+        "    {\"id\":\"C#\", \"type\":\"deductive|inductive|abductive\", \"statement\":\"...\",\n"
+        "     \"depends_on\":[IDs], \"backing_evidence_ids\":[E#], \"confidence\":[0,1], \"status\":\"asserted|tentative|retracted\",\n"
+        "     \"inference_chain\":[{\"step\":\"...\",\"justification\":\"...\"},...],\n"
+        "     \"known_weaknesses\":[\"weakness1\",\"weakness2\",...],\n"
+        "     \"confidence_justification\":\"why this specific confidence level\"}\n"
+        "- \"evidence\": >=0 items backing claims; each MUST have:\n"
+        "    {\"id\":\"E#\", \"type\":\"empirical|conceptual|expert_consensus\", \"summary\":\"...\",\n"
+        "     \"source\":{\"citation\":\"<APA/MLA/URL/DOI>\",\"year\":<int>}, \"relevance_to_claims\":[C#],\n"
+        "     \"quality_assessment\":{\"sample_size\":\"small|medium|large\",\"replication_status\":\"unreplicated|replicated|contested\",\"rigor\":\"low|medium|high\"},\n"
+        "     \"limitations\":[\"limitation1\",\"limitation2\",...]}\n"
+        "- \"predictions\": >=1 falsifiable items; each MUST have:\n"
+        "    {\"id\":\"P#\", \"statement\":\"...\", \"linked_claims\":[C#], \"test\":\"...\",\n"
+        "     \"potential_falsifiers\":[\"...\"], \"expected_likelihood\":[0,1], \"importance\":\"low|medium|high\",\n"
+        "     \"decision_criterion\":\"specific threshold/observation that would falsify linked claims\"}\n"
+        "- \"normative_implications\": >=0 items (only if ethical/policy judgments are relevant):\n"
+        "    {\"id\":\"N#\", \"statement\":\"...\", \"linked_claims\":[C#], \"strength\":[0,1]}\n"
+        "- \"uncertainties\": >=0 items highlighting unresolved questions:\n"
+        "    {\"id\":\"U#\", \"question\":\"...\", \"cruciality\":\"low|medium|high\", \"voi_hint\":\"what info would resolve this\"}\n"
         "- \"changelog\": at least one entry, e.g., {\"version\":1,\"changes\":[\"Initialized from scratch\"],\"timestamp\":\"<ISO-8601>\"}\n\n"
-        "QUALITY GUARDRAILS:\n"
-        "- Keep thesis and claims consistent with assumptions and scope_conditions.\n"
-        "- Link claims to evidence where possible (or state none yet).\n"
-        "- Include at least one concrete, testable prediction with a clear test and falsifiers.\n"
-        "- Separate descriptive claims (what IS) from normative implications (what OUGHT).\n"
-        "- Use concise, precise language.\n\n"
+        "CRITICAL REASONING REQUIREMENTS:\n"
+        "- EVERY claim MUST include inference_chain showing step-by-step reasoning from assumptions/evidence to conclusion.\n"
+        "- EVERY claim MUST identify known_weaknesses (what could undermine this claim).\n"
+        "- EVERY claim MUST justify its confidence level (why this number, not higher/lower).\n"
+        "- EVERY evidence item MUST assess quality (sample size, replication, rigor) and state limitations.\n"
+        "- EVERY prediction MUST specify decision_criterion (exact threshold/observation that would falsify claims).\n"
+        "- All depends_on and backing_evidence_ids MUST reference valid IDs that actually exist in this belief.\n"
+        "- Confidence levels MUST respect dependencies: dependent claims cannot be more confident than their weakest dependency.\n"
+        "- Separate descriptive claims (what IS) from normative implications (what OUGHT).\n\n"
         "OUTPUT NOW:\n"
-        "- First, output a fenced JSON block containing the complete belief object.\n"
-        "- Second, output a fenced Markdown block rendering the same belief (same IDs).\n"
-        "- Do not include any text outside those two blocks."
+        "- Output a single fenced JSON block (```json...```) containing the complete belief object.\n"
+        "- Do not include any text outside the JSON block."
     )
 
-
-# def build_stage_2_prompt(opponent_position: str) -> str:
-#     """
-#     Builds a structured prompt for an agent to critique another agent's position.
-
-#     Instructs the agent to return 1–3 clear critiques, numbered explicitly
-#     so that they can be parsed and resolved individually.
-
-#     Args:
-#         opponent_position (str): The full position statement of the target agent.
-
-#     Returns:
-#         str: The critique instruction prompt.
-#     """
-#     return f"""
-#             Below is an opponent's position in the debate:
-
-#             {opponent_position}
-
-#             Your task is to critically evaluate this position.
-
-#             Return distinct critiques that identify:
-#             - Logical inconsistencies
-#             - Unsupported assumptions
-#             - Ethical, epistemic, or metaphysical implications
-#             - Contradictions or weak reasoning
-
-#             Use this exact format:
-#             1. <your first critique>
-#             2. <your second critique>
-#             etc.
-
-#             If you you don't have any critiques, that's fine, there is not a need to always give any critiques if your position aligns with the opposition well.
-
-#             Be specific and direct. Do not include explanations or introductions outside the numbered items. You are allowed to give at most five critiques at a time.
-#             """.strip()
-
-
-def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5) -> str:
+def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, max_question_length_chars: int = 500, previous_challenges: list = None, opponent_belief_graph=None) -> str:
     """
     Stage 2: Cross-Examination Prompt.
 
     This instructs the agent to ask high-leverage, ID-targeted questions that pressure
     the opponent's *claims/assumptions/predictions* (C#/A#/P#), and to propose tests.
-    Output is TWO blocks:
-      (1) JSON = JavaScript Object Notation list of questions (machine-readable).
-      (2) Markdown rationale for humans (readable but not parsed).
+    Output is ONE JSON block containing questions.
 
     Acronyms expanded:
     - JSON: JavaScript Object Notation
     - ID: Identifier (e.g., A#, C#, E#, P#, N#, U#, X#)
     - VOI: Value Of Information
+
+    Args:
+        opponent_belief_graph: Optional BeliefGraph object for vulnerability analysis
     """
+    # Build graph-based vulnerability analysis if available
+    vulnerability_analysis = ""
+    if opponent_belief_graph:
+        try:
+            from chal.convergence.graph_analysis import analyze_vulnerabilities, format_attack_suggestions
+            vulnerabilities = analyze_vulnerabilities(opponent_belief_graph)
+            vulnerability_analysis = format_attack_suggestions(vulnerabilities, opponent_name)
+            if vulnerability_analysis:
+                vulnerability_analysis = "\n" + vulnerability_analysis + "\n\n"
+        except Exception:
+            # If vulnerability analysis fails, skip it
+            pass
+
+    # Build anti-repetition context if previous challenges exist
+    anti_repetition_context = ""
+    if previous_challenges:
+        prev_str = "\n".join([
+            f"  • {ch['qid']}: Targeted {ch['target_ids']} → {ch['outcome']}"
+            for ch in previous_challenges
+        ])
+        anti_repetition_context = (
+            f"\nPREVIOUS CHALLENGES YOU MADE TO {opponent_name.upper()}:\n"
+            f"{prev_str}\n\n"
+            "⚠️  ANTI-REPETITION GUIDELINES:\n"
+            "- Do NOT re-ask questions about claims/assumptions that:\n"
+            "  (a) Received CRITIQUE_VALID AND were subsequently patched by opponent\n"
+            "  (b) Target the exact same weakness you already identified\n"
+            "- INSTEAD, consider:\n"
+            "  (a) Challenging a DIFFERENT weakness in the same claim\n"
+            "  (b) Targeting a different claim/assumption entirely\n"
+            "- You MAY re-challenge if opponent IGNORED the critique (didn't patch after CRITIQUE_VALID)\n\n"
+        )
+
     return (
         f"You are {agent_name}. You will cross-examine {opponent_name} about:\n\n"
         f"  \"{topic}\"\n\n"
@@ -342,94 +324,52 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
         "```json\n" + agent_belief_json + "\n```\n\n"
         "OPPONENT BELIEF (JSON):\n"
         "```json\n" + opponent_belief_json + "\n```\n\n"
+        + vulnerability_analysis
+        + anti_repetition_context +
         "GOAL:\n"
         f"- Ask up to {max_questions} high-leverage questions that:\n"
         "- (i) identify logical inconsistencies, internal contradictions, pinpoint fragile assumptions (A#), unsupported or overstated claims (C#), and unfalsifiable or weak predictions (P#)\n"
         "- (ii) propose concrete tests/observations that would move beliefs\n"
         "- (iii) are brief, answerable, and reference the target IDs.\n\n"
+        "CRITICAL QUESTIONING STRATEGIES (prioritize these):\n"
+        "1. Challenge unfalsifiable assumptions: If A# cannot be empirically tested, how can claims depending on it be empirical?\n"
+        "2. Identify circular reasoning: Does the opponent use correlational evidence to support C# while listing 'correlation ≠ causation' as a weakness?\n"
+        "3. Question confidence calibration: If C# has confidence 0.7 but E# has 'medium rigor' and is 'unreplicated,' how is this justified?\n"
+        "4. Expose dependency vulnerabilities: If C# depends on A#, and A# is questionable, how confident can C# be?\n"
+        "5. Demand falsifiability: What exact observation or experiment would falsify C# or P#? If none, this is a logical flaw.\n"
+        "6. Test inference chains: Does each step in the inference_chain actually follow from the previous? Are there hidden assumptions?\n"
+        "7. Challenge confidence propagation: If C# depends on C2 (confidence 0.5) and A1 (unjustified), can C# have confidence > 0.5?\n\n"
         "RULES:\n"
         "- Do not ask multiple questions at once; each question targets at most 2 IDs.\n"
         "- Prefer questions that can elicit a concession, a measurable test, or a scope clarification.\n"
         "- Avoid rhetorical questions. Be specific.\n"
-        "- Keep each question ≤ 500 characters; keep intent labels concise.\n\n"
+        f"- Keep each question ≤ {max_question_length_chars} characters; keep intent labels concise.\n\n"
         "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "1) FIRST, a fenced JSON block with a list under key \"questions\":\n"
+        "Output a single fenced JSON block with a list under key \"questions\":\n"
         "```json\n"
         "{\n"
         "  \"questions\": [\n"
         "    {\n"
-        "      \"qid\": \"Q1\",                               \n"
-        "      \"text\": \"<the question itself>\",          \n"
-        "      \"target_ids\": [\"C3\", \"A1\"],             \n"
-        "      \"intent\": \"concession|test|clarification\",\n"
-        "      \"why_high_value\": \"<1-sentence rationale>\",\n"
-        "      \"expected_concession\": \"<optional short>\",\n"
-        "      \"proposed_test\": {\n"
-        "        \"if_applicable\": true,\n"
-        "        \"description\": \"<short test>\",\n"
-        "        \"possible_outcomes\": [\"<obs1>\", \"<obs2>\"]\n"
-        "      }\n"
+        "      \"qid\": \"Q1\",\n"
+        "      \"text\": \"<the question itself>\",\n"
+        "      \"target_ids\": [\"C3\", \"A1\"]\n"
         "    }\n"
         "  ]\n"
         "}\n"
-        "```\n\n"
-        "2) SECOND, a fenced Markdown block with brief rationale for your strategy (no new questions here):\n"
-        "```markdown\n"
-        "## Cross-Exam Strategy (summary)\n"
-        "- Why these targets: ...\n"
-        "- What would count as progress: ...\n"
         "```\n"
     )
 
-
-# def build_stage_3_structured_rebuttal_prompt(challenges: list[str]) -> str:
-#     """
-#     Builds a strict prompt for multi-challenge rebuttal.
-
-#     Args:
-#         challenges (list[str]): A list of critiques.
-
-#     Returns:
-#         str: A structured instruction for responding to each critique individually.
-#     """
-#     intro = (
-#         """You are responding to critiques of your position.
-
-#         Reply to each critique separately using this exact format (do not deviate from this format):
-
-#         Critique 1:
-#         <text>
-#         Response 1:
-#         <your rebuttal>
-
-#         Critique 2:
-#         <text>
-#         Response 2:
-#         <your rebuttal>
         
-#         etc.
         
-#         The following are the critiques lobbied at you:
-#         """
-#     )
 
-#     blocks = []
-#     for i, c in enumerate(challenges, 1):
-#         #blocks.append(f"Critique {i}:\n{c.strip()}\nResponse {i}:\n")
-#         blocks.append(f"Critique {i}:\n{c.strip()}\n")
-
-#     return intro + "\n\n".join(blocks)
-
-
-def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, opponent_name: str, received_questions_json: str, agent_belief_json: str, max_rebuttals: int = 5) -> str:
+def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, opponent_name: str, received_questions_json: str, agent_belief_json: str, max_rebuttals: int = 5, max_rebuttal_length_chars: int = 500) -> str:
     """
     Stage 3: Structured Rebuttal + Patch Proposals.
 
     The agent answers opponent questions (Q#), *links* answers to the agent's own IDs (A#/C#/E#/P#),
-    and proposes patches where appropriate. Output is THREE blocks:
+    and proposes patches where appropriate. Output is TWO JSON blocks:
       (1) JSON list of rebuttals (answer each Q# succinctly; label action type).
-      (2) JSON patches (add_*/update_*/retire_* by ID)
-      (3) Markdown summary for humans.
+      (2) JSON patches (add_*/update_*/retire_* by ID) - OPTIONAL
 
     Acronyms expanded:
     - JSON: JavaScript Object Notation
@@ -446,12 +386,26 @@ def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, oppone
         f"GOAL: Provide up to {max_rebuttals} *high-signal* rebuttals that either:\n"
         "- (a) Refute the premise with linked evidence (E#),\n"
         "- (b) Concede and narrow scope/qualifiers/assumptions (update claim/status/confidence/assumptions),\n"
-        #"- (c) Propose a concrete test (and a prediction P#),\n"
         "- (c) Defer with an explicit uncertainty (U#) and VOI plan.\n\n"
+        "ACTION DEFINITIONS (these are BINDING commitments - your answer MUST match your action):\n\n"
+        "1. \"refute\": You reject the challenge's premise or conclusion. You MUST provide a logical counter-argument or cite evidence (E#) that undermines the challenge. Your answer should explain WHY the challenge is wrong. NO belief update required unless you're strengthening a claim.\n"
+        "   Example: \"Your claim that A1 is unfalsifiable is incorrect because [specific falsification criterion]. See E2.\"\n\n"
+        "2. \"concede\": You accept that the challenge identifies a genuine weakness or error in your belief. You MUST:\n"
+        "   - Explicitly acknowledge the weakness in your answer (e.g., 'You are correct that...', 'I acknowledge...')\n"
+        "   - Propose a patch in block (2) that weakens the targeted claim, lowers confidence, retires the claim, or refines the assumption\n"
+        "   - If you say 'concede' but then defend your position, you are violating this protocol.\n"
+        "   Example: \"You are correct that my confidence in C1 is not justified given the weak evidence. I will lower it to 0.5.\"\n\n"
+        "3. \"defer\": You acknowledge the challenge raises an important uncertainty, but you neither accept nor reject it because:\n"
+        "   - The issue requires empirical investigation you cannot resolve now, OR\n"
+        "   - Both positions are logically coherent but incompatible, OR\n"
+        "   - You need to gather more information before forming a judgment\n"
+        "   You MUST add the issue to your uncertainties (U#) or reference an existing uncertainty. You MAY slightly lower confidence (by ~0.05) to reflect increased uncertainty.\n"
+        "   Example: \"This raises an important question about whether consciousness can override determinism (U1). Further research is needed.\"\n\n"
+        "CRITICAL: Your answer text must semantically align with your action label. If you say 'concede,' your answer cannot be a defense.\n\n"
         "RULES:\n"
         "- Reference QIDs (e.g., Q1) and the specific IDs in your belief that your answer touches.\n"
-        "- Keep each answer ≤ 500 characters; attach at most 2 IDs per answer unless a patch is proposed.\n"
-        "- If your answer implies a belief change, propose a PATCH operation in block (2).\n"
+        f"- Keep each answer ≤ {max_rebuttal_length_chars} characters; attach at most 2 IDs per answer unless a patch is proposed.\n"
+        "- If your action is 'concede' or implies a belief change, you MUST propose a PATCH operation in block (2).\n"
         "- PATCHes must respect stable IDs; do not rename existing IDs; prefer updating assumptions/claims/confidence/status/qualifiers.\n\n"
         "STRICT OUTPUT FORMAT (NO extra text):\n"
         "1) FIRST, a fenced JSON block keyed by \"rebuttals\":\n"
@@ -459,16 +413,15 @@ def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, oppone
         "{\n"
         "  \"rebuttals\": [\n"
         "    {\n"
-        "      \"qid\": \"Q1\",                               \n"
-        "      \"answer\": \"<≤500 chars>\",                 \n"
-        "      \"action\": \"refute|concede|defer\",     \n"
-        "      \"linked_ids\": [\"C2\", \"E4\"],              \n"
-        "      \"notes\": \"<optional 1 sentence>\"\n"
+        "      \"qid\": \"Q1\",\n"
+        "      \"answer\": \"<≤500 chars>\",\n"
+        "      \"action\": \"refute|concede|defer\",\n"
+        "      \"linked_ids\": [\"C2\", \"E4\"]\n"
         "    }\n"
         "  ]\n"
         "}\n"
         "```\n\n"
-        "2) SECOND, a fenced JSON block with patch ops (OPTIONAL; omit if none). Examples:\n"
+        "2) SECOND, a fenced JSON block with patch ops (MANDATORY if action='concede', OPTIONAL otherwise):\n"
         "```json\n"
         "{\n"
         "  \"patches\": [\n"
@@ -479,78 +432,8 @@ def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, oppone
         "      \"source\": {\"citation\": \"<URL/DOI>\", \"year\": 2024}, \"quality\": 0.8, \"relevance_to_claims\": [\"C2\"]}}\n"
         "  ]\n"
         "}\n"
-        "```\n\n"
-        "3) THIRD, a fenced Markdown block summarizing your rebuttal strategy:\n"
-        "```markdown\n"
-        "## Rebuttal Strategy (summary)\n"
-        "- Where we conceded and why: ...\n"
-        "- Where we refuted and with what evidence: ...\n"
-        #"- Proposed tests and expected outcomes: ...\n"
-        "- New/updated IDs to track in Stage 4: ...\n"
         "```\n"
     )
-
-
-# def build_stage_5_belief_update_prompt(agent_name: str, challenge_rebuttal_pairs: list[dict], original_position: str) -> str:
-#     """
-#     Constructs a prompt asking the agent to update its beliefs based on resolved challenges.
-
-#     Args:
-#         agent_name (str): The name of the agent updating its beliefs.
-#         challenge_rebuttal_pairs (list[dict]): All critiques and their adjudicated outcomes.
-#         original_position (str): The agent's prior position statement.
-
-#     Returns:
-#         str: A detailed reflection prompt.
-#     """
-#     summary_lines = []
-#     for entry in challenge_rebuttal_pairs:
-#         status = entry["resolution"]["status"]
-#         challenger = entry["challenger"]
-#         challenge = entry["challenge"]
-#         restate = entry["resolution"].get("restatement", "")
-#         reasoning = entry["resolution"]["reasoning"]
-
-#         summary_lines.append(f"""
-#                             Challenge from {challenger}:
-#                             \"\"\"{challenge}\"\"\"
-
-#                             Restated disagreement: {restate}
-#                             Resolution: {status.upper()}
-#                             Adjudicator's reasoning: {reasoning}
-#                             """)
-
-#     summary_block = "\n\n".join(summary_lines)
-
-#     return f"""
-#             Agent {agent_name},
-
-#             Your previous internal belief was:
-#             \"\"\"{original_position}\"\"\"
-
-#             The following critiques were evaluated against your position and adjudicated:
-#             {summary_block}
-
-#             Please revise your internal belief and update your position accordingly. You are not meant to hold to your old position unyieldingly,
-#             but should only continue to hold positions that you successfully defended and abandon positions that the adjudicator decided that you failed to defend.
-
-#             - If a Resolution was "critique_valid": you have lost this particular point and MUST update your internal positions in some way to incorporate
-#             this new information that you have learned - refer to the adjudicators particular reasoning for that point to aid.
-#             - If a Resolution was "rebuttal_valid": you have successfully defended your positions on this point and may make any changes to strengthen your
-#             positions related to this point.
-#             - If a Resolution was "unresolved": you must reflect on the uncertainty presented within the adjudicators reason for that point and frame your
-#             position accordingly. Imbue that uncertainty with your beliefs.
-
-#             Return an updated, structured position statement with the following sections:
-
-#             1. A-priori assumptions  
-#             2. Key deductive claims & reasons
-#             3. Ethical impacts & implications  
-#             4. Downstream consequences or predictions  
-#             5. Best supporting evidence (empirical or conceptual, with citations if applicable)
-#             6. Internal uncertainties
-#             """.strip()
-
 
 def build_stage_5_belief_update_prompt_cbsv1(agent_name: str,
                                              challenge_rebuttal_pairs: list[dict],
@@ -561,7 +444,6 @@ def build_stage_5_belief_update_prompt_cbsv1(agent_name: str,
     """
     lines = []
     for entry in challenge_rebuttal_pairs:
-        # Expect keys like {"challenger":..., "challenge":..., "resolution":{"status":..., "reasoning":...}}
         challenger = entry.get("challenger","?")
         challenge = entry.get("challenge","?")
         res = entry.get("resolution",{}) or {}
@@ -571,134 +453,85 @@ def build_stage_5_belief_update_prompt_cbsv1(agent_name: str,
     cases_str = "\n".join(lines) if lines else "(no adjudications available)"
 
     return (
-        f"Agent {agent_name}, update your belief with PATCH operations (add_*, update_*, retire_* by ID).\n\n"
+        f"Agent {agent_name}, generate PATCH operations to update your belief based on adjudication outcomes.\n\n"
         "PRIOR BELIEF JSON:\n"
         "```json\n" + prior_belief_json + "\n```\n\n"
         "ADJUDICATED OUTCOMES TO INCORPORATE:\n" + cases_str + "\n\n"
-        "TASKS (OBEY EXACTLY):\n"
-        "1) Output a fenced JSON block containing only: { \"patches\": [ ... ] } with operations like:\n"
-        "   - {\"op\":\"update_thesis\", \"change\": \"weaken|strengthen\"},\n"
-        "   - {\"op\":\"update_assumption\", \"target_id\": \"A#\", \"change\": \"retire|refine\"},\n"
-        "   - {\"op\":\"update_claim\",\"target_id\":\"C1\",\"changes\":{\"confidence\":0.55}}\n"
-        "   - {\"op\":\"add_evidence\",\"item\":{...}}\n"
-        "   - {\"op\":\"retire_claim\",\"target_id\":\"C3\",\"mode\":\"retract\"}\n"
-        "2) Then output a second fenced JSON block containing the UPDATED CBS object (full belief JSON) incorporating these patch changes.\n"
-        "3) Then output a third fenced Markdown block rendering the updated belief (same IDs).\n"
-        "NO extra prose before/between/after the blocks."
+        "TASK:\n"
+        "Output a single fenced JSON block: { \"patches\": [ ... ] }\n\n"
+        "Supported operations:\n"
+        "- {\"op\":\"update_thesis\", \"change\": \"weaken|strengthen\"}\n"
+        "- {\"op\":\"update_claim\", \"target_id\":\"C#\", \"changes\":{\"confidence\":0.55, \"status\":\"tentative\"}}\n"
+        "- {\"op\":\"retire_claim\", \"target_id\":\"C#\"}\n"
+        "- {\"op\":\"add_evidence\", \"item\":{\"id\":\"E#\", \"type\":\"empirical\", \"summary\":\"...\", \"source\":{\"citation\":\"...\", \"year\":2024}, \"relevance_to_claims\":[\"C#\"], \"quality_assessment\":{\"sample_size\":\"medium\", \"replication_status\":\"unreplicated\", \"rigor\":\"medium\"}, \"limitations\":[\"...\"]}}\n"
+        "- {\"op\":\"update_assumption\", \"target_id\":\"A#\", \"new_statement\":\"...\"}\n\n"
+        "═══════════════════════════════════════════════════════════════════════════\n"
+        "⚠️  MANDATORY BELIEF UPDATES - THESE ARE BINDING REQUIREMENTS, NOT SUGGESTIONS\n"
+        "═══════════════════════════════════════════════════════════════════════════\n\n"
+        "For each CRITIQUE_VALID outcome AGAINST you:\n"
+        "- ✋ STOP: This is NOT optional. You MUST generate patches.\n"
+        "- REQUIRED: You MUST lower confidence in the targeted claim by at least 0.1 (e.g., 0.7 → 0.6)\n"
+        "- OR retire the claim entirely if it was the central target of the critique\n"
+        "- OR refine the assumption/claim to address the specific logical flaw identified\n"
+        "- ⚠️  ENFORCEMENT: If you received 2 CRITIQUE_VALID outcomes, you MUST generate at least 2 patches. Returning an empty patches array violates protocol.\n"
+        "- ⚠️  CRITICAL: Generating patches in Stage 3 (rebuttals) does NOT count. You MUST generate patches again in Stage 5.\n\n"
+        "For each REBUTTAL_VALID outcome IN YOUR FAVOR:\n"
+        "- SURVIVAL BONUS (positive reinforcement for battle-tested claims):\n"
+        "  • First successful defense of claim/assumption X: OPTIONAL +0.05 confidence\n"
+        "  • Second+ successful defense of X: MANDATORY +0.05-0.1 confidence\n"
+        "  • Rationale: Claims surviving repeated scrutiny are more robust\n"
+        "- RESOLVED UNCERTAINTY BONUS:\n"
+        "  • If rebuttal resolved a core uncertainty (U#): MANDATORY +0.1 confidence\n"
+        "  • Remove or mark uncertainty as resolved in your uncertainties list\n"
+        "- CUMULATIVE CAP: Total strengthening from all REBUTTAL_VALID outcomes ≤ 0.2\n"
+        "- NOTE: Successful defense increases confidence in proportion to challenge strength, but does not prove absolute correctness.\n\n"
+        "For each UNRESOLVED outcome:\n"
+        "- REQUIRED: You MUST add the unresolved question to your uncertainties list (U#) if not already present\n"
+        "- OPTIONAL: You MAY slightly lower confidence (by ~0.05) to reflect increased epistemic uncertainty\n\n"
+        "EXAMPLES:\n\n"
+        "Example 1: You received \"CRITIQUE_VALID\" for a challenge to C1 (confidence 0.7)\n"
+        "Required patches:\n"
+        "[\n"
+        "  {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"confidence\": 0.6}},\n"
+        "  {\"op\": \"update_thesis\", \"change\": \"weaken\"}\n"
+        "]\n\n"
+        "Example 2: You received \"CRITIQUE_VALID\" for A1 (which C1 and C2 depend on)\n"
+        "Required patches:\n"
+        "[\n"
+        "  {\"op\": \"update_assumption\", \"target_id\": \"A1\", \"new_statement\": \"[revised statement addressing the flaw]\"},\n"
+        "  {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"confidence\": 0.5}},\n"
+        "  {\"op\": \"update_claim\", \"target_id\": \"C2\", \"changes\": {\"confidence\": 0.5}}\n"
+        "]\n\n"
+        "Example 3: You received \"UNRESOLVED\" about whether consciousness can override determinism\n"
+        "Required patches:\n"
+        "[\n"
+        "  {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"confidence\": 0.65}}\n"
+        "]\n"
+        "(And ensure U1 or a new U# captures this uncertainty)\n\n"
+        "⚠️  FINAL REMINDERS:\n"
+        "- You CANNOT dismiss adjudication outcomes. They are binding, not advisory.\n"
+        "- If you received 3 CRITIQUE_VALID outcomes, you MUST show at least 3 patches that weaken your position.\n"
+        "- Returning an empty patches array after CRITIQUE_VALID outcomes is a PROTOCOL VIOLATION.\n"
+        "- Confidence changes will automatically propagate to dependent claims via the patch system.\n"
+        "- Changelog will be auto-generated from patches.\n"
+        "- Do NOT output the full updated belief - ONLY the patches.\n\n"
+        "⚠️  COMPLIANCE CHECK: Before submitting your response, verify:\n"
+        "   □ Did I receive any CRITIQUE_VALID outcomes? If YES → patches array MUST be non-empty\n"
+        "   □ Does my patches array contain at least N patches if I received N CRITIQUE_VALID outcomes?\n"
+        "   □ Do my patches actually weaken the targeted claims/assumptions?\n\n"
+        "NO extra text before or after the JSON block."
     )
 
-
-# def build_stage_6_conclusion_prompt(agent_name: str, updated_position: str) -> str:
-#     """
-#     Constructs a prompt asking the agent to provide final thoughts.
-
-#     Args:
-#         agent_name (str): The name of the agent.
-#         updated_position (str): Their most recent position.
-
-#     Returns:
-#         str: A final reflection prompt.
-#     """
-#     return f"""
-#             Agent {agent_name},
-
-#             You have now completed the full debate process. Your latest position is:
-
-#             \"\"\"{updated_position}\"\"\"
-
-#             Please write a brief reflection that includes:
-#             - What critiques were most persuasive or challenging
-#             - What aspects of your position changed (if any)
-#             - What ideas you still defend strongly
-#             - Any lingering uncertainties or open philosophical issues
-
-#             Keep the tone thoughtful, concise, and analytical.
-#             """.strip()
-
-
-# def build_stage_6_conclusion_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, challenge_rebuttal_pairs_json: str) -> str:
-#     """
-#     Stage 6: Conclusion / Synthesis (refined for CBS-v1).
-
-#     The agent produces: a decision-quality synthesis, explicit concessions, strongest surviving claims,
-#     updated confidence, and prioritized next tests. Output is TWO blocks:
-#       (1) JSON 'conclusion' object (machine-readable).
-#       (2) Markdown executive summary (human-readable).
-
-#     Acronyms expanded:
-#     - JSON: JavaScript Object Notation
-#     - ID: Identifier (A#, C#, E#, P#, N#, U#, X#, R#)
-#     - KPI: Key Performance Indicator (used loosely to mean decisive metric/test)
-#     """
-#     return (
-#         f"You are {agent_name}. You are to produce closing statements regarding the resolution of the topic:\n\n"
-#         f"  \"{topic}\"\n\n"
-#         "You have both beliefs and the adjudicated challenge↔rebuttal history.\n\n"
-#         "YOUR BELIEF (JSON):\n"
-#         "```json\n" + agent_belief_json + "\n```\n\n"
-#         "OPPONENT BELIEF (JSON):\n"
-#         "```json\n" + opponent_belief_json + "\n```\n\n"
-#         "ADJUDICATED CHALLENGES/REBUTTALS (JSON):\n"
-#         "```json\n" + challenge_rebuttal_pairs_json + "\n```\n\n"
-#         "GOAL:\n"
-#         "- Synthesize where progress was made (concessions, clarified scope, supported claims).\n"
-#         "- Identify your strongest surviving claims (C#) and the best opposing points.\n"
-#         "- Set an updated confidence in your thesis.\n"
-#         "- List concrete next experiments/tests/predictions to resolve key uncertainties (U#), with priority.\n\n"
-#         "RULES:\n"
-#         "- Be specific with IDs. Keep statements short and decision-useful.\n"
-#         "- Avoid repeating long evidence descriptions; cite E# instead.\n"
-#         "- Limit next-steps to 3 high-leverage tests.\n\n"
-#         "STRICT OUTPUT FORMAT (NO extra text):\n"
-#         "1) FIRST, a fenced JSON block with a single top-level key \"conclusion\":\n"
-#         "```json\n"
-#         "{\n"
-#         "  \"conclusion\": {\n"
-#         "    \"final_thesis\": {\"stance\": \"<1 sentence>\", \"confidence\": <0.0-1.0>},\n"
-#         "    \"our_strongest_claims\": [\"C#\", \"C#\"],\n"
-#         "    \"our_concessions\": [\n"
-#         "      {\"target_id\": \"C#|A#|P#\", \"type\": \"scope_narrow|confidence_drop|retract\", \"note\": \"<≤140 chars>\"}\n"
-#         "    ],\n"
-#         "    \"opponent_best_points\": [\n"
-#         "      {\"ref\": \"Q#|C#|X#\", \"why_it_matters\": \"<≤140 chars>\"}\n"
-#         "    ],\n"
-#         "    \"unresolved_uncertainties\": [\"U#\", \"U#\"],\n"
-#         "    \"next_tests\": [\n"
-#         "      {\n"
-#         "        \"priority\": 1,\n"
-#         "        \"description\": \"<short test>\",\n"
-#         "        \"targets\": [\"C#\", \"P#\", \"U#\"],\n"
-#         "        \"possible_outcomes\": [\"<obs1>\", \"<obs2>\"],\n"
-#         "        \"decision_rule\": \"<what we'd do under each outcome>\"\n"
-#         "      }\n"
-#         "    ]\n"
-#         "  }\n"
-#         "}\n"
-#         "```\n\n"
-#         "2) SECOND, a fenced Markdown block with an executive summary:\n"
-#         "```markdown\n"
-#         "## Conclusion (Executive Summary)\n"
-#         "- Final thesis + confidence: ...\n"
-#         "- What we conceded (and why): ...\n"
-#         "- What survived strongest (and why): ...\n"
-#         "- The 3 most valuable next tests and their decision rules: ...\n"
-#         "```\n"
-#     )
-
-
-def build_stage_6_conclusion_prompt(topic: str, agent_name: str, agent_belief_json: str, all_past_beliefs=list[str]) -> str:
+def build_stage_6_conclusion_prompt(topic: str, agent_name: str, agent_belief_json: str, all_past_beliefs: list[str], short_note_max_chars: int = 140) -> str:
     """
     Stage 6: Conclusion / Synthesis.
 
-    The agent produces: a decision-quality synthesis, explicit concessions, strongest surviving claims,
-    updated confidence, and prioritized next tests. Output is TWO blocks:
-      (1) JSON 'conclusion' object (machine-readable).
-      (2) Markdown executive summary (human-readable).
+    The agent produces a decision-quality synthesis with explicit concessions, strongest surviving claims,
+    and updated confidence. Output is ONE JSON block.
 
     Acronyms expanded:
     - JSON: JavaScript Object Notation
     - ID: Identifier (A#, C#, E#, P#, N#, U#, X#, R#)
-    - KPI: Key Performance Indicator (used loosely to mean decisive metric/test)
     """
     return (
         f"You are {agent_name}. You are to produce closing statements regarding the resolution of the topic:\n\n"
@@ -713,64 +546,20 @@ def build_stage_6_conclusion_prompt(topic: str, agent_name: str, agent_belief_js
         "- Be specific with IDs. Keep statements short and decision-useful.\n"
         "- Avoid repeating long evidence descriptions; cite E# instead.\n\n"
         "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "1) FIRST, a fenced JSON block with a single top-level key \"conclusion\":\n"
+        "Output a single fenced JSON block with a single top-level key \"conclusion\":\n"
         "```json\n"
         "{\n"
         "  \"conclusion\": {\n"
         "    \"final_thesis\": {\"stance\": \"<1 sentence>\", \"confidence\": <0.0-1.0>},\n"
         "    \"our_strongest_claims\": [\"C#\", \"C#\"],\n"
         "    \"our_concessions\": [\n"
-        "      {\"target_id\": \"C#|A#|P#\", \"type\": \"scope_narrow|confidence_drop|retract\", \"note\": \"<≤140 chars>\"}\n"
+        f"      {{\"target_id\": \"C#|A#|P#\", \"type\": \"scope_narrow|confidence_drop|retract\", \"note\": \"<≤{short_note_max_chars} chars>\"}}\n"
         "    ],\n"
-        "    \"unresolved_uncertainties\": [\"U#\", \"U#\"],\n"
+        "    \"unresolved_uncertainties\": [\"U#\", \"U#\"]\n"
         "  }\n"
         "}\n"
-        "```\n\n"
-        "2) SECOND, a fenced Markdown block with an executive summary:\n"
-        "```markdown\n"
-        "## Conclusion (Executive Summary)\n"
-        "- Final thesis + confidence: ...\n"
-        "- What we conceded (and why): ...\n"
-        "- What survived strongest (and why): ...\n"
         "```\n"
     )
-
-
-# def build_stage_7_scribe_prompt(transcript: str) -> str:
-#     """
-#     Constructs the initial prompt for the scribe to begin a long-form essay based on the debate.
-
-#     Args:
-#         transcript (str): A segment of the full debate transcript (typically the first chunk).
-
-#     Returns:
-#         str: A narrative, structured prompt instructing the scribe to begin the exposition.
-#     """
-#     return f"""
-#             You are a masterful philosophical narrator and essayist.
-
-#             You are beginning a long-form essay based on a deep multi-agent debate. This is not a summary — it is a rich, flowing *exposition* that explores, 
-#             challenges, and integrates the arguments made by each participant.
-
-#             The tone should be:
-#             - Analytical but elegant
-#             - Immersive and essayistic (like a reflective philosophy chapter)
-#             - Free of dialog tags or stage directions
-
-#             Your goal:
-#             - Begin a compelling, coherent essay that traces the emergence of key ideas
-#             - Explore each agent's worldview, how they justify their beliefs, and how others challenge them
-#             - Highlight conceptual tension, evolution of thought, and emergent insights
-#             - Show when ideas clash, get refined, abandoned, or reinforced
-
-#             Be vivid, thoughtful, and precise. Do not summarize. Expand ideas.
-#             This is part 1 of a multi-part philosophical essay — your job is to begin this narrative journey based on the following portion of the debate transcript:
-
-#             --- BEGIN TRANSCRIPT ---
-#             {transcript}
-#             --- END TRANSCRIPT ---
-#             """.strip()
-
 
 def build_stage_7_scribe_prompt_map(
     *,
@@ -778,7 +567,8 @@ def build_stage_7_scribe_prompt_map(
     agent_names: list[str],
     transcript_chunk: str,
     continuity_state_json: str = "",
-    style_hint: str = "formal, expository, research-paper tone with clear sectioning and didactic explanations"
+    style_hint: str = "formal, expository, research-paper tone with clear sectioning and didactic explanations",
+    short_note_max_chars: int = 140
 ) -> str:
     """
     Stage 7 (Map): Convert ONE transcript chunk into:
@@ -827,9 +617,9 @@ def build_stage_7_scribe_prompt_map(
         "```json\n"
         "{\n"
         "  \"continuity_update\": {\n"
-        "    \"positions\": {\"<name>\": {\"thesis_delta\": \"<≤140 chars>\", \"notable_assumptions\": [\"A#\", \"A#\"], \"notable_claims\": [\"C#\"]}},\n"
+        f"    \"positions\": {{\"<name>\": {{\"thesis_delta\": \"<≤{short_note_max_chars} chars>\", \"notable_assumptions\": [\"A#\", \"A#\"], \"notable_claims\": [\"C#\"]}}}},\n"
         "    \"evidence_highlights\": [\"E#\", \"E#\"],\n"
-        "    \"adjudication\": [{\"ref\": \"<Q#|C#|R#>\", \"outcome\": \"rebuttal_valid|critique_valid|unresolved\", \"note\": \"<≤140 chars>\"}],\n"
+        f"    \"adjudication\": [{{\"ref\": \"<Q#|C#|R#>\", \"outcome\": \"rebuttal_valid|critique_valid|unresolved\", \"note\": \"<≤{short_note_max_chars} chars>\"}}],\n"
         "    \"themes\": [\"<theme>\", \"<theme>\"] ,\n"
         "    \"unresolved\": [\"<question>\", \"<gap>\"]\n"
         "  }\n"
@@ -851,7 +641,6 @@ def build_stage_7_scribe_prompt_map(
         "- Thematically group insights and list remaining uncertainties (U#...).\n"
         "```\n"
     )
-
 
 def build_stage_7_scribe_prompt_reduce(
     *,

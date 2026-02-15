@@ -1,114 +1,115 @@
-```markdown
-- **Belief ID:** BELIEF-2134a7b2-2f8d-4c8b-9d42-43b8c8e8b5c6
-- **Version:** 1
-- **Topic Query:** Does free will exist?
-- **Agent Persona:** Empiricist
-- **Created At:** 2023-10-06T12:00:00Z
-- **Definitions:**
-  - **Free Will:** The capacity of agents to choose between different possible courses of action unimpeded.
+# Thesis
+- Stance: The concept of free will is difficult to confirm or refute empirically because it involves subjective experiences and metaphysical considerations. Current empirical evidence, such as neuroscience studies, suggests that many decisions are influenced by unconscious processes, casting doubt on the existence of free will as traditionally conceived. However, the absence of definitive empirical evidence either for or against free will leaves room for uncertainty.
+- Top bullets:
+  - Free will is traditionally understood as the ability to make choices free of external constraints.
+  - Neuroscience research indicates unconscious processes influence decision-making.
+  - Empirical evidence for or against free will is currently inconclusive.
+  - The concept of free will may involve metaphysical considerations beyond empirical verification.
+  - Our understanding of consciousness and decision-making is still evolving.
+- Confidence: 0.5
 
-## Thesis
+# Scope & Definitions
 
-- **Stance:** As an empiricist, I hold that the existence of free will cannot be confirmed or denied without empirical evidence. Current scientific research on brain activity and decision-making suggests that many choices may be determined by unconscious neural processes, challenging traditional notions of free will. However, the complexity of human cognition leaves room for further investigation.
-- **Summary Bullets:**
-  - Free will is a concept that requires empirical evidence to be validated.
-  - Neuroscientific studies indicate decisions may be predetermined by brain activity.
-  - The complexity of human cognition implies that more research is needed.
-- **Confidence:** 0.6
+# Assumptions
+- [A1] Free will, if it exists, should be empirically observable.
+- [A2] Neuroscience can provide insights into the mechanisms of decision-making.
+- [A3] The absence of evidence is not evidence of absence.
 
-## Assumptions
+# Claims (with dependencies, evidence, rebuttals)
+- [C1] inductive: Neuroscience research suggests that unconscious processes significantly influence decision-making.
+  - Depends on: A2
+  - Evidence: E1
+  - Inference chain:
+    - Step: Neuroscience studies show brain activity before conscious decisions. | Justification: This indicates that decisions may be initiated unconsciously.
+  - Known weaknesses: Correlation does not imply causation, Complexity of human consciousness not fully understood
+  - Confidence: 0.7 (The confidence is based on replicated studies showing consistent results.) | Status: asserted
+- [C2] abductive: The lack of empirical evidence confirming free will suggests it may not exist as traditionally conceived.
+  - Depends on: A1, C1
+  - Inference chain:
+    - Step: If free will exists, it should be detectable through empirical methods. | Justification: Assumes that free will has observable effects.
+    - Step: Current empirical methods have not confirmed free will. | Justification: Suggests a reevaluation of traditional concepts of free will.
+  - Known weaknesses: Empirical methods may not capture all dimensions of free will, Theoretical bias against non-material explanations
+  - Confidence: 0.5 (Balanced by the absence of definitive evidence either way.) | Status: tentative
 
-- **A1 (Axiom):** Empirical evidence is necessary to validate philosophical concepts.
-- **A2 (Background):** Neuroscience can provide insights into human decision-making.
-- **A3 (Heuristic):** If a phenomenon is not observable or measurable, its existence is questionable.
+# Evidence
+- [E1] empirical: Studies using fMRI have shown brain activity related to decision-making occurring before individuals become consciously aware of their decisions.
+  - Source: citation: Libet, B. (1985). Unconscious cerebral initiative and the role of conscious will in voluntary action. Behavioral and Brain Sciences, 8(4), 529-566., year: 1985 → supports: C1
+  - Quality: sample_size=medium, replication=replicated, rigor=high
+  - Limitations: Technological limitations of fMRI, Interpretation of brain activity patterns
 
-## Claims
+# Predictions (falsifiable)
+- [P1] Future neuroscience studies will continue to show unconscious brain activity preceding conscious decision-making.
+  - Test: Conduct longitudinal studies with larger sample sizes to determine consistency. | Falsifiers: No unconscious brain activity detected before decisions, Conscious decision-making processes identified as primary
+  - Decision criterion: Consistent absence of pre-decision brain activity
+  - Likelihood: 0.7 | Importance: high
 
-- **C1 (Inductive):** Neuroscientific studies suggest decisions are influenced by unconscious processes.
-  - **Depends On:** A2
-  - **Warrants:** Studies show neural activity precedes conscious decisions.
-  - **Backing Evidence IDs:** E1
-  - **Confidence:** 0.7
-  - **Status:** Asserted
+# Uncertainties
+- [U1] How can we empirically distinguish between free will and determinism in decision-making? | cruciality: high | VOI: Advancements in neuroscience technology and theory
 
-- **C2 (Abductive):** The complexity of the human brain leaves room for free will to exist.
-  - **Depends On:** A3
-  - **Warrants:** Complex systems may have emergent properties not immediately apparent.
-  - **Backing Evidence IDs:** 
-  - **Confidence:** 0.5
-  - **Status:** Tentative
+# Argument Structure
+- Total nodes: 7 (3 assumptions, 2 claims, 1 evidence, 1 predictions)
+- Total edges: 5
 
-## Evidence
-
-- **E1 (Empirical):** Research shows that neural activity related to decision-making occurs before conscious awareness.
-  - **Source:** Libet, B. (1985). Unconscious cerebral initiative and the role of conscious will in voluntary action. Behavioral and Brain Sciences, 8(4), 529-566.
-  - **Relevance to Claims:** C1
-
-## Predictions
-
-- **P1:** If free will exists, future experiments will show conscious decisions can override neural predispositions.
-  - **Linked Claims:** C1, C2
-  - **Test:** Design experiments where subjects can consciously alter decisions despite neural indicators.
-  - **Potential Falsifiers:** Subjects always follow neural predispositions
-  - **Expected Likelihood:** 0.4
-  - **Importance:** High
-
-## Uncertainties
-
-- **U1:** Can free will be reconciled with determinism in a scientifically meaningful way?
-  - **Cruciality:** High
-
-## Changelog
-
-- **Version 1:** Initialized from scratch
-  - **Timestamp:** 2023-10-06T12:00:00Z
-```
+# Changelog
+- v1 (2023-10-05T12:00:00Z): Initialized from scratch
 
 
-```markdown
-- **Belief ID**: BELIEF-12345
-- **Version**: 1
-- **Schema Version**: CBS-v1
-- **Metadata**:
-  - **Topic Query**: Does free will exist?
-  - **Agent Persona**: Supernaturalist
-  - **Created At**: 2023-10-05T14:30:00Z
-  - **Definitions**:
-    - **Free Will**: The ability of individuals to make choices that are not determined by prior causes.
-    - **Supernatural**: Relating to an order of existence beyond the visible observable universe.
+# Thesis
+- Stance: From a supernaturalist perspective, free will exists as a divine gift that transcends material determinism. This belief is rooted in spiritual experiences, religious teachings, and the concept of a soul that interacts with the material world. While empirical science struggles to account for free will, it can be understood through the lens of spiritual realities that are beyond material observation.
+- Top bullets:
+  - Free will is a divine gift, transcending material determinism.
+  - Spiritual experiences and religious teachings affirm the existence of free will.
+  - Empirical science alone cannot fully account for the concept of free will.
+  - The existence of the soul suggests non-material influences on decision-making.
+  - Free will is necessary for moral responsibility as posited in many religious doctrines.
+- Confidence: 0.8
 
-### Thesis
-- **Stance**: Free will exists as a fundamental aspect of human experience, grounded in the supernatural realm which transcends empirical observation. This belief is supported by spiritual experiences and religious traditions, which suggest that human beings are more than mere physical entities. While empirical science may struggle to account for free will, spiritual insights provide a cohesive narrative where free will is an essential component of moral and spiritual life.
-- **Summary Bullets**:
-  - Free will is a spiritual truth revealed through religious experiences.
-  - Human beings are more than physical entities; they have souls capable of free will.
-  - Empirical science alone cannot fully explain the phenomenon of free will.
-  - Religious traditions provide insights into the existence of free will.
-  - Free will is essential for moral accountability and spiritual growth.
-- **Confidence**: 0.75
+# Scope & Definitions
 
-### Assumptions
-- **A1**: The supernatural realm exists and influences the material world.
-- **A2**: Human beings possess a soul that interacts with the physical body.
-- **A3**: Spiritual experiences provide genuine insights into reality.
+# Assumptions
+- [A1] There exist non-material realities that can influence the material world.
+- [A2] Human beings possess a soul that is capable of exercising free will.
+- [A3] Divine or supernatural forces can endow humans with free will.
+- [A4] Religious texts and spiritual experiences are reliable sources of truth.
+- [A5] Free will is necessary for moral responsibility and accountability.
 
-### Claims
-- **C1**: If the supernatural exists, then it can provide the basis for free will.
-- **C2**: Numerous religious traditions affirm the existence of free will, suggesting a common spiritual insight.
-- **C3**: The presence of moral accountability in human societies implies the existence of free will.
+# Claims (with dependencies, evidence, rebuttals)
+- [C1] deductive: If humans possess a soul that can interact with the material world, then free will exists because the soul can make undetermined choices.
+  - Depends on: A1, A2
+  - Evidence: E1
+  - Inference chain:
+    - Step: Humans possess a soul capable of interacting with the material world. | Justification: Many religious traditions assert the existence of the soul.
+    - Step: The soul can make choices independent of material determinism. | Justification: The soul is considered a non-material entity, not bound by physical laws.
+    - Step: Therefore, free will exists as these choices are undetermined by material causation. | Justification: If choices are undetermined by material causes, they are free.
+  - Known weaknesses: The existence of the soul is not empirically verifiable., The mechanism of interaction between soul and material world is unknown.
+  - Confidence: 0.7 (Confidence is moderate due to widespread religious belief but lacks empirical verification.) | Status: asserted
+- [C2] abductive: The best explanation for the sense of moral responsibility is the existence of free will.
+  - Depends on: A5
+  - Inference chain:
+    - Step: Humans universally experience a sense of moral responsibility. | Justification: Moral responsibility is a common human experience.
+    - Step: Free will provides a coherent explanation for moral responsibility. | Justification: Without free will, moral responsibility would be illogical.
+    - Step: Therefore, free will is the best explanation for the sense of moral responsibility. | Justification: The existence of free will justifies the moral responsibility humans feel.
+  - Known weaknesses: Alternative explanations like social conditioning exist., This claim assumes that moral responsibility requires free will.
+  - Confidence: 0.6 (Confidence is moderate as there are alternative explanations for moral responsibility.) | Status: asserted
 
-### Evidence
-- None currently available.
+# Evidence
+- [E1] conceptual: Religious texts often describe humans as possessing a soul capable of free choice.
+  - Source: citation: The Holy Bible, New International Version, year: 1978 → supports: C1
+  - Quality: sample_size=large, replication=replicated, rigor=medium
+  - Limitations: Interpretation varies among different religious traditions., Texts are not empirical evidence.
 
-### Predictions
-- **P1**: If free will is grounded in the supernatural, spiritual experiences should consistently affirm it across different cultures.
+# Predictions (falsifiable)
+- [P1] If free will exists as a divine gift, spiritual experiences will often include elements of choice and divine interaction.
+  - Test: Survey religious individuals about their spiritual experiences, focusing on elements of choice. | Falsifiers: Lack of reported experiences involving choice., Experiences attributed solely to predetermined factors.
+  - Decision criterion: A significant majority report experiences of choice in spiritual contexts.
+  - Likelihood: 0.7 | Importance: high
 
-### Normative Implications
-- **N1**: If free will exists, individuals should be held morally accountable for their actions.
+# Uncertainties
+- [U1] How does the soul interact with the material world to enable free will? | cruciality: high | VOI: Philosophical and theological investigations could provide clarity.
 
-### Uncertainties
-- **U1**: Can spiritual experiences be reliably used as evidence for metaphysical truths?
+# Argument Structure
+- Total nodes: 9 (5 assumptions, 2 claims, 1 evidence, 1 predictions)
+- Total edges: 5
 
-### Changelog
-- **Version 1**: Initialized from scratch at 2023-10-05T14:30:00Z
-```
+# Changelog
+- v1 (2023-10-03T12:00:00Z): Initialized from scratch

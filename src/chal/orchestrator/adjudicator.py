@@ -1,22 +1,44 @@
 """
 adjudicator.py
 
-This module defines the Adjudicator class, which implements a multi-stage
-truth-seeking protocol to evaluate and resolve critique-rebuttal pairs.
-It is used in Stage 4 of the dialectical debate controller.
+Defines the Adjudicator class for evaluating challenge-rebuttal pairs in debates.
+
+The adjudicator performs logical evaluation in a single API call, returning:
+- Restatement of the disagreement
+- Formalized logical structures for both sides
+- Final outcome (rebuttal_valid, critique_valid, or unresolved)
+- Reasoning for the decision
+
+This replaces the previous 3-call approach, reducing API latency by ~66%.
 """
 
-from typing import Dict
-from chal.agents.base import Message
+from typing import Dict, Any
+from chal.agents.base import Agent, Message
+import json
 import re
 
+
 class Adjudicator:
-    def __init__(self, adjudicator_agent, logic_weight: float = 1.0, ethics_weight: float = 0.0, logic_sys: str = "", ethics_sys: str = ""):
+    """
+    Evaluates challenge-rebuttal pairs using logical and ethical frameworks.
+
+    Uses a single consolidated API call to:
+    1. Restate the core disagreement
+    2. Formalize both arguments
+    3. Adjudicate the outcome
+    """
+
+    def __init__(self, adjudicator_agent: Agent, logic_weight: float = 1.0, ethics_weight: float = 0.0,
+                 logic_sys: str = "", ethics_sys: str = "") -> None:
         """
-        Initializes the Adjudicator with logical and ethical framework systems as well as their respective weights when adjudicating a conflict.
+        Initialize the Adjudicator with evaluation frameworks and weights.
 
         Args:
-            adjudicator_agent: An LLM agent instance capable of logical evaluation.
+            adjudicator_agent: An LLM agent instance for logical evaluation.
+            logic_weight: Weight for logical rigor (0.0-1.0).
+            ethics_weight: Weight for ethical considerations (0.0-1.0).
+            logic_sys: Logical framework description.
+            ethics_sys: Ethical framework description.
         """
         self.agent = adjudicator_agent
         self.logic_weight = logic_weight
@@ -24,137 +46,91 @@ class Adjudicator:
         self.logic_sys = logic_sys
         self.ethics_sys = ethics_sys
 
-
-    def restate_disagreement(self, challenge: str, rebuttal: str, challenger: str, target: str) -> str:
+    def run(self, challenge: str, rebuttal: str, challenger: str, target: str) -> Dict[str, Any]:
         """
-        Subprotocol 1: Requests the logic agent to restate the disagreement.
-
-        Returns:
-            str: A clarified summary of the disagreement.
-        """
-        prompt = f"""
-                Agent {challenger} has issued the following critique:
-                \"\"\"{challenge}\"\"\"
-
-                Agent {target} has issued the following rebuttal:
-                \"\"\"{rebuttal}\"\"\"
-
-                Restate the core point of disagreement as clearly and neutrally as possible.
-                Avoid introducing new arguments. Just clarify what the disagreement is. Think about this step-by-step.
-                """
-        response = self.agent.generate([Message(role="user", content=prompt)])
-        return response.content.strip()
-
-
-    def formalize_both_sides(self, challenge: str, rebuttal: str, challenger: str, target: str) -> Dict[str, str]:
-        """
-        Subprotocol 2: Formalizes both the challenge and the rebuttal into logical structure.
-
-        Returns:
-            dict: {"challenger": formalized_challenge, "target": formalized_rebuttal}
-        """
-        prompt = f"""
-                Below is a debate between two agents.
-
-                Agent {challenger}'s critique:
-                \"\"\"{challenge}\"\"\"
-
-                Agent {target}'s rebuttal:
-                \"\"\"{rebuttal}\"\"\"
-
-                Formalize both sides using logical structure:
-                - For the critique, write it as a syllogism or clear inference chain.
-                - For the rebuttal, do the same and indicate which premise or inference it rejects or modifies.
-                Think about this step-by-step.
-
-                Return your response in the following format:
-                ---
-                [Challenger - {challenger}]:
-                <formalized critique>
-
-                [Target - {target}]:
-                <formalized rebuttal>
-                ---
-                """
-        response = self.agent.generate([Message(role="user", content=prompt)])
-
-        # Simple parser for expected format
-        split = response.content.split("[Target -")
-        challenger_formal = split[0].split("[Challenger -")[-1].strip()
-        target_formal = split[1].split("]:", 1)[-1].strip() if len(split) > 1 else ""
-
-        return {
-            "challenger": challenger_formal,
-            "target": target_formal
-        }
-
-
-    def adjudicate(self, challenger: str, target: str, formalizations: Dict[str, str]) -> dict:
-        """
-        Subprotocol 3: Adjudicates the challenge-rebuttal pair based on logical structure.
+        Evaluate a challenge-rebuttal pair in a single API call.
 
         Args:
-            challenger (str): Name of the challenger.
-            target (str): Name of the target agent.
-            formalizations (dict): Dictionary with formal logic strings.
+            challenge: The original critique.
+            rebuttal: The rebuttal issued by the target agent.
+            challenger: Name of the agent issuing the critique.
+            target: Name of the agent issuing the rebuttal.
 
         Returns:
-            dict: {"status": ..., "reasoning": ...}
+            dict: Resolution record with keys:
+                - status: "rebuttal_valid", "critique_valid", or "unresolved"
+                - reasoning: Justification for the decision
+                - restatement: Clarified summary of the disagreement
+                - formalizations: Dict with "challenger" and "target" logical structures
         """
         prompt = f"""
-        Evaluate the following debate with a weighted policy over LOGIC and ETHICS.
+You are a neutral adjudicator evaluating a philosophical debate exchange.
 
-        Weights (documentary; the system prompt already encodes them):
-        - LOGIC weight: {getattr(self, 'logic_weight', 1.0)}
-        - ETHICS weight: {getattr(self, 'ethics_weight', 0.0)}
+CHALLENGE from {challenger}:
+\"\"\"{challenge}\"\"\"
 
-        [Challenger - {challenger}]:
-        {formalizations['challenger']}
+REBUTTAL from {target}:
+\"\"\"{rebuttal}\"\"\"
 
-        [Target - {target}]:
-        {formalizations['target']}
+EVALUATION FRAMEWORK:
+- Logic weight: {self.logic_weight}
+- Ethics weight: {self.ethics_weight}
+- Logic system: {self.logic_sys or 'Classical logic with Bayesian inference'}
+- Ethics system: {self.ethics_sys or 'Not applicable'}
 
-        Decide whether the rebuttal resolves the challenge, using the weighted rule
-        (combined_score = LOGIC*w_L + ETHICS*w_E). Use the three outcome labels (use *unresolved* sparingly):
-        - rebuttal_valid
-        - critique_valid
-        - unresolved
+TASKS (complete all in one response):
 
-        Return in this format:
-        Outcome: <label>
-        Reasoning: <justification>
-        """
+1. RESTATE the core disagreement neutrally and clearly.
+
+2. FORMALIZE both arguments:
+   - Express the challenge as a syllogism or inference chain
+   - Express the rebuttal similarly, indicating which premises it rejects/modifies
+
+3. ADJUDICATE using the weighted framework (combined_score = LOGIC*{self.logic_weight} + ETHICS*{self.ethics_weight}):
+   - Outcome must be ONE of: rebuttal_valid, critique_valid, unresolved
+   - Use "unresolved" sparingly (only for genuine logical standoffs)
+   - Provide clear reasoning
+
+OUTPUT FORMAT (strict JSON):
+```json
+{{
+  "restatement": "<neutral summary of disagreement>",
+  "formalization_challenger": "<formal logical structure of challenge>",
+  "formalization_target": "<formal logical structure of rebuttal>",
+  "outcome": "rebuttal_valid|critique_valid|unresolved",
+  "reasoning": "<justification for outcome, referencing logical principles>"
+}}
+```
+"""
         response = self.agent.generate([Message(role="user", content=prompt)])
 
-        match = re.search(r'Outcome:\s*(\w+)', response.content)
-        status = match.group(1).strip() if match else "unknown"
+        # Parse JSON response
+        json_match = re.search(r'```json\s*(\{.*?\})\s*```', response.content, flags=re.DOTALL)
+        if json_match:
+            try:
+                result = json.loads(json_match.group(1))
+                return {
+                    "status": result.get("outcome", "unknown").lower(),
+                    "reasoning": result.get("reasoning", ""),
+                    "restatement": result.get("restatement", ""),
+                    "formalizations": {
+                        "challenger": result.get("formalization_challenger", ""),
+                        "target": result.get("formalization_target", "")
+                    }
+                }
+            except json.JSONDecodeError:
+                pass
 
-        reason_match = re.search(r'Reasoning:\s*(.+)', response.content, re.DOTALL)
+        # Fallback: try to parse old format
+        outcome_match = re.search(r'(?:Outcome|outcome):\s*(\w+)', response.content)
+        status = outcome_match.group(1).strip().lower() if outcome_match else "unknown"
+
+        reason_match = re.search(r'(?:Reasoning|reasoning):\s*(.+)', response.content, re.DOTALL)
         reasoning = reason_match.group(1).strip() if reason_match else response.content.strip()
 
-        return {"status": status.lower(), "reasoning": reasoning}
-
-
-    def run(self, challenge: str, rebuttal: str, challenger: str, target: str) -> dict:
-        """
-        Runs all four subprotocols to evaluate a single critique-rebuttal pair.
-
-        Args:
-            challenge (str): The original critique.
-            rebuttal (str): The rebuttal issued by the target agent.
-            challenger (str): Name of the agent issuing the critique.
-            target (str): Name of the agent issuing the rebuttal.
-
-        Returns:
-            dict: A resolution record with status, reasoning, restatement, and formalizations.
-        """
-        restatement = self.restate_disagreement(challenge, rebuttal, challenger, target)
-        formalizations = self.formalize_both_sides(challenge, rebuttal, challenger, target)
-        resolution = self.adjudicate(challenger, target, formalizations)
-
         return {
-            "status": resolution["status"],
-            "reasoning": resolution["reasoning"],
-            "restatement": restatement,
-            "formalizations": formalizations
+            "status": status,
+            "reasoning": reasoning,
+            "restatement": "Unable to parse restatement",
+            "formalizations": {"challenger": "", "target": ""}
         }

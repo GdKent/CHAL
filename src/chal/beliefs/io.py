@@ -79,27 +79,43 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         for item in items:
             md.append(formatter(item))
 
-    list_block("Assumptions", "assumptions", lambda a: f"- [{a.get('id','')}] {a.get('type','')}: {a.get('statement','')}")
+    list_block("Assumptions", "assumptions", lambda a: f"- [{a.get('id','')}] {a.get('statement','')}")
     def claim_fmt(c):
         parts = [f"- [{c.get('id','')}] {c.get('type','')}: {c.get('statement','')}"]
         if c.get("depends_on"): parts.append(f"  - Depends on: {', '.join(c['depends_on'])}")
-        if c.get("warrants"): parts.append(f"  - Warrants: {', '.join(c['warrants'])}")
         if c.get("backing_evidence_ids"): parts.append(f"  - Evidence: {', '.join(c['backing_evidence_ids'])}")
-        if c.get("qualifiers"): parts.append(f"  - Qualifiers: {', '.join(c['qualifiers'])}")
+        if c.get("inference_chain"):
+            parts.append("  - Inference chain:")
+            for step in c["inference_chain"]:
+                parts.append(f"    - Step: {step.get('step','')} | Justification: {step.get('justification','')}")
+        if c.get("known_weaknesses"):
+            parts.append(f"  - Known weaknesses: {', '.join(c['known_weaknesses'])}")
+        parts.append(f"  - Confidence: {c.get('confidence','')} ({c.get('confidence_justification','')}) | Status: {c.get('status','')}")
         if c.get("known_rebuttals"):
             parts.append("  - Known rebuttals:")
             for r in c["known_rebuttals"]:
                 parts.append(f"    - [{r.get('id','')}] steelman: {r.get('steelman','')} | status: {r.get('status','')}")
-        parts.append(f"  - Confidence: {c.get('confidence','')} | Status: {c.get('status','')}")
         return "\n".join(parts)
     list_block("Claims (with dependencies, evidence, rebuttals)", "claims", claim_fmt)
     def ev_fmt(e):
         src = e.get("source") or {}
         src_str = ", ".join([f"{k}: {v}" for k,v in src.items()])
-        return f"- [{e.get('id','')}] {e.get('type','')}: {e.get('summary','')} (source: {src_str}) → supports: {', '.join(e.get('relevance_to_claims') or [])}"
+        lines = [f"- [{e.get('id','')}] {e.get('type','')}: {e.get('summary','')}"]
+        lines.append(f"  - Source: {src_str} → supports: {', '.join(e.get('relevance_to_claims') or [])}")
+        if e.get("quality_assessment"):
+            qa = e["quality_assessment"]
+            lines.append(f"  - Quality: sample_size={qa.get('sample_size','')}, replication={qa.get('replication_status','')}, rigor={qa.get('rigor','')}")
+        if e.get("limitations"):
+            lines.append(f"  - Limitations: {', '.join(e['limitations'])}")
+        return "\n".join(lines)
     list_block("Evidence", "evidence", ev_fmt)
-    list_block("Predictions (falsifiable)", "predictions",
-               lambda p: f"- [{p.get('id','')}] {p.get('statement','')} | timeframe: {p.get('timeframe','')} | test: {p.get('test','')} | falsifiers: {', '.join(p.get('potential_falsifiers') or [])} | likelihood: {p.get('expected_likelihood','')} | importance: {p.get('importance','')}")
+    def pred_fmt(p):
+        lines = [f"- [{p.get('id','')}] {p.get('statement','')}"]
+        lines.append(f"  - Test: {p.get('test','')} | Falsifiers: {', '.join(p.get('potential_falsifiers') or [])}")
+        lines.append(f"  - Decision criterion: {p.get('decision_criterion','')}")
+        lines.append(f"  - Likelihood: {p.get('expected_likelihood','')} | Importance: {p.get('importance','')}")
+        return "\n".join(lines)
+    list_block("Predictions (falsifiable)", "predictions", pred_fmt)
     list_block("Normative Implications (prescriptive)", "normative_implications",
                lambda n: f"- [{n.get('id','')}] {n.get('statement','')} | linked claims: {', '.join(n.get('linked_claims') or [])} | strength: {n.get('strength','')}")
     list_block("Uncertainties", "uncertainties",
@@ -122,6 +138,31 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         if up.get("revision_triggers"): md.append(f"- Triggers: {', '.join(up['revision_triggers'])}")
         if up.get("confidence_update_rule"): md.append(f"- Confidence update rule: {up['confidence_update_rule']}")
         if up.get("retirement_criteria"): md.append(f"- Retirement criteria: {', '.join(up['retirement_criteria'])}")
+
+    # Graph structure analysis
+    try:
+        from chal.beliefs.belief_graph import BeliefGraph
+        graph = BeliefGraph(belief)
+        metrics = graph.get_graph_metrics()
+        critical_paths = graph.find_critical_paths()
+
+        md.append("\n# Argument Structure")
+        md.append(f"- Total nodes: {metrics['total_nodes']} ({metrics['node_counts']['assumptions']} assumptions, {metrics['node_counts']['claims']} claims, {metrics['node_counts']['evidence']} evidence, {metrics['node_counts']['predictions']} predictions)")
+        md.append(f"- Total edges: {metrics['total_edges']}")
+
+        if critical_paths:
+            md.append(f"- Critical inference chains: {len(critical_paths)} (single-point-of-failure paths)")
+            for i, path in enumerate(critical_paths[:3], 1):  # Show top 3
+                md.append(f"  - Path {i}: {' → '.join(path)}")
+
+        if metrics['orphaned_claims']:
+            md.append(f"- Warning: {len(metrics['orphaned_claims'])} claim(s) with no supporting evidence: {', '.join(metrics['orphaned_claims'])}")
+
+        if metrics['has_cycles']:
+            md.append("- ⚠️ Warning: Circular dependency detected in argument graph")
+    except Exception:
+        # If graph construction fails, skip this section silently
+        pass
 
     if belief.get("changelog"):
         md.append("\n# Changelog")
