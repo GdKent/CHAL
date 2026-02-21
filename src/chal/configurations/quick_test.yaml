@@ -28,17 +28,20 @@ agents:
     persona: "RATIONALIST"             # Relies on logical deduction
     model: "gpt-4o"
     temperature: 0.7
+    provider: "openai"                 # LLM provider: "openai" | "anthropic" | "google"
 
   - name: "Agent-Skeptic"
     persona: "SKEPTIC"                 # Questions all certainty
     model: "gpt-4o"
     temperature: 0.7
+    provider: "openai"
 
 # ============================================================================
 # ADJUDICATION SETTINGS
 # ============================================================================
 adjudication:
   model: "gpt-4o"
+  provider: "openai"                   # LLM provider: "openai" | "anthropic" | "google"
   logic_weight: 1.0
   ethics_weight: 0.0
   logic_system: "Classical logic + Bayesian reasoning"

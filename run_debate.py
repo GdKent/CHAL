@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from chal.config import load_config
-from chal.agents.openai_agent import OpenAIAgent
+from chal.agents.factory import create_agent_from_config
 from chal.agents import prompts
 from chal.orchestrator.debate_controller import DebateController
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
@@ -88,14 +88,10 @@ Examples:
             print(f"   Available personas: EMPIRICIST, RATIONALIST, SUPERNATURALIST, SKEPTIC, etc.")
             return 1
 
-        agent = OpenAIAgent(
-            model=agent_cfg.model,
-            name=agent_cfg.name,
-            system_prompt=""  # Will be set by controller
-        )
+        agent = create_agent_from_config(agent_cfg)
         agents.append(agent)
         personas[agent_cfg.name] = persona_obj
-        print(f"   ✓ {agent_cfg.name} ({agent_cfg.persona}, {agent_cfg.model})")
+        print(f"   ✓ {agent_cfg.name} ({agent_cfg.persona}, {agent_cfg.provider}/{agent_cfg.model})")
 
     # Create controller
     controller = DebateController(

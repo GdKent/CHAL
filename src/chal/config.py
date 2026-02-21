@@ -24,6 +24,7 @@ class AgentConfig:
     persona: str
     model: str = "gpt-4o"
     temperature: float = 0.7
+    provider: str = "openai"  # "openai" | "anthropic" | "google"
 
 
 @dataclass
@@ -34,6 +35,7 @@ class AdjudicationConfig:
     ethics_weight: float = 0.0
     logic_system: str = ""
     ethics_system: str = ""
+    provider: str = "openai"  # "openai" | "anthropic" | "google"
 
 
 @dataclass
@@ -141,7 +143,8 @@ class DebateConfig:
                 name=a['name'],
                 persona=a['persona'],
                 model=a.get('model', 'gpt-4o'),
-                temperature=a.get('temperature', 0.7)
+                temperature=a.get('temperature', 0.7),
+                provider=a.get('provider', 'openai')
             )
             for a in data.get('agents', [])
         ]
@@ -153,7 +156,8 @@ class DebateConfig:
             logic_weight=adj_data.get('logic_weight', 1.0),
             ethics_weight=adj_data.get('ethics_weight', 0.0),
             logic_system=adj_data.get('logic_system', ''),
-            ethics_system=adj_data.get('ethics_system', '')
+            ethics_system=adj_data.get('ethics_system', ''),
+            provider=adj_data.get('provider', 'openai')
         )
 
         # Parse stages

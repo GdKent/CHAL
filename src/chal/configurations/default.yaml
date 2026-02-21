@@ -35,11 +35,33 @@ agents:
     persona: "EMPIRICIST"              # Requires empirical evidence
     model: "gpt-4o"                    # OpenAI model to use
     temperature: 0.7                   # Agent creativity (0.0-1.0, higher = more creative)
+    provider: "openai"                 # LLM provider: "openai" | "anthropic" | "google"
 
   - name: "Agent-Supernaturalist"
     persona: "SUPERNATURALIST"         # Accepts non-empirical truths
     model: "gpt-4o"
     temperature: 0.7
+    provider: "openai"
+
+# --- Mixed-provider example (uncomment to use) ---
+# agents:
+#   - name: "Agent-Empiricist"
+#     persona: "EMPIRICIST"
+#     model: "gpt-4o"
+#     temperature: 0.7
+#     provider: "openai"
+#
+#   - name: "Agent-Supernaturalist"
+#     persona: "SUPERNATURALIST"
+#     model: "claude-sonnet-4-6"       # Anthropic model
+#     temperature: 0.7
+#     provider: "anthropic"
+#
+#   - name: "Agent-Skeptic"
+#     persona: "SKEPTIC"
+#     model: "gemini-2.0-flash"        # Google model
+#     temperature: 0.7
+#     provider: "google"
 
 # ============================================================================
 # ADJUDICATION SETTINGS
@@ -51,6 +73,7 @@ adjudication:
   # - o1: More thorough but slower and more expensive (use for high-stakes debates)
   # - gpt-4o: Adequate but less rigorous than reasoning models
   model: "o1-mini"                     # Model for the adjudicator
+  provider: "openai"                   # LLM provider: "openai" | "anthropic" | "google"
 
   # Weighting for evaluation criteria (should sum to 1.0)
   logic_weight: 1.0                    # Weight for logical rigor (0.0-1.0)

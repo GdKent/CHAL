@@ -29,7 +29,7 @@ from pathlib import Path
 from datetime import datetime
 from chal.agents.base import Agent, Message
 from chal.agents import prompts
-from chal.agents.openai_agent import OpenAIAgent
+from chal.agents.factory import create_agent
 from chal.orchestrator.adjudicator import Adjudicator
 from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
@@ -99,18 +99,24 @@ class DebateController:
             logic_sys="Classical logic + Bayesian reasoning for inductive support; reject contradictions; prefer simpler hypotheses (Occam's Razor).",
             ethics_sys="None. Only prioritize logical rigor and soundness, not ethical implications" # "Rule-Utilitarianism."
         )
-        adjudicator_agent = OpenAIAgent(
-            model="gpt-4o",
+        adj_model = config.adjudication.model if config else "gpt-4o"
+        adj_provider = config.adjudication.provider if config else "openai"
+        adjudicator_agent = create_agent(
             name="Adjudicator",
+            model=adj_model,
+            provider=adj_provider,
             system_prompt=adjudicator_prompt
         )
         # Build the adjudicator agent
         self.adjudicator = Adjudicator(adjudicator_agent)
 
         # Instantiate the scribe agent
-        self.scribe_agent = OpenAIAgent(
-            model="gpt-4o",
+        scribe_model = config.scribe.model if config else "gpt-4o"
+        scribe_provider = config.adjudication.provider if config else "openai"
+        self.scribe_agent = create_agent(
             name="Scribe",
+            model=scribe_model,
+            provider=scribe_provider,
             system_prompt=""
         )
 
