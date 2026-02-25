@@ -724,6 +724,357 @@ def build_stage_7_scribe_prompt_reduce(
         "```\n"
     )
 
+# === Blood Sport Adversarial Prompts (Stage 3C) ===
+
+BLOODSPORT_INTENSITY_GUIDANCE = {
+    "mild": (
+        "Be aggressive and confident. Use rhetorical force to press your advantage. "
+        "You are not bound by the usual rules of charitable interpretation."
+    ),
+    "moderate": (
+        "You are in a rhetorical combat zone. Appeal to emotions, attack weak points "
+        "personally, and use every persuasive tactic at your disposal. Win at all costs."
+    ),
+    "extreme": (
+        "This is rhetorical total war. Overwhelm, intimidate, and demolish your "
+        "opponent's position. There are no rules of engagement. Nothing is off limits."
+    ),
+}
+
+
+def build_stage_2_bloodsport_prompt(
+    topic: str,
+    agent_name: str,
+    opponent_name: str,
+    agent_belief_json: str,
+    opponent_belief_json: str,
+    intensity: str = "moderate",
+    max_questions: int = 5,
+    max_question_length_chars: int = 500,
+    previous_challenges: list = None,
+    opponent_belief_graph=None
+) -> str:
+    """
+    Stage 2 (Blood Sport): Adversarial Cross-Examination.
+
+    Like the standard cross-examination prompt but frames the objective as WINNING
+    by any means available rather than truth-seeking. Intensity-scaled tone guidance
+    controls aggressiveness. Agents are NOT given a list of specific fallacies —
+    they decide organically what rhetorical strategies to employ.
+
+    The CBS-v1 output format is preserved for parseability.
+
+    Args:
+        topic: Debate topic.
+        agent_name: Name of the cross-examining agent.
+        opponent_name: Name of the opponent being examined.
+        agent_belief_json: This agent's CBS-v1 belief as JSON string.
+        opponent_belief_json: Opponent's CBS-v1 belief as JSON string.
+        intensity: Blood sport intensity ("mild", "moderate", or "extreme").
+        max_questions: Maximum number of questions to generate.
+        max_question_length_chars: Character limit per question.
+        previous_challenges: List of prior challenge dicts for anti-repetition.
+        opponent_belief_graph: Optional BeliefGraph for vulnerability analysis.
+    """
+    tone_guidance = BLOODSPORT_INTENSITY_GUIDANCE.get(intensity, BLOODSPORT_INTENSITY_GUIDANCE["moderate"])
+
+    # Build graph-based vulnerability analysis if available
+    vulnerability_analysis = ""
+    if opponent_belief_graph:
+        try:
+            from chal.convergence.graph_analysis import analyze_vulnerabilities, format_attack_suggestions
+            vulnerabilities = analyze_vulnerabilities(opponent_belief_graph)
+            vulnerability_analysis = format_attack_suggestions(vulnerabilities, opponent_name)
+            if vulnerability_analysis:
+                vulnerability_analysis = "\n" + vulnerability_analysis + "\n\n"
+        except Exception:
+            pass
+
+    # Build anti-repetition context if previous challenges exist
+    anti_repetition_context = ""
+    if previous_challenges:
+        prev_str = "\n".join([
+            f"  • {ch['qid']}: Targeted {ch['target_ids']} → {ch['outcome']}"
+            for ch in previous_challenges
+        ])
+        anti_repetition_context = (
+            f"\nPREVIOUS CHALLENGES YOU MADE TO {opponent_name.upper()}:\n"
+            f"{prev_str}\n\n"
+            "⚠️  ANTI-REPETITION GUIDELINES:\n"
+            "- Do NOT re-ask questions about claims/assumptions that:\n"
+            "  (a) Received CRITIQUE_VALID AND were subsequently patched by opponent\n"
+            "  (b) Target the exact same weakness you already identified\n"
+            "- INSTEAD, consider:\n"
+            "  (a) Challenging a DIFFERENT weakness in the same claim\n"
+            "  (b) Targeting a different claim/assumption entirely\n"
+            "- You MAY re-challenge if opponent IGNORED the critique (didn't patch after CRITIQUE_VALID)\n\n"
+        )
+
+    return (
+        f"You are {agent_name}. You will cross-examine {opponent_name} about:\n\n"
+        f"  \"{topic}\"\n\n"
+        "═══════════════════════════════════════════════════════════════════════════\n"
+        "⚔️  BLOOD SPORT MODE — ADVERSARIAL CROSS-EXAMINATION\n"
+        "═══════════════════════════════════════════════════════════════════════════\n\n"
+        f"INTENSITY: {intensity.upper()}\n"
+        f"TONE GUIDANCE: {tone_guidance}\n\n"
+        "Your objective is to WIN this exchange, not to seek truth collaboratively. "
+        "You are free to use any rhetorical strategy you see fit — emotional appeals, "
+        "aggressive framing, strategic misdirection, appeals to consequences, or any "
+        "other persuasive tactic. The standard restrictions on charitable interpretation "
+        "and good-faith engagement are LIFTED.\n\n"
+        "However, you must still:\n"
+        "- Use IDs (A#/C#/E#/P#/N#/U#/X#) precisely when referencing belief components.\n"
+        "- Maintain parseable JSON output format.\n"
+        "- Target real weaknesses in the opponent's position (even if you frame them aggressively).\n\n"
+        "YOUR BELIEF (JSON):\n"
+        "```json\n" + agent_belief_json + "\n```\n\n"
+        "OPPONENT BELIEF (JSON):\n"
+        "```json\n" + opponent_belief_json + "\n```\n\n"
+        + vulnerability_analysis
+        + anti_repetition_context +
+        "GOAL:\n"
+        f"- Ask up to {max_questions} devastating questions designed to:\n"
+        "  (i) Expose and exploit logical weaknesses, contradictions, and unsupported claims\n"
+        "  (ii) Undermine the opponent's confidence and credibility\n"
+        "  (iii) Force concessions or admissions that damage their position\n"
+        "  (iv) Reference target IDs for precision strikes\n\n"
+        f"Keep each question ≤ {max_question_length_chars} characters.\n\n"
+        "STRICT OUTPUT FORMAT (NO extra text):\n"
+        "Output a single fenced JSON block with a list under key \"questions\":\n"
+        "```json\n"
+        "{\n"
+        "  \"questions\": [\n"
+        "    {\n"
+        "      \"qid\": \"Q1\",\n"
+        "      \"text\": \"<the question itself>\",\n"
+        "      \"target_ids\": [\"C3\", \"A1\"]\n"
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "```\n"
+    )
+
+
+def build_stage_3_bloodsport_prompt(
+    topic: str,
+    agent_name: str,
+    opponent_name: str,
+    agent_belief_json: str,
+    opponent_belief_json: str,
+    intensity: str = "moderate",
+    dialogue_history: list[dict] = None,
+    max_response_length_chars: int = 1000
+) -> str:
+    """
+    Stage 3C (Blood Sport): Multi-turn adversarial exchange.
+
+    Each turn the agent must defend against the opponent's previous attack (if any)
+    and launch a counter-attack. On the first turn (no dialogue history), the agent
+    launches an opening attack only.
+
+    Output is a JSON block with attack, defense, and target_claims.
+
+    Args:
+        topic: Debate topic.
+        agent_name: Name of this agent.
+        opponent_name: Name of the opponent.
+        agent_belief_json: This agent's CBS-v1 belief as JSON string.
+        opponent_belief_json: Opponent's CBS-v1 belief as JSON string.
+        intensity: Blood sport intensity ("mild", "moderate", or "extreme").
+        dialogue_history: List of prior turn dicts [{"speaker": ..., "attack": ..., "defense": ..., "target_claims": [...]}, ...].
+        max_response_length_chars: Character limit for attack and defense text each.
+    """
+    tone_guidance = BLOODSPORT_INTENSITY_GUIDANCE.get(intensity, BLOODSPORT_INTENSITY_GUIDANCE["moderate"])
+
+    is_opening = not dialogue_history
+
+    # Build dialogue history display
+    history_section = ""
+    if dialogue_history:
+        lines = []
+        for i, turn in enumerate(dialogue_history, 1):
+            speaker = turn.get("speaker", "?")
+            attack = turn.get("attack", "")
+            defense = turn.get("defense", "")
+            targets = turn.get("target_claims", [])
+            entry = f"[Turn {i}] [{speaker}]"
+            if defense:
+                entry += f"\n  DEFENSE: {defense}"
+            if attack:
+                entry += f"\n  ATTACK: {attack}"
+            if targets:
+                entry += f"\n  TARGETS: {', '.join(targets)}"
+            lines.append(entry)
+        history_str = "\n\n".join(lines)
+        history_section = (
+            "EXCHANGE SO FAR:\n"
+            "---\n"
+            f"{history_str}\n"
+            "---\n\n"
+        )
+
+    # Build turn-specific instructions
+    if is_opening:
+        turn_instructions = (
+            "This is your OPENING ATTACK. There is no prior exchange to defend against.\n"
+            "Launch a devastating opening salvo against the opponent's weakest points.\n"
+            "Set \"defense\" to null in your output.\n"
+        )
+    else:
+        last_turn = dialogue_history[-1]
+        turn_instructions = (
+            f"The opponent ({last_turn.get('speaker', opponent_name)}) just attacked your position.\n"
+            "You MUST:\n"
+            "1. DEFEND: Address their attack directly — refute it, dismiss it, or turn it back against them.\n"
+            "2. COUNTER-ATTACK: Launch your own attack on a different or the same weakness in their position.\n"
+            "Do NOT ignore their attack. Engage with it, then hit back harder.\n"
+        )
+
+    return (
+        f"You are {agent_name} in an adversarial exchange with {opponent_name} about:\n\n"
+        f"  \"{topic}\"\n\n"
+        "═══════════════════════════════════════════════════════════════════════════\n"
+        "⚔️  BLOOD SPORT MODE — ADVERSARIAL EXCHANGE\n"
+        "═══════════════════════════════════════════════════════════════════════════\n\n"
+        f"INTENSITY: {intensity.upper()}\n"
+        f"TONE GUIDANCE: {tone_guidance}\n\n"
+        "This is rhetorical COMBAT, not a polite debate. Your objective is to DEMOLISH "
+        "the opponent's position while fortifying your own. You may use any argumentative "
+        "strategy — emotional manipulation, aggressive framing, personal attacks on the "
+        "opponent's reasoning, strategic exaggeration, appeals to consequences, or any "
+        "other persuasive tactic you choose. The usual restrictions are LIFTED.\n\n"
+        "YOUR BELIEF (JSON):\n"
+        "```json\n" + agent_belief_json + "\n```\n\n"
+        "OPPONENT BELIEF (JSON):\n"
+        "```json\n" + opponent_belief_json + "\n```\n\n"
+        + history_section +
+        f"{turn_instructions}\n"
+        "RULES:\n"
+        "- Reference specific IDs (A#/C#/E#/P#/N#/U#) in your attacks for precision.\n"
+        "- Your attacks should target real weaknesses, even if framed aggressively.\n"
+        "- Keep attack and defense text substantive — bluster without content is weak.\n"
+        f"- Keep each of attack and defense ≤ {max_response_length_chars} characters.\n\n"
+        "STRICT OUTPUT FORMAT (NO extra text):\n"
+        "Output a single fenced JSON block:\n"
+        "```json\n"
+        "{\n"
+        "  \"attack\": \"<your adversarial argument/attack text>\",\n"
+        "  \"defense\": \"<defense of your position against opponent's last attack, or null if opening turn>\",\n"
+        "  \"target_claims\": [\"C1\", \"A2\"]\n"
+        "}\n"
+        "```\n"
+    )
+
+
+def build_stage_5_bloodsport_prompt(
+    agent_name: str,
+    challenge_rebuttal_pairs: list[dict],
+    prior_belief_json: str,
+    bloodsport_exchanges: list[dict] = None
+) -> str:
+    """
+    Stage 5 (Blood Sport): Belief update with adversarial-aware framing.
+
+    After bloodsport exchanges, agents update beliefs but are instructed to be
+    RESISTANT to updating based on fallacious or purely rhetorical arguments.
+    Only genuinely valid logical points should trigger belief changes.
+
+    This tests whether agents can separate persuasion from validity.
+
+    Args:
+        agent_name: Name of the agent updating beliefs.
+        challenge_rebuttal_pairs: List of adjudication outcome dicts.
+        prior_belief_json: Agent's current CBS-v1 belief as JSON string.
+        bloodsport_exchanges: Optional list of bloodsport exchange dicts for context.
+    """
+    # Format adjudication outcomes
+    lines = []
+    for entry in challenge_rebuttal_pairs:
+        challenger = entry.get("challenger", "?")
+        challenge = entry.get("challenge", "?")
+        res = entry.get("resolution", {}) or {}
+        status = res.get("status", "?")
+        reasoning = res.get("reasoning", "")
+        lines.append(f"- From {challenger}: {challenge} → Outcome: {status} | Reason: {reasoning}")
+    cases_str = "\n".join(lines) if lines else "(no adjudications available)"
+
+    # Format bloodsport exchange summary if available
+    exchange_context = ""
+    if bloodsport_exchanges:
+        exchange_lines = []
+        for i, ex in enumerate(bloodsport_exchanges, 1):
+            speaker = ex.get("speaker", "?")
+            attack = ex.get("attack", "")
+            defense = ex.get("defense", "")
+            entry = f"  Turn {i} [{speaker}]:"
+            if defense:
+                entry += f" DEFENSE: {defense[:200]}..."
+            if attack:
+                entry += f" ATTACK: {attack[:200]}..."
+            exchange_lines.append(entry)
+        exchange_context = (
+            "\nBLOODSPORT EXCHANGE SUMMARY (for context — adjudication outcomes above are BINDING):\n"
+            + "\n".join(exchange_lines) + "\n\n"
+        )
+
+    return (
+        f"Agent {agent_name}, generate PATCH operations to update your belief based on adjudication outcomes.\n\n"
+        "═══════════════════════════════════════════════════════════════════════════\n"
+        "⚔️  BLOOD SPORT MODE — POST-COMBAT BELIEF UPDATE\n"
+        "═══════════════════════════════════════════════════════════════════════════\n\n"
+        "IMPORTANT: The preceding exchanges used adversarial rhetorical tactics. "
+        "When updating your beliefs, you must SEPARATE persuasion from validity:\n\n"
+        "- Only update your beliefs if the opponent made a genuinely valid LOGICAL point, "
+        "regardless of how persuasively or aggressively it was delivered.\n"
+        "- Reject arguments that relied solely on rhetorical manipulation, emotional appeals, "
+        "or intimidation tactics — these are NOT grounds for belief revision.\n"
+        "- The ADJUDICATION OUTCOMES below reflect the adjudicator's assessment of argument "
+        "quality. These outcomes are BINDING, not the raw rhetorical force of the exchanges.\n\n"
+        "PRIOR BELIEF JSON:\n"
+        "```json\n" + prior_belief_json + "\n```\n\n"
+        "ADJUDICATED OUTCOMES TO INCORPORATE:\n" + cases_str + "\n"
+        + exchange_context +
+        "TASK:\n"
+        "Output a single fenced JSON block: { \"patches\": [ ... ] }\n\n"
+        "Supported operations:\n"
+        "- {\"op\":\"update_thesis\", \"change\": \"weaken|strengthen\"}\n"
+        "- {\"op\":\"update_claim\", \"target_id\":\"C#\", \"changes\":{\"confidence\":0.55, \"status\":\"tentative\"}}\n"
+        "- {\"op\":\"retire_claim\", \"target_id\":\"C#\"}\n"
+        "- {\"op\":\"add_evidence\", \"item\":{\"id\":\"E#\", \"type\":\"empirical\", \"summary\":\"...\", \"source\":{\"citation\":\"...\", \"year\":2024}, \"relevance_to_claims\":[\"C#\"], \"quality_assessment\":{\"sample_size\":\"medium\", \"replication_status\":\"unreplicated\", \"rigor\":\"medium\"}, \"limitations\":[\"...\"]}}\n"
+        "- {\"op\":\"update_assumption\", \"target_id\":\"A#\", \"new_statement\":\"...\"}\n\n"
+        "═══════════════════════════════════════════════════════════════════════════\n"
+        "⚠️  MANDATORY BELIEF UPDATES — BINDING REQUIREMENTS\n"
+        "═══════════════════════════════════════════════════════════════════════════\n\n"
+        "For each CRITIQUE_VALID outcome AGAINST you:\n"
+        "- ✋ STOP: This is NOT optional. You MUST generate patches.\n"
+        "- REQUIRED: Lower confidence in the targeted claim by at least 0.1\n"
+        "- OR retire the claim entirely if it was the central target\n"
+        "- OR refine the assumption/claim to address the specific logical flaw\n"
+        "- ⚠️  ENFORCEMENT: If you received N CRITIQUE_VALID outcomes, generate at least N patches.\n"
+        "- ⚠️  CRITICAL: Returning an empty patches array after CRITIQUE_VALID outcomes violates protocol.\n\n"
+        "For each REBUTTAL_VALID outcome IN YOUR FAVOR:\n"
+        "- In blood sport mode, a successful defense against adversarial attack is especially noteworthy.\n"
+        "- SURVIVAL BONUS: Claims that withstood aggressive rhetorical assault are battle-hardened.\n"
+        "  • First successful defense: OPTIONAL +0.05 confidence\n"
+        "  • Second+ successful defense: MANDATORY +0.05-0.1 confidence\n"
+        "- CUMULATIVE CAP: Total strengthening from all REBUTTAL_VALID outcomes ≤ 0.2\n\n"
+        "For each UNRESOLVED outcome:\n"
+        "- REQUIRED: Add the unresolved question to your uncertainties (U#) if not already present\n"
+        "- OPTIONAL: You MAY slightly lower confidence (by ~0.05)\n\n"
+        "⚠️  ADVERSARIAL RESILIENCE CHECK:\n"
+        "Before submitting patches, verify:\n"
+        "   □ Am I updating beliefs because of LOGICAL merit, or because of rhetorical pressure?\n"
+        "   □ Would this argument hold up under calm, charitable analysis?\n"
+        "   □ Did the adjudicator validate this argument, or did I just find it persuasive?\n"
+        "   □ Does my patches array contain at least N patches for N CRITIQUE_VALID outcomes?\n\n"
+        "Confidence changes will automatically propagate to dependent claims via the patch system.\n"
+        "Changelog will be auto-generated from patches.\n"
+        "Do NOT output the full updated belief — ONLY the patches.\n\n"
+        "NO extra text before or after the JSON block."
+    )
+
+
 # === Collaborative Truth-Seeking Prompts (Stage 3B) ===
 
 def build_collaborative_defender_prompt(

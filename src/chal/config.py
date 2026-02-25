@@ -92,6 +92,13 @@ class OutputConfig:
     save_debug_log: bool = True
     debug_log_file: str = "log.txt"
 
+    # Training data & analysis (mode-agnostic)
+    save_analysis_report: bool = False
+    analysis_report_file: str = "debate_analysis_report.md"
+    save_training_data: bool = False
+    training_data_file: str = "debate_training_data.jsonl"
+    belief_pairs_file: str = "debate_belief_pairs.jsonl"
+
     def ensure_storage_dir(self):
         """Create storage directory if it doesn't exist."""
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -118,6 +125,13 @@ class CollaborativeConfig:
 
 
 @dataclass
+class BloodSportConfig:
+    """Configuration for blood sport adversarial mode (Stage 3C)."""
+    intensity: str = "moderate"    # "mild" | "moderate" | "extreme"
+    max_exchanges: int = 5         # Max back-and-forth exchanges per agent pair
+
+
+@dataclass
 class DebateConfig:
     """Main configuration container for a CHAL debate."""
 
@@ -129,7 +143,7 @@ class DebateConfig:
     # Core settings
     topic: str = ""
     max_rounds: int = 1
-    stage3_mode: str = "rebuttal"  # "rebuttal" | "collaborative"
+    stage3_mode: str = "rebuttal"  # "rebuttal" | "collaborative" | "bloodsport"
 
     # Component configs
     agents: List[AgentConfig] = field(default_factory=list)
@@ -138,6 +152,7 @@ class DebateConfig:
     outputs: OutputConfig = field(default_factory=lambda: OutputConfig(storage_dir=DEFAULT_STORAGE_DIR))
     scribe: ScribeConfig = field(default_factory=ScribeConfig)
     collaborative: CollaborativeConfig = field(default_factory=CollaborativeConfig)
+    bloodsport: BloodSportConfig = field(default_factory=BloodSportConfig)
 
     @classmethod
     def from_yaml(cls, config_path: Path) -> 'DebateConfig':
@@ -204,7 +219,12 @@ class DebateConfig:
             generate_graph_visualization=out_data.get('generate_graph_visualization', True),
             graph_file=out_data.get('graph_file', 'belief_graph.html'),
             save_debug_log=out_data.get('save_debug_log', True),
-            debug_log_file=out_data.get('debug_log_file', 'log.txt')
+            debug_log_file=out_data.get('debug_log_file', 'log.txt'),
+            save_analysis_report=out_data.get('save_analysis_report', False),
+            analysis_report_file=out_data.get('analysis_report_file', 'debate_analysis_report.md'),
+            save_training_data=out_data.get('save_training_data', False),
+            training_data_file=out_data.get('training_data_file', 'debate_training_data.jsonl'),
+            belief_pairs_file=out_data.get('belief_pairs_file', 'debate_belief_pairs.jsonl')
         )
 
         # Parse scribe
@@ -227,6 +247,13 @@ class DebateConfig:
             early_termination_on_agreement=collab_data.get('early_termination_on_agreement', True),
         )
 
+        # Parse bloodsport config
+        bs_data = data.get('bloodsport', {})
+        bloodsport = BloodSportConfig(
+            intensity=bs_data.get('intensity', 'moderate'),
+            max_exchanges=bs_data.get('max_exchanges', 5),
+        )
+
         # Parse debate settings
         debate_data = data.get('debate', {})
 
@@ -242,7 +269,8 @@ class DebateConfig:
             stages=stages,
             outputs=outputs,
             scribe=scribe,
-            collaborative=collaborative
+            collaborative=collaborative,
+            bloodsport=bloodsport
         )
 
     @classmethod

@@ -6,7 +6,7 @@
   CHAL: Council of Hierarchical Agentic Language
 </h1>
 
-**CHAL** (pronounced "kal") is a framework for orchestrating structured philosophical debates between multiple LLM agents. Each agent embodies a distinct epistemological position, engaging in multi-stage debates with cross-examination, rebuttals, independent adjudication, and synthesis. The system tracks formal belief structures with dependency graphs, confidence scores, and convergence metrics.
+**CHAL** (pronounced "kal") is a framework for orchestrating structured philosophical debates between multiple LLM agents. Each agent embodies a distinct epistemological position, engaging in multi-stage debates with cross-examination, configurable argumentation modes (single-shot rebuttals, collaborative truth-seeking, or adversarial blood sport), independent adjudication, and synthesis. The system tracks formal belief structures with dependency graphs, confidence scores, and convergence metrics.
 
 ---
 
@@ -17,6 +17,7 @@
 - [Quick Start](#quick-start)
 - [Testing](#testing)
 - [How It Works](#how-it-works)
+- [Debate Modes](#debate-modes)
 - [Configuration](#configuration)
 - [Outputs](#outputs)
 - [Project Structure](#project-structure)
@@ -77,8 +78,10 @@ This runs a 1-round debate on "Does free will exist?" between Empiricist and Sup
 **Using different configurations:**
 ```bash
 # Pre-configured scenarios
-poetry run python run_debate.py --config default
-poetry run python run_debate.py --config quick_test
+poetry run python run_debate.py --config default              # Standard rebuttal mode
+poetry run python run_debate.py --config quick_test            # Fast single-round test
+poetry run python run_debate.py --config collaborative         # Collaborative truth-seeking
+poetry run python run_debate.py --config bloodsport_example    # Adversarial blood sport
 
 # Custom configuration
 poetry run python run_debate.py --config path/to/my_config.yaml
@@ -111,77 +114,60 @@ adjudication:
 
 ### 8-Stage Debate Pipeline
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     CHAL DEBATE ORCHESTRATOR                    │
-│                    8-Stage Dialectical Pipeline                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    S0["<b>Stage 0: Briefing</b><br/><i>Initialize agents with debate rules & personas</i>"]
+    S1["<b>Stage 1: Opening Positions</b><br/><i>Generate CBS structured beliefs with validation</i>"]
 
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 0: BRIEFING                                      │
-    │  Initialize agents with debate rules & personas         │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 1: OPENING POSITIONS                             │
-    │  Generate CBS-v1 beliefs with validation                │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-    ╔═════════════════════════════════════════════════════════╗
-    ║          MULTI-ROUND LOOP (repeat max_rounds)           ║
-    ╚═════════════════════════════════════════════════════════╝
-                              ↓
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 2: CROSS-EXAMINATION                             │
-    │  Analyze belief graphs → Generate targeted questions    │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 3: REBUTTALS                                     │
-    │  Defend/concede/clarify → Generate belief patches       │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 4: ADJUDICATION                                  │
-    │  Independent evaluation → Outcomes & reasoning          │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 5: BELIEF UPDATES                                │
-    │  Apply patches → Propagate confidence changes           │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-           ┌──────────────────────────────────┐
-           │  Performance & Convergence       │
-           │  Metrics Calculated              │
-           └──────────────────────────────────┘
-                              ↓
-         ◄────── Loop to Stage 2 if rounds remain ──────┐
-                              │                          │
-                              ↓                          │
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 6: CONCLUDING REMARKS                            │
-    │  Reflect on belief evolution & key insights             │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-    ┌─────────────────────────────────────────────────────────┐
-    │  Stage 7: SCRIBING                                      │
-    │  Map-reduce narrative synthesis                         │
-    └─────────────────────────────────────────────────────────┘
-                              ↓
-    ┌─────────────────────────────────────────────────────────┐
-    │  OUTPUT GENERATION                                      │
-    │  Transcripts, visualizations, metrics, debug logs       │
-    └─────────────────────────────────────────────────────────┘
+    S0 --> S1
+    S1 --> LOOP
+
+    subgraph LOOP ["🔁 Multi-Round Loop"]
+        direction TB
+        S2["<b>Stage 2: Cross-Examination</b><br/><i>Analyze belief graphs → generate targeted questions</i>"]
+
+        S2 --> S3A & S3B & S3C
+
+        S3A["<b>Stage 3A · Rebuttal</b><br/><i>Single-shot responses</i>"]
+        S3B["<b>Stage 3B · Collaborative</b><br/><i>Multi-turn truth-seeking</i>"]
+        S3C["<b>Stage 3C · Blood Sport</b><br/><i>Multi-turn adversarial</i>"]
+
+        S3A --> S4["<b>Stage 4: Adjudication</b><br/><i>Independent evaluation</i>"]
+        S3B --> EMB_B(["<i>adjudication embedded</i>"])
+        S3C --> EMB_C(["<i>adjudication embedded</i>"])
+
+        S4 --> S5
+        EMB_B --> S5
+        EMB_C --> S5
+
+        S5["<b>Stage 5: Belief Updates</b><br/><i>Apply patches → propagate confidence changes</i>"]
+        S5 --> METRICS["Performance & Convergence<br/>Metrics Calculated"]
+        METRICS -.->|"rounds remain"| S2
+    end
+
+    LOOP --> S6["<b>Stage 6: Concluding Remarks</b><br/><i>Reflect on belief evolution & key insights</i>"]
+    S6 --> S7["<b>Stage 7: Scribing</b><br/><i>Map-reduce narrative synthesis</i>"]
+    S7 --> OUT["<b>Output Generation</b><br/><i>Transcripts · Visualizations · Metrics · Training Data · Analysis Reports</i>"]
+
+    style S3A fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style S3B fill:#d1fae5,stroke:#10b981,color:#064e3b
+    style S3C fill:#fee2e2,stroke:#ef4444,color:#7f1d1d
+    style S4 fill:#ffedd5,stroke:#f97316,color:#7c2d12
+    style EMB_B fill:#f3f4f6,stroke:#9ca3af,color:#6b7280
+    style EMB_C fill:#f3f4f6,stroke:#9ca3af,color:#6b7280
+    style METRICS fill:#f3f4f6,stroke:#9ca3af,color:#6b7280
+    style OUT fill:#ccfbf1,stroke:#14b8a6,color:#134e4a
 ```
 
 **Stage 0: Briefing.** The system initializes each agent with universal debate rules governing logical reasoning and argumentation norms, applies persona-specific prompts that encode distinct epistemological frameworks, and establishes the central topic for dialectical examination.
 
 **Stage 1: Opening Positions.** Agents generate initial belief structures conforming to the CBS-v1 schema, articulating their thesis statements alongside supporting claims, foundational assumptions, and empirical evidence. The system validates each belief graph for structural integrity, rejecting malformed beliefs containing orphaned claims (assertions lacking evidentiary support) or circular dependencies (propositions that depend on themselves through transitive relationships). Agents receive up to three opportunities to revise invalid beliefs before proceeding.
 
-**Stages 2-5: Multi-Round Dialectical Exchange.** The core debate loop iterates for a configurable number of rounds, with each cycle consisting of four interdependent stages. In **Stage 2: Cross-Examination**, agents analyze opponent belief graphs to identify structural and epistemic vulnerabilities, including orphaned claims, circular reasoning patterns, weak confidence propagation chains, and unsupported foundational assumptions. Each agent generates up to five targeted questions per opponent, employing anti-repetition mechanisms that track previous challenges across rounds to prevent redundant questioning. During **Stage 3: Rebuttals**, agents receiving challenges must provide structured responses indicating whether they defend their original position, concede the critique, or clarify potential misunderstandings. Agents may generate belief patches specifying incremental modifications to their belief structures, such as introducing additional evidence, adjusting confidence scores, modifying dependency relationships, or adding clarifying assumptions.
+**Stages 2-5: Multi-Round Dialectical Exchange.** The core debate loop iterates for a configurable number of rounds, with each cycle consisting of several interdependent stages. In **Stage 2: Cross-Examination**, agents analyze opponent belief graphs to identify structural and epistemic vulnerabilities, including orphaned claims, circular reasoning patterns, weak confidence propagation chains, and unsupported foundational assumptions. Each agent generates up to five targeted questions per opponent, employing anti-repetition mechanisms that track previous challenges across rounds to prevent redundant questioning.
 
-The **Stage 4: Adjudication** process employs an independent neutral agent to evaluate each challenge-rebuttal pair. The adjudicator first restates the core disagreement in neutral terms, then formalizes both the challenge and rebuttal into logical structures mapping to specific belief graph elements. Evaluation proceeds using weighted criteria combining logical validity (assessing deductive soundness, inductive support, absence of contradictions, and consistency with evidence) and optional ethical coherence. The adjudicator renders one of three outcomes: `rebuttal_valid` indicates successful defense, `critique_valid` indicates a legitimate challenge requiring belief revision, and `unresolved` indicates insufficient clarity for definitive judgment. In **Stage 5: Belief Updates**, agents revise their belief structures based on adjudication outcomes. When `critique_valid` is rendered against an agent, that agent must generate belief patches addressing the identified flaw—this requirement is systemically enforced to ensure dialectical accountability. Confidence adjustments propagate automatically through belief graph dependencies, maintaining Bayesian coherence constraints. After each round, the system calculates performance metrics and convergence scores before proceeding to the next iteration or concluding the debate.
+**Stage 3** is the central argumentative exchange and supports three distinct modes selected via the `stage3_mode` configuration parameter (see [Debate Modes](#debate-modes)). In **rebuttal** mode (the default), agents receiving challenges provide single-shot structured responses indicating whether they defend their original position, concede the critique, or clarify potential misunderstandings. In **collaborative** mode, agents engage in multi-turn truth-seeking dialogue where pairs exchange arguments iteratively until reaching consensus, exhausting turn limits, or triggering early termination on agreement. In **blood sport** mode, agents engage in multi-turn adversarial rhetorical combat with configurable intensity levels, where the objective shifts from truth-seeking to winning through rhetorical force. Both collaborative and blood sport modes embed adjudication within the exchange itself, while rebuttal mode proceeds to a separate **Stage 4: Adjudication**.
+
+The **Stage 4: Adjudication** process (used in rebuttal mode, or embedded inline in collaborative and blood sport modes) employs an independent neutral agent to evaluate each challenge-rebuttal pair. The adjudicator first restates the core disagreement in neutral terms, then formalizes both the challenge and rebuttal into logical structures mapping to specific belief graph elements. Evaluation proceeds using weighted criteria combining logical validity (assessing deductive soundness, inductive support, absence of contradictions, and consistency with evidence) and optional ethical coherence. The adjudicator renders one of three outcomes: `rebuttal_valid` indicates successful defense, `critique_valid` indicates a legitimate challenge requiring belief revision, and `unresolved` indicates insufficient clarity for definitive judgment. In **Stage 5: Belief Updates**, agents revise their belief structures based on adjudication outcomes. When `critique_valid` is rendered against an agent, that agent must generate belief patches addressing the identified flaw—this requirement is systemically enforced to ensure dialectical accountability. Confidence adjustments propagate automatically through belief graph dependencies, maintaining Bayesian coherence constraints. After each round, the system calculates performance metrics and convergence scores before proceeding to the next iteration or concluding the debate.
 
 **Stage 6: Concluding Remarks.** Upon completing all debate rounds, agents reflect on the evolution of their positions by comparing initial and final belief states, identifying key insights gained through dialectical exchange, acknowledging substantive concessions made, and assessing overall confidence trajectories. Each agent produces a concise summary capturing their ultimate stance.
 
@@ -237,6 +223,51 @@ Create custom personas in `src/chal/agents/prompts.py`.
 
 ---
 
+## Debate Modes
+
+CHAL supports three distinct Stage 3 debate modes, each producing different argumentative dynamics while sharing the same cross-examination, belief update, and synthesis infrastructure. The mode is selected via the `stage3_mode` parameter in the debate configuration.
+
+### Rebuttal Mode (Default)
+
+Rebuttal mode implements the classical single-shot dialectical exchange. After cross-examination, each challenged agent produces one structured response per question, indicating whether it defends, concedes, or clarifies. These challenge-rebuttal pairs then proceed to Stage 4 for independent adjudication. This mode provides clean, deterministic exchanges well-suited to formal argumentation analysis and represents the simplest computational path through the pipeline.
+
+```yaml
+debate:
+  stage3_mode: "rebuttal"
+```
+
+### Collaborative Mode
+
+Collaborative mode replaces single-shot rebuttals with multi-turn truth-seeking dialogue. Agent pairs exchange arguments iteratively on each challenge, with an adjudicator periodically checking whether the exchange has reached resolution. Dialogue continues until the agents reach agreement, the adjudicator determines a clear outcome, or the configured turn limit is exhausted. This mode produces richer dialectical transcripts and enables study of how agents negotiate meaning and converge toward shared understanding. Because adjudication is embedded within the exchange, Stage 4 is skipped when collaborative mode is active.
+
+```yaml
+debate:
+  stage3_mode: "collaborative"
+
+collaborative:
+  max_turns_per_question: 10    # Maximum back-and-forth turns per challenge
+  min_turns_per_question: 3     # Minimum turns before early termination
+  adjudicator_check_interval: 2 # Adjudicator evaluates every N turns
+  early_termination_on_agreement: true
+```
+
+### Blood Sport Mode
+
+Blood sport mode replaces truth-seeking with adversarial rhetorical combat. Agents are instructed to win arguments through rhetorical force rather than pursue collaborative understanding. The standard adjudicator evaluates exchanges unchanged, providing a natural testbed for studying adjudicator robustness against manipulative argumentation tactics such as emotional appeals, rhetorical misdirection, and selective evidence presentation. The intensity parameter controls how aggressively agents argue, ranging from firm disagreement without charitable interpretation (`mild`) through full rhetorical combat with emotional appeals (`moderate`) to unrestricted rhetorical warfare (`extreme`). As with collaborative mode, adjudication is embedded within the exchange and Stage 4 is skipped.
+
+This mode serves several research objectives. It tests whether the adjudicator can reliably identify valid arguments amid adversarial noise without specialized forensic prompting. It generates training data pairing manipulative argumentation with adjudicator evaluations, useful for fine-tuning models on argument quality assessment. It also enables study of how agents update beliefs when subjected to adversarial pressure — the belief update stage includes adversarial resilience instructions that direct agents to distinguish between rhetorically compelling but logically unsound arguments and genuinely valid critiques.
+
+```yaml
+debate:
+  stage3_mode: "bloodsport"
+
+bloodsport:
+  intensity: "moderate"  # "mild" | "moderate" | "extreme"
+  max_exchanges: 5       # Back-and-forth turns per agent pair
+```
+
+---
+
 ## Configuration
 
 ### Basic Configuration Structure
@@ -249,6 +280,7 @@ metadata:
 debate:
   topic: "Central question"
   max_rounds: 2
+  stage3_mode: "rebuttal"  # "rebuttal" | "collaborative" | "bloodsport"
 
 agents:
   - name: "Agent-Name"
@@ -267,6 +299,13 @@ outputs:
   save_transcript: true
   generate_embeddings: true
   plot_trajectories: true
+
+  # Analysis & training data export (optional, works with all modes)
+  save_analysis_report: false
+  analysis_report_file: "debate_analysis_report.md"
+  save_training_data: false
+  training_data_file: "debate_training_data.jsonl"
+  belief_pairs_file: "debate_belief_pairs.jsonl"
 ```
 
 ### Model Selection and Hyperparameters
@@ -287,6 +326,14 @@ The system produces four primary narrative outputs capturing different temporal 
 
 The framework generates multiple analysis artifacts enabling empirical study of belief dynamics and agent performance. The `embeddings.npz` file stores compressed NumPy arrays containing semantic embeddings of agent beliefs at each debate round, computed using sentence-transformer models (all-mpnet-base-v2) and suitable for trajectory analysis and convergence measurement. The `belief_trajectories.png` visualization employs UMAP dimensionality reduction to project high-dimensional belief embeddings into two-dimensional space, with points representing agent beliefs at specific rounds, directed arrows indicating temporal evolution, and spatial proximity reflecting semantic similarity. Convergence manifests as agents moving closer together in embedding space, while divergence appears as increasing separation. When enabled, the optional `belief_graph.html` file provides an interactive Cytoscape.js visualization of belief dependency structures, allowing exploration of claims, assumptions, evidence, and their interconnections. The `agent_stats.json` file records comprehensive performance metrics including win-loss records, raw and normalized scores, and argument-level outcomes. The scoring system awards 3.0 points per successful critique, 2.0 points per successful rebuttal, imposes -2.0 point penalties for failed rebuttals, and assigns -0.5 points for unresolved exchanges, enabling quantitative assessment of argumentative effectiveness.
 
+### Analysis Reports and Training Data
+
+CHAL includes mode-agnostic output features for post-debate analysis and training data export, enabled via the `save_analysis_report` and `save_training_data` configuration flags. These features work identically across all three debate modes.
+
+When `save_analysis_report` is enabled, the system generates a `debate_analysis_report.md` file containing a structured Markdown report summarizing the complete debate. The report includes debate metadata (topic, mode, round count, agent configurations), verdict distribution statistics across all challenge-rebuttal exchanges, per-agent performance summaries with scores and argument outcomes, belief evolution trajectories showing how each agent's position changed across rounds, and mode-specific sections such as blood sport intensity settings or collaborative turn limits. A corresponding JSON representation is also available programmatically via the `generate_analysis_json()` function for integration with downstream analysis pipelines.
+
+When `save_training_data` is enabled, the system records structured debate events throughout the pipeline using a passive `DebateRecorder` that observes each stage without affecting debate logic. The recorder captures belief formations, cross-examinations, rebuttals or adversarial exchanges, adjudication outcomes, and belief updates with full context including model identifiers, round numbers, and raw belief objects. This data is exported in two complementary formats. The `debate_training_data.jsonl` file contains the complete debate record as a JSONL timeline with metadata, suitable for training data curation or replay analysis. The `debate_belief_pairs.jsonl` file contains extracted input-target pairs mapping debate contexts to belief outputs — formation pairs (topic and persona mapped to initial belief) and update pairs (prior belief, adjudication results, and debate context mapped to revised belief) — structured for supervised fine-tuning of language models on structured reasoning tasks.
+
 ### Debugging and Diagnostics
 
 The `log.txt` file provides exhaustive debugging information including all prompts submitted to language models, complete raw responses, JSON parsing success and failure reports, belief validation outcomes with specific error descriptions, and stage-by-stage execution traces with timestamps. This comprehensive logging supports reproducibility, error diagnosis, and system refinement.
@@ -303,14 +350,18 @@ CHAL/
 │   ├── orchestrator/           # DebateController & Adjudicator
 │   ├── embeddings/             # Belief trajectory tracking
 │   ├── convergence/            # Convergence metrics
-│   ├── configurations/         # YAML debate configs
-│   │   └── examples/           # Example debate configurations
-│   ├── utilities/              # CLI & helper functions
+│   ├── configurations/         # YAML debate configs (default, collaborative,
+│   │                           #   bloodsport_example, quick_test)
+│   ├── utilities/              # CLI, reporting, training data export
 │   └── storage/                # Generated outputs (debates, logs)
 ├── tests/
 │   ├── fixtures/               # Test data and mock responses
+│   ├── integration/            # Cross-module integration tests
+│   ├── e2e/                    # End-to-end workflow tests
+│   ├── test_bloodsport/        # Blood sport mode tests
 │   ├── test_*.py               # Unit tests (by module)
-│   └── conftest.py             # Pytest configuration
+│   ├── utils.py                # Testing utilities and helpers
+│   └── conftest.py             # Pytest configuration and shared fixtures
 ├── run_debate.py               # Main CLI entry point
 ├── run_tests.py                # Test runner script
 ├── pyproject.toml              # Poetry dependencies & config
@@ -365,7 +416,7 @@ adjudication:
 
 ## Testing
 
-CHAL includes a comprehensive test suite with 337 tests covering core functionality, edge cases, and integration scenarios. All tests use mocking to avoid API charges, meaning you can run the full test suite without an OpenAI API key and without incurring any costs.
+CHAL includes a comprehensive test suite with 543 tests covering core functionality, edge cases, and integration scenarios. All tests use mocking to avoid API charges, meaning you can run the full test suite without an OpenAI API key and without incurring any costs.
 
 ### Running Tests
 
@@ -386,7 +437,7 @@ poetry run pytest
 **Test Categories:**
 
 ```bash
-# Unit tests only (284 tests, <1 minute)
+# Unit tests only (483 tests, <1 minute)
 poetry run pytest -m unit
 
 # Integration tests (45 tests, <30 seconds)
@@ -421,6 +472,7 @@ tests/
 ├── fixtures/               # Test data and mock responses
 ├── integration/            # Cross-module integration tests
 ├── e2e/                    # End-to-end workflow tests
+├── test_bloodsport/        # Blood sport mode tests (config, prompts, integration)
 ├── test_*.py               # Unit tests (by module)
 ├── utils.py                # Testing utilities and helpers
 └── conftest.py             # Pytest configuration and shared fixtures
@@ -429,7 +481,7 @@ tests/
 **Key Features:**
 - **Zero API Costs:** All LLM calls are mocked—no API keys required for testing
 - **Fast Execution:** Full test suite completes in <2 minutes
-- **337 Tests:** Comprehensive coverage of core modules, with 284 unit tests
+- **543 Tests:** Comprehensive coverage of core modules, with 483 unit tests
 - **Well-Tested Core:** >85% coverage on critical modules (belief_graph, patches, prompts, agents)
 
 ---
