@@ -678,6 +678,252 @@ class DebateController:
 
         return self.challenge_rebuttal_pairs
 
+    def run_stage_3_collaborative(self) -> list:
+        """
+        Stage 3B: Collaborative Truth-Seeking Dialogue.
+
+        For each question in self.challenge_rebuttal_pairs, runs a multi-turn
+        dialogue between challenger and defender with periodic adjudicator checks.
+
+        Updates each entry with:
+            - "rebuttal": defender's final message from the dialogue
+            - "resolution": adjudication dict (same format as Stage 4)
+            - "collaborative_transcript": list of exchange turn dicts
+            - "adjudicator_checks": list of intermediate check dicts
+
+        Returns:
+            list[dict]: Updated self.challenge_rebuttal_pairs
+        """
+        # === DEBUG LOG ===
+        self._log_header("STAGE 3B: COLLABORATIVE TRUTH-SEEKING DIALOGUE")
+        self._log("Starting collaborative dialogue phase", "INFO")
+
+        # === MARKDOWN TRANSCRIPT ===
+        markdown_header = "\n# 🤝 Stage 3B: Collaborative Truth-Seeking Dialogue\n"
+        self._add_to_markdown(markdown_header)
+        print(markdown_header.strip())
+
+        # Read config values
+        max_turns = self.config.collaborative.max_turns_per_question if self.config else 10
+        min_turns = self.config.collaborative.min_turns_per_question if self.config else 3
+        check_interval = self.config.collaborative.adjudicator_check_interval if self.config else 2
+        early_term = self.config.collaborative.early_termination_on_agreement if self.config else True
+
+        self._log(f"Config: max_turns={max_turns}, min_turns={min_turns}, "
+                  f"check_interval={check_interval}, early_termination={early_term}", "INFO")
+
+        # Build agent lookup by name
+        agent_by_name = {agent.name: agent for agent in self.agents}
+
+        # Get adjudication weights from config
+        logic_weight = self.config.adjudication.logic_weight if self.config else 1.0
+        ethics_weight = self.config.adjudication.ethics_weight if self.config else 0.0
+
+        self.last_rebuttals = {}
+
+        for entry_idx, entry in enumerate(self.challenge_rebuttal_pairs):
+            challenger_name = entry["challenger"]
+            defender_name = entry["target"]
+            question_text = entry["challenge"]
+            qid = entry.get("qid", f"Q{entry_idx + 1}")
+
+            self._log(f"\n--- Collaborative dialogue #{entry_idx + 1}: "
+                      f"{challenger_name} → {defender_name} (QID: {qid}) ---", "INFO")
+            self._log(f"Question: {question_text[:150]}...", "DEBUG")
+
+            challenger_agent = agent_by_name.get(challenger_name)
+            defender_agent = agent_by_name.get(defender_name)
+
+            if not challenger_agent or not defender_agent:
+                self._log(f"ERROR: Could not find agents: challenger={challenger_name}, "
+                          f"defender={defender_name}", "ERROR")
+                continue
+
+            # Get belief JSONs
+            ch_belief_obj = challenger_agent.get_internal_belief_obj()
+            df_belief_obj = defender_agent.get_internal_belief_obj()
+            ch_belief_json = json.dumps(ch_belief_obj, ensure_ascii=False, indent=2) if ch_belief_obj else ""
+            df_belief_json = json.dumps(df_belief_obj, ensure_ascii=False, indent=2) if df_belief_obj else ""
+
+            # Initialize dialogue tracking
+            entry["collaborative_transcript"] = []
+            entry["adjudicator_checks"] = []
+            dialogue_history = []
+
+            # Markdown for this exchange
+            markdown_section = f"\n## {challenger_name} ↔ {defender_name} — {qid}\n\n"
+            markdown_section += f"**Original question**: {question_text}\n\n"
+
+            max_rebuttal_length = self.config.stages.max_rebuttal_length_chars if self.config else 500
+            topic = self.topic if hasattr(self, "topic") else "<topic>"
+
+            for turn_num in range(1, max_turns + 1):
+                if turn_num % 2 == 1:
+                    # Odd turn: defender speaks
+                    speaker = defender_agent
+                    prompt = prompts.build_collaborative_defender_prompt(
+                        topic=topic,
+                        defender_name=defender_name,
+                        challenger_name=challenger_name,
+                        defender_belief_json=df_belief_json,
+                        question_text=question_text,
+                        dialogue_history=dialogue_history,
+                        max_response_length_chars=max_rebuttal_length
+                    )
+                else:
+                    # Even turn: challenger follows up
+                    speaker = challenger_agent
+                    prompt = prompts.build_collaborative_challenger_followup_prompt(
+                        topic=topic,
+                        challenger_name=challenger_name,
+                        defender_name=defender_name,
+                        challenger_belief_json=ch_belief_json,
+                        question_text=question_text,
+                        dialogue_history=dialogue_history,
+                        max_response_length_chars=max_rebuttal_length
+                    )
+
+                # Log and generate
+                self._log_prompt(speaker.name, prompt, f"Stage 3B - Turn {turn_num}")
+                response = speaker.generate([Message(role="user", content=prompt)])
+                self._log(f"Turn {turn_num} from {speaker.name} ({len(response.content)} chars)", "INFO")
+                self._log_response(speaker.name, response.content, f"Stage 3B - Turn {turn_num}")
+
+                turn_dict = {
+                    "turn_number": turn_num,
+                    "speaker": speaker.name,
+                    "message": response.content
+                }
+                dialogue_history.append(turn_dict)
+                entry["collaborative_transcript"].append(turn_dict)
+
+                # Add turn to markdown
+                markdown_section += f"**Turn {turn_num} [{speaker.name}]**: {response.content}\n\n"
+
+                # Periodic adjudicator check
+                if turn_num % check_interval == 0:
+                    self._log(f"Running adjudicator check at turn {turn_num}...", "INFO")
+                    check_prompt = prompts.build_collaborative_adjudicator_check_prompt(
+                        dialogue_history=dialogue_history,
+                        challenger_name=challenger_name,
+                        defender_name=defender_name
+                    )
+                    self._log_prompt("Adjudicator", check_prompt, f"Stage 3B - Check at turn {turn_num}")
+                    check_response = self.adjudicator.agent.generate(
+                        [Message(role="user", content=check_prompt)]
+                    )
+                    self._log_response("Adjudicator", check_response.content, f"Stage 3B - Check at turn {turn_num}")
+
+                    # Parse check result
+                    check_result = _extract_first_json_block(check_response.content)
+                    if not check_result:
+                        self._log("Failed to parse adjudicator check JSON, using defaults", "WARN")
+                        check_result = {
+                            "fallacies_detected": [],
+                            "deflection_detected": False,
+                            "progress_assessment": "unknown",
+                            "convergence_detected": False
+                        }
+
+                    self._log(f"Check result: progress={check_result.get('progress_assessment')}, "
+                              f"convergence={check_result.get('convergence_detected')}", "INFO")
+                    self.debug_log.append(
+                        f"\n--- ADJUDICATOR CHECK AT TURN {turn_num} ({qid}) ---\n"
+                        f"{json.dumps(check_result, ensure_ascii=False, indent=2)}\n"
+                        f"--- END CHECK ---\n"
+                    )
+
+                    entry["adjudicator_checks"].append(check_result)
+                    markdown_section += (
+                        f"*[Adjudicator check — progress: {check_result.get('progress_assessment', '?')}, "
+                        f"convergence: {check_result.get('convergence_detected', False)}]*\n\n"
+                    )
+
+                    # Early termination (only after min_turns)
+                    if early_term and turn_num >= min_turns:
+                        if check_result.get("convergence_detected", False):
+                            self._log(f"Convergence detected at turn {turn_num} — terminating early", "INFO")
+                            markdown_section += f"*Early termination: convergence detected at turn {turn_num}*\n\n"
+                            break
+
+            self._log(f"Dialogue completed after {len(dialogue_history)} turn(s)", "INFO")
+
+            # Final adjudication
+            self._log("Running final adjudication...", "INFO")
+            final_prompt = prompts.build_collaborative_final_adjudication_prompt(
+                topic=topic,
+                challenger_name=challenger_name,
+                defender_name=defender_name,
+                question_text=question_text,
+                target_ids=entry.get("target_ids", []),
+                dialogue_transcript=entry["collaborative_transcript"],
+                adjudicator_checks=entry["adjudicator_checks"],
+                logic_weight=logic_weight,
+                ethics_weight=ethics_weight
+            )
+            self._log_prompt("Adjudicator", final_prompt, f"Stage 3B - Final Adjudication ({qid})")
+            final_response = self.adjudicator.agent.generate(
+                [Message(role="user", content=final_prompt)]
+            )
+            self._log_response("Adjudicator", final_response.content, f"Stage 3B - Final Adjudication ({qid})")
+
+            # Parse final adjudication JSON
+            result = _extract_first_json_block(final_response.content)
+            if result:
+                resolution = {
+                    "status": result.get("outcome", "unknown").lower(),
+                    "reasoning": result.get("reasoning", ""),
+                    "restatement": result.get("restatement", ""),
+                    "formalizations": {
+                        "challenger": result.get("formalization_challenger", ""),
+                        "target": result.get("formalization_target", "")
+                    }
+                }
+            else:
+                self._log("Failed to parse final adjudication JSON, marking as unresolved", "WARN")
+                resolution = {
+                    "status": "unresolved",
+                    "reasoning": final_response.content.strip(),
+                    "restatement": "Unable to parse adjudication",
+                    "formalizations": {"challenger": "", "target": ""}
+                }
+
+            entry["resolution"] = resolution
+
+            # Set rebuttal to defender's final message
+            defender_messages = [t for t in dialogue_history if t["speaker"] == defender_name]
+            entry["rebuttal"] = defender_messages[-1]["message"] if defender_messages else ""
+
+            self._log(f"Final outcome: {resolution['status'].upper()}", "INFO")
+            self.debug_log.append(
+                f"\n--- FINAL ADJUDICATION ({qid}: {challenger_name} → {defender_name}) ---\n"
+                f"{json.dumps(resolution, ensure_ascii=False, indent=2)}\n"
+                f"--- END ADJUDICATION ---\n"
+            )
+
+            # Update agent stats
+            self.agent_stats = update_agent_stats(self.agent_stats, entry)
+
+            # Finalize markdown for this exchange
+            markdown_section += f"**Outcome**: {resolution['status'].upper()}\n\n"
+            markdown_section += f"**Reasoning**: {resolution.get('reasoning', 'N/A')}\n\n"
+            self._add_to_markdown(markdown_section)
+            print(f"[{challenger_name} ↔ {defender_name}] {qid}: "
+                  f"{len(dialogue_history)} turns → {resolution['status'].upper()}")
+
+        # Anti-repetition tracking (same format as Stage 4)
+        for entry in self.challenge_rebuttal_pairs:
+            prev_key = f"{entry['challenger']}→{entry['target']}"
+            self.previous_rounds_challenges.setdefault(prev_key, []).append({
+                "qid": entry.get("qid"),
+                "target_ids": entry.get("target_ids", []),
+                "outcome": entry.get("resolution", {}).get("status", "unknown")
+            })
+
+        self._log(f"Stage 3B complete - processed {len(self.challenge_rebuttal_pairs)} exchange(s)", "INFO")
+
+        return self.challenge_rebuttal_pairs
+
     def run_stage_4_conflict_resolution(self) -> list:
         """
         Stage 4: Rigorous Conflict Resolution
@@ -1235,13 +1481,20 @@ class DebateController:
                 # Stage 2: Cross-Examination
                 self.run_stage_2_cross_examination(only_if_disagree=False)
 
-                # Stage 3: Rebuttals
-                self.run_stage_3_rebuttals()
+                # Stage 3: Response Phase (mode-dependent)
+                stage3_mode = self.config.stage3_mode if self.config else "rebuttal"
 
-                # Stage 4: Conflict Resolution
-                self.run_stage_4_conflict_resolution()
+                if stage3_mode == "collaborative":
+                    # Stage 3B: Collaborative truth-seeking dialogue (includes embedded adjudication)
+                    self.run_stage_3_collaborative()
+                    # Stage 4: SKIP — adjudication already embedded in Stage 3B
+                else:
+                    # Stage 3: Single-shot rebuttals (default)
+                    self.run_stage_3_rebuttals()
+                    # Stage 4: Conflict Resolution
+                    self.run_stage_4_conflict_resolution()
 
-                # Stage 5: Belief Update
+                # Stage 5: Belief Update (unified — works with both modes)
                 self.run_stage_5_update_positions()
 
                 # Calculate performance scores after each round

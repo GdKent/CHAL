@@ -109,6 +109,15 @@ class ScribeConfig:
 
 
 @dataclass
+class CollaborativeConfig:
+    """Configuration for collaborative truth-seeking mode (Stage 3B)."""
+    max_turns_per_question: int = 10
+    min_turns_per_question: int = 3
+    adjudicator_check_interval: int = 2  # Call adjudicator every N turns
+    early_termination_on_agreement: bool = True
+
+
+@dataclass
 class DebateConfig:
     """Main configuration container for a CHAL debate."""
 
@@ -120,6 +129,7 @@ class DebateConfig:
     # Core settings
     topic: str = ""
     max_rounds: int = 1
+    stage3_mode: str = "rebuttal"  # "rebuttal" | "collaborative"
 
     # Component configs
     agents: List[AgentConfig] = field(default_factory=list)
@@ -127,6 +137,7 @@ class DebateConfig:
     stages: StageConfig = field(default_factory=StageConfig)
     outputs: OutputConfig = field(default_factory=lambda: OutputConfig(storage_dir=DEFAULT_STORAGE_DIR))
     scribe: ScribeConfig = field(default_factory=ScribeConfig)
+    collaborative: CollaborativeConfig = field(default_factory=CollaborativeConfig)
 
     @classmethod
     def from_yaml(cls, config_path: Path) -> 'DebateConfig':
@@ -207,6 +218,15 @@ class DebateConfig:
             style_hint=scribe_data.get('style_hint', 'formal, expository, research-paper tone')
         )
 
+        # Parse collaborative config
+        collab_data = data.get('collaborative', {})
+        collaborative = CollaborativeConfig(
+            max_turns_per_question=collab_data.get('max_turns_per_question', 10),
+            min_turns_per_question=collab_data.get('min_turns_per_question', 3),
+            adjudicator_check_interval=collab_data.get('adjudicator_check_interval', 2),
+            early_termination_on_agreement=collab_data.get('early_termination_on_agreement', True),
+        )
+
         # Parse debate settings
         debate_data = data.get('debate', {})
 
@@ -216,11 +236,13 @@ class DebateConfig:
             version=meta.get('version', '1.0'),
             topic=debate_data.get('topic', ''),
             max_rounds=debate_data.get('max_rounds', 1),
+            stage3_mode=debate_data.get('stage3_mode', 'rebuttal'),
             agents=agents,
             adjudication=adjudication,
             stages=stages,
             outputs=outputs,
-            scribe=scribe
+            scribe=scribe,
+            collaborative=collaborative
         )
 
     @classmethod

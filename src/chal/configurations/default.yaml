@@ -23,6 +23,11 @@ debate:
   # - Stage 5: Belief Updates (revision)
   max_rounds: 1
 
+  # Stage 3 response mode:
+  # - "rebuttal":      Single-shot rebuttals (default, legacy behavior)
+  # - "collaborative": Multi-turn truth-seeking dialogue with embedded adjudication
+  stage3_mode: "rebuttal"
+
 # ============================================================================
 # AGENT CONFIGURATION
 # ============================================================================
@@ -224,3 +229,15 @@ scribe:
 
   # Style guidance for the narrative
   style_hint: "formal, expository, research-paper tone with clear sectioning and didactic explanations"
+
+# ============================================================================
+# COLLABORATIVE MODE SETTINGS
+# ============================================================================
+# Only used when debate.stage3_mode == "collaborative".
+# Uncomment and adjust to enable multi-turn truth-seeking dialogue in Stage 3.
+#
+# collaborative:
+#   max_turns_per_question: 10       # Max dialogue turns per question
+#   min_turns_per_question: 3        # Minimum turns before early termination allowed
+#   adjudicator_check_interval: 2    # Call adjudicator every N turns (1 = every turn)
+#   early_termination_on_agreement: true  # Stop early if agents converge

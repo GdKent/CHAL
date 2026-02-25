@@ -1,0 +1,128 @@
+# ============================================================================
+# CHAL Debate Configuration - Collaborative Truth-Seeking Mode
+# ============================================================================
+# This configuration uses the collaborative Stage 3B mode, where agents
+# engage in multi-turn truth-seeking dialogue instead of single-shot rebuttals.
+# Adjudication is embedded within Stage 3B, so Stage 4 is skipped.
+
+metadata:
+  name: "Collaborative Debate"
+  description: "2-agent debate using collaborative truth-seeking mode"
+  version: "1.0"
+
+# ============================================================================
+# DEBATE SETUP
+# ============================================================================
+debate:
+  topic: "Does free will exist?"
+  max_rounds: 1
+
+  # Collaborative mode: multi-turn truth-seeking dialogue with embedded adjudication
+  stage3_mode: "collaborative"
+
+# ============================================================================
+# AGENT CONFIGURATION
+# ============================================================================
+agents:
+  - name: "Agent-Empiricist"
+    persona: "EMPIRICIST"
+    model: "gpt-4o"
+    temperature: 0.7
+    provider: "openai"
+
+  - name: "Agent-Supernaturalist"
+    persona: "SUPERNATURALIST"
+    model: "gpt-4o"
+    temperature: 0.7
+    provider: "openai"
+
+# ============================================================================
+# ADJUDICATION SETTINGS
+# ============================================================================
+adjudication:
+  model: "o1-mini"
+  provider: "openai"
+  logic_weight: 1.0
+  ethics_weight: 0.0
+  logic_system: "Classical logic + Bayesian reasoning for inductive support; reject contradictions; prefer simpler hypotheses (Occam's Razor)."
+  ethics_system: "None. Only prioritize logical rigor and soundness, not ethical implications"
+
+# ============================================================================
+# STAGE PARAMETERS
+# ============================================================================
+stages:
+  max_questions_per_cross_exam: 5
+  max_question_length_chars: 1000
+  max_rebuttals_per_response: 5
+  max_rebuttal_length_chars: 1000
+  generation_temperature: 0.2
+  short_note_max_chars: 140
+
+# ============================================================================
+# COLLABORATIVE MODE SETTINGS
+# ============================================================================
+# Multi-turn truth-seeking dialogue parameters for Stage 3B
+collaborative:
+  max_turns_per_question: 10
+  min_turns_per_question: 3
+  adjudicator_check_interval: 2
+  early_termination_on_agreement: true
+
+# ============================================================================
+# PERFORMANCE SCORING
+# ============================================================================
+performance_scoring:
+  enabled: true
+  weights:
+    successful_critique: 3.0
+    successful_rebuttal: 2.0
+    failed_rebuttal: -2.0
+    unresolved_argument: -0.5
+  normalize_by_total_arguments: false
+  display_in_round_summary: true
+  display_in_final_summary: true
+
+# ============================================================================
+# CONVERGENCE METRICS
+# ============================================================================
+convergence:
+  enabled: true
+  similarity_threshold: 0.75
+  display_in_round_summary: true
+  display_in_final_summary: true
+  track_history: true
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+outputs:
+  storage_dir: "src/chal/storage"
+  save_synthesis: true
+  synthesis_file: "debate_synthesis.txt"
+  save_transcript: true
+  transcript_file: "debate_transcript.txt"
+  save_initial_beliefs: true
+  initial_beliefs_file: "initial_beliefs.txt"
+  save_final_beliefs: true
+  final_beliefs_file: "final_beliefs.txt"
+  generate_embeddings: true
+  embeddings_file: "embeddings.npz"
+  plot_trajectories: true
+  trajectory_plot_file: "belief_trajectories.png"
+  generate_graph_visualization: false
+  graph_file: "belief_graph.html"
+  save_agent_stats: true
+  stats_file: "agent_stats.json"
+  save_debug_log: true
+  debug_log_file: "log.txt"
+
+# ============================================================================
+# SCRIBE CONFIGURATION
+# ============================================================================
+scribe:
+  enabled: true
+  model: "gpt-4o"
+  max_chars_per_chunk: 15000
+  overlap_chars: 1000
+  scribe_temperature: 0.3
+  style_hint: "formal, expository, research-paper tone with clear sectioning and didactic explanations"

@@ -723,3 +723,275 @@ def build_stage_7_scribe_prompt_reduce(
         "<Optional: citations (URLs/DOIs) if present in evidence items.>\n"
         "```\n"
     )
+
+# === Collaborative Truth-Seeking Prompts (Stage 3B) ===
+
+def build_collaborative_defender_prompt(
+    topic: str,
+    defender_name: str,
+    challenger_name: str,
+    defender_belief_json: str,
+    question_text: str,
+    dialogue_history: list[dict],
+    max_response_length_chars: int = 500
+) -> str:
+    """
+    Collaborative Mode: Prompt for the defender's turn in a truth-seeking dialogue.
+
+    Called on odd turns (1, 3, 5, ...). On turn 1 the defender responds to the
+    original question; on subsequent turns the defender responds to the challenger's
+    latest follow-up.
+
+    Args:
+        topic: Debate topic.
+        defender_name: Name of the defending agent.
+        challenger_name: Name of the challenging agent.
+        defender_belief_json: Defender's current CBS-v1 belief as JSON string.
+        question_text: The original question being discussed.
+        dialogue_history: List of prior turn dicts [{"speaker": ..., "message": ...}, ...].
+        max_response_length_chars: Character limit per response.
+    """
+    history_str = ""
+    if dialogue_history:
+        lines = []
+        for turn in dialogue_history:
+            lines.append(f"[{turn['speaker']}]: {turn['message']}")
+        history_str = "\n\n".join(lines)
+
+    history_section = ""
+    if history_str:
+        history_section = (
+            "DIALOGUE SO FAR:\n"
+            "---\n"
+            f"{history_str}\n"
+            "---\n\n"
+        )
+
+    return (
+        f"You are {defender_name} in a collaborative truth-seeking dialogue with {challenger_name} about:\n\n"
+        f"  \"{topic}\"\n\n"
+        "YOUR CURRENT BELIEF (JSON):\n"
+        "```json\n" + defender_belief_json + "\n```\n\n"
+        f"ORIGINAL QUESTION FROM {challenger_name.upper()}:\n"
+        f"  \"{question_text}\"\n\n"
+        + history_section +
+        "PURPOSE:\n"
+        "This is a COLLABORATIVE truth-seeking exchange, not an adversarial debate. "
+        "Your goal is to work with the challenger toward a more accurate understanding, not to win.\n\n"
+        "INSTRUCTIONS:\n"
+        "- Directly address the most recent message (or the original question if this is the first turn).\n"
+        "- If the challenger raises a valid point, explicitly acknowledge it (e.g., \"You are correct that...\").\n"
+        "- If you disagree, explain precisely WHY, referencing specific belief IDs (A#/C#/E#/P#).\n"
+        "- Propose syntheses where your positions overlap or can be reconciled.\n"
+        "- Do NOT introduce entirely new claims — only elaborate, clarify, or refine existing positions.\n"
+        "- Do NOT deflect or change the subject. Stay focused on the question under discussion.\n"
+        "- Be concise and substantive.\n\n"
+        f"Keep your response ≤ {max_response_length_chars} characters.\n\n"
+        "Output ONLY your response text. No JSON, no formatting wrappers."
+    )
+
+def build_collaborative_challenger_followup_prompt(
+    topic: str,
+    challenger_name: str,
+    defender_name: str,
+    challenger_belief_json: str,
+    question_text: str,
+    dialogue_history: list[dict],
+    max_response_length_chars: int = 500
+) -> str:
+    """
+    Collaborative Mode: Prompt for the challenger's follow-up turn.
+
+    Called on even turns (2, 4, 6, ...). The challenger engages with the
+    defender's latest response to advance the discussion toward resolution.
+
+    Args:
+        topic: Debate topic.
+        challenger_name: Name of the challenging agent.
+        defender_name: Name of the defending agent.
+        challenger_belief_json: Challenger's current CBS-v1 belief as JSON string.
+        question_text: The original question being discussed.
+        dialogue_history: List of prior turn dicts [{"speaker": ..., "message": ...}, ...].
+        max_response_length_chars: Character limit per response.
+    """
+    lines = []
+    for turn in dialogue_history:
+        lines.append(f"[{turn['speaker']}]: {turn['message']}")
+    history_str = "\n\n".join(lines)
+
+    return (
+        f"You are {challenger_name} in a collaborative truth-seeking dialogue with {defender_name} about:\n\n"
+        f"  \"{topic}\"\n\n"
+        "YOUR CURRENT BELIEF (JSON):\n"
+        "```json\n" + challenger_belief_json + "\n```\n\n"
+        f"ORIGINAL QUESTION YOU ASKED:\n"
+        f"  \"{question_text}\"\n\n"
+        "DIALOGUE SO FAR:\n"
+        "---\n"
+        f"{history_str}\n"
+        "---\n\n"
+        "PURPOSE:\n"
+        "This is a COLLABORATIVE truth-seeking exchange. Your goal is to advance mutual understanding, "
+        "not to score points.\n\n"
+        "INSTRUCTIONS:\n"
+        "- Engage directly with the defender's most recent response.\n"
+        "- If the defender made a valid point, acknowledge it explicitly.\n"
+        "- Identify the CRUX of disagreement — the single key issue that, if resolved, would change minds.\n"
+        "- Ask clarifying questions to sharpen the disagreement or find common ground.\n"
+        "- Propose syntheses where positions overlap or can be reconciled.\n"
+        "- Do NOT repeat your original question. You must advance the discussion.\n"
+        "- Do NOT introduce entirely new claims — only elaborate, clarify, or refine existing positions.\n"
+        "- Reference specific belief IDs (A#/C#/E#/P#) when relevant.\n"
+        "- Be concise and substantive.\n\n"
+        f"Keep your response ≤ {max_response_length_chars} characters.\n\n"
+        "Output ONLY your response text. No JSON, no formatting wrappers."
+    )
+
+def build_collaborative_adjudicator_check_prompt(
+    dialogue_history: list[dict],
+    challenger_name: str,
+    defender_name: str
+) -> str:
+    """
+    Collaborative Mode: Brief adjudicator check on dialogue quality.
+
+    Called periodically (every adjudicator_check_interval turns) to monitor
+    for fallacies, deflection, circular arguments, and convergence.
+
+    Args:
+        dialogue_history: List of turn dicts [{"speaker": ..., "message": ...}, ...].
+        challenger_name: Name of the challenging agent.
+        defender_name: Name of the defending agent.
+    """
+    lines = []
+    for turn in dialogue_history:
+        lines.append(f"[{turn['speaker']}]: {turn['message']}")
+    history_str = "\n\n".join(lines)
+
+    return (
+        "You are a neutral adjudicator monitoring a collaborative truth-seeking dialogue for quality.\n\n"
+        f"PARTICIPANTS: {challenger_name} (challenger) vs {defender_name} (defender)\n\n"
+        "DIALOGUE SO FAR:\n"
+        "---\n"
+        f"{history_str}\n"
+        "---\n\n"
+        "TASKS:\n"
+        "1. Check for logical FALLACIES in any speaker's recent messages (e.g., straw man, ad hominem, "
+        "appeal to authority, false dichotomy, circular reasoning).\n"
+        "2. Check for DEFLECTION — did either speaker avoid directly addressing the other's point?\n"
+        "3. Assess PROGRESS — is the dialogue moving toward clarity, or is it going in circles?\n"
+        "4. Check for CONVERGENCE — have the speakers reached substantive agreement on the core issue?\n\n"
+        "STRICT OUTPUT FORMAT (NO extra text):\n"
+        "Output a single fenced JSON block:\n"
+        "```json\n"
+        "{\n"
+        "  \"fallacies_detected\": [\"<fallacy description>\"],\n"
+        "  \"deflection_detected\": false,\n"
+        "  \"progress_assessment\": \"productive\",\n"
+        "  \"convergence_detected\": false\n"
+        "}\n"
+        "```\n\n"
+        "Values for progress_assessment: \"productive\" | \"circular\" | \"off-topic\"\n"
+        "fallacies_detected should be an empty list [] if none found.\n"
+        "convergence_detected should be true ONLY if both speakers have explicitly agreed on the core issue."
+    )
+
+def build_collaborative_final_adjudication_prompt(
+    topic: str,
+    challenger_name: str,
+    defender_name: str,
+    question_text: str,
+    target_ids: list[str],
+    dialogue_transcript: list[dict],
+    adjudicator_checks: list[dict],
+    logic_weight: float = 1.0,
+    ethics_weight: float = 0.0
+) -> str:
+    """
+    Collaborative Mode: Final adjudication after dialogue concludes.
+
+    Reviews the complete multi-turn transcript and interim checks, then
+    produces a ruling in the same JSON format as the Stage 4 Adjudicator.run()
+    output, ensuring compatibility with Stage 5 belief updates.
+
+    Args:
+        topic: Debate topic.
+        challenger_name: Name of the challenging agent.
+        defender_name: Name of the defending agent.
+        question_text: The original question that started the dialogue.
+        target_ids: List of belief IDs targeted by the question (e.g., ["C3", "A1"]).
+        dialogue_transcript: List of turn dicts from the exchange.
+        adjudicator_checks: List of interim check result dicts.
+        logic_weight: Weight for logical rigor (0.0-1.0).
+        ethics_weight: Weight for ethical considerations (0.0-1.0).
+    """
+    # Format transcript
+    transcript_lines = []
+    for turn in dialogue_transcript:
+        line = f"[Turn {turn.get('turn_number', '?')}] [{turn['speaker']}]: {turn['message']}"
+        transcript_lines.append(line)
+    transcript_str = "\n\n".join(transcript_lines)
+
+    # Format interim checks
+    checks_str = "(no interim checks)"
+    if adjudicator_checks:
+        check_lines = []
+        for i, check in enumerate(adjudicator_checks, 1):
+            check_lines.append(
+                f"Check {i}: progress={check.get('progress_assessment', '?')}, "
+                f"convergence={check.get('convergence_detected', False)}, "
+                f"fallacies={check.get('fallacies_detected', [])}, "
+                f"deflection={check.get('deflection_detected', False)}"
+            )
+        checks_str = "\n".join(check_lines)
+
+    target_ids_str = ", ".join(target_ids) if target_ids else "(none specified)"
+
+    return (
+        "You are a neutral adjudicator issuing a FINAL ruling on a collaborative truth-seeking dialogue.\n\n"
+        f"TOPIC: \"{topic}\"\n"
+        f"CHALLENGER: {challenger_name}\n"
+        f"DEFENDER: {defender_name}\n"
+        f"ORIGINAL QUESTION: \"{question_text}\"\n"
+        f"TARGETED BELIEF IDs: {target_ids_str}\n\n"
+        f"EVALUATION FRAMEWORK:\n"
+        f"- Logic weight: {logic_weight}\n"
+        f"- Ethics weight: {ethics_weight}\n\n"
+        "COMPLETE DIALOGUE TRANSCRIPT:\n"
+        "---\n"
+        f"{transcript_str}\n"
+        "---\n\n"
+        "INTERIM ADJUDICATOR CHECKS:\n"
+        f"{checks_str}\n\n"
+        "ADJUDICATION CRITERIA:\n"
+        "Award CRITIQUE_VALID if:\n"
+        "- The defender conceded or acknowledged a genuine weakness in their position.\n"
+        "- The challenger identified a logical flaw (contradiction, circular reasoning, unfalsifiable claim, "
+        "dependency failure) that the defender could not adequately address.\n"
+        "- The defender's responses deflected rather than engaging the core issue.\n\n"
+        "Award REBUTTAL_VALID if:\n"
+        "- The defender successfully refuted the challenge with evidence or logical argument.\n"
+        "- The challenger's critique contained a logical flaw or misrepresentation.\n"
+        "- The defender demonstrated their position is logically sound against the specific challenge.\n\n"
+        "Award UNRESOLVED if:\n"
+        "- Both sides presented logically coherent but incompatible positions.\n"
+        "- The disagreement hinges on an empirical question that cannot be resolved by logic alone.\n"
+        "- Both arguments have significant flaws, making neither clearly stronger.\n\n"
+        "ANTI-BIAS RULES:\n"
+        "- Do NOT award rebuttal_valid just because the defender responded.\n"
+        "- The defender must RESOLVE the logical issue, not merely acknowledge it.\n"
+        "- CONCESSION DETECTION: If the defender explicitly concedes (\"you are correct\", \"I acknowledge\", "
+        "\"I will lower confidence\"), award CRITIQUE_VALID.\n"
+        "- Consider the FULL dialogue arc, not just the final exchange.\n\n"
+        "STRICT OUTPUT FORMAT (NO extra text):\n"
+        "Output a single fenced JSON block:\n"
+        "```json\n"
+        "{\n"
+        "  \"restatement\": \"<neutral summary of the core disagreement>\",\n"
+        f"  \"formalization_challenger\": \"<formal logical structure of {challenger_name}'s argument>\",\n"
+        f"  \"formalization_target\": \"<formal logical structure of {defender_name}'s defense>\",\n"
+        "  \"outcome\": \"rebuttal_valid|critique_valid|unresolved\",\n"
+        "  \"reasoning\": \"<justification citing specific turns, belief IDs, and logical principles>\"\n"
+        "}\n"
+        "```\n"
+    )
