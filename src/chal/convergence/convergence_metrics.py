@@ -26,7 +26,7 @@ def calculate_claim_agreement(
     duplicating embedding infrastructure.
 
     Args:
-        agent_beliefs: List of CBS-v1 belief dicts from all agents
+        agent_beliefs: List of CBS belief dicts from all agents
         embedding_model: SentenceTransformer instance from embedding_tracker.model
         similarity_threshold: Cosine similarity threshold for claim matching (0.0-1.0)
                             0.75 = claims must be quite similar to match (recommended)

@@ -1,7 +1,7 @@
 """
 patches.py
 
-Deterministic patch application for CBS-v1 belief objects.
+Deterministic patch application for CBS belief objects.
 Ensures that belief updates are auditable, graph-consistent, and propagate confidence correctly.
 
 Supported patch operations:
@@ -35,7 +35,7 @@ def apply_patches(
     5. Increments version number
 
     Args:
-        prior_belief: The current CBS-v1 belief object
+        prior_belief: The current CBS belief object
         patches: List of patch operation dicts
         propagate_confidence: If True, propagate confidence changes through graph (default: True)
 
@@ -152,20 +152,21 @@ def apply_patches(
                 dependent_ids = graph.get_dependent_nodes(changed_id)
 
                 for dep_id in dependent_ids:
-                    # Get the dependent claim
-                    dep_claim = graph.get_node(dep_id)
-                    if not dep_claim or dep_claim.get("type") != "claim":
+                    # Get the dependent claim (check graph node type, not data type)
+                    node_info = graph.nodes.get(dep_id)
+                    if not node_info or node_info.get("type") != "claim":
                         continue
+                    dep_claim = node_info.get("data", {})
 
                     # Get all dependencies of this dependent claim
                     all_deps = dep_claim.get("depends_on", []) + dep_claim.get("backing_evidence_ids", [])
                     dep_confidences = []
 
                     for dep_node_id in all_deps:
-                        dep_node = graph.get_node(dep_node_id)
-                        if dep_node:
-                            if dep_node.get("type") == "claim":
-                                dep_confidences.append(dep_node.get("confidence", 0.5))
+                        dep_node_info = graph.nodes.get(dep_node_id)
+                        if dep_node_info and dep_node_info.get("type") == "claim":
+                            dep_data = dep_node_info.get("data", {})
+                            dep_confidences.append(dep_data.get("confidence", 0.5))
                             # Evidence doesn't have confidence, skip
 
                     if dep_confidences:

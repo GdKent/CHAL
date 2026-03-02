@@ -59,14 +59,18 @@ class DebateRecorder:
             "provider": adj.provider if adj else "unknown",
         } if adj else {}
 
+        stage2_mode = debate_config.stage2_mode if debate_config else "open"
+
         self.metadata = {
             "topic": topic,
             "mode": mode,
+            "stage2_mode": stage2_mode,
             "num_rounds": debate_config.max_rounds if debate_config else 1,
             "num_agents": len(agents),
             "agents": agent_meta,
             "adjudicator": adjudicator_meta,
             "config_snapshot": {
+                "stage2_mode": stage2_mode,
                 "stage3_mode": mode,
                 "max_rounds": debate_config.max_rounds if debate_config else 1,
             },
@@ -271,6 +275,44 @@ class DebateRecorder:
                 "raw_response": raw_response,
             },
         })
+
+    def record_event(self, event_type: str, data: Dict[str, Any]):
+        """Record a generic event in the timeline.
+
+        Used for events that don't have a dedicated method, such as
+        roadmap revisions.
+
+        Args:
+            event_type: The event type string (e.g. "roadmap_revision").
+            data: Arbitrary event data dict.
+        """
+        self.timeline.append({
+            "type": event_type,
+            "round": self.current_round,
+            "data": data,
+        })
+
+    def record_roadmap_generation(
+        self,
+        roadmap: dict,
+        raw_response: str,
+    ):
+        """Record a moderator roadmap generation event."""
+        self.timeline.append({
+            "type": "roadmap_generation",
+            "round": None,
+            "stage": 0,
+            "inputs": {
+                "topic": self.topic,
+                "num_rounds": self.metadata.get("num_rounds", 1),
+            },
+            "outputs": {
+                "roadmap": roadmap,
+                "raw_response": raw_response,
+            },
+        })
+        # Also store roadmap in metadata
+        self.metadata["roadmap"] = roadmap
 
     def get_debate_record(self) -> dict:
         """Return the full DebateRecord as a dict."""

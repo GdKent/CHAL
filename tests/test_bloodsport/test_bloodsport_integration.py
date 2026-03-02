@@ -6,7 +6,7 @@ Tests cover:
 - Standard adjudicator is used unchanged
 - BloodSport stats tracking
 - run() branching for bloodsport mode
-- CBS-v1 belief format maintained throughout
+- CBS belief format maintained throughout
 """
 
 import pytest

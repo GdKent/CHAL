@@ -181,7 +181,7 @@ def test_set_internal_belief_obj_stores_dict(mock_anthropic_class):
     from chal.agents.anthropic_agent import AnthropicAgent
 
     agent = AnthropicAgent(model="claude-sonnet-4-6", name="Agent-Test")
-    belief = {"schema_version": "CBS-v1", "belief_id": "B1"}
+    belief = {"schema_version": "CBS", "belief_id": "B1"}
     agent.set_internal_belief_obj(belief)
     assert agent.get_internal_belief_obj() == belief
 

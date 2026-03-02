@@ -75,7 +75,7 @@ RULES (follow EXACTLY):
 - Keep JSON syntactically valid (double quotes only, no trailing commas).
 
 MINIMUM CONTENT REQUIRED IN THE JSON OBJECT:
-- "schema_version": "CBS-v1"
+- "schema_version": "CBS"
 - "belief_id": a unique string (e.g., "BELIEF-<uuid>")
 - "version": 1
 - "metadata": must include:
@@ -134,7 +134,7 @@ RAW RESPONSE FROM Agent-Empiricist - Stage 1 - Opening Position
 
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 1,
   "metadata": {
@@ -231,12 +231,12 @@ RAW RESPONSE FROM Agent-Empiricist - Stage 1 - Opening Position
 
 --------------------------------------------------------------------------------
 
-[15:38:19.110] [INFO] Parsing CBS-v1 belief object for Agent-Empiricist...
-[15:38:19.112] [PARSE] PARSE SUCCESS: Successfully parsed CBS-v1 belief for Agent-Empiricist
+[15:38:19.110] [INFO] Parsing CBS belief object for Agent-Empiricist...
+[15:38:19.112] [PARSE] PARSE SUCCESS: Successfully parsed CBS belief for Agent-Empiricist
 
 --- PARSED BELIEF JSON FOR Agent-Empiricist ---
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 1,
   "metadata": {
@@ -431,7 +431,7 @@ RULES (follow EXACTLY):
 - Keep JSON syntactically valid (double quotes only, no trailing commas).
 
 MINIMUM CONTENT REQUIRED IN THE JSON OBJECT:
-- "schema_version": "CBS-v1"
+- "schema_version": "CBS"
 - "belief_id": a unique string (e.g., "BELIEF-<uuid>")
 - "version": 1
 - "metadata": must include:
@@ -490,7 +490,7 @@ RAW RESPONSE FROM Agent-Supernaturalist - Stage 1 - Opening Position
 
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 1,
   "metadata": {
@@ -589,12 +589,12 @@ RAW RESPONSE FROM Agent-Supernaturalist - Stage 1 - Opening Position
 
 --------------------------------------------------------------------------------
 
-[15:38:32.024] [INFO] Parsing CBS-v1 belief object for Agent-Supernaturalist...
-[15:38:32.024] [PARSE] PARSE SUCCESS: Successfully parsed CBS-v1 belief for Agent-Supernaturalist
+[15:38:32.024] [INFO] Parsing CBS belief object for Agent-Supernaturalist...
+[15:38:32.024] [PARSE] PARSE SUCCESS: Successfully parsed CBS belief for Agent-Supernaturalist
 
 --- PARSED BELIEF JSON FOR Agent-Supernaturalist ---
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 1,
   "metadata": {
@@ -736,7 +736,7 @@ Use IDs (A#/C#/E#/P#/N#/U#/X#) precisely.
 YOUR BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 1,
   "metadata": {
@@ -911,7 +911,7 @@ YOUR BELIEF (JSON):
 OPPONENT BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 1,
   "metadata": {
@@ -1167,7 +1167,7 @@ Use IDs (A#/C#/E#/P#/N#/U#/X#) precisely.
 YOUR BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 1,
   "metadata": {
@@ -1283,7 +1283,7 @@ YOUR BELIEF (JSON):
 OPPONENT BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 1,
   "metadata": {
@@ -1669,7 +1669,7 @@ You are Agent-Empiricist. You will respond to Agent-Supernaturalist's cross-exam
 YOUR CURRENT BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 1,
   "metadata": {
@@ -2185,7 +2185,7 @@ You are Agent-Supernaturalist. You will respond to Agent-Empiricist's cross-exam
 YOUR CURRENT BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 1,
   "metadata": {
@@ -2790,7 +2790,7 @@ STAGE 5: BELIEF UPDATES
 [15:39:56.791] [INFO] 
 --- Updating belief for: Agent-Empiricist ---
 [15:39:56.791] [INFO] Agent received 5 adjudication result(s)
-[15:39:56.791] [DEBUG] Using CBS-v1 patch/update prompt for Agent-Empiricist
+[15:39:56.791] [DEBUG] Using CBS patch/update prompt for Agent-Empiricist
 
 --------------------------------------------------------------------------------
 PROMPT TO Agent-Empiricist - Stage 5 - Belief Update
@@ -2801,7 +2801,7 @@ Agent Agent-Empiricist, generate PATCH operations to update your belief based on
 PRIOR BELIEF JSON:
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 1,
   "metadata": {
@@ -3120,7 +3120,7 @@ RAW RESPONSE FROM Agent-Empiricist - Stage 5 - Belief Update
 
 --- UPDATED BELIEF FOR Agent-Empiricist ---
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 2,
   "metadata": {
@@ -3309,7 +3309,7 @@ RAW RESPONSE FROM Agent-Empiricist - Stage 5 - Belief Update
 [15:40:00.442] [INFO] 
 --- Updating belief for: Agent-Supernaturalist ---
 [15:40:00.442] [INFO] Agent received 5 adjudication result(s)
-[15:40:00.442] [DEBUG] Using CBS-v1 patch/update prompt for Agent-Supernaturalist
+[15:40:00.442] [DEBUG] Using CBS patch/update prompt for Agent-Supernaturalist
 
 --------------------------------------------------------------------------------
 PROMPT TO Agent-Supernaturalist - Stage 5 - Belief Update
@@ -3320,7 +3320,7 @@ Agent Agent-Supernaturalist, generate PATCH operations to update your belief bas
 PRIOR BELIEF JSON:
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 1,
   "metadata": {
@@ -3573,7 +3573,7 @@ RAW RESPONSE FROM Agent-Supernaturalist - Stage 5 - Belief Update
 
 --- UPDATED BELIEF FOR Agent-Supernaturalist ---
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 2,
   "metadata": {
@@ -3730,7 +3730,7 @@ You are Agent-Empiricist. You are to produce closing statements regarding the re
 YOUR CURRENT AND FINAL BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 2,
   "metadata": {
@@ -3917,7 +3917,7 @@ YOUR CURRENT AND FINAL BELIEF (JSON):
 ALL OF YOUR PREVIOUS BELIEFS IN CONSECUTIVE ORDER (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 1,
   "metadata": {
@@ -4092,7 +4092,7 @@ ALL OF YOUR PREVIOUS BELIEFS IN CONSECUTIVE ORDER (JSON):
 
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-1234abcd",
   "version": 2,
   "metadata": {
@@ -4372,7 +4372,7 @@ You are Agent-Supernaturalist. You are to produce closing statements regarding t
 YOUR CURRENT AND FINAL BELIEF (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 2,
   "metadata": {
@@ -4500,7 +4500,7 @@ YOUR CURRENT AND FINAL BELIEF (JSON):
 ALL OF YOUR PREVIOUS BELIEFS IN CONSECUTIVE ORDER (JSON):
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 1,
   "metadata": {
@@ -4616,7 +4616,7 @@ ALL OF YOUR PREVIOUS BELIEFS IN CONSECUTIVE ORDER (JSON):
 
 ```json
 {
-  "schema_version": "CBS-v1",
+  "schema_version": "CBS",
   "belief_id": "BELIEF-622f9c6b-2f7c-4e4d-8a85-1f3f8f7e6a6a",
   "version": 2,
   "metadata": {
@@ -5902,7 +5902,7 @@ STRICT OUTPUT FORMAT (NO extra text):
 <Context, research question, and who participated. Explain the topic in plain terms.>
 
 ## 2. Methods
-<Briefly describe the debate structure, the CHAL belief schema (CBS-v1 = CHAL Belief Schema v1), adjudication protocol, and any weighting (logic vs. ethics) if used.>
+<Briefly describe the debate structure, the CHAL belief schema (CBS = CHAL Belief Schema), adjudication protocol, and any weighting (logic vs. ethics) if used.>
 
 ## 3. Positions and Assumptions
 <By participant: thesis, core assumptions (A#), scope conditions, and initial confidence.>
@@ -5946,7 +5946,7 @@ This debate explores the contrasting perspectives of empirical and spiritual app
 The debate addresses the complex question of free will, examining whether it can be understood through empirical evidence or if it requires a spiritual explanation. Participants include Agent-Empiricist, who focuses on empirical methodologies, and Agent-Supernaturalist, who emphasizes spiritual insights. The central research question explores the validity of free will as either an empirically measurable phenomenon or a spiritual essence.
 
 ## 2. Methods
-The debate utilized a structured format with cross-examination and rebuttal stages. The CHAL Belief Schema v1 (CBS-v1) was employed to categorize claims and assumptions. Adjudication focused on the validity of critiques and rebuttals, with logic and empirical evidence weighted more heavily than ethical considerations.
+The debate utilized a structured format with cross-examination and rebuttal stages. The CHAL Belief Schema (CBS) was employed to categorize claims and assumptions. Adjudication focused on the validity of critiques and rebuttals, with logic and empirical evidence weighted more heavily than ethical considerations.
 
 ## 3. Positions and Assumptions
 - **Agent-Empiricist**: Argues that empirical evidence presents challenges in conclusively supporting free will (A1, A2). Acknowledges the influence of genetics and environment, with initial confidence tempered by methodological limitations.

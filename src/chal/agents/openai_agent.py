@@ -66,7 +66,7 @@ class OpenAIAgent(Agent):
 
     def set_internal_belief_obj(self, belief_obj: dict | None) -> None:
         """
-        Stores the structured CBS-v1 belief object (JSON as Python dict).
+        Stores the structured CBS belief object (JSON as Python dict).
         Auto-rebuilds the persistent belief graph when the belief object changes.
         """
         self.internal_belief_obj = belief_obj

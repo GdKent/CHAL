@@ -12,11 +12,11 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, MagicMock
 from pathlib import Path
 import tempfile
 from chal.orchestrator.debate_controller import DebateController
-from chal.config import DebateConfig, AgentConfig, AdjudicationConfig
+from chal.config import DebateConfig, AgentConfig, AdjudicationConfig, OutputConfig, ScribeConfig
 from tests.utils import create_mock_agent, create_sample_belief, create_mock_belief_response
 
 
@@ -25,8 +25,7 @@ from tests.utils import create_mock_agent, create_sample_belief, create_mock_bel
 # ==============================================
 
 @pytest.mark.e2e
-@patch('chal.orchestrator.debate_controller.OpenAIAgent')
-def test_e2e_two_agent_single_round(mock_agent_class):
+def test_e2e_two_agent_single_round():
     """Test complete debate with 2 agents, 1 round (mocked)."""
     # Setup mocks
     mock_agents = [
@@ -46,8 +45,6 @@ def test_e2e_two_agent_single_round(mock_agent_class):
         ])
     ]
 
-    mock_agent_class.side_effect = mock_agents
-
     # Create config
     with tempfile.TemporaryDirectory() as tmpdir:
         config = DebateConfig(
@@ -59,14 +56,15 @@ def test_e2e_two_agent_single_round(mock_agent_class):
                 AgentConfig(name="Agent-B", persona="RATIONALIST")
             ],
             adjudication=AdjudicationConfig(),
-            output={"storage_dir": Path(tmpdir)}
+            outputs=OutputConfig(storage_dir=Path(tmpdir))
         )
 
         # Run debate
-        controller = DebateController(config, mock_agents)
+        controller = DebateController(mock_agents, config=config)
 
         try:
-            result = controller.run_debate()
+            personas = {ac.name: ac.persona for ac in config.agents}
+            result = controller.run(config.topic, personas)
 
             # Verify result structure
             assert "agents" in result or "final_beliefs" in result
@@ -82,8 +80,7 @@ def test_e2e_two_agent_single_round(mock_agent_class):
 
 @pytest.mark.e2e
 @pytest.mark.slow
-@patch('chal.orchestrator.debate_controller.OpenAIAgent')
-def test_e2e_three_agent_multi_round(mock_agent_class):
+def test_e2e_three_agent_multi_round():
     """Test complete debate with 3 agents, 3 rounds (mocked)."""
     # Setup mocks for 3 agents
     mock_agents = [
@@ -93,8 +90,6 @@ def test_e2e_three_agent_multi_round(mock_agent_class):
         ])
         for i in range(3)
     ]
-
-    mock_agent_class.side_effect = mock_agents
 
     # Create config
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -107,11 +102,11 @@ def test_e2e_three_agent_multi_round(mock_agent_class):
                 for i in range(3)
             ],
             adjudication=AdjudicationConfig(),
-            output={"storage_dir": Path(tmpdir)}
+            outputs=OutputConfig(storage_dir=Path(tmpdir))
         )
 
         # Run debate (or verify setup)
-        controller = DebateController(config, mock_agents)
+        controller = DebateController(mock_agents, config=config)
         assert controller is not None
 
 
@@ -120,11 +115,9 @@ def test_e2e_three_agent_multi_round(mock_agent_class):
 # ==============================================
 
 @pytest.mark.e2e
-@patch('chal.orchestrator.debate_controller.OpenAIAgent')
-def test_e2e_scribe_disabled(mock_agent_class):
+def test_e2e_scribe_disabled():
     """Test debate with scribe.enabled=False (mocked)."""
     mock_agents = [create_mock_agent(f"Agent-{i}") for i in range(2)]
-    mock_agent_class.side_effect = mock_agents
 
     with tempfile.TemporaryDirectory() as tmpdir:
         config = DebateConfig(
@@ -133,11 +126,11 @@ def test_e2e_scribe_disabled(mock_agent_class):
             max_rounds=1,
             agents=[AgentConfig(name=f"Agent-{i}", persona="EMPIRICIST") for i in range(2)],
             adjudication=AdjudicationConfig(),
-            scribe={"enabled": False},
-            output={"storage_dir": Path(tmpdir)}
+            scribe=ScribeConfig(enabled=False),
+            outputs=OutputConfig(storage_dir=Path(tmpdir))
         )
 
-        controller = DebateController(config, mock_agents)
+        controller = DebateController(mock_agents, config=config)
         assert controller is not None
 
 
@@ -146,11 +139,9 @@ def test_e2e_scribe_disabled(mock_agent_class):
 # ==============================================
 
 @pytest.mark.e2e
-@patch('chal.orchestrator.debate_controller.OpenAIAgent')
-def test_e2e_minimal_outputs(mock_agent_class):
+def test_e2e_minimal_outputs():
     """Test debate with minimal output configuration (mocked)."""
     mock_agents = [create_mock_agent(f"Agent-{i}") for i in range(2)]
-    mock_agent_class.side_effect = mock_agents
 
     with tempfile.TemporaryDirectory() as tmpdir:
         config = DebateConfig(
@@ -159,14 +150,14 @@ def test_e2e_minimal_outputs(mock_agent_class):
             max_rounds=1,
             agents=[AgentConfig(name=f"Agent-{i}", persona="EMPIRICIST") for i in range(2)],
             adjudication=AdjudicationConfig(),
-            output={
-                "storage_dir": Path(tmpdir),
-                "save_synthesis": False,
-                "plot_trajectories": False
-            }
+            outputs=OutputConfig(
+                storage_dir=Path(tmpdir),
+                save_synthesis=False,
+                plot_trajectories=False
+            )
         )
 
-        controller = DebateController(config, mock_agents)
+        controller = DebateController(mock_agents, config=config)
         assert controller is not None
 
 
@@ -176,8 +167,7 @@ def test_e2e_minimal_outputs(mock_agent_class):
 
 @pytest.mark.e2e
 @pytest.mark.slow
-@patch('chal.orchestrator.debate_controller.OpenAIAgent')
-def test_e2e_convergence_analysis(mock_agent_class):
+def test_e2e_convergence_analysis():
     """Test debate with convergence tracking enabled (mocked)."""
     # Setup agents with evolving beliefs
     mock_agents = [
@@ -211,8 +201,6 @@ def test_e2e_convergence_analysis(mock_agent_class):
         ])
     ]
 
-    mock_agent_class.side_effect = mock_agents
-
     with tempfile.TemporaryDirectory() as tmpdir:
         config = DebateConfig(
             name="Convergence Analysis Debate",
@@ -220,11 +208,11 @@ def test_e2e_convergence_analysis(mock_agent_class):
             max_rounds=3,
             agents=[AgentConfig(name=f"Agent-{chr(65+i)}", persona="EMPIRICIST") for i in range(2)],
             adjudication=AdjudicationConfig(),
-            output={
-                "storage_dir": Path(tmpdir),
-                "plot_trajectories": True
-            }
+            outputs=OutputConfig(
+                storage_dir=Path(tmpdir),
+                plot_trajectories=True
+            )
         )
 
-        controller = DebateController(config, mock_agents)
+        controller = DebateController(mock_agents, config=config)
         assert controller is not None

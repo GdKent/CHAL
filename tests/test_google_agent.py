@@ -203,7 +203,7 @@ def test_set_internal_belief_obj_stores_dict(mock_client_class):
     from chal.agents.google_agent import GoogleAgent
 
     agent = GoogleAgent(model="gemini-2.0-flash", name="Agent-Test")
-    belief = {"schema_version": "CBS-v1", "belief_id": "B1"}
+    belief = {"schema_version": "CBS", "belief_id": "B1"}
     agent.set_internal_belief_obj(belief)
     assert agent.get_internal_belief_obj() == belief
 

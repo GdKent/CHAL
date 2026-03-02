@@ -1,6 +1,6 @@
 {
   "minimal_valid": {
-    "schema_version": "CBS-v1",
+    "schema_version": "CBS",
     "belief_id": "BELIEF-FIXTURE-001",
     "version": 1,
     "metadata": {
@@ -18,7 +18,7 @@
     }
   },
   "complete_valid": {
-    "schema_version": "CBS-v1",
+    "schema_version": "CBS",
     "belief_id": "BELIEF-FIXTURE-002",
     "version": 1,
     "metadata": {
@@ -117,7 +117,7 @@
     ]
   },
   "invalid_circular": {
-    "schema_version": "CBS-v1",
+    "schema_version": "CBS",
     "belief_id": "BELIEF-INVALID-001",
     "version": 1,
     "metadata": {
@@ -152,7 +152,7 @@
     ]
   },
   "invalid_orphan": {
-    "schema_version": "CBS-v1",
+    "schema_version": "CBS",
     "belief_id": "BELIEF-INVALID-002",
     "version": 1,
     "metadata": {

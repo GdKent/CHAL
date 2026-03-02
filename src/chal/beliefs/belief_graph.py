@@ -3,7 +3,7 @@ belief_graph.py
 
 Represents belief structure as a directed acyclic graph (DAG) for validation and analysis.
 
-This module transforms CBS-v1 belief objects into graph structures where:
+This module transforms CBS belief objects into graph structures where:
 - Nodes: assumptions (A#), claims (C#), evidence (E#), predictions (P#)
 - Edges: dependency relationships (depends_on, backing_evidence_ids, linked_claims)
 
@@ -20,7 +20,7 @@ from typing import Dict, Any, List, Set, Tuple, Optional
 
 class BeliefGraph:
     """
-    Directed acyclic graph representation of a CBS-v1 belief object.
+    Directed acyclic graph representation of a CBS belief object.
 
     Attributes:
         nodes: Dict mapping node IDs to their full data
@@ -31,10 +31,10 @@ class BeliefGraph:
 
     def __init__(self, belief: Dict[str, Any]):
         """
-        Construct graph from a CBS-v1 belief object.
+        Construct graph from a CBS belief object.
 
         Args:
-            belief: Valid CBS-v1 belief dict with schema_version, belief_id, etc.
+            belief: Valid CBS belief dict with schema_version, belief_id, etc.
         """
         self.belief = belief
         self.belief_id = belief.get("belief_id", "unknown")

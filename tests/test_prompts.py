@@ -195,9 +195,9 @@ def test_build_position_prompt():
 @pytest.mark.unit
 def test_build_stage_1_belief_prompt():
     """Test building Stage 1 initial belief prompt."""
-    from chal.agents.prompts import build_stage_1_belief_prompt_cbsv1
+    from chal.agents.prompts import build_stage_1_belief_prompt_cbs
 
-    prompt = build_stage_1_belief_prompt_cbsv1(
+    prompt = build_stage_1_belief_prompt_cbs(
         topic="Climate Change",
         agent_name="Agent-Scientist",
         persona_label="Scientist"
@@ -205,7 +205,7 @@ def test_build_stage_1_belief_prompt():
 
     assert isinstance(prompt, str)
     assert "Climate Change" in prompt
-    assert "CBS-v1" in prompt or "belief" in prompt.lower()
+    assert "CBS" in prompt or "belief" in prompt.lower()
 
 
 @pytest.mark.unit
@@ -276,7 +276,7 @@ def test_build_stage_3_structured_rebuttal_prompt():
 @pytest.mark.unit
 def test_build_stage_5_belief_update_prompt():
     """Test building Stage 5 belief update prompt."""
-    from chal.agents.prompts import build_stage_5_belief_update_prompt_cbsv1
+    from chal.agents.prompts import build_stage_5_belief_update_prompt_cbs
 
     challenge_rebuttal_pairs = [{
         "challenger": "Agent-B",
@@ -287,7 +287,7 @@ def test_build_stage_5_belief_update_prompt():
         }
     }]
 
-    prompt = build_stage_5_belief_update_prompt_cbsv1(
+    prompt = build_stage_5_belief_update_prompt_cbs(
         agent_name="Agent-A",
         challenge_rebuttal_pairs=challenge_rebuttal_pairs,
         prior_belief_json='{"thesis": {"statement": "Original"}}'

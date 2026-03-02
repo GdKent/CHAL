@@ -1,0 +1,648 @@
+"""
+Unit tests for the CHAL CLI configuration wizard (wizard.py).
+
+Tests cover:
+- Individual step functions (mocked questionary prompts)
+- Review panel rendering
+- Wizard orchestration (build config, cancel, save, edit loop)
+"""
+
+import pytest
+from unittest.mock import patch, MagicMock, call
+from io import StringIO
+
+from rich.console import Console
+
+from chal.config import (
+    AgentConfig,
+    AdjudicationConfig,
+    BloodSportConfig,
+    CollaborativeConfig,
+    DebateConfig,
+    ModeratorConfig,
+    OutputConfig,
+    DEFAULT_STORAGE_DIR,
+)
+from chal.cli.wizard import (
+    ask_topic,
+    ask_num_agents,
+    ask_agent_config,
+    ask_stage2_mode,
+    ask_stage3_mode,
+    ask_num_rounds,
+    ask_adjudicator_config,
+    ask_moderator_config,
+    ask_output_toggles,
+    show_review_panel,
+    ask_review_action,
+    ask_edit_section,
+    ask_preset,
+    _scan_presets,
+    run_wizard,
+    _validate_float_range,
+    _validate_int_range,
+    PERSONA_CHOICES,
+    OUTPUT_TOGGLES,
+)
+
+
+# =========================================================================
+# Helpers
+# =========================================================================
+
+def _console() -> Console:
+    return Console(file=StringIO())
+
+
+# =========================================================================
+# 1. Validators
+# =========================================================================
+
+class TestValidators:
+
+    @pytest.mark.unit
+    def test_float_range_valid(self):
+        assert _validate_float_range("0.5") is True
+
+    @pytest.mark.unit
+    def test_float_range_boundary(self):
+        assert _validate_float_range("0.0") is True
+        assert _validate_float_range("1.0") is True
+
+    @pytest.mark.unit
+    def test_float_range_out_of_bounds(self):
+        result = _validate_float_range("1.5")
+        assert isinstance(result, str)
+
+    @pytest.mark.unit
+    def test_float_range_not_a_number(self):
+        result = _validate_float_range("abc")
+        assert isinstance(result, str)
+
+    @pytest.mark.unit
+    def test_int_range_valid(self):
+        assert _validate_int_range("3", 2, 6) is True
+
+    @pytest.mark.unit
+    def test_int_range_out_of_bounds(self):
+        result = _validate_int_range("7", 2, 6)
+        assert isinstance(result, str)
+
+    @pytest.mark.unit
+    def test_int_range_not_a_number(self):
+        result = _validate_int_range("abc", 2, 6)
+        assert isinstance(result, str)
+
+
+# =========================================================================
+# 2. Individual Step Functions
+# =========================================================================
+
+class TestAskTopic:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_returns_topic(self, mock_text):
+        mock_text.return_value.ask.return_value = "Does free will exist?"
+        result = ask_topic()
+        assert result == "Does free will exist?"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_uses_default(self, mock_text):
+        mock_text.return_value.ask.return_value = "My topic"
+        ask_topic(default="Default topic")
+        mock_text.assert_called_once()
+        _, kwargs = mock_text.call_args
+        assert kwargs["default"] == "Default topic"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_ctrl_c_raises(self, mock_text):
+        mock_text.return_value.ask.return_value = None
+        with pytest.raises(KeyboardInterrupt):
+            ask_topic()
+
+
+class TestAskNumAgents:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_returns_int(self, mock_text):
+        mock_text.return_value.ask.return_value = "3"
+        result = ask_num_agents()
+        assert result == 3
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_uses_default(self, mock_text):
+        mock_text.return_value.ask.return_value = "4"
+        ask_num_agents(default=4)
+        _, kwargs = mock_text.call_args
+        assert kwargs["default"] == "4"
+
+
+class TestAskAgentConfig:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    @patch("chal.cli.wizard.questionary.autocomplete")
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_agent_config(self, mock_select, mock_auto, mock_text):
+        # select calls: persona, provider
+        mock_select.return_value.ask.side_effect = ["EMPIRICIST", "openai"]
+        # autocomplete call: model
+        mock_auto.return_value.ask.return_value = "gpt-4o"
+        # text call: temperature
+        mock_text.return_value.ask.return_value = "0.7"
+
+        result = ask_agent_config(0)
+
+        assert isinstance(result, AgentConfig)
+        assert result.persona == "EMPIRICIST"
+        assert result.provider == "openai"
+        assert result.model == "gpt-4o"
+        assert result.temperature == 0.7
+        assert "Empiricist" in result.name
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    @patch("chal.cli.wizard.questionary.autocomplete")
+    @patch("chal.cli.wizard.questionary.select")
+    def test_uses_default(self, mock_select, mock_auto, mock_text):
+        default = AgentConfig(
+            name="Agent-Test", persona="SKEPTIC", model="o1-mini",
+            provider="openai", temperature=0.5
+        )
+        mock_select.return_value.ask.side_effect = ["SKEPTIC", "openai"]
+        mock_auto.return_value.ask.return_value = "o1-mini"
+        mock_text.return_value.ask.return_value = "0.5"
+
+        result = ask_agent_config(0, default=default)
+
+        assert result.name == "Agent-Test"
+        assert result.persona == "SKEPTIC"
+
+
+class TestAskStage2Mode:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_open(self, mock_select):
+        mock_select.return_value.ask.return_value = "open"
+        assert ask_stage2_mode() == "open"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_moderated(self, mock_select):
+        mock_select.return_value.ask.return_value = "moderated"
+        assert ask_stage2_mode() == "moderated"
+
+
+class TestAskStage3Mode:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_rebuttal_no_sub_options(self, mock_select):
+        mock_select.return_value.ask.return_value = "rebuttal"
+        mode, opts = ask_stage3_mode()
+        assert mode == "rebuttal"
+        assert opts == {}
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    @patch("chal.cli.wizard.questionary.select")
+    def test_bloodsport_prompts_sub_options(self, mock_select, mock_text):
+        # First select: mode, second select: intensity
+        mock_select.return_value.ask.side_effect = ["bloodsport", "extreme"]
+        # text: max_exchanges
+        mock_text.return_value.ask.return_value = "10"
+
+        mode, opts = ask_stage3_mode()
+
+        assert mode == "bloodsport"
+        assert "bloodsport" in opts
+        assert opts["bloodsport"].intensity == "extreme"
+        assert opts["bloodsport"].max_exchanges == 10
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.confirm")
+    @patch("chal.cli.wizard.questionary.text")
+    @patch("chal.cli.wizard.questionary.select")
+    def test_collaborative_prompts_sub_options(self, mock_select, mock_text, mock_confirm):
+        mock_select.return_value.ask.return_value = "collaborative"
+        mock_text.return_value.ask.return_value = "15"
+        mock_confirm.return_value.ask.return_value = True
+
+        mode, opts = ask_stage3_mode()
+
+        assert mode == "collaborative"
+        assert "collaborative" in opts
+        assert opts["collaborative"].max_turns_per_question == 15
+        assert opts["collaborative"].early_termination_on_agreement is True
+
+
+class TestAskNumRounds:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_returns_int(self, mock_text):
+        mock_text.return_value.ask.return_value = "5"
+        assert ask_num_rounds() == 5
+
+
+class TestAskAdjudicatorConfig:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    @patch("chal.cli.wizard.questionary.autocomplete")
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_adjudication_config(self, mock_select, mock_auto, mock_text):
+        mock_select.return_value.ask.return_value = "openai"
+        mock_auto.return_value.ask.return_value = "o1-mini"
+        mock_text.return_value.ask.side_effect = ["1.0", "0.0"]
+
+        result = ask_adjudicator_config()
+
+        assert isinstance(result, AdjudicationConfig)
+        assert result.model == "o1-mini"
+        assert result.provider == "openai"
+        assert result.logic_weight == 1.0
+        assert result.ethics_weight == 0.0
+
+
+class TestAskModeratorConfig:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    @patch("chal.cli.wizard.questionary.autocomplete")
+    def test_returns_moderator_config(self, mock_auto, mock_select):
+        # select calls: provider, moderator_mode
+        mock_select.return_value.ask.side_effect = ["openai", "static"]
+        mock_auto.return_value.ask.return_value = "o1-mini"
+
+        result = ask_moderator_config()
+
+        assert isinstance(result, ModeratorConfig)
+        assert result.model == "o1-mini"
+        assert result.moderator_mode == "static"
+
+
+class TestAskOutputToggles:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.checkbox")
+    def test_returns_dict_of_bools(self, mock_checkbox):
+        # Simulate selecting only save_transcript
+        mock_checkbox.return_value.ask.return_value = ["save_transcript"]
+
+        result = ask_output_toggles()
+
+        assert isinstance(result, dict)
+        assert result["save_transcript"] is True
+        assert result["save_synthesis"] is False  # not selected
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.checkbox")
+    def test_all_attrs_present(self, mock_checkbox):
+        mock_checkbox.return_value.ask.return_value = []
+
+        result = ask_output_toggles()
+
+        expected_attrs = {attr for _, attr, _ in OUTPUT_TOGGLES}
+        assert set(result.keys()) == expected_attrs
+
+
+# =========================================================================
+# 3. Review Panel
+# =========================================================================
+
+class TestShowReviewPanel:
+
+    @pytest.mark.unit
+    def test_renders_without_error(self):
+        config = DebateConfig(
+            topic="Test topic",
+            agents=[
+                AgentConfig(name="A1", persona="EMPIRICIST"),
+                AgentConfig(name="A2", persona="RATIONALIST"),
+            ],
+        )
+        console = _console()
+        show_review_panel(config, console)
+
+    @pytest.mark.unit
+    def test_shows_moderator_when_moderated(self):
+        config = DebateConfig(
+            topic="Test",
+            stage2_mode="moderated",
+            moderator=ModeratorConfig(model="o1-mini"),
+            agents=[AgentConfig(name="A1", persona="EMPIRICIST")],
+        )
+        buf = StringIO()
+        console = Console(file=buf)
+        show_review_panel(config, console)
+        output = buf.getvalue()
+        assert "Moderator" in output
+
+    @pytest.mark.unit
+    def test_shows_bloodsport_when_selected(self):
+        config = DebateConfig(
+            topic="Test",
+            stage3_mode="bloodsport",
+            bloodsport=BloodSportConfig(intensity="extreme", max_exchanges=10),
+            agents=[AgentConfig(name="A1", persona="EMPIRICIST")],
+        )
+        buf = StringIO()
+        console = Console(file=buf)
+        show_review_panel(config, console)
+        output = buf.getvalue()
+        assert "extreme" in output
+
+
+# =========================================================================
+# 4. Review Action
+# =========================================================================
+
+class TestReviewAction:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_action(self, mock_select):
+        mock_select.return_value.ask.return_value = "launch"
+        assert ask_review_action() == "launch"
+
+
+class TestEditSection:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_section(self, mock_select):
+        mock_select.return_value.ask.return_value = "topic"
+        assert ask_edit_section() == "topic"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_shows_moderator_when_flagged(self, mock_select):
+        mock_select.return_value.ask.return_value = "moderator"
+        result = ask_edit_section(show_moderator=True)
+        assert result == "moderator"
+        # Verify moderator was in the choices
+        _, kwargs = mock_select.call_args
+        choice_values = [c.value for c in kwargs["choices"]]
+        assert "moderator" in choice_values
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_hides_moderator_when_not_flagged(self, mock_select):
+        mock_select.return_value.ask.return_value = "topic"
+        ask_edit_section(show_moderator=False)
+        _, kwargs = mock_select.call_args
+        choice_values = [c.value for c in kwargs["choices"]]
+        assert "moderator" not in choice_values
+
+
+# =========================================================================
+# 5. Wizard Orchestration
+# =========================================================================
+
+class TestRunWizard:
+
+    def _mock_all_steps(self):
+        """Return a dict of patches for all questionary calls in wizard steps."""
+        return {
+            "text": patch("chal.cli.wizard.questionary.text"),
+            "select": patch("chal.cli.wizard.questionary.select"),
+            "autocomplete": patch("chal.cli.wizard.questionary.autocomplete"),
+            "checkbox": patch("chal.cli.wizard.questionary.checkbox"),
+            "confirm": patch("chal.cli.wizard.questionary.confirm"),
+        }
+
+    @pytest.mark.unit
+    def test_wizard_cancel(self):
+        """Wizard returns (None, 'cancel') when user cancels at review."""
+        with patch("chal.cli.wizard.questionary.text") as m_text, \
+             patch("chal.cli.wizard.questionary.select") as m_select, \
+             patch("chal.cli.wizard.questionary.autocomplete") as m_auto, \
+             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox:
+
+            # Step 1: topic
+            m_text.return_value.ask.side_effect = [
+                "Test topic",  # topic
+                "2",           # num_agents
+                "0.7",         # agent 1 temp
+                "0.7",         # agent 2 temp
+                "3",           # num_rounds
+                "1.0",         # adj logic weight
+                "0.0",         # adj ethics weight
+            ]
+            # select calls: preset, persona1, provider1, persona2, provider2,
+            # stage2_mode, stage3_mode, adj_provider, review_action
+            m_select.return_value.ask.side_effect = [
+                "__custom__",                 # ask_preset
+                "EMPIRICIST", "openai",      # agent 1
+                "RATIONALIST", "openai",     # agent 2
+                "open",                       # stage 2
+                "rebuttal",                   # stage 3
+                "openai",                     # adjudicator provider
+                "cancel",                     # review action
+            ]
+            m_auto.return_value.ask.side_effect = [
+                "gpt-4o",  # agent 1 model
+                "gpt-4o",  # agent 2 model
+                "o1-mini", # adjudicator model
+            ]
+            m_checkbox.return_value.ask.return_value = ["save_transcript", "save_debug_log"]
+
+            config, action = run_wizard(_console())
+
+            assert config is None
+            assert action == "cancel"
+
+    @pytest.mark.unit
+    def test_wizard_launch(self):
+        """Wizard builds a valid DebateConfig when user launches."""
+        with patch("chal.cli.wizard.questionary.text") as m_text, \
+             patch("chal.cli.wizard.questionary.select") as m_select, \
+             patch("chal.cli.wizard.questionary.autocomplete") as m_auto, \
+             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox:
+
+            m_text.return_value.ask.side_effect = [
+                "Does free will exist?",  # topic
+                "2",                       # num_agents
+                "0.7",                     # agent 1 temp
+                "0.5",                     # agent 2 temp
+                "3",                       # num_rounds
+                "1.0",                     # adj logic weight
+                "0.0",                     # adj ethics weight
+            ]
+            m_select.return_value.ask.side_effect = [
+                "__custom__",            # ask_preset
+                "EMPIRICIST", "openai",
+                "SKEPTIC", "anthropic",
+                "open",
+                "rebuttal",
+                "openai",
+                "launch",  # review action
+            ]
+            m_auto.return_value.ask.side_effect = [
+                "gpt-4o",
+                "claude-sonnet-4-5-20250929",
+                "o1-mini",
+            ]
+            m_checkbox.return_value.ask.return_value = [
+                "save_transcript", "save_synthesis", "save_debug_log",
+            ]
+
+            config, action = run_wizard(_console())
+
+            assert action == "launch"
+            assert isinstance(config, DebateConfig)
+            assert config.topic == "Does free will exist?"
+            assert len(config.agents) == 2
+            assert config.agents[0].persona == "EMPIRICIST"
+            assert config.agents[1].persona == "SKEPTIC"
+            assert config.agents[1].provider == "anthropic"
+            assert config.stage2_mode == "open"
+            assert config.stage3_mode == "rebuttal"
+            assert config.max_rounds == 3
+            assert config.outputs.save_transcript is True
+            assert config.outputs.save_training_data is False
+
+    @pytest.mark.unit
+    def test_wizard_save(self, tmp_path):
+        """Wizard saves config to YAML when user selects save."""
+        yaml_path = tmp_path / "test_debate.yaml"
+
+        with patch("chal.cli.wizard.questionary.text") as m_text, \
+             patch("chal.cli.wizard.questionary.select") as m_select, \
+             patch("chal.cli.wizard.questionary.autocomplete") as m_auto, \
+             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox:
+
+            m_text.return_value.ask.side_effect = [
+                "Save test topic",  # topic
+                "2",                # num_agents
+                "0.7",              # agent 1 temp
+                "0.7",              # agent 2 temp
+                "1",                # num_rounds
+                "1.0",              # adj logic weight
+                "0.0",              # adj ethics weight
+                str(yaml_path),     # save path
+            ]
+            m_select.return_value.ask.side_effect = [
+                "__custom__",            # ask_preset
+                "EMPIRICIST", "openai",
+                "RATIONALIST", "openai",
+                "open",
+                "rebuttal",
+                "openai",
+                "save_and_launch",  # review action
+            ]
+            m_auto.return_value.ask.side_effect = [
+                "gpt-4o", "gpt-4o", "o1-mini",
+            ]
+            m_checkbox.return_value.ask.return_value = ["save_transcript"]
+
+            config, action = run_wizard(_console())
+
+            assert action == "save_and_launch"
+            assert yaml_path.exists()
+
+            # Verify saved YAML can be loaded
+            from chal.config import DebateConfig as DC
+            reloaded = DC.from_yaml(yaml_path)
+            assert reloaded.topic == "Save test topic"
+
+
+# =========================================================================
+# 6. Constants
+# =========================================================================
+
+class TestConstants:
+
+    @pytest.mark.unit
+    def test_persona_choices_has_12(self):
+        """PERSONA_CHOICES has all 12 personas."""
+        assert len(PERSONA_CHOICES) == 12
+
+    @pytest.mark.unit
+    def test_persona_choice_values_are_uppercase(self):
+        """All persona choice values are uppercase strings."""
+        for choice in PERSONA_CHOICES:
+            assert choice.value == choice.value.upper()
+
+    @pytest.mark.unit
+    def test_output_toggles_all_have_three_elements(self):
+        """Each OUTPUT_TOGGLE is a (label, attr, default) triple."""
+        for toggle in OUTPUT_TOGGLES:
+            assert len(toggle) == 3
+            label, attr, default = toggle
+            assert isinstance(label, str)
+            assert isinstance(attr, str)
+            assert isinstance(default, bool)
+
+
+# =========================================================================
+# 7. Preset Selection
+# =========================================================================
+
+class TestScanPresets:
+
+    @pytest.mark.unit
+    def test_scans_configurations_directory(self):
+        """_scan_presets returns entries from the configurations directory."""
+        presets = _scan_presets()
+        # We know there are 4 YAML files in src/chal/configurations/
+        assert len(presets) >= 1
+        # Each entry is (label, config_name, path)
+        for label, name, path in presets:
+            assert isinstance(label, str)
+            assert isinstance(name, str)
+            assert path.exists()
+
+    @pytest.mark.unit
+    def test_preset_names_include_default(self):
+        """_scan_presets includes the 'default' configuration."""
+        presets = _scan_presets()
+        names = [name for _, name, _ in presets]
+        assert "default" in names
+
+    @pytest.mark.unit
+    def test_scan_returns_empty_if_dir_missing(self, monkeypatch):
+        """_scan_presets returns [] if CONFIG_DIR doesn't exist."""
+        from pathlib import Path
+        monkeypatch.setattr("chal.cli.wizard.CONFIG_DIR", Path("/nonexistent/dir"))
+        assert _scan_presets() == []
+
+
+class TestAskPreset:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_none_for_custom(self, mock_select):
+        """ask_preset returns None when user selects 'Custom'."""
+        mock_select.return_value.ask.return_value = "__custom__"
+        result = ask_preset()
+        assert result is None
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    @patch("chal.cli.wizard.DebateConfig.from_yaml")
+    def test_returns_config_for_preset(self, mock_from_yaml, mock_select):
+        """ask_preset returns a DebateConfig when a preset path is selected."""
+        mock_config = MagicMock(spec=DebateConfig)
+        mock_from_yaml.return_value = mock_config
+        mock_select.return_value.ask.return_value = "/some/path.yaml"
+
+        result = ask_preset()
+
+        assert result == mock_config
+        mock_from_yaml.assert_called_once()
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_ctrl_c_raises(self, mock_select):
+        """ask_preset raises KeyboardInterrupt on Ctrl+C."""
+        mock_select.return_value.ask.return_value = None
+        with pytest.raises(KeyboardInterrupt):
+            ask_preset()

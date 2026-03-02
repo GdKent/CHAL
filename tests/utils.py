@@ -23,7 +23,7 @@ def create_sample_belief(
     num_evidence: int = 1
 ) -> Dict[str, Any]:
     """
-    Create a sample CBS-v1 belief structure for testing.
+    Create a sample CBS belief structure for testing.
 
     Args:
         belief_id: Unique identifier for the belief
@@ -33,10 +33,10 @@ def create_sample_belief(
         num_evidence: Number of evidence items to include
 
     Returns:
-        Valid CBS-v1 belief dictionary
+        Valid CBS belief dictionary
     """
     belief = {
-        "schema_version": "CBS-v1",
+        "schema_version": "CBS",
         "belief_id": belief_id,
         "version": 1,
         "metadata": {
@@ -191,18 +191,24 @@ def create_mock_agent(
     Returns:
         Mock agent instance
     """
-    agent = Mock(spec=Agent)
+    agent = MagicMock()
     agent.name = name
     agent.model = model
     agent.temperature = 0.7
     agent.current_belief = None
+    agent.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
+    agent.system_prompt = ""
+    agent.internal_belief = ""
+    agent.all_beliefs_held = []
+    agent.get_internal_belief_obj.return_value = None
+    agent.get_internal_belief.return_value = ""
 
     if responses is None:
         responses = ['{"test": "response"}']
 
     response_cycle = iter(responses * 100)  # Repeat responses
 
-    def mock_generate(messages: List[Message]) -> Message:
+    def mock_generate(messages: List[Message], **kwargs) -> Message:
         return Message(role="assistant", content=next(response_cycle))
 
     agent.generate = Mock(side_effect=mock_generate)
@@ -213,7 +219,7 @@ def create_mock_agent(
 
 def create_mock_belief_response(belief: Dict[str, Any]) -> str:
     """
-    Create a mock LLM response containing a CBS-v1 belief.
+    Create a mock LLM response containing a CBS belief.
 
     Args:
         belief: Belief dictionary to encode
@@ -225,7 +231,7 @@ def create_mock_belief_response(belief: Dict[str, Any]) -> str:
 {json.dumps(belief, indent=2)}
 ```
 
-Here is my belief structure in CBS-v1 format.
+Here is my belief structure in CBS format.
 """
 
 
@@ -288,7 +294,7 @@ def create_mock_adjudication_response(outcome: str = "rebuttal_valid") -> str:
 
 def assert_belief_valid(belief: Dict[str, Any]) -> None:
     """
-    Assert that a belief structure is valid according to CBS-v1.
+    Assert that a belief structure is valid according to CBS.
 
     Args:
         belief: Belief dictionary to validate

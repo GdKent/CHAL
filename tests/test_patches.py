@@ -298,9 +298,8 @@ def test_apply_patches_propagate_simple():
     updated = apply_patches(belief, patches, propagate_confidence=True)
 
     assert updated["claims"][0]["confidence"] == 0.5
-    # NOTE: Propagation currently has a bug - get_node() doesn't return type field
-    # So propagation doesn't actually work, confidence stays at 0.8
-    assert updated["claims"][1]["confidence"] == 0.8
+    # C2 depends on C1 and is capped at C1's new confidence
+    assert updated["claims"][1]["confidence"] == 0.5
 
 
 @pytest.mark.unit
@@ -330,11 +329,10 @@ def test_apply_patches_propagate_transitive():
 
     updated = apply_patches(belief, patches, propagate_confidence=True)
 
-    # NOTE: Propagation currently has a bug - doesn't actually propagate
-    # Only C1 is updated, C2 and C3 stay at 0.8
+    # Propagation: C2 and C3 are capped at C1's new confidence
     assert updated["claims"][0]["confidence"] == 0.5
-    assert updated["claims"][1]["confidence"] == 0.8
-    assert updated["claims"][2]["confidence"] == 0.8
+    assert updated["claims"][1]["confidence"] == 0.5
+    assert updated["claims"][2]["confidence"] == 0.5
 
 
 @pytest.mark.unit

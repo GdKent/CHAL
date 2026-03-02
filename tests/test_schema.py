@@ -1,5 +1,5 @@
 """
-Unit tests for CBS-v1 belief schema validation.
+Unit tests for CBS belief schema validation.
 
 Tests cover:
 - Valid belief validation (minimal and complete)
@@ -61,9 +61,9 @@ def test_validate_belief_complete(test_beliefs):
 
 @pytest.mark.unit
 def test_validate_belief_schema_version():
-    """Test that schema_version must be 'CBS-v1'."""
+    """Test that schema_version must be 'CBS'."""
     belief = create_sample_belief()
-    belief["schema_version"] = "CBS-v1"
+    belief["schema_version"] = "CBS"
     errors = validate_belief(belief)
     assert len(errors) == 0
 

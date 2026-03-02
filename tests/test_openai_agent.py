@@ -262,7 +262,7 @@ def test_generate_no_retry_on_other_errors(mock_post):
 def test_update_current_belief():
     """Test setting internal_belief_obj attribute."""
     agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
-    belief = {"schema_version": "CBS-v1", "belief_id": "TEST"}
+    belief = {"schema_version": "CBS", "belief_id": "TEST"}
 
     agent.set_internal_belief_obj(belief)
 
@@ -273,7 +273,7 @@ def test_update_current_belief():
 def test_get_current_belief():
     """Test retrieving current belief."""
     agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
-    belief = {"schema_version": "CBS-v1", "belief_id": "TEST"}
+    belief = {"schema_version": "CBS", "belief_id": "TEST"}
     agent.internal_belief_obj = belief
 
     retrieved = agent.get_internal_belief_obj()
@@ -298,7 +298,7 @@ def test_belief_state_persists(mock_post):
     mock_post.return_value = mock_response
 
     agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
-    belief = {"schema_version": "CBS-v1", "belief_id": "TEST"}
+    belief = {"schema_version": "CBS", "belief_id": "TEST"}
     agent.set_internal_belief_obj(belief)
 
     # Generate response

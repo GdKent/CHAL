@@ -1,11 +1,11 @@
 {
   "belief_minimal": {
     "role": "assistant",
-    "content": "```json\n{\n  \"schema_version\": \"CBS-v1\",\n  \"belief_id\": \"BELIEF-MOCK-001\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Test topic\",\n    \"agent_persona\": \"Test Persona\",\n    \"created_at\": \"2026-02-15T12:00:00Z\"\n  },\n  \"thesis\": {\n    \"stance\": \"Test stance\",\n    \"summary_bullets\": [\"Test bullet 1\", \"Test bullet 2\"],\n    \"confidence\": 0.75\n  }\n}\n```\n\nHere is my belief structure in CBS-v1 format."
+    "content": "```json\n{\n  \"schema_version\": \"CBS\",\n  \"belief_id\": \"BELIEF-MOCK-001\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Test topic\",\n    \"agent_persona\": \"Test Persona\",\n    \"created_at\": \"2026-02-15T12:00:00Z\"\n  },\n  \"thesis\": {\n    \"stance\": \"Test stance\",\n    \"summary_bullets\": [\"Test bullet 1\", \"Test bullet 2\"],\n    \"confidence\": 0.75\n  }\n}\n```\n\nHere is my belief structure in CBS format."
   },
   "belief_complete": {
     "role": "assistant",
-    "content": "```json\n{\n  \"schema_version\": \"CBS-v1\",\n  \"belief_id\": \"BELIEF-MOCK-002\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Does free will exist?\",\n    \"agent_persona\": \"Rationalist\",\n    \"created_at\": \"2026-02-15T12:00:00Z\"\n  },\n  \"thesis\": {\n    \"stance\": \"Free will exists within a compatibilist framework.\",\n    \"summary_bullets\": [\n      \"Determinism and free will are compatible\",\n      \"Rational deliberation grounds moral responsibility\"\n    ],\n    \"confidence\": 0.80\n  },\n  \"assumptions\": [\n    {\"id\": \"A1\", \"statement\": \"Rational deliberation is real\"}\n  ],\n  \"claims\": [\n    {\n      \"id\": \"C1\",\n      \"type\": \"deductive\",\n      \"statement\": \"Humans can make choices based on reasons\",\n      \"depends_on\": [\"A1\"],\n      \"backing_evidence_ids\": [\"E1\"],\n      \"confidence\": 0.85,\n      \"status\": \"accepted\"\n    }\n  ],\n  \"evidence\": [\n    {\n      \"id\": \"E1\",\n      \"type\": \"empirical\",\n      \"summary\": \"Studies show rational deliberation\",\n      \"citation\": \"Test et al. (2026)\"\n    }\n  ]\n}\n```"
+    "content": "```json\n{\n  \"schema_version\": \"CBS\",\n  \"belief_id\": \"BELIEF-MOCK-002\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Does free will exist?\",\n    \"agent_persona\": \"Rationalist\",\n    \"created_at\": \"2026-02-15T12:00:00Z\"\n  },\n  \"thesis\": {\n    \"stance\": \"Free will exists within a compatibilist framework.\",\n    \"summary_bullets\": [\n      \"Determinism and free will are compatible\",\n      \"Rational deliberation grounds moral responsibility\"\n    ],\n    \"confidence\": 0.80\n  },\n  \"assumptions\": [\n    {\"id\": \"A1\", \"statement\": \"Rational deliberation is real\"}\n  ],\n  \"claims\": [\n    {\n      \"id\": \"C1\",\n      \"type\": \"deductive\",\n      \"statement\": \"Humans can make choices based on reasons\",\n      \"depends_on\": [\"A1\"],\n      \"backing_evidence_ids\": [\"E1\"],\n      \"confidence\": 0.85,\n      \"status\": \"accepted\"\n    }\n  ],\n  \"evidence\": [\n    {\n      \"id\": \"E1\",\n      \"type\": \"empirical\",\n      \"summary\": \"Studies show rational deliberation\",\n      \"citation\": \"Test et al. (2026)\"\n    }\n  ]\n}\n```"
   },
   "cross_examination_3": {
     "role": "assistant",
@@ -33,11 +33,11 @@
   },
   "malformed_json": {
     "role": "assistant",
-    "content": "```json\n{\"schema_version\": \"CBS-v1\", \"belief_id\": \"BROKEN\",\n```\nThis JSON is incomplete and malformed."
+    "content": "```json\n{\"schema_version\": \"CBS\", \"belief_id\": \"BROKEN\",\n```\nThis JSON is incomplete and malformed."
   },
   "no_json_block": {
     "role": "assistant",
-    "content": "I believe that free will exists, but this response contains no JSON code block, so it cannot be parsed as a CBS-v1 belief structure."
+    "content": "I believe that free will exists, but this response contains no JSON code block, so it cannot be parsed as a CBS belief structure."
   },
   "rate_limit_error": {
     "error": {

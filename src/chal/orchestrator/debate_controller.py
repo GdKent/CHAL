@@ -5,7 +5,7 @@ Orchestrates structured multi-agent philosophical debates using the CHAL Belief 
 
 The DebateController manages a 7-stage debate process:
 - Stage 0: Briefing - Initialize agents with personas and universal rules
-- Stage 1: Opening Positions - Agents state initial beliefs as structured JSON (CBS-v1)
+- Stage 1: Opening Positions - Agents state initial beliefs as structured JSON (CBS)
 - Stage 2: Cross-Examination - Agents ask targeted questions about opponents' claims/assumptions
 - Stage 3: Rebuttals - Agents respond to questions with structured answers and optional belief patches
 - Stage 4: Adjudication - Independent evaluator assesses challenge-rebuttal pairs
@@ -14,7 +14,7 @@ The DebateController manages a 7-stage debate process:
 - Stage 7: Scribing - Generate a flowing narrative synthesis of the entire debate
 
 Features:
-- Structured belief tracking with JSON schemas (CBS-v1)
+- Structured belief tracking with JSON schemas (CBS)
 - Embedding-based belief trajectory visualization
 - Configurable adjudication weights (logic vs. ethics)
 - Token-optimized prompts (JSON-only responses, Markdown generated programmatically)
@@ -24,13 +24,14 @@ Note: All belief outputs are JSON-first. Human-readable Markdown is generated
 programmatically using belief_to_markdown() to minimize token usage.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import Callable, List, Optional, Dict, Any
 from pathlib import Path
 from datetime import datetime
 from chal.agents.base import Agent, Message
 from chal.agents import prompts
 from chal.agents.factory import create_agent
 from chal.orchestrator.adjudicator import Adjudicator
+from chal.orchestrator.moderator import Moderator
 from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
 from chal.convergence import calculate_claim_agreement, format_convergence_summary, get_convergence_trajectory_summary
@@ -54,7 +55,7 @@ class DebateController:
     Orchestrates structured philosophical debates between multiple LLM agents.
 
     The controller manages the complete debate lifecycle through 7 stages, maintains
-    agent beliefs using the CHAL Belief Schema (CBS-v1), tracks embeddings for
+    agent beliefs using the CHAL Belief Schema (CBS), tracks embeddings for
     visualization, and coordinates adjudication of challenge-rebuttal exchanges.
 
     Attributes:
@@ -77,7 +78,7 @@ class DebateController:
                 If None, a default configuration will be created.
         """
         self.agents = agents
-        self.max_rounds = max_rounds
+        self.max_rounds = config.max_rounds if config and hasattr(config, 'max_rounds') else max_rounds
         self.config = config  # Store config for accessing stage and scribe parameters
         self.challenge_rebuttal_pairs = []
         self.opening_positions = []
@@ -128,8 +129,64 @@ class DebateController:
         # Initialize convergence tracking
         self.convergence_history = []
 
+        # Initialize moderator (if stage2_mode == "moderated")
+        self.stage2_mode = config.stage2_mode if config else "open"
+        self.moderator: Optional[Moderator] = None
+        self.roadmap = None
+        self.roadmap_revisions: List[Dict[str, Any]] = []
+        if self.stage2_mode == "moderated" and config:
+            self.moderator = Moderator(config.moderator)
+
         # Training data recorder (initialized in run() if save_training_data is enabled)
         self.recorder: Optional[DebateRecorder] = None
+
+        # Progress callback (set by run() caller, e.g. DebateDisplay.handle_event)
+        self._progress_callback: Optional[Callable[[str, Dict[str, Any]], None]] = None
+        # Error recovery callback (set by run() caller)
+        self._on_error: Optional[Callable[[str, Exception, int], str]] = None
+
+    def _call_agent(self, agent, messages, agent_name: str = "", **kwargs) -> Optional[str]:
+        """Call agent.generate() with error recovery via on_error callback.
+
+        Args:
+            agent: The Agent instance to call.
+            messages: Messages to pass to agent.generate().
+            agent_name: Display name for error reporting.
+            **kwargs: Additional kwargs for agent.generate().
+
+        Returns:
+            The agent response string, or None if skipped.
+
+        Raises:
+            Exception: Re-raises if on_error returns "abort" or is not set.
+        """
+        retry_count = 0
+        name = agent_name or getattr(agent, "name", "unknown")
+        while True:
+            try:
+                return agent.generate(messages, **kwargs)
+            except Exception as e:
+                if self._on_error is None:
+                    raise
+                action = self._on_error(name, e, retry_count)
+                if action == "retry":
+                    retry_count += 1
+                    continue
+                elif action == "skip":
+                    self._log(f"Skipped {name} due to error: {e}", "WARNING")
+                    return None
+                else:  # "abort" or unknown
+                    raise
+
+    def _notify(self, event: str, data: Optional[Dict[str, Any]] = None) -> None:
+        """Fire a progress event if a callback is registered.
+
+        Args:
+            event: Event name (e.g. "stage_start", "agent_complete").
+            data: Event-specific payload dict.
+        """
+        if self._progress_callback is not None:
+            self._progress_callback(event, data or {})
 
     def _log(self, message: str, level: str = "INFO", include_timestamp: bool = True) -> None:
         """
@@ -188,6 +245,113 @@ class DebateController:
         # TODO: In future, this could compare current_positions via embeddings or heuristics
         return False
 
+    def _build_round_summary(
+        self,
+        round_num: int,
+        round_idx: int,
+        focus_subtopic: Optional[Dict[str, Any]],
+        convergence_data: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Build a structured summary of a completed round for the adaptive moderator.
+
+        Args:
+            round_num: 1-based round number.
+            round_idx: 0-based round index.
+            focus_subtopic: The sub-topic dict for this round (or None in open mode).
+            convergence_data: Convergence metrics dict from this round (or None).
+
+        Returns:
+            A dict with keys: round_num, focus_subtopic, adjudication,
+            belief_changes, convergence, key_arguments, remaining_rounds,
+            completed_subtopics.
+        """
+        # --- Adjudication summary ---
+        # Collect verdicts from this round's challenge_rebuttal_pairs
+        verdict_counts: Dict[str, int] = {}
+        key_arguments: list[str] = []
+        for entry in self.challenge_rebuttal_pairs:
+            resolution = entry.get("resolution")
+            if resolution and isinstance(resolution, dict):
+                status = resolution.get("status", "unknown")
+                verdict_counts[status] = verdict_counts.get(status, 0) + 1
+                # Extract a brief key argument from each pair
+                challenger = entry.get("challenger", "?")
+                challenge_text = entry.get("challenge", "")
+                if challenge_text:
+                    truncated = challenge_text[:200]
+                    key_arguments.append(f"{challenger} challenged: {truncated}")
+
+        # Determine round winner from adjudication results
+        winner = None
+        if verdict_counts:
+            # critique_valid means the challenger won; rebuttal_valid means the target defended
+            critique_wins = verdict_counts.get("critique_valid", 0)
+            rebuttal_wins = verdict_counts.get("rebuttal_valid", 0)
+            if critique_wins > rebuttal_wins:
+                winner = "challengers"
+            elif rebuttal_wins > critique_wins:
+                winner = "defenders"
+
+        adjudication_summary = {
+            "verdict_counts": verdict_counts,
+            "winner": winner,
+        }
+
+        # --- Belief changes ---
+        belief_changes: list[Dict[str, Any]] = []
+        for agent in self.agents:
+            beliefs_held = getattr(agent, "all_beliefs_held", [])
+            changed = len(beliefs_held) > 1  # More than one belief snapshot = changed
+            change_summary = ""
+            if changed and len(beliefs_held) >= 2:
+                change_summary = f"Updated belief after round {round_num}"
+            belief_changes.append({
+                "agent": agent.name,
+                "changed": changed,
+                "change_summary": change_summary,
+            })
+
+        # --- Convergence ---
+        convergence_summary: Optional[Dict[str, Any]] = None
+        if convergence_data is not None:
+            score = convergence_data.get("convergence_score", 0.0)
+            # Determine trend from history
+            trend = "stable"
+            if len(self.convergence_history) >= 2:
+                prev_score = self.convergence_history[-2].get("convergence_score", 0.0)
+                curr_score = self.convergence_history[-1].get("convergence_score", 0.0)
+                if curr_score > prev_score + 0.05:
+                    trend = "converging"
+                elif curr_score < prev_score - 0.05:
+                    trend = "diverging"
+            convergence_summary = {
+                "score": score,
+                "trend": trend,
+            }
+
+        # --- Completed subtopics ---
+        completed_subtopics: list[str] = []
+        if self.roadmap:
+            for i in range(min(round_num, len(self.roadmap.sub_topics))):
+                completed_subtopics.append(self.roadmap.sub_topics[i].title)
+
+        # --- Remaining rounds ---
+        remaining_rounds = self.max_rounds - round_num
+
+        # Truncate key_arguments to avoid bloating the prompt
+        key_arguments = key_arguments[:6]
+
+        return {
+            "round_num": round_num,
+            "focus_subtopic": focus_subtopic,
+            "adjudication": adjudication_summary,
+            "belief_changes": belief_changes,
+            "convergence": convergence_summary,
+            "key_arguments": key_arguments,
+            "remaining_rounds": remaining_rounds,
+            "completed_subtopics": completed_subtopics,
+        }
+
     def run_stage_0_briefing(self, topic: str, personas: dict) -> None:
         """
         Stage 0: Briefing
@@ -236,7 +400,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "# 🧠 Stage 0: Briefing\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 0, "name": "Briefing"})
 
     def run_stage_1_opening_positions(self, topic: str) -> None:
         """
@@ -259,7 +423,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# 📖 Stage 1: Opening Positions\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 1, "name": "Opening Positions"})
 
         self.round_histories["round-0"] = []
         self.current_round_key = "round-0"
@@ -267,7 +431,7 @@ class DebateController:
         for agent in self.agents:
             self._log(f"\n--- Processing agent: {agent.name} ---", "INFO")
 
-            opening_prompt = prompts.build_stage_1_belief_prompt_cbsv1(
+            opening_prompt = prompts.build_stage_1_belief_prompt_cbs(
                             topic=topic, agent_name=agent.name, persona_label=agent.persona_label
                         )
 
@@ -286,11 +450,11 @@ class DebateController:
             self._log_response(agent.name, response.content, "Stage 1 - Opening Position")
 
             # Parse response
-            self._log(f"Parsing CBS-v1 belief object for {agent.name}...", "INFO")
+            self._log(f"Parsing CBS belief object for {agent.name}...", "INFO")
             belief_obj, md_view, errs = parse_model_output_to_belief(response.content)
 
             if belief_obj and not errs:
-                self._log_parse_result(True, f"Successfully parsed CBS-v1 belief for {agent.name}")
+                self._log_parse_result(True, f"Successfully parsed CBS belief for {agent.name}")
                 self.debug_log.append(f"\n--- PARSED BELIEF JSON FOR {agent.name} ---\n{json.dumps(belief_obj, ensure_ascii=False, indent=2)}\n--- END PARSED JSON ---\n")
 
                 # Validate belief graph structure with retry loop for blocking errors
@@ -325,7 +489,7 @@ class DebateController:
                                     f"1. All claims have supporting evidence or assumptions (no orphaned claims)\n"
                                     f"2. Claims do not depend on themselves directly or indirectly (no circular dependencies)\n"
                                     f"3. All referenced IDs exist in your belief structure\n\n"
-                                    f"Provide your revised CBS-v1 belief object."
+                                    f"Provide your revised CBS belief object."
                                 )
 
                                 revision_request = [Message(role="user", content=revision_prompt)]
@@ -368,7 +532,7 @@ class DebateController:
             else:
                 # Fallback to legacy behavior if parsing failed
                 err_details = f"Errors: {errs}" if errs else "No belief object returned"
-                self._log_parse_result(False, f"Failed to parse CBS-v1 belief for {agent.name}. {err_details}")
+                self._log_parse_result(False, f"Failed to parse CBS belief for {agent.name}. {err_details}")
                 self._log("Falling back to raw response content", "WARN")
                 agent.set_internal_belief(response.content.strip())
                 agent.all_beliefs_held.append(response.content.strip()) # track beliefs
@@ -392,14 +556,14 @@ class DebateController:
             # Add to markdown transcript
             markdown_content = f"\n## {agent.name} - Opening Statement\n\n{md_view}\n"
             self._add_to_markdown(markdown_content)
-            print(f"[{agent.name}] Opening statement received")
+            self._notify("agent_complete", {"agent_name": agent.name, "stage": 1, "action": "Opening statement received"})
 
         self.opening_positions = [agent.internal_belief for agent in self.agents]
         self._log(f"Stage 1 complete - {len(self.opening_positions)} opening positions captured", "INFO")
 
         return
 
-    def run_stage_2_cross_examination(self, only_if_disagree: bool = False) -> list:
+    def run_stage_2_cross_examination(self, only_if_disagree: bool = False, focus_subtopic: dict = None) -> list:
         """
         Stage 2: Cross-Examination
 
@@ -417,6 +581,8 @@ class DebateController:
 
         Args:
             only_if_disagree (bool): Skip challenge generation if agents broadly agree.
+            focus_subtopic (dict, optional): Sub-topic dict with 'title', 'description',
+                'guiding_questions' for moderated mode. None for open mode.
 
         Returns:
             list[dict]: A flat list of critique records, one per challenge.
@@ -428,7 +594,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# ⚔️ Stage 2: Cross-Examination\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 2, "name": "Cross-Examination"})
 
         self.challenge_rebuttal_pairs = []
 
@@ -445,7 +611,7 @@ class DebateController:
                     self._log(f"Agents agree - skipping: {challenger_name} ↔ {target_name}", "INFO")
                     markdown_note = f"\n*{challenger_name} and {target_name} broadly agree - skipping cross-examination*\n"
                     self._add_to_markdown(markdown_note)
-                    print(f"[{challenger_name}] agrees with [{target_name}] — skipping.")
+                    self._notify("agent_complete", {"agent_name": challenger_name, "stage": 2, "action": f"Agrees with {target_name} — skipping"})
                     continue
 
                 self._log(f"\n--- Cross-examination: {challenger_name} → {target_name} ---", "INFO")
@@ -484,7 +650,8 @@ class DebateController:
                         max_questions=max_questions,
                         max_question_length_chars=max_question_length,
                         previous_challenges=previous_challenges if previous_challenges else None,
-                        opponent_belief_graph=opponent_belief_graph
+                        opponent_belief_graph=opponent_belief_graph,
+                        focus_subtopic=focus_subtopic,
                     )
                 else:
                     prompt = prompts.build_stage_2_prompt(
@@ -496,7 +663,8 @@ class DebateController:
                         max_questions=max_questions,
                         max_question_length_chars=max_question_length,
                         previous_challenges=previous_challenges if previous_challenges else None,
-                        opponent_belief_graph=opponent_belief_graph
+                        opponent_belief_graph=opponent_belief_graph,
+                        focus_subtopic=focus_subtopic,
                     )
 
                 # Log prompt
@@ -577,7 +745,7 @@ class DebateController:
                     markdown_section += response.content + "\n\n"
 
                 self._add_to_markdown(markdown_section)
-                print(f"[{challenger_name} → {target_name}] Generated {num_questions} question(s)")
+                self._notify("agent_complete", {"agent_name": challenger_name, "stage": 2, "action": f"Generated {num_questions} question(s) for {target_name}"})
 
         return self.challenge_rebuttal_pairs
 
@@ -601,7 +769,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# 🛡️ Stage 3: Rebuttals\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 3, "name": "Rebuttals"})
 
         # Group all challenges targeting each agent
         grouped_entries = {}
@@ -737,7 +905,7 @@ class DebateController:
                 markdown_section += f"**{qid}** ({action}): {answer}\n\n"
 
             self._add_to_markdown(markdown_section)
-            print(f"[{target_name}] Provided {len(rebuttals)} rebuttal(s), {len(patches)} patch(es)")
+            self._notify("agent_complete", {"agent_name": target_name, "stage": 3, "action": f"Provided {len(rebuttals)} rebuttal(s), {len(patches)} patch(es)"})
 
         return self.challenge_rebuttal_pairs
 
@@ -764,7 +932,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# 🤝 Stage 3B: Collaborative Truth-Seeking Dialogue\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 3, "name": "Collaborative Truth-Seeking Dialogue"})
 
         # Read config values
         max_turns = self.config.collaborative.max_turns_per_question if self.config else 10
@@ -971,8 +1139,11 @@ class DebateController:
             markdown_section += f"**Outcome**: {resolution['status'].upper()}\n\n"
             markdown_section += f"**Reasoning**: {resolution.get('reasoning', 'N/A')}\n\n"
             self._add_to_markdown(markdown_section)
-            print(f"[{challenger_name} ↔ {defender_name}] {qid}: "
-                  f"{len(dialogue_history)} turns → {resolution['status'].upper()}")
+            self._notify("adjudication_result", {
+                "challenger": challenger_name, "target": defender_name,
+                "outcome": resolution['status'].upper(), "qid": qid,
+                "turns": len(dialogue_history),
+            })
 
         # Anti-repetition tracking (same format as Stage 4)
         for entry in self.challenge_rebuttal_pairs:
@@ -1020,7 +1191,7 @@ class DebateController:
 
         markdown_header = f"\n# ⚔️ Stage 3C: Blood Sport Exchange (Intensity: {intensity})\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 3, "name": f"Blood Sport Exchange (Intensity: {intensity})"})
 
         self._log(f"Config: intensity={intensity}, max_exchanges={max_exchanges}", "INFO")
 
@@ -1215,8 +1386,11 @@ class DebateController:
 
                 markdown_section += f"**{qid} Outcome**: {resolution['status'].upper()}\n\n"
                 markdown_section += f"**Reasoning**: {resolution.get('reasoning', 'N/A')}\n\n"
-                print(f"[{challenger_name} vs {defender_name}] {qid}: "
-                      f"{len(dialogue_history)} turns → {resolution['status'].upper()}")
+                self._notify("adjudication_result", {
+                    "challenger": challenger_name, "target": defender_name,
+                    "outcome": resolution['status'].upper(), "qid": qid,
+                    "turns": len(dialogue_history),
+                })
 
             self._add_to_markdown(markdown_section)
 
@@ -1254,7 +1428,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# ⚖️ Stage 4: Adjudication\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 4, "name": "Adjudication"})
 
         adjudication_count = 0
         for entry in self.challenge_rebuttal_pairs:
@@ -1263,7 +1437,7 @@ class DebateController:
                 self._log(f"Skipping incomplete pair: {entry['challenger']} → {entry['target']} (missing challenge or rebuttal)", "WARN")
                 markdown_note = f"\n*Skipped incomplete pair: {entry['challenger']} → {entry['target']}*\n"
                 self._add_to_markdown(markdown_note)
-                print(f"⚠️ Incomplete pair: skipping {entry['challenger']} → {entry['target']}")
+                self._notify("agent_complete", {"agent_name": "Adjudicator", "stage": 4, "action": f"Skipped incomplete pair: {entry['challenger']} → {entry['target']}"})
                 continue
 
             adjudication_count += 1
@@ -1312,7 +1486,10 @@ class DebateController:
                 markdown_section += f"**Disagreement**: {resolution['restatement']}\n\n"
 
             self._add_to_markdown(markdown_section)
-            print(f"🧮 [{entry['challenger']} → {entry['target']}] Resolution: {resolution['status'].upper()}")
+            self._notify("adjudication_result", {
+                "challenger": entry["challenger"], "target": entry["target"],
+                "outcome": resolution["status"].upper(),
+            })
 
         self._log(f"Stage 4 complete - adjudicated {adjudication_count} pair(s)", "INFO")
 
@@ -1322,7 +1499,7 @@ class DebateController:
             target = entry.get("target")
             qid = entry.get("qid")
             target_ids = entry.get("target_ids", [])
-            outcome = entry.get("resolution", {}).get("status", "unknown")
+            outcome = (entry.get("resolution") or {}).get("status", "unknown")
 
             prev_challenges_key = f"{challenger}→{target}"
             if prev_challenges_key not in self.previous_rounds_challenges:
@@ -1356,7 +1533,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# 🔄 Stage 5: Belief Updates\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 5, "name": "Belief Updates"})
 
         # Group all adjudicated results by target agent
         grouped_by_target = {}
@@ -1398,20 +1575,21 @@ class DebateController:
                     bloodsport_exchanges=bloodsport_exchanges if bloodsport_exchanges else None
                 )
             elif prior_json is not None:
-                self._log(f"Using CBS-v1 patch/update prompt for {name}", "DEBUG")
+                self._log(f"Using CBS patch/update prompt for {name}", "DEBUG")
                 # Use CBS patch/update builder
-                prompt = prompts.build_stage_5_belief_update_prompt_cbsv1(
+                prompt = prompts.build_stage_5_belief_update_prompt_cbs(
                     agent_name=agent.name,
                     challenge_rebuttal_pairs=relevant_entries,
                     prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2)
                 )
             else:
                 self._log(f"Using legacy belief update prompt for {name}", "DEBUG")
-                # Legacy builder (unchanged)
-                prompt = prompts.build_stage_5_belief_update_prompt(
+                # Fallback to cbs builder with empty prior JSON
+                prior_json = agent.get_internal_belief_obj()
+                prompt = prompts.build_stage_5_belief_update_prompt_cbs(
                     agent_name=agent.name,
                     challenge_rebuttal_pairs=relevant_entries,
-                    original_position=agent.get_internal_belief()
+                    prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2) if prior_json else "{}"
                 )
 
             # Log prompt
@@ -1555,7 +1733,7 @@ class DebateController:
             # Add to markdown transcript
             markdown_section = f"\n## {name} - Updated Position\n\n{md_view}\n"
             self._add_to_markdown(markdown_section)
-            print(f"[{name}] Belief updated")
+            self._notify("agent_complete", {"agent_name": name, "stage": 5, "action": "Belief updated"})
 
         self._log("Stage 5 complete - all agents updated their beliefs", "INFO")
 
@@ -1578,7 +1756,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# 🎤 Stage 6: Concluding Remarks\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 6, "name": "Concluding Remarks"})
 
         self.conclusions = {}
 
@@ -1646,7 +1824,7 @@ class DebateController:
             # Add to markdown transcript
             markdown_section = f"\n## {name} - Concluding Remarks\n\n{markdown_content}\n"
             self._add_to_markdown(markdown_section)
-            print(f"[{name}] Concluding remarks received")
+            self._notify("agent_complete", {"agent_name": name, "stage": 6, "action": "Concluding remarks received"})
 
         return self.conclusions
 
@@ -1674,7 +1852,7 @@ class DebateController:
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# 📝 Stage 7: Scribed Narrative\n"
         self._add_to_markdown(markdown_header)
-        print(markdown_header.strip())
+        self._notify("stage_start", {"stage": 7, "name": "Scribed Narrative"})
 
         scribe = scribe_agent
         if scribe is None:
@@ -1760,7 +1938,7 @@ class DebateController:
 
             self._log(f"Extracted narrative slice ({len(narrative_md)} chars)", "INFO")
             self._log(f"Cumulative continuity state keys: {list(continuity_state.keys())}", "DEBUG")
-            print(f"[Scribe] Chunk {idx}/{len(chunks)}: {len(narrative_md)} chars")
+            self._notify("agent_complete", {"agent_name": "Scribe", "stage": 7, "action": f"Chunk {idx}/{len(chunks)}: {len(narrative_md)} chars"})
 
         # 4) Reduce: stitch all slices into a single cohesive narrative
         self._log("\n--- REDUCE PHASE: Synthesizing final narrative ---", "INFO")
@@ -1796,28 +1974,43 @@ class DebateController:
 
         # Add to markdown transcript
         self._add_to_markdown(f"\n{final_md}\n")
-        print("[Scribe] Final narrative complete")
+        self._notify("stage_complete", {"stage": 7, "name": "Scribed Narrative"})
 
         return final_md
 
-    def run(self, topic: str, personas: dict[str, str]) -> dict:
+    def run(self, topic: str, personas: dict[str, str],
+            progress_callback: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+            on_error: Optional[Callable[[str, Exception, int], str]] = None) -> dict:
             """
             Executes a full structured debate.
 
             Args:
                 topic (str): The topic of the debate.
                 personas (dict): Mapping of agent names to their role prompts.
+                progress_callback: Optional callback fired at stage boundaries and
+                    key events.  Signature: ``callback(event: str, data: dict)``.
+                on_error: Optional error callback fired when an LLM call fails.
+                    Signature: ``on_error(agent_name: str, error: Exception, retry_count: int) -> str``
+                    Return value must be one of: ``"retry"``, ``"skip"``, ``"abort"``.
+                    If None, errors propagate normally.
 
             Returns:
                 dict: Contains final positions, conclusions, and synthesis.
             """
+            self._progress_callback = progress_callback
+            self._on_error = on_error
+
+            self._notify("debate_start", {
+                "topic": topic,
+                "num_agents": len(self.agents),
+                "num_rounds": self.max_rounds,
+            })
+
             log = "\n🚀 Debate Start: Topic →" + topic
-            print(log)
             self.full_transcript.append(log)
 
             # Initialize the belief tracker
             log = "\n📦 Initializing Belief Tracker"
-            print(log)
             self.full_transcript.append(log)
             embedding_tracker = BeliefEmbeddingTracker()
 
@@ -1829,10 +2022,80 @@ class DebateController:
             # Stage 0: Briefing (agents already initialized)
             self.run_stage_0_briefing(topic, personas)
 
-            # Print Agent Personas
+            # Agent personas loaded (debug log only — no print)
             for agent in self.agents:
                 persona = personas.get(agent.name, "")
-                print(f"Loaded persona for {agent.name}: {persona[:]}...")
+                self._log(f"Loaded persona for {agent.name}: {persona[:80]}...", "DEBUG")
+
+            # Moderator: Generate roadmap (if stage2_mode == "moderated")
+            if self.stage2_mode == "moderated" and self.moderator:
+                self._log_header("MODERATOR: ROADMAP GENERATION")
+                self._notify("agent_start", {"agent_name": "Moderator", "stage": "roadmap", "action": "Generating debate roadmap"})
+
+                agent_personas = [
+                    personas.get(agent.name, "").split(".")[0][:50]  # Short persona label
+                    for agent in self.agents
+                ]
+                # Use persona_label if available (cleaner than extracting from prompt text)
+                agent_persona_labels = [
+                    getattr(agent, 'persona_label', agent_personas[i])
+                    for i, agent in enumerate(self.agents)
+                ]
+
+                self.roadmap = self.moderator.generate_roadmap(
+                    topic=topic,
+                    num_rounds=self.max_rounds,
+                    agent_personas=agent_persona_labels,
+                )
+
+                # Log the roadmap
+                self._log(f"Roadmap generated with {len(self.roadmap.sub_topics)} sub-topics", "INFO")
+                self._log(f"Overall rationale: {self.roadmap.overall_rationale}", "INFO")
+                self._log(f"Sufficiency note: {self.roadmap.sufficiency_note}", "INFO")
+                self._log_response("Moderator", self.roadmap.raw_response, "Roadmap Generation")
+
+                # Add roadmap to markdown transcript
+                roadmap_md = "\n# 📋 Debate Roadmap (Moderated)\n\n"
+                roadmap_md += f"*Generated by the moderator agent*\n\n"
+                roadmap_md += f"**Overall Rationale:** {self.roadmap.overall_rationale}\n\n"
+                roadmap_md += f"**Sufficiency Assessment:** {self.roadmap.sufficiency_note}\n\n"
+                for i, st in enumerate(self.roadmap.sub_topics, 1):
+                    roadmap_md += f"### Round {i}: {st.title}\n"
+                    roadmap_md += f"{st.description}\n"
+                    if st.guiding_questions:
+                        roadmap_md += "\n**Guiding questions:**\n"
+                        for gq in st.guiding_questions:
+                            roadmap_md += f"- {gq}\n"
+                    roadmap_md += "\n"
+                self._add_to_markdown(roadmap_md)
+
+                # Notify: roadmap generated
+                self._notify("roadmap_generated", {
+                    "subtopics": [
+                        {"round": i, "title": st.title, "description": st.description,
+                         "guiding_questions": st.guiding_questions}
+                        for i, st in enumerate(self.roadmap.sub_topics, 1)
+                    ],
+                    "sufficiency_note": self.roadmap.sufficiency_note,
+                })
+
+                # Record roadmap in training data
+                if self.recorder:
+                    self.recorder.record_roadmap_generation(
+                        roadmap={
+                            "sub_topics": [
+                                {"title": st.title, "description": st.description,
+                                 "rationale": st.rationale, "guiding_questions": st.guiding_questions}
+                                for st in self.roadmap.sub_topics
+                            ],
+                            "overall_rationale": self.roadmap.overall_rationale,
+                            "sufficiency_note": self.roadmap.sufficiency_note,
+                        },
+                        raw_response=self.roadmap.raw_response,
+                    )
+                    self.recorder.metadata["roadmap_user_modified"] = getattr(
+                        self, "roadmap_user_modified", False
+                    )
 
             # Stage 1: Opening Positions
             self.run_stage_1_opening_positions(topic)
@@ -1841,7 +2104,7 @@ class DebateController:
                 round_num = round_idx + 1
                 self.current_round_key = f"round-{round_num}"
                 self.round_histories[self.current_round_key] = []  # Initialize storage
-                print(f"\n🔁 Debate Round {round_num} of {self.max_rounds}")
+                self._notify("round_start", {"round": round_num, "total_rounds": self.max_rounds})
 
                 # Update recorder round
                 if self.recorder:
@@ -1851,14 +2114,28 @@ class DebateController:
                 for agent in self.agents:
                     belief_obj = agent.get_internal_belief_obj()
                     if belief_obj is not None:
-                        text_for_embedding = project_for_embedding(belief_obj)
+                        embedding_tracker.embed_belief(belief_obj, agent_name=agent.name, round_num=round_num)
                     else:
                         text_for_embedding = agent.get_internal_belief()  # legacy fallback
-
-                    embedding_tracker.embed_belief(agent.name, text_for_embedding)
+                        embedding_tracker.embed_belief(text_for_embedding, agent_name=agent.name, round_num=round_num)
 
                 # Stage 2: Cross-Examination
-                self.run_stage_2_cross_examination(only_if_disagree=False)
+                # Determine focus subtopic for moderated mode
+                current_focus_subtopic = None
+                if self.stage2_mode == "moderated" and self.roadmap:
+                    st = self.moderator.get_subtopic_for_round(round_idx)
+                    if st:
+                        current_focus_subtopic = {
+                            "title": st.title,
+                            "description": st.description,
+                            "guiding_questions": st.guiding_questions,
+                        }
+                        self._log(f"Round {round_num} focus sub-topic: {st.title}", "INFO")
+
+                self.run_stage_2_cross_examination(
+                    only_if_disagree=False,
+                    focus_subtopic=current_focus_subtopic,
+                )
 
                 # Stage 3: Response Phase (mode-dependent)
                 stage3_mode = self.config.stage3_mode if self.config else "rebuttal"
@@ -1886,9 +2163,9 @@ class DebateController:
                 # Log performance summary for this round
                 perf_summary = get_performance_summary(self.agent_stats)
                 self._log(f"\n{perf_summary}", "INFO")
-                print(f"\n{perf_summary}\n")
 
                 # Calculate convergence metrics (if enabled)
+                convergence_data = None
                 if self.config and hasattr(self.config, 'convergence') and self.config.convergence.enabled:
                     self._log("Calculating convergence metrics...", "INFO")
 
@@ -1911,7 +2188,7 @@ class DebateController:
                             "unique_claims_count": len(convergence_data["unique_claims"])
                         })
 
-                    # Display convergence summary (if enabled)
+                    # Log convergence summary
                     if self.config.convergence.display_in_round_summary:
                         agent_names = [a.name for a in self.agents]
                         conv_summary = format_convergence_summary(
@@ -1920,17 +2197,84 @@ class DebateController:
                             round_number=round_num
                         )
                         self._log(f"\n{conv_summary}", "INFO")
-                        print(f"\n{conv_summary}\n")
+
+                # Notify: round complete with scores + convergence
+                self._notify("round_complete", {
+                    "round": round_num,
+                    "scores": self.agent_stats,
+                    "convergence": convergence_data,
+                    "focus_subtopic": current_focus_subtopic,
+                })
+
+                # Adaptive moderator: review round and optionally revise roadmap
+                if (self.stage2_mode == "moderated"
+                        and self.moderator is not None
+                        and self.moderator.config.moderator_mode == "adaptive"):
+
+                    round_summary = self._build_round_summary(
+                        round_num=round_num,
+                        round_idx=round_idx,
+                        focus_subtopic=current_focus_subtopic,
+                        convergence_data=convergence_data,
+                    )
+
+                    revision = self.moderator.review_round(round_num, round_summary)
+
+                    if revision is not None:
+                        # Replace remaining sub-topics in the roadmap
+                        completed = self.roadmap.sub_topics[:round_num]
+                        self.roadmap.sub_topics = completed + revision.revised_sub_topics
+
+                        self._log(
+                            f"Roadmap revised after round {round_num}: "
+                            f"{revision.revision_rationale}",
+                            "INFO",
+                        )
+
+                        # Add revision to markdown transcript
+                        revision_md = f"\n---\n\n**Roadmap Revised** (after round {round_num})\n\n"
+                        revision_md += f"*Rationale:* {revision.revision_rationale}\n\n"
+                        for i, st in enumerate(revision.revised_sub_topics, round_num + 1):
+                            revision_md += f"- **Round {i}: {st.title}** — {st.description}\n"
+                        revision_md += "\n"
+                        self._add_to_markdown(revision_md)
+
+                        # Fire display event
+                        self._notify("roadmap_revised", {
+                            "round_num": round_num,
+                            "new_subtopics": [
+                                {"title": st.title, "description": st.description}
+                                for st in revision.revised_sub_topics
+                            ],
+                            "rationale": revision.revision_rationale,
+                        })
+
+                        # Record in training data
+                        revision_record = {
+                            "round_num": round_num,
+                            "revision_rationale": revision.revision_rationale,
+                            "new_subtopics": [
+                                {"title": st.title, "description": st.description,
+                                 "rationale": st.rationale,
+                                 "guiding_questions": st.guiding_questions}
+                                for st in revision.revised_sub_topics
+                            ],
+                        }
+                        self.roadmap_revisions.append(revision_record)
+
+                        if self.recorder:
+                            self.recorder.record_event(
+                                "roadmap_revision", revision_record,
+                            )
 
             # Track the final beliefs of the agents
             for agent in self.agents:
                 belief_obj = agent.get_internal_belief_obj()
                 if belief_obj is not None:
-                    text_for_embedding = project_for_embedding(belief_obj)
+                    embedding_tracker.embed_belief(belief_obj, agent_name=agent.name, round_num=self.max_rounds)
                 else:
                     text_for_embedding = agent.get_internal_belief()  # legacy fallback
-
-                embedding_tracker.embed_belief(agent.name, text_for_embedding)
+                    embedding_tracker.embed_belief(text_for_embedding, agent_name=agent.name, round_num=self.max_rounds)
             # Save the embeddings
             # Ensure storage directory exists
             STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -1939,7 +2283,6 @@ class DebateController:
             # Generate belief graph visualization (if enabled)
             if self.config and hasattr(self.config.outputs, 'generate_graph_visualization') and self.config.outputs.generate_graph_visualization:
                 self._log("Generating interactive belief graph visualization...", "INFO")
-                print("\n[Graph] Generating interactive belief graph visualization...")
 
                 try:
                     graph_output_path = STORAGE_DIR / self.config.outputs.graph_file
@@ -1955,10 +2298,8 @@ class DebateController:
                         f.write(html_content)
 
                     self._log(f"Belief graph visualization saved to {graph_output_path}", "INFO")
-                    print(f"      [Graph] Saved to {graph_output_path}")
                 except Exception as e:
                     self._log(f"Warning: Failed to generate belief graph visualization: {e}", "WARNING")
-                    print(f"      [Graph] Warning: Failed to generate visualization: {e}")
 
             # Stage 6: Concluding Reflections
             self.run_stage_6_concluding_remarks()
@@ -1966,21 +2307,18 @@ class DebateController:
             # Calculate final performance scores
             self.agent_stats = calculate_performance_scores(self.agent_stats)
 
-            # Print agent stats with performance ranking
-            display_agent_stats(self.agent_stats)
+            # Log agent stats (display handled by callback / display layer)
+            self._log(f"Final agent stats: {json.dumps(self.agent_stats, default=str)}", "INFO")
 
-            # Display convergence trajectory (if enabled)
+            # Log convergence trajectory (if enabled)
             if self.config and hasattr(self.config, 'convergence') and self.config.convergence.enabled:
                 if self.config.convergence.display_in_final_summary and self.convergence_history:
                     conv_trajectory = get_convergence_trajectory_summary(self.convergence_history)
                     self._log(f"\n{conv_trajectory}", "INFO")
-                    print(f"\n{conv_trajectory}\n")
 
             # Stage 7: Scribe Summary
             # Instantiate Scribe with transcript
             self.final_synthesis = self.run_stage_7_scribing(self.scribe_agent)
-
-            print("\n✅ Debate Complete.")
 
             # Export training data (if enabled)
             if self.recorder and self.config:
@@ -1990,12 +2328,10 @@ class DebateController:
                 training_path = storage_dir / self.config.outputs.training_data_file
                 self.recorder.export_jsonl(training_path)
                 self._log(f"Training data exported to {training_path}", "INFO")
-                print(f"[Training Data] Exported to {training_path}")
 
                 pairs_path = storage_dir / self.config.outputs.belief_pairs_file
                 self.recorder.export_belief_training_pairs(pairs_path)
                 self._log(f"Belief training pairs exported to {pairs_path}", "INFO")
-                print(f"[Training Data] Belief pairs exported to {pairs_path}")
 
             # Generate analysis report (if enabled)
             if self.config and self.config.outputs.save_analysis_report:
@@ -2003,6 +2339,20 @@ class DebateController:
                 storage_dir.mkdir(parents=True, exist_ok=True)
 
                 report_path = storage_dir / self.config.outputs.analysis_report_file
+
+                # Build roadmap dict for reporting (if moderated mode was used)
+                roadmap_dict = None
+                if self.roadmap:
+                    roadmap_dict = {
+                        "sub_topics": [
+                            {"title": st.title, "description": st.description,
+                             "rationale": st.rationale, "guiding_questions": st.guiding_questions}
+                            for st in self.roadmap.sub_topics
+                        ],
+                        "overall_rationale": self.roadmap.overall_rationale,
+                        "sufficiency_note": self.roadmap.sufficiency_note,
+                    }
+
                 try:
                     report_md = generate_analysis_report(
                         config=self.config,
@@ -2011,11 +2361,12 @@ class DebateController:
                         agent_stats=self.agent_stats,
                         convergence_history=self.convergence_history if self.convergence_history else None,
                         opening_positions=self.opening_positions,
+                        roadmap=roadmap_dict,
+                        roadmap_revisions=self.roadmap_revisions if self.roadmap_revisions else None,
                     )
                     with open(report_path, 'w', encoding='utf-8') as f:
                         f.write(report_md)
                     self._log(f"Analysis report saved to {report_path}", "INFO")
-                    print(f"[Analysis] Report saved to {report_path}")
 
                     # Also save JSON version
                     json_report_path = report_path.with_suffix('.json')
@@ -2025,20 +2376,25 @@ class DebateController:
                         challenge_rebuttal_pairs=self.challenge_rebuttal_pairs,
                         agent_stats=self.agent_stats,
                         convergence_history=self.convergence_history if self.convergence_history else None,
+                        roadmap=roadmap_dict,
+                        roadmap_revisions=self.roadmap_revisions if self.roadmap_revisions else None,
                     )
                     with open(json_report_path, 'w', encoding='utf-8') as f:
                         json.dump(report_json, f, ensure_ascii=False, indent=2)
                     self._log(f"Analysis JSON saved to {json_report_path}", "INFO")
-                    print(f"[Analysis] JSON report saved to {json_report_path}")
                 except Exception as e:
                     self._log(f"Warning: Failed to generate analysis report: {e}", "WARNING")
-                    print(f"[Analysis] Warning: Failed to generate report: {e}")
 
             # Final logging
             self._log_header("DEBATE COMPLETE")
             self._log(f"Total stages completed: 8 (including briefing)", "INFO")
             self._log(f"Debug log entries: {len(self.debug_log)}", "INFO")
             self._log(f"Markdown transcript entries: {len(self.markdown_transcript)}", "INFO")
+
+            self._notify("debate_complete", {
+                "agent_stats": self.agent_stats,
+                "convergence_history": self.convergence_history,
+            })
 
             return {
                 "initial_positions": self.opening_positions,

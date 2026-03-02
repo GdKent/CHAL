@@ -4,7 +4,8 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
 import json
-from typing import Dict, List
+from typing import Dict, List, Union
+from pathlib import Path
 
 class BeliefEmbeddingTracker:
     """
@@ -21,22 +22,34 @@ class BeliefEmbeddingTracker:
         Args:
             model_name (str): The HuggingFace model name for sentence embeddings.
         """
+        self.model_name = model_name
         self.model = SentenceTransformer(model_name)
         self.embeddings: Dict[str, List[np.ndarray]] = {}
 
 
-    def embed_belief(self, agent_name: str, belief_text: str):
+    def embed_belief(self, belief, agent_name: str, round_num: int = 0) -> np.ndarray:
         """
-        Converts the belief text into an embedding and stores it under the agent's name.
+        Converts a belief into an embedding and stores it under the agent's name.
 
         Args:
+            belief: Either a CBS belief dict or a pre-projected text string.
             agent_name (str): Identifier for the agent.
-            belief_text (str): The full internal belief text to be embedded.
+            round_num (int): The round number (for tracking purposes).
+
+        Returns:
+            np.ndarray: The generated embedding vector.
         """
+        if isinstance(belief, dict):
+            from chal.beliefs.io import project_for_embedding
+            belief_text = project_for_embedding(belief)
+        else:
+            belief_text = belief
+
         embedding = self.model.encode(belief_text, convert_to_numpy=True)
         if agent_name not in self.embeddings:
             self.embeddings[agent_name] = []
         self.embeddings[agent_name].append(embedding)
+        return embedding
 
 
     def get_agent_trajectory(self, agent_name: str) -> List[np.ndarray]:
@@ -62,22 +75,22 @@ class BeliefEmbeddingTracker:
         return self.embeddings
 
 
-    def save_embeddings(self, filepath: str):
+    def save_embeddings(self, filepath: Union[str, Path]):
         """
         Saves all embeddings to a .npz file for later use.
 
         Args:
-            filepath (str): Where to save the embedding data.
+            filepath: Where to save the embedding data.
         """
-        np.savez_compressed(filepath, **{agent: np.stack(vectors) for agent, vectors in self.embeddings.items()})
+        np.savez_compressed(str(filepath), **{agent: np.stack(vectors) for agent, vectors in self.embeddings.items()})
 
 
-    def load_embeddings(self, filepath: str):
+    def load_embeddings(self, filepath: Union[str, Path]):
         """
         Loads embeddings from a saved .npz file.
 
         Args:
-            filepath (str): Path to the saved embedding data.
+            filepath: Path to the saved embedding data.
         """
-        data = np.load(filepath, allow_pickle=True)
+        data = np.load(str(filepath), allow_pickle=True)
         self.embeddings = {agent: list(data[agent]) for agent in data.files}

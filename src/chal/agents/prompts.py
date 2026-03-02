@@ -5,6 +5,8 @@ Contains reusable prompt strings for agent personas and the universal debate pro
 These can be imported and used when initializing agents in debate configurations.
 """
 
+import json
+
 # === Persona Prompts ===
 
 EMPIRICIST = """You are a rigorous empiricist. You believe that valid knowledge only comes from observation, experiment, and measurable evidence. You demand empirical data to support claims and reject speculative or unverifiable assertions."""
@@ -195,7 +197,7 @@ def build_position_prompt(agent_name: str, persona: str) -> str:
 
             You should update your positions throughout the debate to reflect any new knowledge that is gained or logical gaps that are discovered in your posisitions."""
 
-def build_stage_1_belief_prompt_cbsv1(topic: str, agent_name: str, persona_label: str) -> str:
+def build_stage_1_belief_prompt_cbs(topic: str, agent_name: str, persona_label: str) -> str:
     """
     Build a Stage-1 prompt that elicits a JSON-structured belief object.
 
@@ -220,7 +222,7 @@ def build_stage_1_belief_prompt_cbsv1(topic: str, agent_name: str, persona_label
         "R# (Rebuttals nested inside claims).\n"
         "- Keep JSON syntactically valid (double quotes only, no trailing commas).\n\n"
         "MINIMUM CONTENT REQUIRED IN THE JSON OBJECT:\n"
-        "- \"schema_version\": \"CBS-v1\"\n"
+        "- \"schema_version\": \"CBS\"\n"
         "- \"belief_id\": a unique string (e.g., \"BELIEF-<uuid>\")\n"
         "- \"version\": 1\n"
         "- \"metadata\": must include:\n"
@@ -267,7 +269,7 @@ def build_stage_1_belief_prompt_cbsv1(topic: str, agent_name: str, persona_label
         "- Do not include any text outside the JSON block."
     )
 
-def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, max_question_length_chars: int = 500, previous_challenges: list = None, opponent_belief_graph=None) -> str:
+def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, max_question_length_chars: int = 500, previous_challenges: list = None, opponent_belief_graph=None, focus_subtopic: dict = None) -> str:
     """
     Stage 2: Cross-Examination Prompt.
 
@@ -316,6 +318,27 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
             "- You MAY re-challenge if opponent IGNORED the critique (didn't patch after CRITIQUE_VALID)\n\n"
         )
 
+    # Build focus subtopic section if moderated mode is active
+    focus_section = ""
+    if focus_subtopic:
+        focus_section = (
+            "══════════════════════════════════════════════════════════════════════════\n"
+            "📋 ROUND FOCUS — MODERATED DEBATE\n"
+            "══════════════════════════════════════════════════════════════════════════\n\n"
+            f"This round's discussion is focused on the following sub-topic:\n"
+            f"**{focus_subtopic.get('title', '')}**\n"
+            f"{focus_subtopic.get('description', '')}\n\n"
+            "Your challenges MUST be directly relevant to this sub-topic.\n"
+            "You may reference broader context from the opponent's belief, but your\n"
+            "primary questions must address this specific area.\n\n"
+        )
+        guiding_qs = focus_subtopic.get("guiding_questions", [])
+        if guiding_qs:
+            focus_section += "Suggested angles to consider (not mandatory):\n"
+            for gq in guiding_qs:
+                focus_section += f"  - {gq}\n"
+            focus_section += "\n"
+
     return (
         f"You are {agent_name}. You will cross-examine {opponent_name} about:\n\n"
         f"  \"{topic}\"\n\n"
@@ -325,7 +348,8 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
         "OPPONENT BELIEF (JSON):\n"
         "```json\n" + opponent_belief_json + "\n```\n\n"
         + vulnerability_analysis
-        + anti_repetition_context +
+        + anti_repetition_context
+        + focus_section +
         "GOAL:\n"
         f"- Ask up to {max_questions} high-leverage questions that:\n"
         "- (i) identify logical inconsistencies, internal contradictions, pinpoint fragile assumptions (A#), unsupported or overstated claims (C#), and unfalsifiable or weak predictions (P#)\n"
@@ -435,7 +459,7 @@ def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, oppone
         "```\n"
     )
 
-def build_stage_5_belief_update_prompt_cbsv1(agent_name: str,
+def build_stage_5_belief_update_prompt_cbs(agent_name: str,
                                              challenge_rebuttal_pairs: list[dict],
                                              prior_belief_json: str) -> str:
     """
@@ -705,7 +729,7 @@ def build_stage_7_scribe_prompt_reduce(
         "## 1. Introduction\n"
         "<Context, research question, and who participated. Explain the topic in plain terms.>\n\n"
         "## 2. Methods\n"
-        "<Briefly describe the debate structure, the CHAL belief schema (CBS-v1 = CHAL Belief Schema v1), "
+        "<Briefly describe the debate structure, the CHAL belief schema (CBS = CHAL Belief Schema), "
         "adjudication protocol, and any weighting (logic vs. ethics) if used.>\n\n"
         "## 3. Positions and Assumptions\n"
         "<By participant: thesis, core assumptions (A#), scope conditions, and initial confidence.>\n\n"
@@ -723,6 +747,199 @@ def build_stage_7_scribe_prompt_reduce(
         "<Optional: citations (URLs/DOIs) if present in evidence items.>\n"
         "```\n"
     )
+
+# === Moderator / Roadmap Prompts ===
+
+def build_moderator_roadmap_prompt(
+    topic: str,
+    num_rounds: int,
+    agent_personas: list[str],
+    context: str = "",
+) -> str:
+    """
+    Build a prompt instructing the moderator to decompose a debate topic
+    into an ordered roadmap of sub-topics.
+
+    Args:
+        topic: The central debate topic/question.
+        num_rounds: Number of debate rounds available (= max sub-topics).
+        agent_personas: List of persona labels participating in the debate.
+        context: Optional background context (e.g., from future RAG pipeline).
+
+    Returns:
+        str: The moderator prompt.
+    """
+    personas_str = ", ".join(agent_personas)
+
+    context_section = ""
+    if context.strip():
+        context_section = (
+            "BACKGROUND CONTEXT (use this to inform your analysis):\n"
+            "---\n"
+            f"{context.strip()}\n"
+            "---\n\n"
+        )
+
+    return (
+        "You are a debate moderator and topic analyst. Your task is to analyze a debate topic\n"
+        "in depth and produce an ordered ROADMAP of sub-topics that the debating agents should\n"
+        "address across multiple rounds.\n\n"
+        f"DEBATE TOPIC:\n"
+        f"  \"{topic}\"\n\n"
+        f"PARTICIPATING PERSONAS: {personas_str}\n"
+        f"AVAILABLE ROUNDS: {num_rounds}\n\n"
+        + context_section +
+        "TASKS:\n"
+        "1. ANALYZE the topic deeply. Identify the key dimensions, tensions, foundational\n"
+        "   concepts, and contentious sub-questions that a thorough debate should address.\n"
+        "2. DECOMPOSE the topic into exactly " + str(num_rounds) + " ordered sub-topics.\n"
+        "   - Start with foundational or definitional issues that must be established first.\n"
+        "   - Progress toward more specific, contentious, or applied questions.\n"
+        "   - Ensure each sub-topic is substantive enough for a full round of cross-examination\n"
+        "     and rebuttals, but focused enough to make real progress.\n"
+        "3. For each sub-topic, provide:\n"
+        "   - A clear title (short, descriptive).\n"
+        "   - A description explaining what this sub-topic covers and why it matters.\n"
+        "   - A rationale for its position in the ordering.\n"
+        "   - 2-4 guiding questions that agents should consider (not mandatory, but suggestive).\n"
+        "4. Explain the OVERALL RATIONALE for your decomposition and ordering.\n"
+        "5. Assess SUFFICIENCY: Given " + str(num_rounds) + " rounds, is this enough to achieve\n"
+        "   meaningful depth on the topic? If not, explain what would be missed and how many\n"
+        "   rounds you would recommend instead.\n\n"
+        "Consider the personas involved (" + personas_str + ") when designing sub-topics —\n"
+        "choose areas where their perspectives are likely to diverge productively.\n\n"
+        "STRICT OUTPUT FORMAT (NO extra text):\n"
+        "Output a single fenced JSON block:\n"
+        "```json\n"
+        "{\n"
+        "  \"sub_topics\": [\n"
+        "    {\n"
+        "      \"title\": \"<short descriptive title>\",\n"
+        "      \"description\": \"<what this sub-topic covers and why it matters>\",\n"
+        "      \"rationale\": \"<why this sub-topic is positioned here in the sequence>\",\n"
+        "      \"guiding_questions\": [\n"
+        "        \"<question 1>\",\n"
+        "        \"<question 2>\"\n"
+        "      ]\n"
+        "    }\n"
+        "  ],\n"
+        "  \"overall_rationale\": \"<why this decomposition and ordering makes sense>\",\n"
+        "  \"sufficiency_note\": \"<assessment of whether " + str(num_rounds) + " rounds is sufficient>\"\n"
+        "}\n"
+        "```\n"
+    )
+
+
+def build_moderator_review_round_prompt(
+    topic: str,
+    round_num: int,
+    round_summary: dict,
+    remaining_sub_topics: list[dict],
+    constraints: dict | None = None,
+) -> str:
+    """
+    Build a prompt for the adaptive moderator to review a completed round
+    and optionally revise the remaining roadmap.
+
+    Args:
+        topic: The debate topic.
+        round_num: The round that just completed.
+        round_summary: Summary data from the completed round.
+        remaining_sub_topics: List of sub-topic dicts not yet addressed.
+        constraints: Dict with keys ``allow_reorder``, ``allow_add_topics``,
+            ``allow_remove_topics`` (booleans) controlling what revisions
+            the moderator is allowed to propose.
+
+    Returns:
+        str: The review prompt.
+    """
+    constraints = constraints or {}
+    allow_reorder = constraints.get("allow_reorder", True)
+    allow_add = constraints.get("allow_add_topics", True)
+    allow_remove = constraints.get("allow_remove_topics", False)
+
+    # Build constraint instructions
+    constraint_lines: list[str] = []
+    if allow_reorder:
+        constraint_lines.append("- You MAY reorder the remaining sub-topics if a different "
+                                "sequence would better serve the debate's progression.")
+    else:
+        constraint_lines.append("- You MUST NOT reorder the remaining sub-topics. "
+                                "Their current sequence is fixed.")
+    if allow_add:
+        constraint_lines.append("- You MAY insert new sub-topics if emerging themes from "
+                                "the debate warrant dedicated discussion.")
+    else:
+        constraint_lines.append("- You MUST NOT add new sub-topics. Only the existing "
+                                "sub-topics may be revised.")
+    if allow_remove:
+        constraint_lines.append("- You MAY remove sub-topics that have already been "
+                                "substantially addressed or are no longer relevant.")
+    else:
+        constraint_lines.append("- You MUST NOT remove any sub-topics. All existing "
+                                "sub-topics must be retained (though you may revise "
+                                "their descriptions or rationale).")
+    constraints_section = "\n".join(constraint_lines)
+
+    return (
+        "You are a debate moderator reviewing progress after a completed debate round.\n"
+        "Your task is to decide whether the REMAINING roadmap of sub-topics should be\n"
+        "revised based on how the debate is progressing.\n\n"
+        f"DEBATE TOPIC:\n"
+        f"  \"{topic}\"\n\n"
+        f"COMPLETED ROUND: {round_num}\n\n"
+        "ROUND SUMMARY (structured data from the round that just finished):\n"
+        f"{json.dumps(round_summary, indent=2, ensure_ascii=False)}\n\n"
+        "REMAINING SUB-TOPICS (not yet addressed):\n"
+        f"{json.dumps(remaining_sub_topics, indent=2, ensure_ascii=False)}\n\n"
+        "═══════════════════════════════════════════════════════════════════════════\n"
+        "ANALYSIS TASKS\n"
+        "═══════════════════════════════════════════════════════════════════════════\n\n"
+        "1. COVERAGE ASSESSMENT: Was this round's sub-topic thoroughly addressed?\n"
+        "   - If important aspects were left unresolved, consider whether a follow-up\n"
+        "     sub-topic should be added or the next sub-topic's scope adjusted.\n"
+        "2. EMERGING THEMES: Did the debate surface new tensions, questions, or themes\n"
+        "   that the remaining roadmap does not address?\n"
+        "   - If so, consider adding a sub-topic or adjusting existing ones.\n"
+        "3. ORDERING ASSESSMENT: Given what was learned in this round, is the current\n"
+        "   ordering of remaining sub-topics still optimal?\n"
+        "   - Consider whether a different sequence would be more productive.\n"
+        "4. CONVERGENCE CHECK: If agents are converging on this area, it may be better\n"
+        "   to move on to more contentious ground. If they are diverging, more depth\n"
+        "   may be needed.\n\n"
+        "═══════════════════════════════════════════════════════════════════════════\n"
+        "CONSTRAINTS (you MUST respect these)\n"
+        "═══════════════════════════════════════════════════════════════════════════\n\n"
+        f"{constraints_section}\n\n"
+        "IMPORTANT: Only propose a revision if there is a MEANINGFUL reason to change\n"
+        "the roadmap. Avoid unnecessary churn — stability is valuable. If the remaining\n"
+        "roadmap is still appropriate, set \"revision_needed\" to false.\n\n"
+        "STRICT OUTPUT FORMAT (NO extra text):\n"
+        "Output a single fenced JSON block:\n"
+        "```json\n"
+        "{\n"
+        "  \"revision_needed\": true,\n"
+        "  \"revised_sub_topics\": [\n"
+        "    {\n"
+        "      \"title\": \"<short descriptive title>\",\n"
+        "      \"description\": \"<what this sub-topic covers and why it matters>\",\n"
+        "      \"rationale\": \"<why this sub-topic is positioned here>\",\n"
+        "      \"guiding_questions\": [\"<question 1>\", \"<question 2>\"]\n"
+        "    }\n"
+        "  ],\n"
+        "  \"revision_rationale\": \"<explanation of why the roadmap was revised>\"\n"
+        "}\n"
+        "```\n\n"
+        "If no revision is needed:\n"
+        "```json\n"
+        "{\n"
+        "  \"revision_needed\": false,\n"
+        "  \"revised_sub_topics\": [],\n"
+        "  \"revision_rationale\": \"\"\n"
+        "}\n"
+        "```\n"
+    )
+
 
 # === Blood Sport Adversarial Prompts (Stage 3C) ===
 
@@ -752,7 +969,8 @@ def build_stage_2_bloodsport_prompt(
     max_questions: int = 5,
     max_question_length_chars: int = 500,
     previous_challenges: list = None,
-    opponent_belief_graph=None
+    opponent_belief_graph=None,
+    focus_subtopic: dict = None,
 ) -> str:
     """
     Stage 2 (Blood Sport): Adversarial Cross-Examination.
@@ -762,14 +980,14 @@ def build_stage_2_bloodsport_prompt(
     controls aggressiveness. Agents are NOT given a list of specific fallacies —
     they decide organically what rhetorical strategies to employ.
 
-    The CBS-v1 output format is preserved for parseability.
+    The CBS output format is preserved for parseability.
 
     Args:
         topic: Debate topic.
         agent_name: Name of the cross-examining agent.
         opponent_name: Name of the opponent being examined.
-        agent_belief_json: This agent's CBS-v1 belief as JSON string.
-        opponent_belief_json: Opponent's CBS-v1 belief as JSON string.
+        agent_belief_json: This agent's CBS belief as JSON string.
+        opponent_belief_json: Opponent's CBS belief as JSON string.
         intensity: Blood sport intensity ("mild", "moderate", or "extreme").
         max_questions: Maximum number of questions to generate.
         max_question_length_chars: Character limit per question.
@@ -810,6 +1028,27 @@ def build_stage_2_bloodsport_prompt(
             "- You MAY re-challenge if opponent IGNORED the critique (didn't patch after CRITIQUE_VALID)\n\n"
         )
 
+    # Build focus subtopic section if moderated mode is active
+    focus_section = ""
+    if focus_subtopic:
+        focus_section = (
+            "══════════════════════════════════════════════════════════════════════════\n"
+            "📋 ROUND FOCUS — MODERATED DEBATE\n"
+            "══════════════════════════════════════════════════════════════════════════\n\n"
+            f"This round's discussion is focused on the following sub-topic:\n"
+            f"**{focus_subtopic.get('title', '')}**\n"
+            f"{focus_subtopic.get('description', '')}\n\n"
+            "Your challenges MUST be directly relevant to this sub-topic.\n"
+            "You may reference broader context from the opponent's belief, but your\n"
+            "primary questions must address this specific area.\n\n"
+        )
+        guiding_qs = focus_subtopic.get("guiding_questions", [])
+        if guiding_qs:
+            focus_section += "Suggested angles to consider (not mandatory):\n"
+            for gq in guiding_qs:
+                focus_section += f"  - {gq}\n"
+            focus_section += "\n"
+
     return (
         f"You are {agent_name}. You will cross-examine {opponent_name} about:\n\n"
         f"  \"{topic}\"\n\n"
@@ -832,7 +1071,8 @@ def build_stage_2_bloodsport_prompt(
         "OPPONENT BELIEF (JSON):\n"
         "```json\n" + opponent_belief_json + "\n```\n\n"
         + vulnerability_analysis
-        + anti_repetition_context +
+        + anti_repetition_context
+        + focus_section +
         "GOAL:\n"
         f"- Ask up to {max_questions} devastating questions designed to:\n"
         "  (i) Expose and exploit logical weaknesses, contradictions, and unsupported claims\n"
@@ -879,8 +1119,8 @@ def build_stage_3_bloodsport_prompt(
         topic: Debate topic.
         agent_name: Name of this agent.
         opponent_name: Name of the opponent.
-        agent_belief_json: This agent's CBS-v1 belief as JSON string.
-        opponent_belief_json: Opponent's CBS-v1 belief as JSON string.
+        agent_belief_json: This agent's CBS belief as JSON string.
+        opponent_belief_json: Opponent's CBS belief as JSON string.
         intensity: Blood sport intensity ("mild", "moderate", or "extreme").
         dialogue_history: List of prior turn dicts [{"speaker": ..., "attack": ..., "defense": ..., "target_claims": [...]}, ...].
         max_response_length_chars: Character limit for attack and defense text each.
@@ -985,7 +1225,7 @@ def build_stage_5_bloodsport_prompt(
     Args:
         agent_name: Name of the agent updating beliefs.
         challenge_rebuttal_pairs: List of adjudication outcome dicts.
-        prior_belief_json: Agent's current CBS-v1 belief as JSON string.
+        prior_belief_json: Agent's current CBS belief as JSON string.
         bloodsport_exchanges: Optional list of bloodsport exchange dicts for context.
     """
     # Format adjudication outcomes
@@ -1097,7 +1337,7 @@ def build_collaborative_defender_prompt(
         topic: Debate topic.
         defender_name: Name of the defending agent.
         challenger_name: Name of the challenging agent.
-        defender_belief_json: Defender's current CBS-v1 belief as JSON string.
+        defender_belief_json: Defender's current CBS belief as JSON string.
         question_text: The original question being discussed.
         dialogue_history: List of prior turn dicts [{"speaker": ..., "message": ...}, ...].
         max_response_length_chars: Character limit per response.
@@ -1160,7 +1400,7 @@ def build_collaborative_challenger_followup_prompt(
         topic: Debate topic.
         challenger_name: Name of the challenging agent.
         defender_name: Name of the defending agent.
-        challenger_belief_json: Challenger's current CBS-v1 belief as JSON string.
+        challenger_belief_json: Challenger's current CBS belief as JSON string.
         question_text: The original question being discussed.
         dialogue_history: List of prior turn dicts [{"speaker": ..., "message": ...}, ...].
         max_response_length_chars: Character limit per response.

@@ -461,7 +461,7 @@ This debate explores the contrasting perspectives of empirical and spiritual app
 The debate addresses the complex question of free will, examining whether it can be understood through empirical evidence or if it requires a spiritual explanation. Participants include Agent-Empiricist, who focuses on empirical methodologies, and Agent-Supernaturalist, who emphasizes spiritual insights. The central research question explores the validity of free will as either an empirically measurable phenomenon or a spiritual essence.
 
 ## 2. Methods
-The debate utilized a structured format with cross-examination and rebuttal stages. The CHAL Belief Schema v1 (CBS-v1) was employed to categorize claims and assumptions. Adjudication focused on the validity of critiques and rebuttals, with logic and empirical evidence weighted more heavily than ethical considerations.
+The debate utilized a structured format with cross-examination and rebuttal stages. The CHAL Belief Schema (CBS) was employed to categorize claims and assumptions. Adjudication focused on the validity of critiques and rebuttals, with logic and empirical evidence weighted more heavily than ethical considerations.
 
 ## 3. Positions and Assumptions
 - **Agent-Empiricist**: Argues that empirical evidence presents challenges in conclusively supporting free will (A1, A2). Acknowledges the influence of genetics and environment, with initial confidence tempered by methodological limitations.

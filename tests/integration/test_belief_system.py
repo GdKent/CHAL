@@ -150,7 +150,7 @@ def test_belief_graph_visualization_integration():
 
     assert metrics["total_nodes"] > 0
     assert metrics["total_edges"] > 0
-    assert "node_types" in metrics
+    assert "node_counts" in metrics
 
     # Verify graph structure
     errors = graph.validate_links()

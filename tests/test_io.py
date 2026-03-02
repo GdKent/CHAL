@@ -56,7 +56,7 @@ def test_parse_model_output_json_only(test_beliefs):
 
     assert parsed is not None
     assert "schema_version" in parsed
-    assert parsed["schema_version"] == "CBS-v1"
+    assert parsed["schema_version"] == "CBS"
 
 
 @pytest.mark.unit

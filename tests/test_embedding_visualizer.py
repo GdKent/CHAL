@@ -51,6 +51,7 @@ def test_plot_belief_trajectories(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)  # 6 embeddings, 2D
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -70,6 +71,7 @@ def test_plot_includes_agents(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -89,6 +91,7 @@ def test_plot_umap_projection(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -108,6 +111,7 @@ def test_plot_arrows_show_evolution(mock_umap_class, mock_plt, sample_embeddings
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -128,6 +132,7 @@ def test_plot_saves_file(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -151,6 +156,7 @@ def test_umap_n_components_2d(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -172,6 +178,7 @@ def test_umap_custom_parameters(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer(umap_n_neighbors=10, umap_min_dist=0.5)
 
@@ -195,6 +202,7 @@ def test_plot_custom_title(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -218,6 +226,7 @@ def test_plot_custom_colors(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -241,6 +250,7 @@ def test_plot_figsize(mock_umap_class, mock_plt, sample_embeddings):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(6, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     visualizer = EmbeddingVisualizer()
 
@@ -268,6 +278,7 @@ def test_plot_many_agents(mock_umap_class, mock_plt):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(15, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     embeddings = {
         f"Agent-{chr(65+i)}": [np.random.rand(384) for _ in range(3)]
@@ -292,6 +303,7 @@ def test_plot_different_trajectory_lengths(mock_umap_class, mock_plt):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(8, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     embeddings = {
         "Agent-A": [np.random.rand(384) for _ in range(5)],  # 5 rounds
@@ -320,6 +332,7 @@ def test_plot_single_agent(mock_umap_class, mock_plt):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(3, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     embeddings = {
         "Agent-A": [np.random.rand(384) for _ in range(3)]
@@ -343,6 +356,7 @@ def test_plot_single_round(mock_umap_class, mock_plt):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(2, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     embeddings = {
         "Agent-A": [np.random.rand(384)],
@@ -380,6 +394,7 @@ def test_plot_high_dimensional_embeddings(mock_umap_class, mock_plt):
     mock_umap = MagicMock()
     mock_umap.fit_transform.return_value = np.random.rand(4, 2)
     mock_umap_class.return_value = mock_umap
+    mock_plt.subplots.return_value = (MagicMock(), MagicMock())
 
     # Use 1536-dimensional embeddings (like OpenAI ada-002)
     embeddings = {

@@ -232,6 +232,98 @@ def test_mixed_provider_config(tmp_path):
     assert config.adjudication.provider == "openai"
 
 
+# ==============================================
+# Config Serialization Tests (to_dict / to_yaml)
+# ==============================================
+
+def test_to_dict_returns_dict():
+    """to_dict() returns a dict with expected top-level keys."""
+    config = load_config('default')
+    d = config.to_dict()
+
+    assert isinstance(d, dict)
+    expected_keys = {
+        "metadata", "debate", "agents", "adjudication",
+        "stages", "outputs", "scribe", "collaborative",
+        "bloodsport", "moderator",
+    }
+    assert set(d.keys()) == expected_keys
+
+
+def test_to_dict_storage_dir_is_string():
+    """storage_dir in to_dict() output is a string, not a Path."""
+    config = load_config('default')
+    d = config.to_dict()
+
+    assert isinstance(d["outputs"]["storage_dir"], str)
+    assert "\\" not in d["outputs"]["storage_dir"]  # forward slashes only
+
+
+def test_to_dict_round_trip():
+    """Load YAML -> to_dict -> write YAML -> reload -> compare."""
+    from chal.config import DebateConfig
+
+    original = load_config('default')
+    d = original.to_dict()
+
+    import tempfile, yaml
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False, encoding='utf-8') as f:
+        yaml.dump(d, f, default_flow_style=False, sort_keys=False)
+        tmp_path = Path(f.name)
+
+    try:
+        reloaded = DebateConfig.from_yaml(tmp_path)
+
+        assert reloaded.name == original.name
+        assert reloaded.topic == original.topic
+        assert reloaded.max_rounds == original.max_rounds
+        assert reloaded.stage2_mode == original.stage2_mode
+        assert reloaded.stage3_mode == original.stage3_mode
+        assert len(reloaded.agents) == len(original.agents)
+        for a_orig, a_new in zip(original.agents, reloaded.agents):
+            assert a_orig.name == a_new.name
+            assert a_orig.persona == a_new.persona
+            assert a_orig.model == a_new.model
+            assert a_orig.provider == a_new.provider
+        assert reloaded.adjudication.model == original.adjudication.model
+        assert reloaded.adjudication.logic_weight == original.adjudication.logic_weight
+        assert reloaded.scribe.enabled == original.scribe.enabled
+    finally:
+        tmp_path.unlink()
+
+
+def test_to_yaml_writes_loadable_file(tmp_path):
+    """to_yaml() writes a file that from_yaml() can load."""
+    from chal.config import DebateConfig, AgentConfig, OutputConfig
+
+    config = DebateConfig(
+        name="Wizard Test",
+        topic="Is consciousness real?",
+        max_rounds=2,
+        stage2_mode="moderated",
+        stage3_mode="rebuttal",
+        agents=[
+            AgentConfig(name="A1", persona="EMPIRICIST", model="gpt-4o", provider="openai"),
+            AgentConfig(name="A2", persona="SKEPTIC", model="o1-mini", provider="openai"),
+        ],
+        outputs=OutputConfig(storage_dir=tmp_path),
+    )
+
+    yaml_path = tmp_path / "test_output.yaml"
+    config.to_yaml(yaml_path)
+
+    assert yaml_path.exists()
+
+    reloaded = DebateConfig.from_yaml(yaml_path)
+    assert reloaded.name == "Wizard Test"
+    assert reloaded.topic == "Is consciousness real?"
+    assert reloaded.max_rounds == 2
+    assert reloaded.stage2_mode == "moderated"
+    assert len(reloaded.agents) == 2
+    assert reloaded.agents[0].persona == "EMPIRICIST"
+    assert reloaded.agents[1].persona == "SKEPTIC"
+
+
 if __name__ == "__main__":
     try:
         test_default_config()

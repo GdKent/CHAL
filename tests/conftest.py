@@ -46,10 +46,10 @@ def pytest_configure(config):
 @pytest.fixture
 def sample_minimal_belief() -> Dict[str, Any]:
     """
-    Minimal valid CBS-v1 belief structure with only required fields.
+    Minimal valid CBS belief structure with only required fields.
     """
     return {
-        "schema_version": "CBS-v1",
+        "schema_version": "CBS",
         "belief_id": "BELIEF-TEST-001",
         "version": 1,
         "metadata": {
@@ -71,10 +71,10 @@ def sample_minimal_belief() -> Dict[str, Any]:
 @pytest.fixture
 def sample_complete_belief() -> Dict[str, Any]:
     """
-    Complete CBS-v1 belief structure with all optional fields populated.
+    Complete CBS belief structure with all optional fields populated.
     """
     return {
-        "schema_version": "CBS-v1",
+        "schema_version": "CBS",
         "belief_id": "BELIEF-TEST-002",
         "version": 1,
         "metadata": {
@@ -145,7 +145,7 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
     Invalid belief with circular dependency (C1 → C2 → C1).
     """
     return {
-        "schema_version": "CBS-v1",
+        "schema_version": "CBS",
         "belief_id": "BELIEF-INVALID-001",
         "version": 1,
         "metadata": {
@@ -187,7 +187,7 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
     Invalid belief with orphaned claim (no supporting evidence or assumptions).
     """
     return {
-        "schema_version": "CBS-v1",
+        "schema_version": "CBS",
         "belief_id": "BELIEF-INVALID-002",
         "version": 1,
         "metadata": {

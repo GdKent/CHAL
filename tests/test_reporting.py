@@ -20,10 +20,11 @@ from tests.utils import create_sample_belief
 # Helpers
 # ========================================
 
-def _make_mock_config(mode="rebuttal", topic="Free will", max_rounds=2):
+def _make_mock_config(mode="rebuttal", topic="Free will", max_rounds=2, stage2_mode="open"):
     """Create a mock config for reporting tests."""
     config = Mock()
     config.stage3_mode = mode
+    config.stage2_mode = stage2_mode
     config.topic = topic
     config.max_rounds = max_rounds
     config.adjudication = Mock()
@@ -262,7 +263,7 @@ class TestGenerateAnalysisJSON:
         result = generate_analysis_json(config, agents, [], _make_agent_stats())
 
         assert result["metadata"]["topic"] == "Test Topic"
-        assert result["metadata"]["mode"] == "bloodsport"
+        assert result["metadata"]["stage3_mode"] == "bloodsport"
         assert result["metadata"]["num_agents"] == 1
 
     @pytest.mark.unit

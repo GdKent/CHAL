@@ -23,6 +23,12 @@ debate:
   # - Stage 5: Belief Updates (revision)
   max_rounds: 1
 
+  # Stage 2 cross-examination mode:
+  # - "open":       Agents freely generate challenges (default, current behavior)
+  # - "moderated":  A moderator agent creates a roadmap of sub-topics;
+  #                 each round focuses on one sub-topic
+  stage2_mode: "open"
+
   # Stage 3 response mode:
   # - "rebuttal":      Single-shot rebuttals (default, legacy behavior)
   # - "collaborative": Multi-turn truth-seeking dialogue with embedded adjudication
@@ -241,3 +247,24 @@ scribe:
 #   min_turns_per_question: 3        # Minimum turns before early termination allowed
 #   adjudicator_check_interval: 2    # Call adjudicator every N turns (1 = every turn)
 #   early_termination_on_agreement: true  # Stop early if agents converge
+
+# ============================================================================
+# MODERATOR / ROADMAP SETTINGS
+# ============================================================================
+# Only used when debate.stage2_mode == "moderated".
+# The moderator analyzes the topic and produces an ordered roadmap of sub-topics.
+# Each debate round then focuses on one sub-topic for structured progression.
+#
+# moderator:
+#   model: "o1-mini"                 # Model for roadmap generation
+#   provider: "openai"               # LLM provider: "openai" | "anthropic" | "google"
+#   temperature: 0.3                 # Low temperature for structured reasoning
+#   context: ""                      # Optional free-text context (future RAG integration)
+#   moderator_mode: "static"         # "static" (fixed roadmap) | "adaptive" (revises between rounds)
+#
+#   # --- Adaptive moderator settings (only used when moderator_mode == "adaptive") ---
+#   review_frequency: 1              # Review every N rounds (1 = every round)
+#   allow_reorder: true              # Can the moderator reorder remaining topics?
+#   allow_add_topics: true           # Can the moderator insert new topics?
+#   allow_remove_topics: false       # Can the moderator drop topics? (conservative default)
+#   max_revisions: -1                # Max total revisions (-1 = unlimited)

@@ -23,11 +23,11 @@ except Exception:
 
 
 # ---- Canonical key names (kept stable across versions) ----
-SCHEMA_VERSION = "CBS-v1"  # CBS-v1 = CHAL Belief Schema, version 1
+SCHEMA_VERSION = "CBS"  # CBS = CHAL Belief Schema
 
 
 # Minimal JSON Schema (JSON = JavaScript Object Notation).
-CBS_V1_JSON_SCHEMA: Dict[str, Any] = {
+CBS_JSON_SCHEMA: Dict[str, Any] = {
     "type": "object",  # Top-level artifact must be a JSON object (i.e., key/value map)
     "required": [      # Keys that MUST be present for a valid belief object
         "schema_version",
@@ -40,7 +40,7 @@ CBS_V1_JSON_SCHEMA: Dict[str, Any] = {
         # --- Identity & versioning ---
         "schema_version": {                     # Fixed schema label so downstream tooling knows how to parse
             "type": "string",
-            "enum": [SCHEMA_VERSION]            # Must equal "CBS-v1"
+            "enum": [SCHEMA_VERSION]            # Must equal "CBS"
         },
         "belief_id": {                          # Stable unique ID for the belief object across updates
             "type": "string"                    # e.g., "BELIEF-<uuid>", not enforced by regex here
@@ -122,7 +122,7 @@ CBS_V1_JSON_SCHEMA: Dict[str, Any] = {
 
 def validate_belief(belief: Dict[str, Any]) -> List[str]:
     """
-    Validate a CBS-v1 belief object.
+    Validate a CBS belief object.
     Returns a list of human-readable validation errors (empty list means OK).
 
     Notes:
@@ -143,7 +143,7 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
     # --- Optional: deep validation via jsonschema (if installed) ---
     if HAVE_JSONSCHEMA:
         try:
-            jsonschema.validate(instance=belief, schema=CBS_V1_JSON_SCHEMA)
+            jsonschema.validate(instance=belief, schema=CBS_JSON_SCHEMA)
         except Exception as e:
             errors.append(str(e))
 
