@@ -8,6 +8,7 @@ loop before launching.
 Navigation:
     Esc      - Exit wizard
     Ctrl+Z   - Go back one step
+    Ctrl+H   - Show help for current prompt
 """
 
 from __future__ import annotations
@@ -146,7 +147,266 @@ configuration to YAML, or edit individual settings before proceeding.
 [bold]Navigation[/bold]
 
   [bold]\u2022[/bold] [bold]Esc[/bold] \u2014 Exit the wizard at any time
-  [bold]\u2022[/bold] [bold]Ctrl+Z[/bold] \u2014 Go back to the previous step\
+  [bold]\u2022[/bold] [bold]Ctrl+Z[/bold] \u2014 Go back to the previous step
+  [bold]\u2022[/bold] [bold]Ctrl+H[/bold] \u2014 Show help for the current prompt\
+"""
+
+
+# =========================================================================
+# Help texts — context-sensitive guidance displayed via Ctrl+H
+# =========================================================================
+
+HELP_MAIN_MENU = """\
+[bold]About CHAL[/bold] \u2014 Learn what CHAL is and how the wizard works.
+[bold]Run a debate[/bold] \u2014 Configure and launch a new debate session.
+[bold]Run the gauntlet[/bold] \u2014 Run a battery of debates (coming soon).
+[bold]Exit[/bold] \u2014 Quit the wizard.\
+"""
+
+HELP_PRESET = """\
+[bold]Presets[/bold] are pre-built debate configurations stored as YAML files in the \
+[italic]configurations/[/italic] directory. Selecting a preset populates all settings \
+instantly and takes you straight to the review screen.
+
+Choose [bold]Custom[/bold] to configure everything from scratch \u2014 recommended if \
+you want full control over agents, modes, and outputs.\
+"""
+
+HELP_TOPIC = """\
+Enter a question or thesis for the agents to debate. Good topics are:
+
+  \u2022 [bold]Specific[/bold] \u2014 "Does free will exist?" rather than "Philosophy"
+  \u2022 [bold]Debatable[/bold] \u2014 Multiple reasonable positions should be possible
+  \u2022 [bold]Scoped[/bold] \u2014 Narrow enough for agents to argue meaningfully
+
+Examples: "Is consciousness reducible to computation?", \
+"Should AI systems have legal personhood?", \
+"Does the simulation hypothesis have empirical consequences?"\
+"""
+
+HELP_NUM_AGENTS = """\
+Choose how many agents will participate in the debate (2\u20136).
+
+  \u2022 [bold]2 agents[/bold] \u2014 Classic point/counterpoint. Fastest and most focused.
+  \u2022 [bold]3 agents[/bold] \u2014 Adds a third perspective; richer cross-examination.
+  \u2022 [bold]4\u20136 agents[/bold] \u2014 Multi-perspective debates. More diverse but longer \
+runs and higher API costs.\
+"""
+
+HELP_PERSONA = """\
+Each persona embodies a distinct epistemological stance:
+
+  \u2022 [bold]EMPIRICIST[/bold] \u2014 Demands empirical evidence; rejects unfalsifiable claims.
+  \u2022 [bold]RATIONALIST[/bold] \u2014 Trusts logical deduction and a-priori reasoning.
+  \u2022 [bold]SKEPTIC[/bold] \u2014 Challenges all claims; exposes hidden assumptions.
+  \u2022 [bold]SUPERNATURALIST[/bold] \u2014 Accepts truths beyond empirical observation.
+  \u2022 [bold]PHENOMENOLOGIST[/bold] \u2014 Grounds truth in lived, first-person experience.
+  \u2022 [bold]PRAGMATIST[/bold] \u2014 Defines truth as what works in practice.
+  \u2022 [bold]CONSTRUCTIVIST[/bold] \u2014 Truth is socially and culturally constructed.
+  \u2022 [bold]NIHILIST[/bold] \u2014 Denies inherent meaning or objective truth.
+  \u2022 [bold]BAYESIAN[/bold] \u2014 Models knowledge as probabilistic inference.
+  \u2022 [bold]PANPSYCHIST[/bold] \u2014 Consciousness is fundamental to all matter.
+  \u2022 [bold]SIMULATIONIST[/bold] \u2014 Evaluates claims through the simulation hypothesis.
+  \u2022 [bold]SYNTHESIST[/bold] \u2014 Integrates science, spirituality, and systems thinking.
+
+[dim]Tip: Pair contrasting personas (e.g. Empiricist vs Supernaturalist) for the \
+most productive debates.[/dim]\
+"""
+
+HELP_PROVIDER = """\
+Choose which LLM provider to use for this agent:
+
+  \u2022 [bold]openai[/bold] \u2014 GPT-4o and o-series reasoning models.
+  \u2022 [bold]anthropic[/bold] \u2014 Claude Sonnet, Opus, and Haiku models.
+  \u2022 [bold]google[/bold] \u2014 Gemini 2.0 Flash and Pro models.
+
+[dim]Make sure you have the corresponding API key set in your .env file \
+(OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY).[/dim]\
+"""
+
+HELP_MODEL = """\
+[bold]Available models by provider:[/bold]
+
+[bold]OpenAI:[/bold]
+  \u2022 gpt-4o \u2014 Flagship multimodal model. Strong general reasoning.
+  \u2022 gpt-4o-mini \u2014 Faster and cheaper; good for quick debates.
+  \u2022 o1 \u2014 Advanced reasoning model. Best for complex arguments. [bold](Recommended)[/bold]
+  \u2022 o1-mini \u2014 Lighter reasoning model. Good balance of speed and depth.
+  \u2022 o3-mini \u2014 Latest compact reasoning model.
+
+[bold]Anthropic:[/bold]
+  \u2022 claude-opus-4-6 \u2014 Most capable Claude model. Deep reasoning. [bold](Recommended)[/bold]
+  \u2022 claude-sonnet-4-5-20250929 \u2014 Strong balance of speed and quality.
+  \u2022 claude-haiku-4-5-20251001 \u2014 Fastest Claude model. Lower cost.
+
+[bold]Google:[/bold]
+  \u2022 gemini-2.0-pro \u2014 Strongest Gemini model. [bold](Recommended)[/bold]
+  \u2022 gemini-2.0-flash \u2014 Fast and efficient for lighter workloads.
+
+[dim]Tip: For the most rigorous debates, use reasoning-focused models (o1, \
+claude-opus-4-6, gemini-2.0-pro). You can also type any valid model name \
+not listed here.[/dim]\
+"""
+
+HELP_TEMPERATURE = """\
+Temperature controls the randomness of the model's output (0.0\u20131.0):
+
+  \u2022 [bold]0.0\u20130.3[/bold] \u2014 Deterministic and focused. Best for logical, precise arguments.
+  \u2022 [bold]0.4\u20130.7[/bold] \u2014 Balanced creativity and coherence. [bold](Recommended: 0.7)[/bold]
+  \u2022 [bold]0.8\u20131.0[/bold] \u2014 More creative and unpredictable. Can surface novel arguments \
+but may reduce coherence.
+
+[dim]Note: Some reasoning models (o1, o3-mini) ignore the temperature setting.[/dim]\
+"""
+
+HELP_STAGE2 = """\
+Stage 2 is the cross-examination phase where agents challenge each other's \
+initial belief structures.
+
+  \u2022 [bold]Open[/bold] \u2014 Agents freely challenge each other without guidance. Each \
+agent generates questions targeting weaknesses in other agents' arguments.
+  \u2022 [bold]Moderated[/bold] \u2014 A moderator agent creates a structured roadmap of \
+discussion topics, guiding the cross-examination toward productive areas. \
+Requires configuring a moderator agent in a later step.\
+"""
+
+HELP_STAGE3 = """\
+Stage 3 is the main debate phase where agents respond to cross-examination \
+findings and argue their positions.
+
+  \u2022 [bold]Rebuttal[/bold] \u2014 Single-shot responses. Each agent writes one rebuttal per \
+round. Fast and concise. [bold](Recommended for first-time users)[/bold]
+  \u2022 [bold]Collaborative[/bold] \u2014 Multi-turn truth-seeking. Agents engage in extended \
+back-and-forth, aiming for convergence on well-supported conclusions.
+  \u2022 [bold]Blood Sport[/bold] \u2014 Adversarial multi-turn debate. Agents aggressively \
+challenge each other with escalating rhetoric. Entertaining but less \
+focused on truth-seeking.\
+"""
+
+HELP_BLOODSPORT_INTENSITY = """\
+Controls the rhetorical aggressiveness of Blood Sport mode:
+
+  \u2022 [bold]Mild[/bold] \u2014 Firm but respectful challenges. Minimal ad hominem.
+  \u2022 [bold]Moderate[/bold] \u2014 Pointed critiques with some rhetorical flair.
+  \u2022 [bold]Extreme[/bold] \u2014 No-holds-barred argumentation. Maximum rhetorical \
+intensity. Agents will use sharp wit and aggressive tactics.\
+"""
+
+HELP_COLLAB_TURNS = """\
+Maximum number of back-and-forth turns per question in collaborative mode \
+(3\u201330).
+
+  \u2022 [bold]3\u20135 turns[/bold] \u2014 Quick exchanges. Good for simpler sub-questions.
+  \u2022 [bold]6\u201310 turns[/bold] \u2014 Moderate depth. [bold](Recommended)[/bold]
+  \u2022 [bold]11\u201330 turns[/bold] \u2014 Deep exploration. Higher API costs but more thorough.\
+"""
+
+HELP_BLOODSPORT_EXCHANGES = """\
+Maximum number of exchange rounds per agent pair in Blood Sport mode (1\u201320).
+
+Each exchange is one attack + one defense between two agents.
+
+  \u2022 [bold]1\u20133[/bold] \u2014 Brief skirmish. Quick and low-cost.
+  \u2022 [bold]4\u20137[/bold] \u2014 Extended bout. [bold](Recommended)[/bold]
+  \u2022 [bold]8\u201320[/bold] \u2014 Marathon battle. Very thorough but expensive.\
+"""
+
+HELP_COLLAB_EARLY_TERM = """\
+When enabled, the collaborative discussion on a question ends early if both \
+agents signal agreement before reaching the maximum turn count.
+
+  \u2022 [bold]Yes[/bold] \u2014 Saves tokens when agents converge quickly. [bold](Recommended)[/bold]
+  \u2022 [bold]No[/bold] \u2014 Always use all turns, even if agents agree. Can surface \
+additional nuances.\
+"""
+
+HELP_NUM_ROUNDS = """\
+Number of full debate rounds (1\u201310). Each round includes:
+
+  1. Initial belief formation (Stage 1)
+  2. Cross-examination (Stage 2)
+  3. Debate / argumentation (Stage 3)
+  4. Adjudication and scoring (Stage 4)
+
+  \u2022 [bold]1 round[/bold] \u2014 Single pass. Fast, but agents cannot revise positions.
+  \u2022 [bold]2\u20133 rounds[/bold] \u2014 Agents refine beliefs based on prior feedback. \
+[bold](Recommended)[/bold]
+  \u2022 [bold]4\u201310 rounds[/bold] \u2014 Deep iterative refinement. High cost but maximum \
+convergence.\
+"""
+
+HELP_ADJ_LOGIC_WEIGHT = """\
+How much weight the adjudicator gives to [bold]logical validity[/bold] when \
+scoring arguments (0.0\u20131.0).
+
+Higher values prioritize formal logical structure, deductive soundness, and \
+consistency of reasoning.
+
+  \u2022 [bold]0.0[/bold] \u2014 Logic is ignored entirely.
+  \u2022 [bold]0.5[/bold] \u2014 Balanced consideration.
+  \u2022 [bold]1.0[/bold] \u2014 Logic is the dominant scoring criterion. [bold](Recommended)[/bold]\
+"""
+
+HELP_ADJ_ETHICS_WEIGHT = """\
+How much weight the adjudicator gives to [bold]ethical reasoning[/bold] when \
+scoring arguments (0.0\u20131.0).
+
+Higher values reward arguments that consider moral implications, fairness, \
+and human values.
+
+  \u2022 [bold]0.0[/bold] \u2014 Ethics is ignored. Good for purely logical/empirical topics. \
+[bold](Recommended for most topics)[/bold]
+  \u2022 [bold]0.5[/bold] \u2014 Moderate ethical consideration.
+  \u2022 [bold]1.0[/bold] \u2014 Ethics is the dominant scoring criterion. Best for \
+normative questions.\
+"""
+
+HELP_MODERATOR_MODE = """\
+Controls how the moderator guides cross-examination:
+
+  \u2022 [bold]Static[/bold] \u2014 The moderator creates a fixed discussion roadmap at the \
+start and follows it through all rounds unchanged.
+  \u2022 [bold]Adaptive[/bold] \u2014 The moderator revises its roadmap between rounds based on \
+how the debate has progressed, steering toward unresolved points. \
+[bold](Recommended)[/bold]\
+"""
+
+HELP_OUTPUTS = """\
+Select which outputs to generate after the debate:
+
+  \u2022 [bold]Debate transcript[/bold] \u2014 Full text of all agent exchanges.
+  \u2022 [bold]Narrative synthesis[/bold] \u2014 Scribe-generated summary of key arguments.
+  \u2022 [bold]Belief trajectories[/bold] \u2014 Plot showing how confidence scores evolved.
+  \u2022 [bold]Agent statistics[/bold] \u2014 Per-agent metrics (claims, evidence, revisions).
+  \u2022 [bold]Initial beliefs[/bold] \u2014 Each agent's CBS belief structure before debate.
+  \u2022 [bold]Final beliefs[/bold] \u2014 Each agent's CBS belief structure after debate.
+  \u2022 [bold]Graph visualization[/bold] \u2014 Dependency graph of claims and evidence.
+  \u2022 [bold]Embeddings[/bold] \u2014 Sentence embeddings for semantic analysis.
+  \u2022 [bold]Training data export[/bold] \u2014 Structured data for fine-tuning.
+  \u2022 [bold]Analysis report[/bold] \u2014 Detailed analytical report of the debate.
+  \u2022 [bold]Debug log[/bold] \u2014 Verbose log for troubleshooting.
+
+[dim]Use <space> to toggle individual items, <a> to toggle all.[/dim]\
+"""
+
+HELP_REVIEW_ACTION = """\
+  \u2022 [bold]Launch debate[/bold] \u2014 Start the debate with the current configuration.
+  \u2022 [bold]Edit a setting[/bold] \u2014 Go back and change a specific setting.
+  \u2022 [bold]Save config to YAML[/bold] \u2014 Save this configuration to a file for reuse.
+  \u2022 [bold]Cancel[/bold] \u2014 Discard this configuration and exit.\
+"""
+
+HELP_EDIT_SECTION = """\
+Choose which part of the configuration to modify. After editing, you will \
+return to the review screen to verify your changes.\
+"""
+
+HELP_SAVE_PATH = """\
+Enter a file path for saving the configuration as YAML.
+
+  \u2022 Use a [bold].yaml[/bold] extension (added automatically if omitted).
+  \u2022 Relative paths are saved from the current working directory.
+  \u2022 Saved configs can be reloaded with [bold]chal --config path.yaml[/bold].\
 """
 
 
@@ -163,6 +423,7 @@ class _Sentinel:
 
 _EXIT = _Sentinel("EXIT")
 _BACK = _Sentinel("BACK")
+_HELP = _Sentinel("HELP")
 
 
 class WizardExit(Exception):
@@ -173,12 +434,13 @@ class WizardBack(Exception):
     """Raised when the user presses Ctrl+Z to go back one step."""
 
 
-def _ask(question):
-    """Run a questionary Question with Esc (exit) and Ctrl+Z (back) bindings.
+def _ask(question, help_text: str | None = None):
+    """Run a questionary Question with Esc, Ctrl+Z, and Ctrl+H bindings.
 
     Injects prompt_toolkit key bindings before running the prompt:
       - Esc:    exit wizard  (raises WizardExit)
       - Ctrl+Z: go back      (raises WizardBack)
+      - Ctrl+H: show help    (displays help_text, then re-shows prompt)
       - Ctrl+C: cancel       (raises KeyboardInterrupt, unchanged)
     """
     try:
@@ -192,6 +454,10 @@ def _ask(question):
         @nav_kb.add('c-z')
         def _handle_back(event):
             event.app.exit(result=_BACK)
+
+        @nav_kb.add('c-h')
+        def _handle_help(event):
+            event.app.exit(result=_HELP)
 
         existing = app.key_bindings or KeyBindings()
         app.key_bindings = merge_key_bindings([existing, nav_kb])
@@ -220,15 +486,27 @@ def _ask(question):
     except Exception:
         pass  # Gracefully degrade (e.g., in test environments with mocks)
 
-    result = question.ask()
+    while True:
+        result = question.ask()
 
-    if result is None:
-        raise KeyboardInterrupt
-    if result is _EXIT:
-        raise WizardExit
-    if result is _BACK:
-        raise WizardBack
-    return result
+        if result is _HELP:
+            if help_text:
+                Console().print(Panel(
+                    help_text,
+                    title="[bold]Help[/bold]",
+                    border_style="#9B1B30",
+                    expand=False,
+                    width=80,
+                ))
+            continue  # re-show the prompt
+
+        if result is None:
+            raise KeyboardInterrupt
+        if result is _EXIT:
+            raise WizardExit
+        if result is _BACK:
+            raise WizardBack
+        return result
 
 
 # =========================================================================
@@ -275,7 +553,7 @@ def ask_main_menu() -> str:
             Choice("Run the gauntlet", value="gauntlet"),
             Choice("Exit", value="exit"),
         ],
-    ))
+    ), help_text=HELP_MAIN_MENU)
 
 
 # =========================================================================
@@ -318,7 +596,7 @@ def ask_preset() -> DebateConfig | None:
     result = _ask(questionary.select(
         "Start from a preset?",
         choices=choices,
-    ))
+    ), help_text=HELP_PRESET)
 
     if result == "__custom__":
         return None
@@ -336,7 +614,7 @@ def ask_topic(default: str = "") -> str:
         "What topic should the agents debate?",
         default=default,
         instruction="(free text \u2014 e.g. 'Does free will exist?')",
-    ))
+    ), help_text=HELP_TOPIC)
 
 
 def ask_num_agents(default: int = 2) -> int:
@@ -345,7 +623,7 @@ def ask_num_agents(default: int = 2) -> int:
         "How many agents should participate? (2-6)",
         default=str(default),
         validate=lambda t: _validate_int_range(t, 2, 6),
-    ))
+    ), help_text=HELP_NUM_AGENTS)
     return int(answer)
 
 
@@ -372,13 +650,13 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
                     "Persona:",
                     choices=PERSONA_CHOICES,
                     default=d_persona,
-                ))
+                ), help_text=HELP_PERSONA)
             elif sub == 1:
                 d_provider = _ask(questionary.select(
                     "Provider:",
                     choices=PROVIDER_CHOICES,
                     default=d_provider,
-                ))
+                ), help_text=HELP_PROVIDER)
             elif sub == 2:
                 suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
                 default_model = d_model or (suggestions[0] if suggestions else "gpt-4o")
@@ -386,13 +664,13 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
                     "Model:",
                     choices=suggestions,
                     default=default_model,
-                ))
+                ), help_text=HELP_MODEL)
             elif sub == 3:
                 temp_str = _ask(questionary.text(
                     "Temperature (0.0-1.0):",
                     default=str(d_temp),
                     validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ))
+                ), help_text=HELP_TEMPERATURE)
                 d_temp = float(temp_str)
             sub += 1
         except WizardBack:
@@ -421,7 +699,7 @@ def ask_stage2_mode(default: str = "open") -> str:
             Choice("Moderated (guided by a moderator roadmap)", value="moderated"),
         ],
         default=default,
-    ))
+    ), help_text=HELP_STAGE2)
 
 
 def ask_stage3_mode(
@@ -459,7 +737,7 @@ def ask_stage3_mode(
                         Choice("Blood Sport (adversarial multi-turn)", value="bloodsport"),
                     ],
                     default=d_mode,
-                ))
+                ), help_text=HELP_STAGE3)
                 if d_mode == "rebuttal":
                     return d_mode, {}
                 sub = 1
@@ -474,13 +752,13 @@ def ask_stage3_mode(
                             Choice("Extreme", value="extreme"),
                         ],
                         default=d_intensity,
-                    ))
+                    ), help_text=HELP_BLOODSPORT_INTENSITY)
                 elif d_mode == "collaborative":
                     temp = _ask(questionary.text(
                         "Max turns per question (3-30):",
                         default=str(d_max_turns),
                         validate=lambda t: _validate_int_range(t, 3, 30),
-                    ))
+                    ), help_text=HELP_COLLAB_TURNS)
                     d_max_turns = int(temp)
                 sub = 2
 
@@ -490,7 +768,7 @@ def ask_stage3_mode(
                         "Max exchanges per agent pair (1-20):",
                         default=str(d_max_exchanges),
                         validate=lambda t: _validate_int_range(t, 1, 20),
-                    ))
+                    ), help_text=HELP_BLOODSPORT_EXCHANGES)
                     d_max_exchanges = int(temp)
                     return d_mode, {
                         "bloodsport": BloodSportConfig(
@@ -502,7 +780,7 @@ def ask_stage3_mode(
                     d_early_term = _ask(questionary.confirm(
                         "Enable early termination on agreement?",
                         default=d_early_term,
-                    ))
+                    ), help_text=HELP_COLLAB_EARLY_TERM)
                     return d_mode, {
                         "collaborative": CollaborativeConfig(
                             max_turns_per_question=d_max_turns,
@@ -525,7 +803,7 @@ def ask_num_rounds(default: int = 1) -> int:
         "Number of debate rounds:",
         default=str(default),
         validate=lambda t: _validate_int_range(t, 1, 10),
-    ))
+    ), help_text=HELP_NUM_ROUNDS)
     return int(answer)
 
 
@@ -549,27 +827,27 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
                     "Adjudicator provider:",
                     choices=PROVIDER_CHOICES,
                     default=d_provider,
-                ))
+                ), help_text=HELP_PROVIDER)
             elif sub == 1:
                 suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
                 d_model = _ask(questionary.autocomplete(
                     "Adjudicator model:",
                     choices=suggestions,
                     default=d_model,
-                ))
+                ), help_text=HELP_MODEL)
             elif sub == 2:
                 temp = _ask(questionary.text(
                     "Logic weight (0.0-1.0):",
                     default=str(d_logic),
                     validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ))
+                ), help_text=HELP_ADJ_LOGIC_WEIGHT)
                 d_logic = float(temp)
             elif sub == 3:
                 temp = _ask(questionary.text(
                     "Ethics weight (0.0-1.0):",
                     default=str(d_ethics),
                     validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ))
+                ), help_text=HELP_ADJ_ETHICS_WEIGHT)
                 d_ethics = float(temp)
             sub += 1
         except WizardBack:
@@ -607,14 +885,14 @@ def ask_moderator_config(default: ModeratorConfig | None = None) -> ModeratorCon
                     "Moderator provider:",
                     choices=PROVIDER_CHOICES,
                     default=d_provider,
-                ))
+                ), help_text=HELP_PROVIDER)
             elif sub == 1:
                 suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
                 d_model = _ask(questionary.autocomplete(
                     "Moderator model:",
                     choices=suggestions,
                     default=d_model,
-                ))
+                ), help_text=HELP_MODEL)
             elif sub == 2:
                 d_mode = _ask(questionary.select(
                     "Moderator mode:",
@@ -623,7 +901,7 @@ def ask_moderator_config(default: ModeratorConfig | None = None) -> ModeratorCon
                         Choice("Adaptive (revises roadmap between rounds)", value="adaptive"),
                     ],
                     default=d_mode,
-                ))
+                ), help_text=HELP_MODERATOR_MODE)
             sub += 1
         except WizardBack:
             if sub > 0:
@@ -656,7 +934,7 @@ def ask_output_toggles(default: OutputConfig | None = None) -> dict[str, bool]:
         "Which outputs would you like?",
         choices=choices,
         instruction="(Use arrow keys to move, <space> to select, <a> to toggle)",
-    ))
+    ), help_text=HELP_OUTPUTS)
 
     # Build result: selected attrs are True, others False
     all_attrs = {attr for _, attr, _ in OUTPUT_TOGGLES}
@@ -730,7 +1008,7 @@ def ask_review_action() -> str:
             Choice("Save config to YAML", value="save"),
             Choice("Cancel", value="cancel"),
         ],
-    ))
+    ), help_text=HELP_REVIEW_ACTION)
 
 
 def ask_edit_section(show_moderator: bool = False) -> str:
@@ -751,7 +1029,7 @@ def ask_edit_section(show_moderator: bool = False) -> str:
     return _ask(questionary.select(
         "Which section would you like to edit?",
         choices=choices,
-    ))
+    ), help_text=HELP_EDIT_SECTION)
 
 
 def _ask_save_path() -> Path:
@@ -759,7 +1037,7 @@ def _ask_save_path() -> Path:
     path_str = _ask(questionary.text(
         "Save config to (YAML path):",
         default="my_debate.yaml",
-    ))
+    ), help_text=HELP_SAVE_PATH)
     path = Path(path_str)
     if not path.suffix:
         path = path.with_suffix(".yaml")
@@ -978,7 +1256,7 @@ def run_wizard(
         "launch", "save", "cancel".
         config is None if cancelled.
     """
-    console.print("  [dim]Press Esc to exit  \u2022  Ctrl+Z to go back[/dim]\n")
+    console.print("  [dim]Press Esc to exit  \u2022  Ctrl+Z to go back  \u2022  Ctrl+H for help[/dim]\n")
 
     # Outer loop allows returning to the main menu via Ctrl+Z at step 0
     while True:
@@ -1103,7 +1381,7 @@ def _apply_edit(config: DebateConfig, section: str, console: Console) -> DebateC
         idx = _ask(questionary.select(
             "Which agent to edit?",
             choices=agent_choices,
-        ))
+        ), help_text=HELP_PERSONA)
         config.agents[idx] = ask_agent_config(idx, default=config.agents[idx])
 
     elif section == "stage2":
