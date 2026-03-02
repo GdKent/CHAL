@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="CHAL.png" alt="CHAL Logo" width="400"/>
+  <img src="CHAL.png" alt="CHAL Logo" width="500"/>
 </p>
 
 <h1 align="center">

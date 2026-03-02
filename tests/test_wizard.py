@@ -37,12 +37,15 @@ from chal.cli.wizard import (
     ask_review_action,
     ask_edit_section,
     ask_preset,
+    ask_main_menu,
     _scan_presets,
     run_wizard,
     _validate_float_range,
     _validate_int_range,
     PERSONA_CHOICES,
     OUTPUT_TOGGLES,
+    ABOUT_CHAL,
+    WizardBack,
 )
 
 
@@ -436,9 +439,11 @@ class TestRunWizard:
                 "1.0",         # adj logic weight
                 "0.0",         # adj ethics weight
             ]
-            # select calls: preset, persona1, provider1, persona2, provider2,
-            # stage2_mode, stage3_mode, adj_provider, review_action
+            # select calls: main_menu, preset, persona1, provider1,
+            # persona2, provider2, stage2_mode, stage3_mode,
+            # adj_provider, review_action
             m_select.return_value.ask.side_effect = [
+                "debate",                     # main menu
                 "__custom__",                 # ask_preset
                 "EMPIRICIST", "openai",      # agent 1
                 "RATIONALIST", "openai",     # agent 2
@@ -477,6 +482,7 @@ class TestRunWizard:
                 "0.0",                     # adj ethics weight
             ]
             m_select.return_value.ask.side_effect = [
+                "debate",                # main menu
                 "__custom__",            # ask_preset
                 "EMPIRICIST", "openai",
                 "SKEPTIC", "anthropic",
@@ -530,13 +536,15 @@ class TestRunWizard:
                 str(yaml_path),     # save path
             ]
             m_select.return_value.ask.side_effect = [
+                "debate",                # main menu
                 "__custom__",            # ask_preset
                 "EMPIRICIST", "openai",
                 "RATIONALIST", "openai",
                 "open",
                 "rebuttal",
                 "openai",
-                "save_and_launch",  # review action
+                "save",    # review action: save (loops back to review)
+                "launch",  # review action: launch
             ]
             m_auto.return_value.ask.side_effect = [
                 "gpt-4o", "gpt-4o", "o1-mini",
@@ -545,7 +553,7 @@ class TestRunWizard:
 
             config, action = run_wizard(_console())
 
-            assert action == "save_and_launch"
+            assert action == "launch"
             assert yaml_path.exists()
 
             # Verify saved YAML can be loaded
@@ -646,3 +654,106 @@ class TestAskPreset:
         mock_select.return_value.ask.return_value = None
         with pytest.raises(KeyboardInterrupt):
             ask_preset()
+
+
+# =========================================================================
+# 8. Main Menu
+# =========================================================================
+
+class TestMainMenu:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_debate(self, mock_select):
+        """ask_main_menu returns 'debate' when selected."""
+        mock_select.return_value.ask.return_value = "debate"
+        assert ask_main_menu() == "debate"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_about(self, mock_select):
+        """ask_main_menu returns 'about' when selected."""
+        mock_select.return_value.ask.return_value = "about"
+        assert ask_main_menu() == "about"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_gauntlet(self, mock_select):
+        """ask_main_menu returns 'gauntlet' when selected."""
+        mock_select.return_value.ask.return_value = "gauntlet"
+        assert ask_main_menu() == "gauntlet"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_returns_exit(self, mock_select):
+        """ask_main_menu returns 'exit' when selected."""
+        mock_select.return_value.ask.return_value = "exit"
+        assert ask_main_menu() == "exit"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_ctrl_c_raises(self, mock_select):
+        """ask_main_menu raises KeyboardInterrupt on Ctrl+C."""
+        mock_select.return_value.ask.return_value = None
+        with pytest.raises(KeyboardInterrupt):
+            ask_main_menu()
+
+    @pytest.mark.unit
+    def test_about_chal_text_is_nonempty(self):
+        """ABOUT_CHAL contains substantive content."""
+        assert len(ABOUT_CHAL) > 100
+        assert "CHAL" in ABOUT_CHAL
+        assert "belief" in ABOUT_CHAL.lower()
+
+    @pytest.mark.unit
+    def test_wizard_exit_on_main_menu(self):
+        """Selecting 'exit' at main menu returns (None, 'cancel')."""
+        with patch("chal.cli.wizard.questionary.select") as m_select:
+            m_select.return_value.ask.return_value = "exit"
+            config, action = run_wizard(_console())
+            assert config is None
+            assert action == "cancel"
+
+    @pytest.mark.unit
+    def test_wizard_about_then_exit(self):
+        """Selecting 'about' shows info, then 'exit' cancels."""
+        with patch("chal.cli.wizard.questionary.select") as m_select:
+            m_select.return_value.ask.side_effect = ["about", "exit"]
+            config, action = run_wizard(_console())
+            assert config is None
+            assert action == "cancel"
+
+    @pytest.mark.unit
+    def test_wizard_gauntlet_then_exit(self):
+        """Selecting 'gauntlet' shows coming soon, then 'exit' cancels."""
+        with patch("chal.cli.wizard.questionary.select") as m_select:
+            m_select.return_value.ask.side_effect = ["gauntlet", "exit"]
+            config, action = run_wizard(_console())
+            assert config is None
+            assert action == "cancel"
+
+    @pytest.mark.unit
+    def test_ctrl_z_at_preset_returns_to_menu(self):
+        """Ctrl+Z at preset step (step 0) returns to main menu."""
+        with patch("chal.cli.wizard.questionary.select") as m_select, \
+             patch("chal.cli.wizard.questionary.text"):
+            # First call: main menu -> debate
+            # Second call: preset -> raises WizardBack (simulating Ctrl+Z)
+            # Third call: back at main menu -> exit
+            call_count = [0]
+            def select_side_effect(*args, **kwargs):
+                mock = MagicMock()
+                idx = call_count[0]
+                call_count[0] += 1
+                if idx == 0:
+                    mock.ask.return_value = "debate"    # main menu
+                elif idx == 1:
+                    mock.ask.side_effect = WizardBack   # Ctrl+Z at preset
+                elif idx == 2:
+                    mock.ask.return_value = "exit"      # back at main menu
+                return mock
+            m_select.side_effect = select_side_effect
+
+            config, action = run_wizard(_console())
+            assert config is None
+            assert action == "cancel"

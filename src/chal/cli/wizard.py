@@ -4,6 +4,10 @@ wizard.py
 Interactive configuration wizard for CHAL debates.
 Walks the user through 10 steps to build a DebateConfig, with a review/edit
 loop before launching.
+
+Navigation:
+    Esc      - Exit wizard
+    Ctrl+Z   - Go back one step
 """
 
 from __future__ import annotations
@@ -16,6 +20,10 @@ from questionary import Choice
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
+from prompt_toolkit.filters import has_completions
+from prompt_toolkit.styles import Style as PTKStyle, merge_styles
 
 from chal.config import (
     AgentConfig,
@@ -59,30 +67,173 @@ MODEL_SUGGESTIONS: dict[str, list[str]] = {
 
 # (display label, OutputConfig attribute, default value)
 OUTPUT_TOGGLES: list[tuple[str, str, bool]] = [
-    ("Debate transcript", "save_transcript", True),
-    ("Narrative synthesis (scribe)", "save_synthesis", True),
-    ("Belief trajectories plot", "plot_trajectories", True),
-    ("Agent statistics", "save_agent_stats", True),
-    ("Initial beliefs", "save_initial_beliefs", True),
-    ("Final beliefs", "save_final_beliefs", True),
-    ("Graph visualization", "generate_graph_visualization", True),
-    ("Embeddings", "generate_embeddings", True),
+    ("Debate transcript", "save_transcript", False),
+    ("Narrative synthesis (scribe)", "save_synthesis", False),
+    ("Belief trajectories plot", "plot_trajectories", False),
+    ("Agent statistics", "save_agent_stats", False),
+    ("Initial beliefs", "save_initial_beliefs", False),
+    ("Final beliefs", "save_final_beliefs", False),
+    ("Graph visualization", "generate_graph_visualization", False),
+    ("Embeddings", "generate_embeddings", False),
     ("Training data export", "save_training_data", False),
     ("Analysis report", "save_analysis_report", False),
-    ("Debug log", "save_debug_log", True),
+    ("Debug log", "save_debug_log", False),
 ]
 
 
 # =========================================================================
-# Helpers
+# Questionary style — maroon theme to match CHAL banner
 # =========================================================================
 
-def _require(value):
-    """Raise KeyboardInterrupt if questionary returned None (Ctrl+C)."""
-    if value is None:
-        raise KeyboardInterrupt
-    return value
+WIZARD_STYLE = PTKStyle([
+    ("answer", "fg:#A82545 bold"),
+    ("highlighted", "noinherit fg:#A82545 bold"),
+    ("pointer", "fg:#A82545 bold"),
+    ("selected", "noinherit"),
+    ("hint", "fg:gray italic"),
+])
 
+# =========================================================================
+# About CHAL — displayed from the main menu
+# =========================================================================
+
+ABOUT_CHAL = """\
+[bold]CHAL[/bold] (Council of Hierarchical Agentic Language) is a framework for \
+orchestrating structured debates between multiple AI agents, each embodying a \
+distinct epistemological position.
+
+[bold]Why CHAL?[/bold]
+
+The pursuit of truth through argumentation is one of humanity's oldest and most \
+powerful intellectual traditions. Yet good-faith dialectical exchange \
+— where participants genuinely seek truth rather than rhetorical victory — \
+remains remarkably difficult. Cognitive biases, emotional attachments to \
+positions, and social pressures routinely derail even well-intentioned discourse.
+
+CHAL addresses this by deploying AI agents as rigorous interlocutors capable of \
+[italic]belief search[/italic]: systematically exploring argument space, tracking formal belief \
+structures with dependency graphs and confidence scores, and converging toward \
+well-supported conclusions through structured debate.
+
+[bold]Implications[/bold]
+
+  [bold]\u2022[/bold] [bold]AI Safety & Reasoning[/bold] \u2014 Studying how agents form, challenge, and \
+revise beliefs under adversarial pressure reveals failure modes and robustness \
+properties of LLM reasoning.
+
+  [bold]\u2022[/bold] [bold]Human Knowledge Extension[/bold] \u2014 Debates surface novel arguments, \
+overlooked assumptions, and unexpected convergences on questions that have \
+challenged thinkers for centuries.
+
+  [bold]\u2022[/bold] [bold]Argumentation Literacy[/bold] \u2014 Observing structured debates helps users \
+distinguish sound reasoning from rhetorical fallacies, strengthening critical \
+thinking skills.
+
+[bold]Using the Wizard[/bold]
+
+Select [bold]Run a debate[/bold] to configure a new session. The wizard guides you through:
+
+  1. Choosing a preset or building a custom configuration
+  2. Setting a debate topic
+  3. Selecting agent personas, providers, and models
+  4. Configuring cross-examination and debate modes
+  5. Setting adjudication and round parameters
+  6. Choosing which outputs to generate
+
+After configuration, review your settings, then launch the debate, save the \
+configuration to YAML, or edit individual settings before proceeding.
+
+[bold]Navigation[/bold]
+
+  [bold]\u2022[/bold] [bold]Esc[/bold] \u2014 Exit the wizard at any time
+  [bold]\u2022[/bold] [bold]Ctrl+Z[/bold] \u2014 Go back to the previous step\
+"""
+
+
+# =========================================================================
+# Wizard navigation
+# =========================================================================
+
+class _Sentinel:
+    """Unique sentinel for wizard navigation signals."""
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def __repr__(self) -> str:
+        return f"_Sentinel({self.name})"
+
+_EXIT = _Sentinel("EXIT")
+_BACK = _Sentinel("BACK")
+
+
+class WizardExit(Exception):
+    """Raised when the user presses Esc to exit the wizard."""
+
+
+class WizardBack(Exception):
+    """Raised when the user presses Ctrl+Z to go back one step."""
+
+
+def _ask(question):
+    """Run a questionary Question with Esc (exit) and Ctrl+Z (back) bindings.
+
+    Injects prompt_toolkit key bindings before running the prompt:
+      - Esc:    exit wizard  (raises WizardExit)
+      - Ctrl+Z: go back      (raises WizardBack)
+      - Ctrl+C: cancel       (raises KeyboardInterrupt, unchanged)
+    """
+    try:
+        app = question.application
+        nav_kb = KeyBindings()
+
+        @nav_kb.add('escape', eager=True, filter=~has_completions)
+        def _handle_escape(event):
+            event.app.exit(result=_EXIT)
+
+        @nav_kb.add('c-z')
+        def _handle_back(event):
+            event.app.exit(result=_BACK)
+
+        existing = app.key_bindings or KeyBindings()
+        app.key_bindings = merge_key_bindings([existing, nav_kb])
+
+        # Apply maroon wizard style
+        if hasattr(app, 'style') and app.style:
+            app.style = merge_styles([app.style, WIZARD_STYLE])
+        else:
+            app.style = WIZARD_STYLE
+
+        # Clear selected_options for select prompts so default items use
+        # class:highlighted (not class:selected) when pointed at.  The
+        # pointer position is already set via initial_choice/pointed_at.
+        # Skip for checkbox prompts where checked choices must be preserved.
+        from questionary.prompts.common import InquirerControl
+        for child in getattr(app.layout.container, 'children', []):
+            window = getattr(child, 'content', child)
+            ic = getattr(window, 'content', None)
+            if isinstance(ic, InquirerControl):
+                has_prechecked = any(
+                    getattr(c, 'checked', False) for c in ic.choices
+                )
+                if not has_prechecked:
+                    ic.selected_options = []
+                break
+    except Exception:
+        pass  # Gracefully degrade (e.g., in test environments with mocks)
+
+    result = question.ask()
+
+    if result is None:
+        raise KeyboardInterrupt
+    if result is _EXIT:
+        raise WizardExit
+    if result is _BACK:
+        raise WizardBack
+    return result
+
+
+# =========================================================================
+# Validation helpers
+# =========================================================================
 
 def _validate_float_range(text: str, lo: float = 0.0, hi: float = 1.0) -> bool | str:
     """Validator for float inputs within a range."""
@@ -107,6 +258,27 @@ def _validate_int_range(text: str, lo: int, hi: int) -> bool | str:
 
 
 # =========================================================================
+# Main menu
+# =========================================================================
+
+def ask_main_menu() -> str:
+    """Display the main CHAL menu.
+
+    Returns:
+        One of "about", "debate", "gauntlet", "exit".
+    """
+    return _ask(questionary.select(
+        "What would you like to do?",
+        choices=[
+            Choice("About CHAL", value="about"),
+            Choice("Run a debate", value="debate"),
+            Choice("Run the gauntlet", value="gauntlet"),
+            Choice("Exit", value="exit"),
+        ],
+    ))
+
+
+# =========================================================================
 # Preset selection
 # =========================================================================
 
@@ -125,7 +297,7 @@ def _scan_presets() -> list[tuple[str, str, Path]]:
                 data = yaml.safe_load(f)
             name = data.get("metadata", {}).get("name", p.stem)
             desc = data.get("metadata", {}).get("description", "")
-            label = f"{name}  [dim]({desc})[/dim]" if desc else name
+            label = f"{name} ({desc})" if desc else name
             presets.append((label, p.stem, p))
         except Exception:
             continue
@@ -143,12 +315,10 @@ def ask_preset() -> DebateConfig | None:
     for label, config_name, path in presets:
         choices.append(Choice(label, value=str(path)))
 
-    result = questionary.select(
+    result = _ask(questionary.select(
         "Start from a preset?",
         choices=choices,
-    ).ask()
-    if result is None:
-        raise KeyboardInterrupt
+    ))
 
     if result == "__custom__":
         return None
@@ -162,83 +332,96 @@ def ask_preset() -> DebateConfig | None:
 
 def ask_topic(default: str = "") -> str:
     """Step 1: Ask for the debate topic."""
-    return _require(questionary.text(
+    return _ask(questionary.text(
         "What topic should the agents debate?",
         default=default,
-        instruction="(free text — e.g. 'Does free will exist?')",
-    ).ask())
+        instruction="(free text \u2014 e.g. 'Does free will exist?')",
+    ))
 
 
 def ask_num_agents(default: int = 2) -> int:
     """Step 2: Ask how many agents."""
-    answer = _require(questionary.text(
+    answer = _ask(questionary.text(
         "How many agents should participate? (2-6)",
         default=str(default),
         validate=lambda t: _validate_int_range(t, 2, 6),
-    ).ask())
+    ))
     return int(answer)
 
 
 def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentConfig:
-    """Step 3: Configure a single agent (persona, provider, model, temperature)."""
+    """Step 3: Configure a single agent (persona, provider, model, temperature).
+
+    Supports internal back navigation between sub-questions via Ctrl+Z.
+    """
     console = Console()
     console.print(f"\n[bold]Configure Agent {index + 1}:[/bold]")
 
-    # Persona
-    default_persona = default.persona if default else None
-    persona = _require(questionary.select(
-        "Persona:",
-        choices=PERSONA_CHOICES,
-        default=default_persona,
-    ).ask())
+    # Track answers for back navigation
+    d_persona = default.persona if default else None
+    d_provider = default.provider if default else "openai"
+    d_model = default.model if default else None
+    d_temp = default.temperature if default else 0.7
+    d_name = default.name if default else None
 
-    # Provider
-    default_provider = default.provider if default else "openai"
-    provider = _require(questionary.select(
-        "Provider:",
-        choices=PROVIDER_CHOICES,
-        default=default_provider,
-    ).ask())
+    sub = 0
+    while sub < 4:
+        try:
+            if sub == 0:
+                d_persona = _ask(questionary.select(
+                    "Persona:",
+                    choices=PERSONA_CHOICES,
+                    default=d_persona,
+                ))
+            elif sub == 1:
+                d_provider = _ask(questionary.select(
+                    "Provider:",
+                    choices=PROVIDER_CHOICES,
+                    default=d_provider,
+                ))
+            elif sub == 2:
+                suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
+                default_model = d_model or (suggestions[0] if suggestions else "gpt-4o")
+                d_model = _ask(questionary.autocomplete(
+                    "Model:",
+                    choices=suggestions,
+                    default=default_model,
+                ))
+            elif sub == 3:
+                temp_str = _ask(questionary.text(
+                    "Temperature (0.0-1.0):",
+                    default=str(d_temp),
+                    validate=lambda t: _validate_float_range(t, 0.0, 1.0),
+                ))
+                d_temp = float(temp_str)
+            sub += 1
+        except WizardBack:
+            if sub > 0:
+                sub -= 1
+            else:
+                raise
 
-    # Model — show suggestions for the chosen provider
-    suggestions = MODEL_SUGGESTIONS.get(provider, [])
-    default_model = default.model if default else (suggestions[0] if suggestions else "gpt-4o")
-    model = _require(questionary.autocomplete(
-        "Model:",
-        choices=suggestions,
-        default=default_model,
-    ).ask())
-
-    # Temperature
-    default_temp = default.temperature if default else 0.7
-    temp_str = _require(questionary.text(
-        "Temperature (0.0-1.0):",
-        default=str(default_temp),
-        validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-    ).ask())
-
-    # Auto-generate name from persona
-    name = default.name if default else f"Agent-{persona.capitalize()}"
+    name = d_name or f"Agent-{d_persona.capitalize()}"
 
     return AgentConfig(
         name=name,
-        persona=persona,
-        model=model,
-        temperature=float(temp_str),
-        provider=provider,
+        persona=d_persona,
+        model=d_model,
+        temperature=d_temp,
+        provider=d_provider,
     )
 
 
 def ask_stage2_mode(default: str = "open") -> str:
     """Step 4: Cross-examination style."""
-    return _require(questionary.select(
+    return _ask(questionary.select(
         "Cross-examination style:",
         choices=[
             Choice("Open (agents freely challenge each other)", value="open"),
             Choice("Moderated (guided by a moderator roadmap)", value="moderated"),
         ],
         default=default,
-    ).ask())
+    ))
 
 
 def ask_stage3_mode(
@@ -246,157 +429,214 @@ def ask_stage3_mode(
     default_bloodsport: BloodSportConfig | None = None,
     default_collaborative: CollaborativeConfig | None = None,
 ) -> tuple[str, dict]:
-    """Step 5: Debate mode + sub-options.
+    """Step 5: Debate mode + sub-options with internal back navigation.
 
     Returns:
         (mode_str, sub_options_dict) where sub_options contains any mode-specific
         settings (bloodsport intensity/exchanges, collaborative params).
     """
-    mode = _require(questionary.select(
-        "Debate mode:",
-        choices=[
-            Choice("Rebuttal (single-shot responses)", value="rebuttal"),
-            Choice("Collaborative (multi-turn truth-seeking)", value="collaborative"),
-            Choice("Blood Sport (adversarial multi-turn)", value="bloodsport"),
-        ],
-        default=default_mode,
-    ).ask())
+    d_mode = default_mode
 
-    sub_options: dict = {}
+    # Blood sport defaults
+    bs = default_bloodsport or BloodSportConfig()
+    d_intensity = bs.intensity
+    d_max_exchanges = bs.max_exchanges
 
-    if mode == "bloodsport":
-        bs = default_bloodsport or BloodSportConfig()
-        intensity = _require(questionary.select(
-            "Blood Sport intensity:",
-            choices=[
-                Choice("Mild", value="mild"),
-                Choice("Moderate", value="moderate"),
-                Choice("Extreme", value="extreme"),
-            ],
-            default=bs.intensity,
-        ).ask())
+    # Collaborative defaults
+    collab = default_collaborative or CollaborativeConfig()
+    d_max_turns = collab.max_turns_per_question
+    d_early_term = collab.early_termination_on_agreement
 
-        max_exchanges = _require(questionary.text(
-            "Max exchanges per agent pair (1-20):",
-            default=str(bs.max_exchanges),
-            validate=lambda t: _validate_int_range(t, 1, 20),
-        ).ask())
+    sub = 0
+    while True:
+        try:
+            if sub == 0:
+                d_mode = _ask(questionary.select(
+                    "Debate mode:",
+                    choices=[
+                        Choice("Rebuttal (single-shot responses)", value="rebuttal"),
+                        Choice("Collaborative (multi-turn truth-seeking)", value="collaborative"),
+                        Choice("Blood Sport (adversarial multi-turn)", value="bloodsport"),
+                    ],
+                    default=d_mode,
+                ))
+                if d_mode == "rebuttal":
+                    return d_mode, {}
+                sub = 1
 
-        sub_options["bloodsport"] = BloodSportConfig(
-            intensity=intensity,
-            max_exchanges=int(max_exchanges),
-        )
+            elif sub == 1:
+                if d_mode == "bloodsport":
+                    d_intensity = _ask(questionary.select(
+                        "Blood Sport intensity:",
+                        choices=[
+                            Choice("Mild", value="mild"),
+                            Choice("Moderate", value="moderate"),
+                            Choice("Extreme", value="extreme"),
+                        ],
+                        default=d_intensity,
+                    ))
+                elif d_mode == "collaborative":
+                    temp = _ask(questionary.text(
+                        "Max turns per question (3-30):",
+                        default=str(d_max_turns),
+                        validate=lambda t: _validate_int_range(t, 3, 30),
+                    ))
+                    d_max_turns = int(temp)
+                sub = 2
 
-    elif mode == "collaborative":
-        collab = default_collaborative or CollaborativeConfig()
-        max_turns = _require(questionary.text(
-            "Max turns per question (3-30):",
-            default=str(collab.max_turns_per_question),
-            validate=lambda t: _validate_int_range(t, 3, 30),
-        ).ask())
+            elif sub == 2:
+                if d_mode == "bloodsport":
+                    temp = _ask(questionary.text(
+                        "Max exchanges per agent pair (1-20):",
+                        default=str(d_max_exchanges),
+                        validate=lambda t: _validate_int_range(t, 1, 20),
+                    ))
+                    d_max_exchanges = int(temp)
+                    return d_mode, {
+                        "bloodsport": BloodSportConfig(
+                            intensity=d_intensity,
+                            max_exchanges=d_max_exchanges,
+                        )
+                    }
+                elif d_mode == "collaborative":
+                    d_early_term = _ask(questionary.confirm(
+                        "Enable early termination on agreement?",
+                        default=d_early_term,
+                    ))
+                    return d_mode, {
+                        "collaborative": CollaborativeConfig(
+                            max_turns_per_question=d_max_turns,
+                            min_turns_per_question=collab.min_turns_per_question,
+                            adjudicator_check_interval=collab.adjudicator_check_interval,
+                            early_termination_on_agreement=d_early_term,
+                        )
+                    }
 
-        early_term = _require(questionary.confirm(
-            "Enable early termination on agreement?",
-            default=collab.early_termination_on_agreement,
-        ).ask())
-
-        sub_options["collaborative"] = CollaborativeConfig(
-            max_turns_per_question=int(max_turns),
-            min_turns_per_question=collab.min_turns_per_question,
-            adjudicator_check_interval=collab.adjudicator_check_interval,
-            early_termination_on_agreement=early_term,
-        )
-
-    return mode, sub_options
+        except WizardBack:
+            if sub > 0:
+                sub -= 1
+            else:
+                raise
 
 
 def ask_num_rounds(default: int = 1) -> int:
     """Step 6: Number of debate rounds."""
-    answer = _require(questionary.text(
+    answer = _ask(questionary.text(
         "Number of debate rounds:",
         default=str(default),
         validate=lambda t: _validate_int_range(t, 1, 10),
-    ).ask())
+    ))
     return int(answer)
 
 
 def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> AdjudicationConfig:
-    """Step 7: Adjudicator model and weights."""
+    """Step 7: Adjudicator model and weights with internal back navigation."""
     adj = default or AdjudicationConfig()
 
     console = Console()
     console.print("\n[bold]Adjudicator Configuration:[/bold]")
 
-    provider = _require(questionary.select(
-        "Adjudicator provider:",
-        choices=PROVIDER_CHOICES,
-        default=adj.provider,
-    ).ask())
+    d_provider = adj.provider
+    d_model = adj.model
+    d_logic = adj.logic_weight
+    d_ethics = adj.ethics_weight
 
-    suggestions = MODEL_SUGGESTIONS.get(provider, [])
-    model = _require(questionary.autocomplete(
-        "Adjudicator model:",
-        choices=suggestions,
-        default=adj.model,
-    ).ask())
-
-    logic_weight = _require(questionary.text(
-        "Logic weight (0.0-1.0):",
-        default=str(adj.logic_weight),
-        validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-    ).ask())
-
-    ethics_weight = _require(questionary.text(
-        "Ethics weight (0.0-1.0):",
-        default=str(adj.ethics_weight),
-        validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-    ).ask())
+    sub = 0
+    while sub < 4:
+        try:
+            if sub == 0:
+                d_provider = _ask(questionary.select(
+                    "Adjudicator provider:",
+                    choices=PROVIDER_CHOICES,
+                    default=d_provider,
+                ))
+            elif sub == 1:
+                suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
+                d_model = _ask(questionary.autocomplete(
+                    "Adjudicator model:",
+                    choices=suggestions,
+                    default=d_model,
+                ))
+            elif sub == 2:
+                temp = _ask(questionary.text(
+                    "Logic weight (0.0-1.0):",
+                    default=str(d_logic),
+                    validate=lambda t: _validate_float_range(t, 0.0, 1.0),
+                ))
+                d_logic = float(temp)
+            elif sub == 3:
+                temp = _ask(questionary.text(
+                    "Ethics weight (0.0-1.0):",
+                    default=str(d_ethics),
+                    validate=lambda t: _validate_float_range(t, 0.0, 1.0),
+                ))
+                d_ethics = float(temp)
+            sub += 1
+        except WizardBack:
+            if sub > 0:
+                sub -= 1
+            else:
+                raise
 
     return AdjudicationConfig(
-        model=model,
-        provider=provider,
-        logic_weight=float(logic_weight),
-        ethics_weight=float(ethics_weight),
+        model=d_model,
+        provider=d_provider,
+        logic_weight=d_logic,
+        ethics_weight=d_ethics,
         logic_system=adj.logic_system,
         ethics_system=adj.ethics_system,
     )
 
 
 def ask_moderator_config(default: ModeratorConfig | None = None) -> ModeratorConfig:
-    """Step 8: Moderator configuration (only shown if stage2 == 'moderated')."""
+    """Step 8: Moderator configuration with internal back navigation."""
     mod = default or ModeratorConfig()
 
     console = Console()
     console.print("\n[bold]Moderator Configuration:[/bold]")
 
-    provider = _require(questionary.select(
-        "Moderator provider:",
-        choices=PROVIDER_CHOICES,
-        default=mod.provider,
-    ).ask())
+    d_provider = mod.provider
+    d_model = mod.model
+    d_mode = mod.moderator_mode
 
-    suggestions = MODEL_SUGGESTIONS.get(provider, [])
-    model = _require(questionary.autocomplete(
-        "Moderator model:",
-        choices=suggestions,
-        default=mod.model,
-    ).ask())
-
-    moderator_mode = _require(questionary.select(
-        "Moderator mode:",
-        choices=[
-            Choice("Static (fixed roadmap for all rounds)", value="static"),
-            Choice("Adaptive (revises roadmap between rounds)", value="adaptive"),
-        ],
-        default=mod.moderator_mode,
-    ).ask())
+    sub = 0
+    while sub < 3:
+        try:
+            if sub == 0:
+                d_provider = _ask(questionary.select(
+                    "Moderator provider:",
+                    choices=PROVIDER_CHOICES,
+                    default=d_provider,
+                ))
+            elif sub == 1:
+                suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
+                d_model = _ask(questionary.autocomplete(
+                    "Moderator model:",
+                    choices=suggestions,
+                    default=d_model,
+                ))
+            elif sub == 2:
+                d_mode = _ask(questionary.select(
+                    "Moderator mode:",
+                    choices=[
+                        Choice("Static (fixed roadmap for all rounds)", value="static"),
+                        Choice("Adaptive (revises roadmap between rounds)", value="adaptive"),
+                    ],
+                    default=d_mode,
+                ))
+            sub += 1
+        except WizardBack:
+            if sub > 0:
+                sub -= 1
+            else:
+                raise
 
     return ModeratorConfig(
-        model=model,
-        provider=provider,
+        model=d_model,
+        provider=d_provider,
         temperature=mod.temperature,
         context=mod.context,
-        moderator_mode=moderator_mode,
+        moderator_mode=d_mode,
     )
 
 
@@ -412,10 +652,11 @@ def ask_output_toggles(default: OutputConfig | None = None) -> dict[str, bool]:
         checked = getattr(default, attr, fallback) if default else fallback
         choices.append(Choice(label, value=attr, checked=checked))
 
-    selected = _require(questionary.checkbox(
+    selected = _ask(questionary.checkbox(
         "Which outputs would you like?",
         choices=choices,
-    ).ask())
+        instruction="(Use arrow keys to move, <space> to select, <a> to toggle)",
+    ))
 
     # Build result: selected attrs are True, others False
     all_attrs = {attr for _, attr, _ in OUTPUT_TOGGLES}
@@ -475,22 +716,21 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
             enabled.append(label.split(" (")[0])  # strip parenthetical
     table.add_row("Outputs", ", ".join(enabled) if enabled else "None")
 
-    panel = Panel(table, title="Debate Configuration", border_style="cyan")
+    panel = Panel(table, title="[bold #B8405E]Debate Configuration[/bold #B8405E]", border_style="#B8405E")
     console.print(panel)
 
 
 def ask_review_action() -> str:
     """Ask user what to do after reviewing the configuration."""
-    return _require(questionary.select(
+    return _ask(questionary.select(
         "Proceed with this configuration?",
         choices=[
             Choice("Launch debate", value="launch"),
             Choice("Edit a setting", value="edit"),
             Choice("Save config to YAML", value="save"),
-            Choice("Save config and launch", value="save_and_launch"),
             Choice("Cancel", value="cancel"),
         ],
-    ).ask())
+    ))
 
 
 def ask_edit_section(show_moderator: bool = False) -> str:
@@ -508,18 +748,18 @@ def ask_edit_section(show_moderator: bool = False) -> str:
         choices.append(Choice("Moderator", value="moderator"))
     choices.append(Choice("Output toggles", value="outputs"))
 
-    return _require(questionary.select(
+    return _ask(questionary.select(
         "Which section would you like to edit?",
         choices=choices,
-    ).ask())
+    ))
 
 
 def _ask_save_path() -> Path:
     """Prompt for a YAML file path to save the config."""
-    path_str = _require(questionary.text(
+    path_str = _ask(questionary.text(
         "Save config to (YAML path):",
         default="my_debate.yaml",
-    ).ask())
+    ))
     path = Path(path_str)
     if not path.suffix:
         path = path.with_suffix(".yaml")
@@ -527,8 +767,201 @@ def _ask_save_path() -> Path:
 
 
 # =========================================================================
+# Step machine — internal step functions for wizard navigation
+# =========================================================================
+
+def _populate_state_from_config(config: DebateConfig, state: dict) -> None:
+    """Fill wizard state dict from a complete DebateConfig.
+
+    Used when a preset is selected so all intermediate steps can be skipped.
+    """
+    state['prefill'] = config
+    state['topic'] = config.topic
+    state['num_agents'] = len(config.agents)
+    state['agent_configs'] = list(config.agents)
+    state['stage2_mode'] = config.stage2_mode
+    state['stage3_mode'] = config.stage3_mode
+    state['sub_options'] = {}
+    if config.stage3_mode == 'bloodsport':
+        state['sub_options']['bloodsport'] = config.bloodsport
+    elif config.stage3_mode == 'collaborative':
+        state['sub_options']['collaborative'] = config.collaborative
+    state['max_rounds'] = config.max_rounds
+    state['adjudication'] = config.adjudication
+    state['moderator'] = config.moderator
+    state['output_flags'] = {
+        attr: getattr(config.outputs, attr, fallback)
+        for _, attr, fallback in OUTPUT_TOGGLES
+    }
+
+
+def _step_preset(state: dict) -> bool:
+    """Step 0: Preset selection."""
+    if state.get('prefill') is not None:
+        return False  # skip when editing a loaded config
+
+    preset = ask_preset()
+    if preset is not None:
+        _populate_state_from_config(preset, state)
+        state['_preset_selected'] = True
+    return True
+
+
+def _step_topic(state: dict) -> bool:
+    """Step 1: Debate topic."""
+    pf = state.get('prefill')
+    default = state.get('topic', '') or (pf.topic if pf else '')
+    state['topic'] = ask_topic(default=default)
+    return True
+
+
+def _step_num_agents(state: dict) -> bool:
+    """Step 2: Number of agents."""
+    pf = state.get('prefill')
+    default = state.get('num_agents') or (len(pf.agents) if pf else 2)
+    state['num_agents'] = ask_num_agents(default=default)
+    return True
+
+
+def _step_agents(state: dict) -> bool:
+    """Step 3: Agent configurations (loops internally with back support)."""
+    num = state['num_agents']
+    existing = state.get('agent_configs', [])
+    pf = state.get('prefill')
+
+    configs: list[AgentConfig] = []
+    i = 0
+    while i < num:
+        default = None
+        if i < len(existing):
+            default = existing[i]
+        elif pf and i < len(pf.agents):
+            default = pf.agents[i]
+
+        try:
+            configs.append(ask_agent_config(i, default=default))
+            i += 1
+        except WizardBack:
+            if i > 0:
+                i -= 1
+                configs.pop()
+            else:
+                raise
+
+    state['agent_configs'] = configs
+    return True
+
+
+def _step_stage2(state: dict) -> bool:
+    """Step 4: Cross-examination mode."""
+    pf = state.get('prefill')
+    default = state.get('stage2_mode', '') or (pf.stage2_mode if pf else 'open')
+    state['stage2_mode'] = ask_stage2_mode(default=default)
+    return True
+
+
+def _step_stage3(state: dict) -> bool:
+    """Step 5: Debate mode + sub-options."""
+    pf = state.get('prefill')
+    default_mode = state.get('stage3_mode', '') or (pf.stage3_mode if pf else 'rebuttal')
+    sub_opts = state.get('sub_options', {})
+
+    mode, new_sub_opts = ask_stage3_mode(
+        default_mode=default_mode,
+        default_bloodsport=sub_opts.get('bloodsport', pf.bloodsport if pf else None),
+        default_collaborative=sub_opts.get('collaborative', pf.collaborative if pf else None),
+    )
+    state['stage3_mode'] = mode
+    state['sub_options'] = new_sub_opts
+    return True
+
+
+def _step_rounds(state: dict) -> bool:
+    """Step 6: Number of rounds."""
+    pf = state.get('prefill')
+    default = state.get('max_rounds') or (pf.max_rounds if pf else 1)
+    state['max_rounds'] = ask_num_rounds(default=default)
+    return True
+
+
+def _step_adjudicator(state: dict) -> bool:
+    """Step 7: Adjudicator configuration."""
+    pf = state.get('prefill')
+    default = state.get('adjudication') or (pf.adjudication if pf else None)
+    state['adjudication'] = ask_adjudicator_config(default=default)
+    return True
+
+
+def _step_moderator(state: dict) -> bool:
+    """Step 8: Moderator configuration (skipped if not moderated)."""
+    if state.get('stage2_mode') != 'moderated':
+        return False  # no-op: not shown to user
+
+    pf = state.get('prefill')
+    default = state.get('moderator') or (pf.moderator if pf else None)
+    state['moderator'] = ask_moderator_config(default=default)
+    return True
+
+
+def _step_outputs(state: dict) -> bool:
+    """Step 9: Output toggles."""
+    pf = state.get('prefill')
+    default_output = None
+    if state.get('output_flags'):
+        default_output = OutputConfig(storage_dir=DEFAULT_STORAGE_DIR)
+        for attr, val in state['output_flags'].items():
+            setattr(default_output, attr, val)
+    elif pf:
+        default_output = pf.outputs
+    state['output_flags'] = ask_output_toggles(default=default_output)
+    return True
+
+
+def _build_config(state: dict) -> DebateConfig:
+    """Build a DebateConfig from wizard state dict."""
+    pf = state.get('prefill')
+
+    output_flags = state.get('output_flags', {})
+    outputs = OutputConfig(storage_dir=DEFAULT_STORAGE_DIR)
+    for attr, val in output_flags.items():
+        setattr(outputs, attr, val)
+
+    sub_opts = state.get('sub_options', {})
+    bloodsport = sub_opts.get('bloodsport', pf.bloodsport if pf else BloodSportConfig())
+    collaborative = sub_opts.get('collaborative', pf.collaborative if pf else CollaborativeConfig())
+
+    return DebateConfig(
+        name=f"Debate: {state['topic'][:50]}",
+        topic=state['topic'],
+        max_rounds=state['max_rounds'],
+        stage2_mode=state['stage2_mode'],
+        stage3_mode=state['stage3_mode'],
+        agents=state['agent_configs'],
+        adjudication=state['adjudication'],
+        outputs=outputs,
+        collaborative=collaborative,
+        bloodsport=bloodsport,
+        moderator=state.get('moderator', ModeratorConfig()),
+    )
+
+
+# =========================================================================
 # Main wizard orchestrator
 # =========================================================================
+
+_WIZARD_STEPS = [
+    _step_preset,       # 0: Preset selection
+    _step_topic,        # 1: Debate topic
+    _step_num_agents,   # 2: Number of agents
+    _step_agents,       # 3: Agent configurations
+    _step_stage2,       # 4: Cross-exam mode
+    _step_stage3,       # 5: Debate mode
+    _step_rounds,       # 6: Number of rounds
+    _step_adjudicator,  # 7: Adjudicator
+    _step_moderator,    # 8: Moderator (conditional)
+    _step_outputs,      # 9: Output toggles
+]
+
 
 def run_wizard(
     console: Console,
@@ -542,115 +975,105 @@ def run_wizard(
 
     Returns:
         (config, action) where action is one of:
-        "launch", "save", "save_and_launch", "cancel".
+        "launch", "save", "cancel".
         config is None if cancelled.
     """
-    console.print("[bold]Configuration Wizard[/bold]\n")
+    console.print("  [dim]Press Esc to exit  \u2022  Ctrl+Z to go back[/dim]\n")
 
-    # ----- Preset selection (only when no prefill) -----
-    if prefill is None:
-        preset = ask_preset()
-        if preset is not None:
-            prefill = preset
-
-    # ----- Step 1: Topic -----
-    topic = ask_topic(default=prefill.topic if prefill else "")
-
-    # ----- Step 2: Number of agents -----
-    num_agents = ask_num_agents(default=len(prefill.agents) if prefill else 2)
-
-    # ----- Step 3: Agent configs -----
-    agent_configs: list[AgentConfig] = []
-    for i in range(num_agents):
-        default_agent = prefill.agents[i] if prefill and i < len(prefill.agents) else None
-        agent_configs.append(ask_agent_config(i, default=default_agent))
-
-    # ----- Step 4: Stage 2 mode -----
-    stage2_mode = ask_stage2_mode(
-        default=prefill.stage2_mode if prefill else "open"
-    )
-
-    # ----- Step 5: Stage 3 mode + sub-options -----
-    stage3_mode, sub_options = ask_stage3_mode(
-        default_mode=prefill.stage3_mode if prefill else "rebuttal",
-        default_bloodsport=prefill.bloodsport if prefill else None,
-        default_collaborative=prefill.collaborative if prefill else None,
-    )
-
-    # ----- Step 6: Number of rounds -----
-    max_rounds = ask_num_rounds(
-        default=prefill.max_rounds if prefill else 1
-    )
-
-    # ----- Step 7: Adjudicator -----
-    adjudication = ask_adjudicator_config(
-        default=prefill.adjudication if prefill else None
-    )
-
-    # ----- Step 8: Moderator (conditional) -----
-    moderator = ModeratorConfig()
-    if stage2_mode == "moderated":
-        moderator = ask_moderator_config(
-            default=prefill.moderator if prefill else None
-        )
-
-    # ----- Step 9: Output toggles -----
-    output_flags = ask_output_toggles(
-        default=prefill.outputs if prefill else None
-    )
-
-    # ----- Build the DebateConfig -----
-    def _build_config() -> DebateConfig:
-        outputs = OutputConfig(storage_dir=DEFAULT_STORAGE_DIR)
-        for attr, val in output_flags.items():
-            setattr(outputs, attr, val)
-
-        bloodsport = sub_options.get("bloodsport", prefill.bloodsport if prefill else BloodSportConfig())
-        collaborative = sub_options.get("collaborative", prefill.collaborative if prefill else CollaborativeConfig())
-
-        return DebateConfig(
-            name=f"Debate: {topic[:50]}",
-            topic=topic,
-            max_rounds=max_rounds,
-            stage2_mode=stage2_mode,
-            stage3_mode=stage3_mode,
-            agents=agent_configs,
-            adjudication=adjudication,
-            outputs=outputs,
-            collaborative=collaborative,
-            bloodsport=bloodsport,
-            moderator=moderator,
-        )
-
-    config = _build_config()
-
-    # ----- Step 10: Review & action loop -----
+    # Outer loop allows returning to the main menu via Ctrl+Z at step 0
     while True:
-        console.print()
-        show_review_panel(config, console)
-        action = ask_review_action()
+        # ── Main menu (only when launched without prefill) ──
+        if prefill is None:
+            while True:
+                try:
+                    choice = ask_main_menu()
+                except (WizardExit, WizardBack, KeyboardInterrupt):
+                    return None, "cancel"
 
-        if action == "launch":
-            return config, "launch"
+                if choice == "exit":
+                    return None, "cancel"
+                elif choice == "about":
+                    console.print()
+                    console.print(Panel(
+                        ABOUT_CHAL,
+                        title="[bold]About CHAL[/bold]",
+                        border_style="#9B1B30",
+                        expand=False,
+                        width=80,
+                    ))
+                    console.print()
+                    continue
+                elif choice == "gauntlet":
+                    console.print("\n[dim]Future content coming soon![/dim]\n")
+                    continue
+                elif choice == "debate":
+                    break
 
-        elif action == "cancel":
-            return None, "cancel"
+        # State dict accumulates wizard answers across steps
+        state: dict = {'prefill': prefill} if prefill else {}
 
-        elif action == "save":
-            path = _ask_save_path()
-            config.to_yaml(path)
-            console.print(f"[green]Config saved to {path}[/green]")
-            # Stay in loop so user can launch or keep editing
+        start = 1 if prefill else 0  # skip preset step when editing
+        idx = start
+        visited: list[int] = []  # stack of step indices that showed UI
+        back_to_menu = False
 
-        elif action == "save_and_launch":
-            path = _ask_save_path()
-            config.to_yaml(path)
-            console.print(f"[green]Config saved to {path}[/green]")
-            return config, "save_and_launch"
+        while idx < len(_WIZARD_STEPS):
+            try:
+                showed_ui = _WIZARD_STEPS[idx](state)
+                if showed_ui is not False:
+                    visited.append(idx)
+                # Preset selected — state is fully populated, skip to review
+                if state.get('_preset_selected'):
+                    break
+                idx += 1
+            except WizardBack:
+                if visited:
+                    idx = visited.pop()
+                elif prefill is None:
+                    back_to_menu = True
+                    break
+                else:
+                    console.print("[dim]Already at the first step.[/dim]")
+            except (WizardExit, KeyboardInterrupt):
+                return None, "cancel"
 
-        elif action == "edit":
-            section = ask_edit_section(show_moderator=(config.stage2_mode == "moderated"))
-            config = _apply_edit(config, section, console)
+        if back_to_menu:
+            continue  # restart outer loop -> main menu
+
+        config = _build_config(state)
+
+        # ----- Review & action loop -----
+        while True:
+            console.print()
+            show_review_panel(config, console)
+
+            try:
+                action = ask_review_action()
+            except (WizardExit, WizardBack, KeyboardInterrupt):
+                return None, "cancel"
+
+            if action == "launch":
+                return config, "launch"
+
+            elif action == "cancel":
+                return None, "cancel"
+
+            elif action == "save":
+                try:
+                    path = _ask_save_path()
+                    config.to_yaml(path)
+                    console.print(f"[green]Config saved to {path}[/green]")
+                except (WizardExit, WizardBack, KeyboardInterrupt):
+                    continue  # back to review
+
+            elif action == "edit":
+                try:
+                    section = ask_edit_section(show_moderator=(config.stage2_mode == "moderated"))
+                    config = _apply_edit(config, section, console)
+                except (WizardExit, KeyboardInterrupt):
+                    return None, "cancel"
+                except WizardBack:
+                    continue  # back to review
 
 
 def _apply_edit(config: DebateConfig, section: str, console: Console) -> DebateConfig:
@@ -677,10 +1100,10 @@ def _apply_edit(config: DebateConfig, section: str, console: Console) -> DebateC
             Choice(f"{a.name} ({a.persona})", value=i)
             for i, a in enumerate(config.agents)
         ]
-        idx = _require(questionary.select(
+        idx = _ask(questionary.select(
             "Which agent to edit?",
             choices=agent_choices,
-        ).ask())
+        ))
         config.agents[idx] = ask_agent_config(idx, default=config.agents[idx])
 
     elif section == "stage2":

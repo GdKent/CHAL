@@ -44,12 +44,12 @@ def get_version() -> str:
 
 def show_banner(console: Console) -> None:
     """Display the CHAL ASCII banner with version info."""
-    banner_text = Text(CHAL_BANNER, style="bold cyan")
+    banner_text = Text(CHAL_BANNER, style="bold #9B1B30")
     console.print(banner_text, highlight=False)
 
     version = get_version()
     console.print(
-        f"  {CHAL_TAGLINE}  [dim]v{version}[/dim]\n",
+        f"  [#C75B7A]{CHAL_TAGLINE}[/#C75B7A]  [dim]v{version}[/dim]\n",
         highlight=False,
     )
 
@@ -162,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
             console.print("[dim]Cancelled.[/dim]")
             return 0
 
-        if action in ("launch", "save_and_launch"):
+        if action == "launch":
             return run_debate(config, console, verbose=args.verbose)
 
         return 0
@@ -179,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
             console.print("[dim]Cancelled.[/dim]")
             return 0
 
-        if action in ("launch", "save_and_launch"):
+        if action == "launch":
             return run_debate(config, console, verbose=args.verbose)
 
         return 0
