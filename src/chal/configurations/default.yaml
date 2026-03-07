@@ -79,20 +79,20 @@ agents:
 # ============================================================================
 # Controls how the neutral adjudicator evaluates challenge-rebuttal pairs
 adjudication:
-  # RECOMMENDED: Use "o1-mini" for superior logical reasoning at low cost
-  # - o1-mini: Best for pure logic evaluation (faster, cheaper, excellent reasoning)
+  # RECOMMENDED: Use "o4-mini" for superior logical reasoning at low cost
+  # - o4-mini: Best for pure logic evaluation (faster, cheaper, excellent reasoning)
   # - o1: More thorough but slower and more expensive (use for high-stakes debates)
   # - gpt-4o: Adequate but less rigorous than reasoning models
-  model: "o1-mini"                     # Model for the adjudicator
+  model: "o4-mini"                     # Model for the adjudicator
   provider: "openai"                   # LLM provider: "openai" | "anthropic" | "google"
 
   # Weighting for evaluation criteria (should sum to 1.0)
   logic_weight: 1.0                    # Weight for logical rigor (0.0-1.0)
   ethics_weight: 0.0                   # Weight for ethical considerations (0.0-1.0)
 
-  # Framework descriptions for adjudication
-  logic_system: "Classical logic + Bayesian reasoning for inductive support; reject contradictions; prefer simpler hypotheses (Occam's Razor)."
-  ethics_system: "None. Only prioritize logical rigor and soundness, not ethical implications"
+  # Framework keys (see logic_systems.py and ethics_systems.py for options)
+  logic_system: "CLASSICAL_BAYESIAN"
+  ethics_system: "NONE"
 
 # ============================================================================
 # STAGE PARAMETERS
@@ -256,7 +256,7 @@ scribe:
 # Each debate round then focuses on one sub-topic for structured progression.
 #
 # moderator:
-#   model: "o1-mini"                 # Model for roadmap generation
+#   model: "o4-mini"                 # Model for roadmap generation
 #   provider: "openai"               # LLM provider: "openai" | "anthropic" | "google"
 #   temperature: 0.3                 # Low temperature for structured reasoning
 #   context: ""                      # Optional free-text context (future RAG integration)

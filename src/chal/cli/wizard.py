@@ -8,7 +8,7 @@ loop before launching.
 Navigation:
     Esc      - Exit wizard
     Ctrl+Z   - Go back one step
-    Ctrl+H   - Show help for current prompt
+    F1       - Show help for current prompt
 """
 
 from __future__ import annotations
@@ -37,6 +37,9 @@ from chal.config import (
     CONFIG_DIR,
     DEFAULT_STORAGE_DIR,
 )
+from chal.agents.epistemic_personas import PERSONAS, PERSONA_DESCRIPTIONS
+from chal.agents.logic_systems import LOGIC_LABELS, LOGIC_DESCRIPTIONS
+from chal.agents.ethics_systems import ETHICS_LABELS, ETHICS_DESCRIPTIONS
 
 
 # =========================================================================
@@ -44,24 +47,14 @@ from chal.config import (
 # =========================================================================
 
 PERSONA_CHOICES = [
-    Choice("EMPIRICIST      - Demands empirical evidence for all claims", value="EMPIRICIST"),
-    Choice("RATIONALIST     - Trusts logical deduction over observation", value="RATIONALIST"),
-    Choice("SKEPTIC         - Challenges all claims, exposes assumptions", value="SKEPTIC"),
-    Choice("SUPERNATURALIST - Accepts truths beyond empirical observation", value="SUPERNATURALIST"),
-    Choice("PHENOMENOLOGIST - Grounds truth in lived experience", value="PHENOMENOLOGIST"),
-    Choice("PRAGMATIST      - Defines truth as what works in practice", value="PRAGMATIST"),
-    Choice("CONSTRUCTIVIST  - Truth is socially constructed", value="CONSTRUCTIVIST"),
-    Choice("NIHILIST        - No inherent meaning or objective truth", value="NIHILIST"),
-    Choice("BAYESIAN        - Models knowledge as probabilistic inference", value="BAYESIAN"),
-    Choice("PANPSYCHIST     - Consciousness is fundamental to all matter", value="PANPSYCHIST"),
-    Choice("SIMULATIONIST   - Evaluates claims via simulation hypothesis", value="SIMULATIONIST"),
-    Choice("SYNTHESIST      - Integrates science, spirituality, and systems", value="SYNTHESIST"),
+    Choice(f"{key:<16s} - {PERSONA_DESCRIPTIONS[key]}", value=key)
+    for key in PERSONAS
 ]
 
 PROVIDER_CHOICES = ["openai", "anthropic", "google"]
 
 MODEL_SUGGESTIONS: dict[str, list[str]] = {
-    "openai": ["gpt-4o", "gpt-4o-mini", "o1-mini", "o1", "o3-mini"],
+    "openai": ["gpt-4o", "gpt-4o-mini", "o4-mini", "o3-mini"],
     "anthropic": ["claude-sonnet-4-5-20250929", "claude-opus-4-6", "claude-haiku-4-5-20251001"],
     "google": ["gemini-2.0-flash", "gemini-2.0-pro"],
 }
@@ -148,12 +141,12 @@ configuration to YAML, or edit individual settings before proceeding.
 
   [bold]\u2022[/bold] [bold]Esc[/bold] \u2014 Exit the wizard at any time
   [bold]\u2022[/bold] [bold]Ctrl+Z[/bold] \u2014 Go back to the previous step
-  [bold]\u2022[/bold] [bold]Ctrl+H[/bold] \u2014 Show help for the current prompt\
+  [bold]\u2022[/bold] [bold]F1[/bold] \u2014 Show help for the current prompt\
 """
 
 
 # =========================================================================
-# Help texts — context-sensitive guidance displayed via Ctrl+H
+# Help texts — context-sensitive guidance displayed via F1
 # =========================================================================
 
 HELP_MAIN_MENU = """\
@@ -230,9 +223,8 @@ HELP_MODEL = """\
 [bold]OpenAI:[/bold]
   \u2022 gpt-4o \u2014 Flagship multimodal model. Strong general reasoning.
   \u2022 gpt-4o-mini \u2014 Faster and cheaper; good for quick debates.
-  \u2022 o1 \u2014 Advanced reasoning model. Best for complex arguments. [bold](Recommended)[/bold]
-  \u2022 o1-mini \u2014 Lighter reasoning model. Good balance of speed and depth.
-  \u2022 o3-mini \u2014 Latest compact reasoning model.
+  \u2022 o4-mini \u2014 Advanced reasoning model. Best balance of speed and depth. [bold](Recommended)[/bold]
+  \u2022 o3-mini \u2014 Compact reasoning model.
 
 [bold]Anthropic:[/bold]
   \u2022 claude-opus-4-6 \u2014 Most capable Claude model. Deep reasoning. [bold](Recommended)[/bold]
@@ -243,7 +235,7 @@ HELP_MODEL = """\
   \u2022 gemini-2.0-pro \u2014 Strongest Gemini model. [bold](Recommended)[/bold]
   \u2022 gemini-2.0-flash \u2014 Fast and efficient for lighter workloads.
 
-[dim]Tip: For the most rigorous debates, use reasoning-focused models (o1, \
+[dim]Tip: For the most rigorous debates, use reasoning-focused models (o4-mini, \
 claude-opus-4-6, gemini-2.0-pro). You can also type any valid model name \
 not listed here.[/dim]\
 """
@@ -256,7 +248,7 @@ Temperature controls the randomness of the model's output (0.0\u20131.0):
   \u2022 [bold]0.8\u20131.0[/bold] \u2014 More creative and unpredictable. Can surface novel arguments \
 but may reduce coherence.
 
-[dim]Note: Some reasoning models (o1, o3-mini) ignore the temperature setting.[/dim]\
+[dim]Note: Some reasoning models (o4-mini, o3-mini) ignore the temperature setting.[/dim]\
 """
 
 HELP_STAGE2 = """\
@@ -335,30 +327,67 @@ Number of full debate rounds (1\u201310). Each round includes:
 convergence.\
 """
 
-HELP_ADJ_LOGIC_WEIGHT = """\
-How much weight the adjudicator gives to [bold]logical validity[/bold] when \
-scoring arguments (0.0\u20131.0).
+HELP_ADJ_BALANCE = """\
+Choose how the adjudicator should balance [bold]logical validity[/bold] and \
+[bold]ethical reasoning[/bold] when scoring arguments.
 
-Higher values prioritize formal logical structure, deductive soundness, and \
-consistency of reasoning.
-
-  \u2022 [bold]0.0[/bold] \u2014 Logic is ignored entirely.
-  \u2022 [bold]0.5[/bold] \u2014 Balanced consideration.
-  \u2022 [bold]1.0[/bold] \u2014 Logic is the dominant scoring criterion. [bold](Recommended)[/bold]\
+  \u2022 [bold]Pure Logic[/bold] \u2014 Only logical structure, deductive soundness, and \
+consistency matter. Best for empirical and analytical topics. \
+[bold](Recommended)[/bold]
+  \u2022 [bold]Pure Ethics[/bold] \u2014 Only moral implications, fairness, and human values \
+matter. Best for normative and policy questions.
+  \u2022 [bold]Balanced[/bold] \u2014 Equal weight to both logic and ethics. Good for topics \
+that span empirical and normative dimensions.
+  \u2022 [bold]Custom[/bold] \u2014 Set your own weights (they will be normalized to sum \
+to 1.0). Use this for fine-grained control.\
 """
 
-HELP_ADJ_ETHICS_WEIGHT = """\
-How much weight the adjudicator gives to [bold]ethical reasoning[/bold] when \
-scoring arguments (0.0\u20131.0).
+HELP_ADJ_CUSTOM_WEIGHTS = """\
+Enter custom weights for [bold]logic[/bold] and [bold]ethics[/bold] scoring \
+(each 0.0\u20131.0).
 
-Higher values reward arguments that consider moral implications, fairness, \
-and human values.
+The two values will be [bold]normalized[/bold] so they sum to 1.0. For example:
+  \u2022 logic=0.8, ethics=0.2  \u2192  logic=0.8, ethics=0.2  (already sums to 1.0)
+  \u2022 logic=3.0, ethics=1.0  \u2192  logic=0.75, ethics=0.25  (scaled down)
 
-  \u2022 [bold]0.0[/bold] \u2014 Ethics is ignored. Good for purely logical/empirical topics. \
-[bold](Recommended for most topics)[/bold]
-  \u2022 [bold]0.5[/bold] \u2014 Moderate ethical consideration.
-  \u2022 [bold]1.0[/bold] \u2014 Ethics is the dominant scoring criterion. Best for \
-normative questions.\
+[dim]Tip: Higher logic weight prioritizes formal reasoning; higher ethics weight \
+rewards moral consideration.[/dim]\
+"""
+
+HELP_ADJ_LOGIC_SYSTEM = """\
+Choose the [bold]logical framework[/bold] the adjudicator uses to evaluate \
+argument validity.
+
+  \u2022 [bold]Classical + Bayesian[/bold] \u2014 Standard logic with Bayesian induction \
+and Occam's Razor. [bold](Recommended)[/bold]
+  \u2022 [bold]Formal Deductive[/bold] \u2014 Only formally valid syllogisms; no inductive \
+reasoning.
+  \u2022 [bold]Dialectical[/bold] \u2014 Hegelian thesis-antithesis-synthesis; contradictions \
+drive progress.
+  \u2022 [bold]Informal / Critical Thinking[/bold] \u2014 Fallacy detection, relevance, and \
+evidence sufficiency.
+  \u2022 [bold]Fuzzy / Multi-valued[/bold] \u2014 Degrees of truth between 0 and 1; no \
+binary judgments.
+  \u2022 [bold]Paraconsistent[/bold] \u2014 Tolerates local contradictions without global \
+explosion.\
+"""
+
+HELP_ADJ_ETHICS_SYSTEM = """\
+Choose the [bold]ethical framework[/bold] the adjudicator uses to evaluate \
+the moral dimensions of arguments.
+
+  \u2022 [bold]None (Pure Logic)[/bold] \u2014 No ethical evaluation; judge only logical \
+soundness. [bold](Recommended for most topics)[/bold]
+  \u2022 [bold]Utilitarian[/bold] \u2014 Maximize well-being and minimize suffering for \
+the greatest number.
+  \u2022 [bold]Deontological[/bold] \u2014 Respect universal moral duties and the \
+categorical imperative.
+  \u2022 [bold]Virtue Ethics[/bold] \u2014 Promote human flourishing, practical wisdom, \
+and excellence.
+  \u2022 [bold]Care Ethics[/bold] \u2014 Prioritize relationships, responsibility, and \
+vulnerability.
+  \u2022 [bold]Balanced[/bold] \u2014 Weigh both outcomes/welfare and autonomy/rights \
+equally.\
 """
 
 HELP_MODERATOR_MODE = """\
@@ -435,12 +464,12 @@ class WizardBack(Exception):
 
 
 def _ask(question, help_text: str | None = None):
-    """Run a questionary Question with Esc, Ctrl+Z, and Ctrl+H bindings.
+    """Run a questionary Question with Esc, Ctrl+Z, and F1 bindings.
 
     Injects prompt_toolkit key bindings before running the prompt:
       - Esc:    exit wizard  (raises WizardExit)
       - Ctrl+Z: go back      (raises WizardBack)
-      - Ctrl+H: show help    (displays help_text, then re-shows prompt)
+      - F1:     show help    (displays help_text, then re-shows prompt)
       - Ctrl+C: cancel       (raises KeyboardInterrupt, unchanged)
     """
     try:
@@ -455,7 +484,7 @@ def _ask(question, help_text: str | None = None):
         def _handle_back(event):
             event.app.exit(result=_BACK)
 
-        @nav_kb.add('c-h')
+        @nav_kb.add('f1')
         def _handle_help(event):
             event.app.exit(result=_HELP)
 
@@ -560,11 +589,14 @@ def ask_main_menu() -> str:
 # Preset selection
 # =========================================================================
 
+_PRESET_ORDER = ["quick_test", "default", "collaborative", "bloodsport_example"]
+
+
 def _scan_presets() -> list[tuple[str, str, Path]]:
     """Scan configurations/ directory for YAML presets.
 
     Returns:
-        List of (display_name, config_name, path) tuples sorted by name.
+        List of (display_name, config_name, path) tuples in preferred order.
     """
     presets: list[tuple[str, str, Path]] = []
     if not CONFIG_DIR.is_dir():
@@ -579,6 +611,10 @@ def _scan_presets() -> list[tuple[str, str, Path]]:
             presets.append((label, p.stem, p))
         except Exception:
             continue
+
+    # Sort by preferred order; unlisted presets go to the end alphabetically
+    order_map = {name: i for i, name in enumerate(_PRESET_ORDER)}
+    presets.sort(key=lambda t: (order_map.get(t[1], len(_PRESET_ORDER)), t[1]))
     return presets
 
 
@@ -807,6 +843,17 @@ def ask_num_rounds(default: int = 1) -> int:
     return int(answer)
 
 
+def _detect_balance_preset(logic: float, ethics: float) -> str:
+    """Detect which balance preset matches the given weights."""
+    if (logic, ethics) == (1.0, 0.0):
+        return "pure_logic"
+    if (logic, ethics) == (0.0, 1.0):
+        return "pure_ethics"
+    if (logic, ethics) == (0.5, 0.5):
+        return "balanced"
+    return "custom"
+
+
 def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> AdjudicationConfig:
     """Step 7: Adjudicator model and weights with internal back navigation."""
     adj = default or AdjudicationConfig()
@@ -816,11 +863,24 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
 
     d_provider = adj.provider
     d_model = adj.model
+    d_logic_sys = adj.logic_system
+    d_ethics_sys = adj.ethics_system
     d_logic = adj.logic_weight
     d_ethics = adj.ethics_weight
+    d_balance = _detect_balance_preset(d_logic, d_ethics)
+
+    # Build Choice lists for logic and ethics system selectors
+    logic_sys_choices = [
+        Choice(f"{LOGIC_LABELS[k]} — {LOGIC_DESCRIPTIONS[k]}", value=k)
+        for k in LOGIC_LABELS
+    ]
+    ethics_sys_choices = [
+        Choice(f"{ETHICS_LABELS[k]} — {ETHICS_DESCRIPTIONS[k]}", value=k)
+        for k in ETHICS_LABELS
+    ]
 
     sub = 0
-    while sub < 4:
+    while sub < 7:
         try:
             if sub == 0:
                 d_provider = _ask(questionary.select(
@@ -836,23 +896,72 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
                     default=d_model,
                 ), help_text=HELP_MODEL)
             elif sub == 2:
+                d_logic_sys = _ask(questionary.select(
+                    "Logic system for adjudication:",
+                    choices=logic_sys_choices,
+                    default=d_logic_sys,
+                ), help_text=HELP_ADJ_LOGIC_SYSTEM)
+            elif sub == 3:
+                d_ethics_sys = _ask(questionary.select(
+                    "Ethics system for adjudication:",
+                    choices=ethics_sys_choices,
+                    default=d_ethics_sys,
+                ), help_text=HELP_ADJ_ETHICS_SYSTEM)
+            elif sub == 4:
+                d_balance = _ask(questionary.select(
+                    "How should the adjudicator balance logic and ethics?",
+                    choices=[
+                        Choice("Pure Logic (logic=1.0, ethics=0.0)", value="pure_logic"),
+                        Choice("Pure Ethics (logic=0.0, ethics=1.0)", value="pure_ethics"),
+                        Choice("Balanced (logic=0.5, ethics=0.5)", value="balanced"),
+                        Choice("Custom (choose your own weights)", value="custom"),
+                    ],
+                    default=d_balance,
+                ), help_text=HELP_ADJ_BALANCE)
+                if d_balance == "pure_logic":
+                    d_logic, d_ethics = 1.0, 0.0
+                    sub = 7  # skip custom inputs
+                    continue
+                elif d_balance == "pure_ethics":
+                    d_logic, d_ethics = 0.0, 1.0
+                    sub = 7
+                    continue
+                elif d_balance == "balanced":
+                    d_logic, d_ethics = 0.5, 0.5
+                    sub = 7
+                    continue
+            elif sub == 5:
                 temp = _ask(questionary.text(
                     "Logic weight (0.0-1.0):",
                     default=str(d_logic),
                     validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ), help_text=HELP_ADJ_LOGIC_WEIGHT)
+                ), help_text=HELP_ADJ_CUSTOM_WEIGHTS)
                 d_logic = float(temp)
-            elif sub == 3:
+            elif sub == 6:
                 temp = _ask(questionary.text(
                     "Ethics weight (0.0-1.0):",
                     default=str(d_ethics),
                     validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ), help_text=HELP_ADJ_ETHICS_WEIGHT)
+                ), help_text=HELP_ADJ_CUSTOM_WEIGHTS)
                 d_ethics = float(temp)
+                # Normalize so weights sum to 1.0
+                total = d_logic + d_ethics
+                if total > 0:
+                    d_logic = round(d_logic / total, 4)
+                    d_ethics = round(d_ethics / total, 4)
+                else:
+                    d_logic, d_ethics = 0.5, 0.5
+                console.print(
+                    f"  [dim]Normalized weights: logic={d_logic}, ethics={d_ethics}[/dim]"
+                )
             sub += 1
         except WizardBack:
             if sub > 0:
-                sub -= 1
+                # From custom inputs (5 or 6), go back to balance select (4)
+                if sub in (5, 6):
+                    sub = 4
+                else:
+                    sub -= 1
             else:
                 raise
 
@@ -861,8 +970,8 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
         provider=d_provider,
         logic_weight=d_logic,
         ethics_weight=d_ethics,
-        logic_system=adj.logic_system,
-        ethics_system=adj.ethics_system,
+        logic_system=d_logic_sys,
+        ethics_system=d_ethics_sys,
     )
 
 
@@ -1256,7 +1365,7 @@ def run_wizard(
         "launch", "save", "cancel".
         config is None if cancelled.
     """
-    console.print("  [dim]Press Esc to exit  \u2022  Ctrl+Z to go back  \u2022  Ctrl+H for help[/dim]\n")
+    console.print("  [dim]Press Esc to exit  \u2022  Ctrl+Z to go back  \u2022  F1 for help[/dim]\n")
 
     # Outer loop allows returning to the main menu via Ctrl+Z at step 0
     while True:

@@ -110,15 +110,15 @@ class DebateDisplay:
             Panel(
                 f"[bold]{topic}[/bold]\n"
                 f"[dim]{n_agents} agents  {n_rounds} round(s)[/dim]",
-                title="[bold cyan]Debate Starting[/bold cyan]",
-                border_style="cyan",
+                title="[bold #9B1B30]Debate Starting[/bold #9B1B30]",
+                border_style="#9B1B30",
                 expand=False,
             )
         )
 
         # Start the persistent round progress bar
         self._progress = Progress(
-            TextColumn("[bold blue]{task.description}"),
+            TextColumn("[bold #9B1B30]{task.description}"),
             BarColumn(bar_width=30),
             MofNCompleteColumn(),
             console=self.console,
@@ -174,13 +174,13 @@ class DebateDisplay:
         round_num = data.get("round", "?")
         total = data.get("total_rounds", self.num_rounds)
         self.console.print(
-            f"\n[bold cyan]{'=' * 50}[/bold cyan]"
+            f"\n[bold #9B1B30]{'=' * 50}[/bold #9B1B30]"
         )
         self.console.print(
-            f"[bold cyan]  Round {round_num} of {total}[/bold cyan]"
+            f"[bold #9B1B30]  Round {round_num} of {total}[/bold #9B1B30]"
         )
         self.console.print(
-            f"[bold cyan]{'=' * 50}[/bold cyan]"
+            f"[bold #9B1B30]{'=' * 50}[/bold #9B1B30]"
         )
         # Reset per-round adjudication collector
         self._round_adjudications = []
@@ -242,7 +242,7 @@ class DebateDisplay:
                 padding=(0, 1),
             )
             table.add_column("#", justify="center", style="bold")
-            table.add_column("Sub-topic", style="cyan")
+            table.add_column("Sub-topic", style="#A82545")
             table.add_column("Description")
 
             for i, st in enumerate(new_subtopics, 1):
@@ -326,8 +326,8 @@ class DebateDisplay:
             expand=False,
             padding=(0, 1),
         )
-        table.add_column("Challenger", style="cyan")
-        table.add_column("Target", style="cyan")
+        table.add_column("Challenger", style="#A82545")
+        table.add_column("Target", style="#A82545")
         table.add_column("Outcome", style="bold")
 
         for r in results:
@@ -353,7 +353,7 @@ class DebateDisplay:
             expand=False,
             padding=(0, 1),
         )
-        table.add_column("Agent", style="cyan")
+        table.add_column("Agent", style="#A82545")
         table.add_column("Score", justify="right")
         table.add_column("Wins", justify="right")
         table.add_column("Losses", justify="right")
@@ -382,7 +382,7 @@ class DebateDisplay:
             padding=(0, 1),
         )
         table.add_column("Round", justify="center", style="bold")
-        table.add_column("Sub-topic", style="cyan")
+        table.add_column("Sub-topic", style="#A82545")
         table.add_column("Description")
 
         for st in subtopics:
@@ -400,7 +400,7 @@ class DebateDisplay:
                     table,
                     title="[bold]Moderator Roadmap[/bold]",
                     subtitle=f"[dim]{sufficiency[:120]}[/dim]",
-                    border_style="blue",
+                    border_style="#9B1B30",
                     expand=False,
                 )
             )
@@ -409,7 +409,7 @@ class DebateDisplay:
                 Panel(
                     table,
                     title="[bold]Moderator Roadmap[/bold]",
-                    border_style="blue",
+                    border_style="#9B1B30",
                     expand=False,
                 )
             )

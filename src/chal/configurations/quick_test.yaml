@@ -44,8 +44,8 @@ adjudication:
   provider: "openai"                   # LLM provider: "openai" | "anthropic" | "google"
   logic_weight: 1.0
   ethics_weight: 0.0
-  logic_system: "Classical logic + Bayesian reasoning"
-  ethics_system: "None"
+  logic_system: "CLASSICAL_BAYESIAN"
+  ethics_system: "NONE"
 
 # ============================================================================
 # STAGE PARAMETERS

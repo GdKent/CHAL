@@ -54,6 +54,8 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     """
     md = []
     th = belief.get("thesis", {})
+    if not isinstance(th, dict):
+        th = {"stance": str(th)}
     md.append("# Thesis")
     md.append(f"- Stance: {th.get('stance','')}")
     bullets = th.get("summary_bullets") or []
@@ -65,6 +67,8 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
 
     md.append("\n# Scope & Definitions")
     meta = belief.get("metadata", {})
+    if not isinstance(meta, dict):
+        meta = {}
     if meta.get("scope_conditions"): md.append(f"- Scope conditions: {meta['scope_conditions']}")
     defs = meta.get("definitions") or []
     if defs:
@@ -87,7 +91,10 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         if c.get("inference_chain"):
             parts.append("  - Inference chain:")
             for step in c["inference_chain"]:
-                parts.append(f"    - Step: {step.get('step','')} | Justification: {step.get('justification','')}")
+                if isinstance(step, dict):
+                    parts.append(f"    - Step: {step.get('step','')} | Justification: {step.get('justification','')}")
+                else:
+                    parts.append(f"    - {step}")
         if c.get("known_weaknesses"):
             parts.append(f"  - Known weaknesses: {', '.join(c['known_weaknesses'])}")
         parts.append(f"  - Confidence: {c.get('confidence','')} ({c.get('confidence_justification','')}) | Status: {c.get('status','')}")
@@ -99,10 +106,12 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     list_block("Claims (with dependencies, evidence, rebuttals)", "claims", claim_fmt)
     def ev_fmt(e):
         src = e.get("source") or {}
+        if not isinstance(src, dict):
+            src = {"raw": str(src)}
         src_str = ", ".join([f"{k}: {v}" for k,v in src.items()])
         lines = [f"- [{e.get('id','')}] {e.get('type','')}: {e.get('summary','')}"]
         lines.append(f"  - Source: {src_str} → supports: {', '.join(e.get('relevance_to_claims') or [])}")
-        if e.get("quality_assessment"):
+        if e.get("quality_assessment") and isinstance(e["quality_assessment"], dict):
             qa = e["quality_assessment"]
             lines.append(f"  - Quality: sample_size={qa.get('sample_size','')}, replication={qa.get('replication_status','')}, rigor={qa.get('rigor','')}")
         if e.get("limitations"):
@@ -129,7 +138,7 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         return "\n".join(lines)
     list_block("Counterpositions", "counterpositions", x_fmt)
 
-    if belief.get("update_policy"):
+    if belief.get("update_policy") and isinstance(belief["update_policy"], dict):
         up = belief["update_policy"]
         md.append("\n# Update Policy")
         if up.get("revision_triggers"): md.append(f"- Triggers: {', '.join(up['revision_triggers'])}")

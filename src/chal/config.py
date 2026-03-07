@@ -33,8 +33,8 @@ class AdjudicationConfig:
     model: str = "gpt-4o"
     logic_weight: float = 1.0
     ethics_weight: float = 0.0
-    logic_system: str = ""
-    ethics_system: str = ""
+    logic_system: str = "CLASSICAL_BAYESIAN"
+    ethics_system: str = "NONE"
     provider: str = "openai"  # "openai" | "anthropic" | "google"
 
 
@@ -134,7 +134,7 @@ class BloodSportConfig:
 @dataclass
 class ModeratorConfig:
     """Configuration for the debate moderator/roadmap agent."""
-    model: str = "o1-mini"
+    model: str = "o4-mini"
     provider: str = "openai"       # "openai" | "anthropic" | "google"
     temperature: float = 0.3
     context: str = ""              # Optional free-text context (placeholder for future RAG)
@@ -199,8 +199,8 @@ class DebateConfig:
             model=adj_data.get('model', 'gpt-4o'),
             logic_weight=adj_data.get('logic_weight', 1.0),
             ethics_weight=adj_data.get('ethics_weight', 0.0),
-            logic_system=adj_data.get('logic_system', ''),
-            ethics_system=adj_data.get('ethics_system', ''),
+            logic_system=adj_data.get('logic_system', 'CLASSICAL_BAYESIAN'),
+            ethics_system=adj_data.get('ethics_system', 'NONE'),
             provider=adj_data.get('provider', 'openai')
         )
 
@@ -275,7 +275,7 @@ class DebateConfig:
         # Parse moderator config
         mod_data = data.get('moderator', {})
         moderator = ModeratorConfig(
-            model=mod_data.get('model', 'o1-mini'),
+            model=mod_data.get('model', 'o4-mini'),
             provider=mod_data.get('provider', 'openai'),
             temperature=mod_data.get('temperature', 0.3),
             context=mod_data.get('context', ''),

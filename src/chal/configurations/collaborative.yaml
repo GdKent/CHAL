@@ -40,12 +40,12 @@ agents:
 # ADJUDICATION SETTINGS
 # ============================================================================
 adjudication:
-  model: "o1-mini"
+  model: "o4-mini"
   provider: "openai"
   logic_weight: 1.0
   ethics_weight: 0.0
-  logic_system: "Classical logic + Bayesian reasoning for inductive support; reject contradictions; prefer simpler hypotheses (Occam's Razor)."
-  ethics_system: "None. Only prioritize logical rigor and soundness, not ethical implications"
+  logic_system: "CLASSICAL_BAYESIAN"
+  ethics_system: "NONE"
 
 # ============================================================================
 # STAGE PARAMETERS

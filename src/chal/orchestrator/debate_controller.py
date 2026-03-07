@@ -30,6 +30,8 @@ from datetime import datetime
 from chal.agents.base import Agent, Message
 from chal.agents import prompts
 from chal.agents.factory import create_agent
+from chal.agents.logic_systems import get_logic_system
+from chal.agents.ethics_systems import get_ethics_system
 from chal.orchestrator.adjudicator import Adjudicator
 from chal.orchestrator.moderator import Moderator
 from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary
@@ -96,12 +98,15 @@ class DebateController:
         self.resolution_outcomes: dict[str, dict[str, str]] = {} # A dictionary of adjudicated outcomes per agent (Stage 4): {agent_name: {challenge_text: resolution_result}}
 
         # Instantiate the adjudicator agent
-        adjudicator_prompt = prompts.build_adjudicator_prompt(
-            logic_weight=1.0,
-            ethics_weight=0.0,
-            logic_sys="Classical logic + Bayesian reasoning for inductive support; reject contradictions; prefer simpler hypotheses (Occam's Razor).",
-            ethics_sys="None. Only prioritize logical rigor and soundness, not ethical implications" # "Rule-Utilitarianism."
-        )
+        if config:
+            adjudicator_prompt = prompts.build_adjudicator_prompt(
+                logic_weight=config.adjudication.logic_weight,
+                ethics_weight=config.adjudication.ethics_weight,
+                logic_sys=get_logic_system(config.adjudication.logic_system),
+                ethics_sys=get_ethics_system(config.adjudication.ethics_system),
+            )
+        else:
+            adjudicator_prompt = prompts.build_adjudicator_prompt()
         adj_model = config.adjudication.model if config else "gpt-4o"
         adj_provider = config.adjudication.provider if config else "openai"
         adjudicator_agent = create_agent(

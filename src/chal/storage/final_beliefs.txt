@@ -1,105 +1,136 @@
 # Thesis
-- Stance: The existence of free will is a complex question with significant empirical challenges. Empirical evidence suggests that our decisions are influenced by a variety of factors including genetics, environment, and neurological processes. While some level of apparent choice exists, the extent to which this constitutes 'free will' is uncertain. Current scientific understanding does not conclusively support the existence of free will as traditionally conceived.
+- Stance: While humans experience a sense of free will, empirical evidence indicates that decision-making is largely determined by neurological and psychological processes. This suggests that what we perceive as free will may be an illusion created by complex, deterministic mechanisms.
 - Top bullets:
-  - Empirical data suggests decisions are influenced by external and internal factors.
-  - The concept of free will is not clearly supported by current neurological evidence.
-  - Free will, as traditionally understood, lacks measurable empirical support.
-- Confidence: 0.30000000000000004
+  - Empirical evidence supports that decisions are influenced by unconscious processes.
+  - Neuroscientific studies show brain activity precedes conscious decisions.
+  - The subjective experience of choice does not imply true autonomy.
+- Confidence: 0.7
 
 # Scope & Definitions
 
 # Assumptions
-- [A1] Free will implies the ability to make choices that are not entirely determined by external or deterministic influences, though they may still be influenced by them.
-- [A2] Empirical data can effectively measure and assess human decision-making processes.
-- [A3] Current scientific methodologies are capable of detecting and analyzing the presence or absence of free will.
+- [A1] (empirical) Human behavior is influenced by both genetic and environmental factors.
+- [A2] (methodological) Empirical methods are appropriate for investigating decision-making processes.
+- [A3] (empirical) Cause and effect are observed in physical systems, including biological ones.
 
 # Claims (with dependencies, evidence, rebuttals)
-- [C1] inductive: Human decisions are significantly influenced by genetic and environmental factors.
-  - Depends on: A2
-  - Evidence: E1
+- [C1] descriptive: Human decision-making is largely determined by neurological and psychological processes.
+  - Depends on: A1, A2, A3
+  - Evidence: E1, E2, E3
   - Inference chain:
-    - Step: Observation of decision-making processes in controlled environments. | Justification: Experiments show predictable patterns based on genetics and environment.
-    - Step: Correlation between genetic/environmental factors and decision outcomes. | Justification: Statistical analyses demonstrate significant correlations.
-  - Known weaknesses: Correlation does not imply causation, Limited understanding of all influencing factors
-  - Confidence: 0.6 (High correlation observed in multiple studies with large sample sizes.) | Status: asserted
-- [C2] abductive: The traditional concept of free will is not supported by current empirical evidence.
-  - Depends on: A1, C1
-  - Evidence: E2
-  - Inference chain:
-    - Step: Review of neurological studies on decision-making. | Justification: Studies indicate decisions are made before conscious awareness.
-    - Step: Comparison to traditional free will definitions. | Justification: Traditional definitions imply conscious control, which is not observed.
-  - Known weaknesses: Potential biases in interpretation of neurological data, Incomplete understanding of consciousness
-  - Confidence: 0.45 (Interpretation of evidence is ongoing and subject to revision as new data emerges.) | Status: tentative
+    - Premise: Brain activity often precedes conscious decision-making (E1).
+    - Premise: Decisions are influenced by unconscious biases (E2).
+    - Inference (inductive): These factors suggest that decisions are not made freely but are determined by prior states.
+    - Conclusion: Human decision-making is largely determined by neurological and psychological processes.
+  - Known weaknesses: The correlation between brain activity and decisions does not fully explain conscious experience., There may be unknown factors affecting decision-making that are not yet measurable.
+  - Confidence: 0.55 (Reduced due to critiques on subjective experience, assumption classification, and evidence limitations.) | Status: active
 
 # Evidence
-- [E1] empirical: Genetic and environmental factors influence decision-making processes.
-  - Source: citation: Doe, J. (2020). Study on Genetic Influences. Journal of Decision Science, 15, 102-115., year: 2020 → supports: C1
-  - Quality: sample_size=large, replication=replicated, rigor=high
-  - Limitations: Focus on specific populations, Cannot account for all decision-making scenarios
-- [E2] empirical: Neurological studies show decisions are made prior to conscious awareness.
-  - Source: citation: Smith, A. (2021). Neurology of Decision-Making. Consciousness and Cognition, 45, 210-220., year: 2021 → supports: C2
-  - Quality: sample_size=medium, replication=contested, rigor=medium
-  - Limitations: Complexity of brain processes, Interpretation of data may vary
+- [E1] empirical: Experiments show readiness potential occurs in the brain before conscious decision awareness.
+  - Source: raw: Libet et al. → supports: C1
+  - Limitations: D, o, e, s,  , n, o, t,  , a, c, c, o, u, n, t,  , f, o, r,  , a, l, l,  , t, y, p, e, s,  , o, f,  , d, e, c, i, s, i, o, n, -, m, a, k, i, n, g, .
+- [E2] empirical: Studies demonstrate unconscious biases significantly influence decisions.
+  - Source: raw: Psychological research literature. → supports: C1
+  - Limitations: B, i, a, s, e, s,  , m, a, y,  , i, n, t, e, r, a, c, t,  , w, i, t, h,  , c, o, n, s, c, i, o, u, s,  , p, r, o, c, e, s, s, e, s,  , i, n,  , c, o, m, p, l, e, x,  , w, a, y, s, .
+- [E3] empirical: Research shows decisions can be predicted using brain imaging technologies.
+  - Source: raw: Neuroscience studies. → supports: C1
+  - Limitations: P, r, e, d, i, c, t, i, v, e,  , m, o, d, e, l, s,  , a, r, e,  , n, o, t,  , y, e, t,  , c, o, m, p, r, e, h, e, n, s, i, v, e, .
 
 # Predictions (falsifiable)
-- [P1] If free will exists, future studies will show decision-making processes independent of genetic and environmental factors.
-  - Test: Conduct longitudinal studies tracking decision-making across diverse conditions. | Falsifiers: Strong correlation with known influences, Lack of evidence for independent decision-making
-  - Decision criterion: Observation of decision-making processes that cannot be explained by genetics or environment.
-  - Likelihood: 0.2 | Importance: high
+- [P1] Advances in neuroscience will increase the predictability of human decisions based on brain data.
+  - Test: Monitor research on brain-based decision prediction over the next decade. | Falsifiers: Failure to improve prediction accuracy significantly., Discovery of decisions with no neurological basis.
+  - Decision criterion: Significant advances in predictive accuracy would support the deterministic view.
+  - Likelihood: 0.7 | Importance: high
 
 # Uncertainties
-- [U1] To what extent can neuroscience accurately measure conscious decision-making? | cruciality: high | VOI: Advancements in brain imaging technologies and methodologies.
+- [U1] Can empirical methods fully capture the complexity of human consciousness and decision-making? | cruciality: high | VOI: Answering this could resolve whether empirical data can conclusively address free will.
+- [U2] What specific criteria would establish a deterministic view of decision-making in neuroscience? | cruciality: high | VOI: Defining these criteria could clarify the empirical support needed for determinism.
+- [U3] How does quantum indeterminism affect the deterministic view of decision-making? | cruciality: medium | VOI: Understanding quantum effects on consciousness could resolve this ambiguity.
+
+# Counterpositions
+- [X1] → targets: C1 | attack: rebutting
+  - Statement: The subjective experience of making choices directly suggests the existence of free will.
+  - Strength: 0.5 | Sufficiency: partial
+  - My response: Subjective experience does not necessarily reflect objective reality, similar to how optical illusions work.
+- [X2] → targets: C1 | attack: rebutting
+  - Statement: Quantum mechanics introduces indeterminism, allowing for the possibility of free will.
+  - Strength: 0.4 | Sufficiency: sufficient
+  - My response: Quantum indeterminism does not equate to meaningful free will, as randomness is not the same as autonomy.
 
 # Argument Structure
-- Total nodes: 8 (3 assumptions, 2 claims, 2 evidence, 1 predictions)
-- Total edges: 7
+- Total nodes: 10 (3 assumptions, 1 claims, 3 evidence, 1 predictions)
+- Total edges: 9
 
 # Changelog
-- v1 (2023-10-10T12:00:00Z): Initialized from scratch
-- v2 (2026-02-21T20:40:00.441815Z): C1.confidence: 0.7 → 0.6; C2.confidence: 0.5 → 0.4; Refined A1; Thesis confidence: 0.40 → 0.30; C2.confidence: 0.4 → 0.45
+- v1 (2023-11-23T18:30:00Z): Initial belief formation
+- v2 (2026-03-07T19:03:01.795260Z): C1.confidence: 0.7 → 0.55; C1.confidence_justification: Empirical evidence is strong, but the complexity of human consciousness introduces uncertainties. → Reduced due to critiques on subjective experience, assumption classification, and evidence limitations.; Refined A3 statement; Changed A3 type to empirical; Added uncertainty U2; Added uncertainty U3
 
 
 # Thesis
-- Stance: Free will exists as a fundamental aspect of human existence, underpinned by supernatural beliefs and spiritual experiences. While empirical evidence may not fully capture this phenomenon, spiritual experiences and religious teachings provide compelling reasons to affirm the existence of free will. These suggest that human beings have the capacity to make choices that are not entirely determined by physical or empirical forces.
+- Stance: Free will exists as a capacity of the human soul or spirit, which operates alongside but is not entirely determined by physical processes. This non-material aspect allows for genuine choice and moral responsibility.
 - Top bullets:
-  - Free will is supported by spiritual and religious beliefs.
-  - Empirical observation may not adequately capture the essence of free will.
-  - Human capacity for choice is indicative of non-material influences.
-- Confidence: 0.6
+  - Free will is grounded in the non-material soul or spirit.
+  - Human experiences of decision-making suggest an inherent capacity for choice.
+  - Religious texts and spiritual experiences support the existence of free will.
+  - The interaction between soul and body allows for moral agency.
+- Confidence: 0.7
 
 # Scope & Definitions
 
 # Assumptions
-- [A1] There are truths about reality that lie beyond empirical observation.
-- [A2] Spiritual and religious experiences can provide valid insights into human nature.
-- [A3] Human beings may possess a spiritual essence that influences decision-making, though this is not empirically validated.
+- [A1] (foundational) The existence of a non-material soul or spirit that interacts with the physical body but is not wholly determined by it.
+- [A2] (subjective) Human experiences of decision-making and moral responsibility are widely reported across cultures.
+- [A3] (methodological) Spiritual and religious experiences are valid sources of knowledge about human nature.
 
 # Claims (with dependencies, evidence, rebuttals)
-- [C1] deductive: Free will exists as a component of human spiritual essence.
+- [C1] descriptive: Free will exists as a capacity of the human soul or spirit.
   - Depends on: A1, A2, A3
+  - Evidence: E1, E2
   - Inference chain:
-    - Step: If spiritual and religious experiences are valid, they can reveal truths about human nature. | Justification: Spiritual experiences often address questions of human agency and morality.
-    - Step: Spiritual teachings consistently affirm the existence of free will. | Justification: Many religious doctrines assert that humans are free to choose between good and evil.
-    - Step: Therefore, free will is a component of human spiritual essence. | Justification: The consistency of spiritual teachings across cultures suggests a universal truth.
-  - Known weaknesses: Lack of empirical backing, Subjectivity of spiritual experiences
-  - Confidence: 0.5 (Confidence is moderate due to reliance on spiritual rather than empirical evidence.) | Status: tentative
+    - Premise: The soul or spirit is a non-material entity (A1).
+    - Premise: Humans universally experience decision-making and moral accountability (A2).
+    - Premise: Religious and spiritual texts describe humans as moral agents (E2).
+    - Inference (abductive): The best explanation for these phenomena is the existence of free will.
+    - Conclusion: Free will is a genuine phenomenon enabled by the soul.
+  - Known weaknesses: The interaction between non-material and physical realms is not empirically established., Causal influence of the soul on the body remains unexplained within physical science.
+  - Confidence: 0.55 (Reduced from 0.7 due to lack of empirical evidence for the soul and unexplained interaction with the body.) | Status: tentative
+
+# Evidence
+- [E1] empirical: Universal human experiences of making choices and feeling moral responsibility.
+  - Source: raw: Cross-cultural psychological studies → supports: C1
+  - Limitations: D, o, e, s,  , n, o, t,  , d, i, r, e, c, t, l, y,  , p, r, o, v, e,  , t, h, e,  , e, x, i, s, t, e, n, c, e,  , o, f,  , a,  , n, o, n, -, m, a, t, e, r, i, a, l,  , s, o, u, l, .
+- [E2] textual: Descriptions of free will in various religious texts.
+  - Source: raw: Religious scriptures and spiritual writings → supports: C1
+  - Limitations: I, n, t, e, r, p, r, e, t, a, t, i, o, n, s,  , v, a, r, y,  , b, e, t, w, e, e, n,  , t, r, a, d, i, t, i, o, n, s, .
 
 # Predictions (falsifiable)
-- [P1] Individuals experiencing profound spiritual events will affirm belief in free will.
-  - Test: Survey individuals who report having had spiritual experiences. | Falsifiers: Survey results show no correlation, Individuals attribute choices to deterministic forces
-  - Decision criterion: A significant majority affirming free will would support the claim.
-  - Likelihood: 0.6 | Importance: medium
-
-# Normative Implications (prescriptive)
-- [N1] Societies should foster environments that respect individual choice and moral responsibility. | linked claims: C1 | strength: 0.8
+- [P1] If humans possess free will, future interdisciplinary findings will increasingly support the influence of non-material aspects on decision-making.
+  - Test: Track research on decision-making that incorporates non-material explanations over the next 20 years. | Falsifiers: Conclusive evidence that all decisions are predetermined by neurobiological processes.
+  - Decision criterion: If no interdisciplinary support emerges, this weakens the supernaturalist position on free will.
+  - Likelihood: 0.5 | Importance: high
 
 # Uncertainties
-- [U1] How can spiritual experiences be objectively validated? | cruciality: high | VOI: Further interdisciplinary research combining psychology and theology might provide insights.
+- [U1] Can the interaction between the soul and body be empirically demonstrated? | cruciality: high | VOI: Empirical evidence of this interaction would significantly bolster the case for free will.
+- [U2] Can subjective experiences of decision-making be reliably classified as empirical evidence? | cruciality: medium | VOI: Clarifying this classification could strengthen or weaken the empirical basis for free will.
+
+# Counterpositions
+- [X1] → targets: C1 | attack: undermining
+  - Statement: Determinism: All events, including human actions, are determined by preceding events and natural laws, leaving no room for free will.
+  - Strength: 0.8 | Sufficiency: partial
+  - My response: Acknowledged the reliance on an unfounded assumption about the soul, weakening the response to determinism.
+- [X2] → targets: C1 | attack: rebutting
+  - Statement: Epiphenomenalism: Conscious will is a byproduct of brain processes and does not influence physical actions.
+  - Strength: 0.6 | Sufficiency: partial
+  - My response: While physical processes correlate with decision-making, the spiritual dimension provides the intentionality and moral agency not reducible to physical processes alone.
+- [X3] → targets: C1 | attack: undermining
+  - Statement: The lack of empirical evidence for the soul undermines its role in explaining free will.
+  - Strength: 0.7 | Sufficiency: partial
+  - My response: Acknowledged — need stronger evidence or alternative explanations for free will.
 
 # Argument Structure
-- Total nodes: 5 (3 assumptions, 1 claims, 0 evidence, 1 predictions)
-- Total edges: 4
+- Total nodes: 10 (3 assumptions, 1 claims, 2 evidence, 1 predictions)
+- Total edges: 9
 
 # Changelog
-- v1 (2023-10-28T12:00:00Z): Initialized from scratch
-- v2 (2026-02-21T20:40:04.975361Z): C1.confidence: 0.7 → 0.6; Refined A3; C1.confidence: 0.6 → 0.5; C1.status: asserted → tentative; Thesis confidence: 0.70 → 0.60
+- v1 (2023-10-04T12:00:00Z): Initial belief formation
+- v2 (2026-03-07T19:03:16.316979Z): C1.confidence: 0.7 → 0.55; C1.status: active → tentative; C1.confidence_justification: 0.7 reflects the strong alignment of spiritual beliefs with experiential evidence, acknowledging the gap in empirical verification. → Reduced from 0.7 due to lack of empirical evidence for the soul and unexplained interaction with the body.; Refined A2 statement; Changed A2 type to subjective; Added counterposition X3; X1.strength: 0.7 → 0.8; X1.my_response: The existence of the soul provides a realm of action beyond physical determinism, allowing for free will. → Acknowledged the reliance on an unfounded assumption about the soul, weakening the response to determinism.; X1.response_sufficiency: partial → partial; Added uncertainty U2

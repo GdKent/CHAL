@@ -182,6 +182,18 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
     if belief.get("schema_version") != SCHEMA_VERSION:
         errors.append(f"schema_version must be '{SCHEMA_VERSION}'")
 
+    # --- Type checks for fields that must be dicts/arrays ---
+    # These are critical even without jsonschema, since downstream code
+    # calls .get() on these values and will crash if they are strings.
+    if "thesis" in belief and not isinstance(belief["thesis"], dict):
+        errors.append("'thesis' must be an object, not a " + type(belief["thesis"]).__name__)
+    if "metadata" in belief and not isinstance(belief["metadata"], dict):
+        errors.append("'metadata' must be an object, not a " + type(belief["metadata"]).__name__)
+    for arr_key in ("assumptions", "claims", "evidence", "predictions",
+                     "normative_implications", "uncertainties", "counterpositions", "changelog"):
+        if arr_key in belief and not isinstance(belief[arr_key], list):
+            errors.append(f"'{arr_key}' must be an array, not a " + type(belief[arr_key]).__name__)
+
     # --- Optional: deep validation via jsonschema (if installed) ---
     if HAVE_JSONSCHEMA:
         try:

@@ -14,6 +14,7 @@ import os
 from typing import Dict, Set
 
 import questionary
+from dotenv import load_dotenv
 from rich.console import Console
 
 from chal.config import DebateConfig
@@ -40,9 +41,12 @@ def _collect_providers(config: DebateConfig) -> Set[str]:
 def check_api_keys(config: DebateConfig) -> Dict[str, bool]:
     """Check which required API keys are present in the environment.
 
+    Loads the .env file first so keys defined there are visible.
+
     Returns:
         Dict mapping provider name to whether its key is set.
     """
+    load_dotenv()
     providers = _collect_providers(config)
     result: Dict[str, bool] = {}
     for provider in providers:

@@ -13,7 +13,8 @@ Tests cover:
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from chal.agents.openai_agent import OpenAIAgent
+import openai
+from chal.agents.openai_agent import OpenAIAgent, retry_openai_chat_completion
 from chal.agents.base import Message
 
 
@@ -57,22 +58,20 @@ def test_openai_agent_init_system_prompt():
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-def test_generate_single_message_mock(mock_post):
+@patch('chal.agents.openai_agent.OpenAI')
+def test_generate_single_message_mock(mock_openai_class):
     """Test generating response to single message (mocked)."""
-    # Setup mock
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": "Mocked response"
-            }
-        }]
-    }
-    mock_post.return_value = mock_response
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Mocked response"
+    mock_response.choices[0].message.role = "assistant"
+    mock_response.model = "gpt-4o"
+    mock_response.usage = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key")
     messages = [Message(role="user", content="Test question")]
 
     response = agent.generate(messages)
@@ -83,22 +82,19 @@ def test_generate_single_message_mock(mock_post):
 
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-def test_generate_conversation_history_mock(mock_post):
+@patch('chal.agents.openai_agent.OpenAI')
+def test_generate_conversation_history_mock(mock_openai_class):
     """Test generating response with multi-message conversation (mocked)."""
-    # Setup mock
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": "Conversation response"
-            }
-        }]
-    }
-    mock_post.return_value = mock_response
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Conversation response"
+    mock_response.model = "gpt-4o"
+    mock_response.usage = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key")
     messages = [
         Message(role="user", content="First message"),
         Message(role="assistant", content="First response"),
@@ -109,34 +105,31 @@ def test_generate_conversation_history_mock(mock_post):
 
     assert isinstance(response, Message)
     # Verify that all messages were passed to API
-    call_args = mock_post.call_args
-    assert len(call_args[1]["json"]["messages"]) >= 3
+    call_args = mock_client.chat.completions.create.call_args
+    assert len(call_args[1]["messages"]) >= 3
 
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-def test_generate_includes_system_prompt(mock_post):
+@patch('chal.agents.openai_agent.OpenAI')
+def test_generate_includes_system_prompt(mock_openai_class):
     """Test that system prompt is added to messages (mocked)."""
-    # Setup mock
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": "Response"
-            }
-        }]
-    }
-    mock_post.return_value = mock_response
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Response"
+    mock_response.model = "gpt-4o"
+    mock_response.usage = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", system_prompt="Custom system")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key", system_prompt="Custom system")
     messages = [Message(role="user", content="Question")]
 
     agent.generate(messages)
 
     # Verify system message was added
-    call_args = mock_post.call_args
-    messages_sent = call_args[1]["json"]["messages"]
+    call_args = mock_client.chat.completions.create.call_args
+    messages_sent = call_args[1]["messages"]
     assert any(msg.get("role") == "system" for msg in messages_sent)
 
 
@@ -145,7 +138,6 @@ def test_generate_includes_system_prompt(mock_post):
 @patch('chal.agents.openai_agent.OpenAI')
 def test_generate_temperature_applied(mock_openai_class):
     """Test that temperature parameter is passed to API (mocked)."""
-    # Setup mock
     mock_client = MagicMock()
     mock_openai_class.return_value = mock_client
     mock_response = MagicMock()
@@ -153,7 +145,7 @@ def test_generate_temperature_applied(mock_openai_class):
     mock_response.choices[0].message.content = "Response"
     mock_client.chat.completions.create.return_value = mock_response
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key")
     messages = [Message(role="user", content="Question")]
 
     agent.generate(messages)
@@ -168,90 +160,82 @@ def test_generate_temperature_applied(mock_openai_class):
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-@patch('chal.agents.openai_agent.time.sleep')  # Mock sleep to speed up test
-def test_generate_retry_on_rate_limit(mock_sleep, mock_post):
+@patch('chal.agents.openai_agent.time.sleep')
+def test_generate_retry_on_rate_limit(mock_sleep):
     """Test retry logic on rate limit error (mocked)."""
-    # First call raises HTTPStatusError (rate limit), second succeeds
-    from httpx import HTTPStatusError, Request, Response
+    mock_client = MagicMock()
 
-    # Create mock request and response for HTTPStatusError
-    mock_request = Request("POST", "https://api.openai.com/v1/chat/completions")
-    mock_error_response = Response(429, text="Rate limit exceeded")
+    # Build a successful response
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Success after retry"
+    mock_response.model = "gpt-4o"
+    mock_response.usage = MagicMock()
 
-    # Second call returns success
-    mock_success_response = MagicMock()
-    mock_success_response.json.return_value = {
-        "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": "Success after retry"
-            }
-        }]
-    }
-
-    # First call raises error, second succeeds
-    mock_post.side_effect = [
-        HTTPStatusError("429 Rate Limit", request=mock_request, response=mock_error_response),
-        mock_success_response
+    # First call raises RateLimitError, second succeeds
+    mock_client.chat.completions.create.side_effect = [
+        openai.RateLimitError(
+            message="Rate limit exceeded",
+            response=MagicMock(status_code=429),
+            body=None,
+        ),
+        mock_response
     ]
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
-    messages = [Message(role="user", content="Question")]
-
-    response = agent.generate(messages)
-
-    assert response.content == "Success after retry"
-    assert mock_post.call_count == 2
-
-
-@pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-@patch('chal.agents.openai_agent.time.sleep')
-def test_generate_retry_exhaustion(mock_sleep, mock_post):
-    """Test that retries eventually fail after max attempts (mocked)."""
-    # NOTE: Implementation catches all exceptions and returns error Message
-    # So we expect an error message, not an exception
-    from httpx import HTTPStatusError, Request, Response
-
-    # Create mock request and response for HTTPStatusError
-    mock_request = Request("POST", "https://api.openai.com/v1/chat/completions")
-    mock_error_response = Response(429, text="Rate limit exceeded")
-
-    # Always raise error
-    mock_post.side_effect = HTTPStatusError(
-        "429 Rate Limit", request=mock_request, response=mock_error_response
+    result = retry_openai_chat_completion(
+        client=mock_client,
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Question"}],
+        temperature=0.7,
     )
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
-    messages = [Message(role="user", content="Question")]
-
-    response = agent.generate(messages)
-
-    # Should return error message (not raise exception)
-    assert "[Error from TestAgent]" in response.content
-    assert "RuntimeError" in response.content or "Exceeded max retries" in response.content
+    assert result.choices[0].message.content == "Success after retry"
+    assert mock_client.chat.completions.create.call_count == 2
 
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-def test_generate_no_retry_on_other_errors(mock_post):
+@patch('chal.agents.openai_agent.time.sleep')
+def test_generate_retry_exhaustion(mock_sleep):
+    """Test that retries eventually fail after max attempts (mocked)."""
+    mock_client = MagicMock()
+
+    # Always raise error
+    mock_client.chat.completions.create.side_effect = openai.RateLimitError(
+        message="Rate limit exceeded",
+        response=MagicMock(status_code=429),
+        body=None,
+    )
+
+    with pytest.raises(RuntimeError, match="Exceeded max retries"):
+        retry_openai_chat_completion(
+            client=mock_client,
+            model="gpt-4o",
+            messages=[{"role": "user", "content": "Question"}],
+            temperature=0.7,
+        )
+
+    assert mock_client.chat.completions.create.call_count == 5
+
+
+@pytest.mark.unit
+@patch('chal.agents.openai_agent.OpenAI')
+def test_generate_no_retry_on_other_errors(mock_openai_class):
     """Test that non-retriable errors fail immediately (mocked)."""
-    # NOTE: Implementation catches all exceptions and returns error Message
-    # Non-retriable errors (like ValueError) should only be called once
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
 
-    # Raise a non-retriable error (not HTTPStatusError/TimeoutException/RequestError)
-    mock_post.side_effect = ValueError("Invalid request")
+    # Raise a non-retriable error (not RateLimitError/APIStatusError/APIConnectionError)
+    mock_client.chat.completions.create.side_effect = ValueError("Invalid request")
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key")
     messages = [Message(role="user", content="Question")]
 
     response = agent.generate(messages)
 
     # Should return error message, not raise exception
     assert "[Error from TestAgent]" in response.content
-    # Should only be called once (no retries for non-HTTP errors)
-    assert mock_post.call_count == 1
+    # Should only be called once (no retries for non-API errors)
+    assert mock_client.chat.completions.create.call_count == 1
 
 
 # ==============================================
@@ -282,22 +266,19 @@ def test_get_current_belief():
 
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-def test_belief_state_persists(mock_post):
+@patch('chal.agents.openai_agent.OpenAI')
+def test_belief_state_persists(mock_openai_class):
     """Test that belief state is maintained across generate calls (mocked)."""
-    # Setup mock
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": "Response"
-            }
-        }]
-    }
-    mock_post.return_value = mock_response
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Response"
+    mock_response.model = "gpt-4o"
+    mock_response.usage = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key")
     belief = {"schema_version": "CBS", "belief_id": "TEST"}
     agent.set_internal_belief_obj(belief)
 
@@ -314,43 +295,43 @@ def test_belief_state_persists(mock_post):
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-@patch('chal.agents.openai_agent.time.sleep')  # Mock sleep to prevent hanging
-def test_generate_invalid_api_key(mock_sleep, mock_post):
+@patch('chal.agents.openai_agent.time.sleep')
+@patch('chal.agents.openai_agent.OpenAI')
+def test_generate_invalid_api_key(mock_openai_class, mock_sleep):
     """Test handling of authentication errors (mocked)."""
-    # NOTE: Implementation catches all exceptions and returns error Message
-    # HTTPStatusError triggers retry logic, so we need to mock sleep
-    from httpx import HTTPStatusError, Request, Response
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
 
-    # Create 401 Unauthorized response
-    mock_request = Request("POST", "https://api.openai.com/v1/chat/completions")
-    mock_error_response = Response(401, text="Invalid API key")
-
-    mock_post.side_effect = HTTPStatusError(
-        "401 Unauthorized", request=mock_request, response=mock_error_response
+    # Create 401 Unauthorized error
+    mock_client.chat.completions.create.side_effect = openai.AuthenticationError(
+        message="Invalid API key",
+        response=MagicMock(status_code=401),
+        body=None,
     )
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="bad-key")
     messages = [Message(role="user", content="Question")]
 
     response = agent.generate(messages)
 
     # Should return error message after retries exhausted
+    # (AuthenticationError is an APIStatusError subclass, so it gets retried)
     assert "[Error from TestAgent]" in response.content
 
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
 @patch('chal.agents.openai_agent.time.sleep')
-def test_generate_timeout(mock_sleep, mock_post):
+@patch('chal.agents.openai_agent.OpenAI')
+def test_generate_timeout(mock_openai_class, mock_sleep):
     """Test handling of timeout errors (mocked)."""
-    # NOTE: Implementation catches all exceptions and returns error Message
-    # TimeoutException gets retried, so after max retries it returns error
-    from httpx import TimeoutException
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
 
-    mock_post.side_effect = TimeoutException("Request timed out")
+    mock_client.chat.completions.create.side_effect = openai.APIConnectionError(
+        request=MagicMock(),
+    )
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key")
     messages = [Message(role="user", content="Question")]
 
     response = agent.generate(messages)
@@ -358,26 +339,23 @@ def test_generate_timeout(mock_sleep, mock_post):
     # Should return error message after retries exhausted
     assert "[Error from TestAgent]" in response.content
     # Should be retried multiple times (5 attempts)
-    assert mock_post.call_count == 5
+    assert mock_client.chat.completions.create.call_count == 5
 
 
 @pytest.mark.unit
-@patch('chal.agents.openai_agent.httpx.post')
-def test_generate_empty_response(mock_post):
+@patch('chal.agents.openai_agent.OpenAI')
+def test_generate_empty_response(mock_openai_class):
     """Test handling of empty model responses (mocked)."""
-    # Setup mock with empty content
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": ""
-            }
-        }]
-    }
-    mock_post.return_value = mock_response
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = ""
+    mock_response.model = "gpt-4o"
+    mock_response.usage = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
 
-    agent = OpenAIAgent(model="gpt-4o", name="TestAgent")
+    agent = OpenAIAgent(model="gpt-4o", name="TestAgent", api_key="test-key")
     messages = [Message(role="user", content="Question")]
 
     response = agent.generate(messages)

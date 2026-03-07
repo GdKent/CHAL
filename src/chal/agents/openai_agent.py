@@ -2,23 +2,26 @@
 openai_agent.py
 
 Defines an LLM-powered agent that uses OpenAI's Chat Completions API
-(e.g., GPT-4o, GPT-3.5-turbo) to generate responses. This agent implements
+(e.g., GPT-4o, o4-mini) to generate responses. This agent implements
 the abstract `Agent` interface defined in `base.py`.
 
 Usage:
 - Requires an OpenAI API key to be available in the environment as `OPENAI_API_KEY`.
 - Can be instantiated with any supported OpenAI chat model (e.g., "gpt-4o").
+
+SDK: openai (v1+). Import path: `from openai import OpenAI`.
+The SDK automatically handles model-specific requirements such as reasoning
+models that don't support temperature or use 'developer' instead of 'system' role.
 """
 
-import os # For reading environment variables (like API keys)
-import httpx # For making HTTP requests to OpenAI's API
-from chal.agents.base import Agent, Message # Base class and message type
-from typing import List # For type annotations
+import os
 import time
-import json
-from httpx import HTTPStatusError, TimeoutException, RequestError
+import openai
+from openai import OpenAI
+from chal.agents.base import Agent, Message
+from typing import List
 from dotenv import load_dotenv
-load_dotenv() # Loads .env file from project root
+load_dotenv()
 
 
 class OpenAIAgent(Agent):
@@ -26,10 +29,10 @@ class OpenAIAgent(Agent):
     An agent that interacts with OpenAI's chat models.
 
     Attributes:
-        model (str): OpenAI model name (e.g., "gpt-4o", "gpt-3.5-turbo").
+        model (str): OpenAI model name (e.g., "gpt-4o", "o4-mini").
         api_key (str): OpenAI API key used for authentication.
         system_prompt (str): Optional instruction that defines the agent's persona or behavior.
-        name (str): Display name for the agent, e.g., "OpenAI-gpt-4o".
+        name (str): Display name for the agent, e.g., "Agent-Empiricist".
     """
 
     def __init__(self, model: str, name: str, api_key: str = None, system_prompt: str = ""):
@@ -37,21 +40,22 @@ class OpenAIAgent(Agent):
         Initializes the OpenAIAgent with model and optional prompt/key.
 
         Args:
-            model (str): The name of the OpenAI model to use (e.g., "gpt-4o", "gpt-3.5-turbo").
+            model (str): The name of the OpenAI model to use (e.g., "gpt-4o", "o4-mini").
             name (str): Display name for the agent, e.g., "Agent-Skeptic".
             api_key (str, optional): Explicit API key override (fallback is env var).
             system_prompt (str, optional): Optional system message to set agent behavior.
         """
         self.model = model
-        self.name = name  # Used for display/debugging
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")  # Pull from env if not passed
+        self.name = name
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.system_prompt = system_prompt
-        self.internal_belief = ""  # Tracks agent's evolving belief over time
-        self.internal_belief_obj = None   # dict for json-structured belief
-        self.belief_graph = None  # Persistent BeliefGraph object (derived from internal_belief_obj)
+        self.internal_belief = ""
+        self.internal_belief_obj = None
+        self.belief_graph = None
         self.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
-        self.all_beliefs_held = [] # A list of internal_belief objects that the agent has held. This is to help enable the agent to form a solid conclusion when the debat ends
-    
+        self.all_beliefs_held = []
+        self._client = None  # Lazy init: created on first generate() call
+
     def set_internal_belief(self, belief_text: str) -> None:
         """
         Sets the agent's internal belief, typically after Stages 1 or 5.
@@ -71,18 +75,16 @@ class OpenAIAgent(Agent):
         """
         self.internal_belief_obj = belief_obj
 
-        # Auto-rebuild persistent graph when belief changes
         if belief_obj:
             try:
                 from chal.beliefs.belief_graph import BeliefGraph
                 self.belief_graph = BeliefGraph(belief_obj)
             except Exception as e:
-                # If graph construction fails, log but don't crash
                 print(f"Warning: Could not build belief graph for {self.name}: {e}")
                 self.belief_graph = None
         else:
             self.belief_graph = None
-    
+
     def get_internal_belief_obj(self) -> dict | None:
         """
         Returns the structured belief object if available.
@@ -120,83 +122,82 @@ class OpenAIAgent(Agent):
         """
         self.system_prompt = self.system_prompt + "\n\n" + prompt
 
-
     def generate(self, history: List[Message], temperature: float = 0.7) -> Message:
         """
         Constructs a prompt from conversation history, sends it to OpenAI,
         and returns the model's reply wrapped in a Message object.
+
+        Note: The SDK handles model-specific requirements automatically.
+        For reasoning models (o-series), temperature is omitted and the
+        system role is mapped to 'developer' by the SDK as needed.
         """
+        # Filter out system messages from history — system prompt is passed separately
+        messages = [
+            {"role": m.role, "content": m.content}
+            for m in history
+            if m.role in ("user", "assistant")
+        ]
 
-        # Convert internal Message objects to OpenAI's required format
-        messages = [{"role": m.role, "content": m.content} for m in history]
-
-        # Optionally insert a system message at the beginning
+        # Insert system prompt at the beginning
         if self.system_prompt:
             messages.insert(0, {"role": "system", "content": self.system_prompt})
 
-        # Prepare the API request payload
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": temperature,
-        }
-
-        # HTTP headers
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        # Lazy-init client on first use (avoids requiring API key at construction time)
+        if self._client is None:
+            self._client = OpenAI(api_key=self.api_key)
 
         try:
-            # Use retry wrapper instead of direct call
-            data = retry_openai_chat_completion(httpx.post, payload, headers)
+            response = retry_openai_chat_completion(
+                client=self._client,
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+            )
 
-            # Extract the model's reply
-            raw_msg = data["choices"][0]["message"]
             return Message(
-                role=raw_msg["role"],
-                content=raw_msg["content"],
-                metadata=data
+                role="assistant",
+                content=response.choices[0].message.content,
+                metadata={"model": response.model, "usage": dict(response.usage)}
             )
 
         except Exception as e:
-            # Return a dummy Message if all retries fail
             return Message(
                 role="assistant",
                 content=f"[Error from {self.name}]: {str(e)}"
             )
 
 
-
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
-def retry_openai_chat_completion(post_func, payload, headers, max_retries=5, base_delay=60.0):
+def retry_openai_chat_completion(client, model, messages, temperature,
+                                  max_retries=5, base_delay=60.0):
     """
     Wrapper to retry OpenAI chat completions with exponential backoff.
 
     Args:
-        post_func (callable): Function to call, e.g. httpx.post
-        payload (dict): JSON payload for OpenAI API
-        headers (dict): HTTP headers including API key
+        client: Instantiated OpenAI client
+        model (str): OpenAI model name
+        messages (list): List of {"role": ..., "content": ...} dicts
+        temperature (float): Sampling temperature
         max_retries (int): Max retry attempts
         base_delay (float): Delay factor in seconds
 
     Returns:
-        dict: JSON-decoded response from OpenAI
+        openai.types.chat.ChatCompletion: The raw OpenAI response object
     """
+    # Reasoning models (o-series) don't support the temperature parameter
+    is_reasoning_model = model.startswith(("o1", "o3", "o4"))
+
+    kwargs = {"model": model, "messages": messages}
+    if not is_reasoning_model:
+        kwargs["temperature"] = temperature
+
     for attempt in range(max_retries):
         try:
-            response = post_func(
-                "https://api.openai.com/v1/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=300
-            )
-            response.raise_for_status()
-            return response.json()
+            return client.chat.completions.create(**kwargs)
 
-        except (HTTPStatusError, TimeoutException, RequestError) as e:
+        except (openai.RateLimitError, openai.APIStatusError, openai.APIConnectionError) as e:
             wait = base_delay * (2 ** attempt)
-            print(f"[Retry {attempt+1}/{max_retries}] API call failed: {e}. Retrying in {wait:.1f} seconds.")
+            print(f"[Retry {attempt+1}/{max_retries}] OpenAI API call failed: {e}. Retrying in {wait:.1f} seconds.")
             time.sleep(wait)
 
     raise RuntimeError("Exceeded max retries for OpenAI API call.")

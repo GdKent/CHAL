@@ -261,7 +261,12 @@ class TestAskAdjudicatorConfig:
     @patch("chal.cli.wizard.questionary.autocomplete")
     @patch("chal.cli.wizard.questionary.select")
     def test_returns_adjudication_config(self, mock_select, mock_auto, mock_text):
-        mock_select.return_value.ask.return_value = "openai"
+        mock_select.return_value.ask.side_effect = [
+            "openai",              # provider
+            "CLASSICAL_BAYESIAN",  # logic system
+            "NONE",                # ethics system
+            "custom",              # balance preset (custom → text inputs)
+        ]
         mock_auto.return_value.ask.return_value = "o1-mini"
         mock_text.return_value.ask.side_effect = ["1.0", "0.0"]
 
@@ -270,6 +275,8 @@ class TestAskAdjudicatorConfig:
         assert isinstance(result, AdjudicationConfig)
         assert result.model == "o1-mini"
         assert result.provider == "openai"
+        assert result.logic_system == "CLASSICAL_BAYESIAN"
+        assert result.ethics_system == "NONE"
         assert result.logic_weight == 1.0
         assert result.ethics_weight == 0.0
 
@@ -441,7 +448,8 @@ class TestRunWizard:
             ]
             # select calls: main_menu, preset, persona1, provider1,
             # persona2, provider2, stage2_mode, stage3_mode,
-            # adj_provider, review_action
+            # adj_provider, adj_logic_sys, adj_ethics_sys, adj_balance,
+            # review_action
             m_select.return_value.ask.side_effect = [
                 "debate",                     # main menu
                 "__custom__",                 # ask_preset
@@ -450,6 +458,9 @@ class TestRunWizard:
                 "open",                       # stage 2
                 "rebuttal",                   # stage 3
                 "openai",                     # adjudicator provider
+                "CLASSICAL_BAYESIAN",         # adjudicator logic system
+                "NONE",                       # adjudicator ethics system
+                "custom",                     # balance preset (custom → text inputs)
                 "cancel",                     # review action
             ]
             m_auto.return_value.ask.side_effect = [
@@ -488,8 +499,11 @@ class TestRunWizard:
                 "SKEPTIC", "anthropic",
                 "open",
                 "rebuttal",
-                "openai",
-                "launch",  # review action
+                "openai",                # adjudicator provider
+                "CLASSICAL_BAYESIAN",    # adjudicator logic system
+                "NONE",                  # adjudicator ethics system
+                "custom",                # balance preset (custom → text inputs)
+                "launch",                # review action
             ]
             m_auto.return_value.ask.side_effect = [
                 "gpt-4o",
@@ -542,7 +556,10 @@ class TestRunWizard:
                 "RATIONALIST", "openai",
                 "open",
                 "rebuttal",
-                "openai",
+                "openai",                # adjudicator provider
+                "CLASSICAL_BAYESIAN",    # adjudicator logic system
+                "NONE",                  # adjudicator ethics system
+                "custom",                # balance preset (custom → text inputs)
                 "save",    # review action: save (loops back to review)
                 "launch",  # review action: launch
             ]

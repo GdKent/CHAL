@@ -13,7 +13,7 @@ from rich.console import Console
 
 from chal.config import DebateConfig
 from chal.agents.factory import create_agent_from_config
-from chal.agents import prompts
+from chal.agents.epistemic_personas import get_persona
 from chal.orchestrator.debate_controller import DebateController
 from chal.cli.display import DebateDisplay
 from chal.cli.api_keys import validate_api_keys
@@ -57,8 +57,8 @@ def run_debate(
     console.print("\n[bold]Initializing agents:[/bold]")
     for agent_cfg in config.agents:
         try:
-            persona_obj = getattr(prompts, agent_cfg.persona)
-        except AttributeError:
+            persona_obj = get_persona(agent_cfg.persona)
+        except KeyError:
             console.print(f"[red]Error: Unknown persona '{agent_cfg.persona}'[/red]")
             return 1
 
