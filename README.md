@@ -197,12 +197,10 @@ flowchart TD
         S3C["<b>Stage 3C: Blood Sport</b><br/><i>Multi-turn adversarial</i>"]
 
         S3A --> S4["<b>Stage 4: Adjudication</b><br/><i>Independent evaluation</i>"]
-        S3B --> EMB_B(["<i>adjudication embedded</i>"])
-        S3C --> EMB_C(["<i>adjudication embedded</i>"])
+        S3B --> S4
+        S3C --> S4
 
         S4 --> S5
-        EMB_B --> S5
-        EMB_C --> S5
 
         S5["<b>Stage 5: Belief Updates</b><br/><i>Apply patches → propagate confidence changes</i>"]
         S5 --> METRICS["Performance & Convergence<br/>Metrics Calculated"]
@@ -223,8 +221,6 @@ flowchart TD
     style S3B fill:#d1fae5,stroke:#10b981,color:#064e3b
     style S3C fill:#fee2e2,stroke:#ef4444,color:#7f1d1d
     style S4 fill:#ffedd5,stroke:#f97316,color:#7c2d12
-    style EMB_B fill:#f3f4f6,stroke:#9ca3af,color:#6b7280
-    style EMB_C fill:#f3f4f6,stroke:#9ca3af,color:#6b7280
     style METRICS fill:#f3f4f6,stroke:#9ca3af,color:#6b7280
     style OUT fill:#ccfbf1,stroke:#14b8a6,color:#134e4a
     style MOD_CHECK fill:#fef3c7,stroke:#f59e0b,color:#78350f
