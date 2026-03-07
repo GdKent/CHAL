@@ -45,10 +45,12 @@
     "assumptions": [
       {
         "id": "A1",
+        "type": "empirical",
         "statement": "Rational deliberation is a real phenomenon"
       },
       {
         "id": "A2",
+        "type": "foundational",
         "statement": "Causation does not eliminate agency"
       }
     ],
@@ -113,6 +115,26 @@
       {
         "id": "N1",
         "statement": "Moral responsibility requires free will in the compatibilist sense"
+      }
+    ],
+    "counterpositions": [
+      {
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "undercutting",
+        "statement": "Libet experiments show neural activity precedes conscious awareness of decision, undermining the inference from deliberation to genuine choice",
+        "strength": 0.6,
+        "my_response": "Libet experiments test only trivial decisions; complex rational deliberation may differ fundamentally",
+        "response_sufficiency": "partial"
+      },
+      {
+        "id": "X2",
+        "targets": ["A2"],
+        "attack_type": "undermining",
+        "statement": "If all events are determined by prior causes, agency is epiphenomenal regardless of how we define it",
+        "strength": 0.5,
+        "my_response": "This conflates causal determination with coercion; compatibilism distinguishes the two",
+        "response_sufficiency": "sufficient"
       }
     ]
   },

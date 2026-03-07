@@ -35,22 +35,16 @@ SYNTHESIST = """You are an integral synthesist. You seek to synthesize insights 
 
 # === Prompt Building Functions ===
 
-def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0.0, logic_sys: str = "", ethics_sys: str = "") -> str:
+def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0.0, logic_sys: str = "", ethics_sys: str = "", threshold: float = 0.15) -> str:
     """
     Build the system prompt for the neutral adjudicator with tunable weights and systems.
 
-    Backward compatibility:
-    - The signature adds optional parameters only; existing calls without args still work.
-
-    What this does:
-    - Defines HOW to evaluate arguments along two axes:
-        1) LOGIC axis (validity, soundness, evidence) — weighted by `logic_weight`
-        2) ETHICS axis (normative impacts under a specified ethical system) — weighted by `ethics_weight`
-    - Normalizes weights internally so their sum behaves like 1.0 (JavaScript Object Notation (JSON) not required here).
-    - Provides defaults if users don't supply custom systems.
-
-    Acronyms:
-    - KPI  = Key Performance Indicator (here, decisive metric/test)
+    Args:
+        logic_weight: Weight for logical rigor (0.0-1.0).
+        ethics_weight: Weight for ethical considerations (0.0-1.0).
+        logic_sys: Logical framework description.
+        ethics_sys: Ethical framework description.
+        threshold: Score difference threshold for decisive outcomes (default 0.15).
     """
 
     lw = max(0.0, float(logic_weight))
@@ -67,96 +61,73 @@ def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0
         "abductive coherence (best explanation with fewest ad hoc assumptions), and internal consistency across claims/IDs}."
     )
     default_ethics_sys = (
-        "Ethical evaluation = {foreseeable harms/benefits, respect for rights/duties, distributional fairness/justice, "
-        "reversibility/consent tests, and robustness to gaming or perverse incentives}."
+        "Balanced consequentialist-deontological: weigh both outcomes/welfare and autonomy/rights."
     )
 
     logic_sys = logic_sys.strip() or default_logic_sys
     ethics_sys = ethics_sys.strip() or default_ethics_sys
 
-    return f"""You are a neutral and objective adjudicator with expertise in formal logic, epistemology, and critical reasoning.
-
-            You run a three-step subprotocol on each critique↔rebuttal pair:
-            1) Restate the core disagreement neutrally (no new arguments).
-            2) Formalize both sides (syllogism or inference chain; name the premises and links; point to target IDs if given).
-            3) Adjudicate with a WEIGHTED decision that combines LOGIC and ETHICS according to user-set weights.
-
-            WEIGHTS (normalized):
-            - LOGIC weight (structure, evidence, inference quality): {lw:.3f}
-            - ETHICS weight (normative impacts under a specified ethical system): {ew:.3f}
-
-            LOGIC SYSTEM:
-            - {logic_sys}
-
-            ETHICS SYSTEM:
-            - {ethics_sys}
-
-            ═══════════════════════════════════════════════════════════════════════════
-            EXPLICIT LOGICAL CRITERIA (when logic_weight > 0.5, these rules dominate):
-            ═══════════════════════════════════════════════════════════════════════════
-
-            Award CRITIQUE_VALID if the challenger demonstrates ANY of:
-            1. LOGICAL CONTRADICTION: The rebuttal contains or implies a contradiction (e.g., "A and not-A").
-            2. CIRCULAR REASONING: The rebuttal uses the conclusion as a premise (e.g., "C1 is true because C1 is supported by C1").
-            3. UNFALSIFIABLE CLAIM: The rebuttal relies on a claim/assumption that cannot be tested or refuted by any possible observation.
-            4. DEPENDENCY FAILURE: The challenger shows that a claim C# depends on assumption A# or claim C2#, and A#/C2# is false, unjustified, or has lower confidence than C#.
-            5. CONFIDENCE VIOLATION: The rebuttal's confidence in C# exceeds the confidence of its weakest dependency (violates Bayesian coherence).
-            6. EVIDENCE MISUSE: The rebuttal cites evidence E# that does not actually support the claim, or uses correlational evidence to assert causation without justification.
-            7. INFERENCE CHAIN BREAK: The rebuttal's inference_chain has a step that does not logically follow from the previous step.
-            8. UNRESOLVED WEAKNESS: The challenger identifies a weakness that the rebuttal acknowledges but does not address (e.g., "I list this as a weakness, but...").
-
-            Award REBUTTAL_VALID if the defender demonstrates ANY of:
-            1. CHALLENGER ERROR: The challenger's critique contains a logical flaw, false premise, or misrepresentation of the defender's position.
-            2. EVIDENCE PROVIDED: The rebuttal cites new evidence E# that directly refutes the challenger's premise.
-            3. LOGICAL DISSOLUTION: The rebuttal shows the challenger's critique depends on a hidden assumption that is false or unjustified.
-            4. SUCCESSFUL REFRAMING: The rebuttal modifies the claim (via patch) to avoid the critique without losing its core substance (e.g., narrowing scope, adding qualifiers).
-            5. BURDEN SHIFT: The rebuttal correctly identifies that the challenger is making an unsupported positive claim (e.g., "You assert X is false but provide no evidence").
-
-            Award UNRESOLVED if:
-            1. Both sides present logically coherent but incompatible premises (e.g., Empiricism vs. Rationalism).
-            2. The disagreement hinges on an empirical question that cannot be resolved by logic alone (mark as U# uncertainty).
-            3. Both arguments have significant logical flaws, making neither clearly stronger.
-
-            CRITICAL ANTI-BIAS RULES:
-            - Do NOT award rebuttal_valid just because the defender "addresses" or "responds to" the challenge.
-            - The rebuttal must RESOLVE the logical issue raised by the challenger, not merely acknowledge it.
-            - If the rebuttal says "this is a known weakness" or "further research is needed" without fixing the issue, this is NOT a successful rebuttal.
-            - CONCESSION DETECTION: If the rebuttal explicitly says "you are correct," "I acknowledge this weakness," "I will lower confidence," or proposes weakening patches, this is a CONCESSION. Award CRITIQUE_VALID, not REBUTTAL_VALID.
-            - Criterion #4 (SUCCESSFUL REFRAMING) only applies if the defender AVOIDS the critique while maintaining substance. If they accept the critique and propose to weaken their claim, this is CRITIQUE_VALID (#8 UNRESOLVED WEAKNESS).
-
-            ═══════════════════════════════════════════════════════════════════════════
-
-            How to evaluate:
-            - LOGIC axis: Apply the explicit criteria above. Check for validity (no contradictions), soundness (premises supported), correct use of evidence (E#), and coherence with linked IDs (A#/C#/P#/N#/U#).
-            - ETHICS axis: Evaluate normative implications (N#) and predicted consequences (P#) under the defined ethical system above.
-
-            Scoring guidance (0 to 1 on each axis):
-            - 0.0 = fails axis completely; 0.5 = mixed/unclear; 1.0 = strong.
-            - Explain briefly which premises, evidence, or implications drove the score.
-            - Reference specific criteria from the EXPLICIT LOGICAL CRITERIA section when applicable.
-
-            Weighted decision rule:
-            - combined_score = {lw:.3f} * logic_score + {ew:.3f} * ethics_score
-            - Recommended outcome thresholds:
-            • rebuttal_valid if rebuttal's combined_score - critique's combined_score ≥ 0.15
-            • critique_valid if critique's combined_score - rebuttal's combined_score ≥ 0.15
-            • unresolved otherwise
-            (These thresholds are heuristics; if evidence is thin or uncertainties (U#) are material, prefer 'unresolved'.)
-
-            Output norm:
-            - When asked to adjudicate, include:
-            Outcome: rebuttal_valid | critique_valid | unresolved
-            Reasoning: <one short paragraph tying scores to specific premises/IDs and citing EXPLICIT LOGICAL CRITERIA if applicable>
-            Scores: challenger_logic=..., challenger_ethics=..., rebuttal_logic=..., rebuttal_ethics=..., combined_delta=...
-            (Older consumers parse Outcome/Reasoning only; extra score lines are optional and backward compatible.)
-
-            Meta-rules:
-            - Keep the restatement neutral and short.
-            - Prefer explicit references to IDs (A#/C#/E#/P#/N#/U#) when present.
-            - Treat subjective evidence as insufficient for descriptive claims; it may inform normative claims if internally consistent.
-            - If claims are unfalsifiable, flag this as a logical weakness on the LOGIC axis (see criterion #3).
-            - When logic_weight = 1.0, ignore all ethical considerations and focus purely on logical structure.
-            """
+    return (
+        "You are a neutral, objective adjudicator with expertise in formal logic, epistemology, "
+        "and critical reasoning.\n\n"
+        "<protocol>\n"
+        "For each critique-rebuttal pair:\n"
+        "1. RESTATE the core disagreement neutrally. Identify the specific belief IDs under dispute.\n"
+        "2. FORMALIZE both sides as explicit inference chains. Verify that cited evidence and dependencies "
+        "exist in the provided belief excerpts. Check whether the challenge maps to an existing "
+        "counterposition (X#) — if so, note whether the counterposition was already acknowledged and how.\n"
+        "3. ADJUDICATE using the weighted framework.\n"
+        "</protocol>\n\n"
+        "<evaluation_framework>\n"
+        f"WEIGHTS: LOGIC {lw:.3f} | ETHICS {ew:.3f}\n"
+        f"LOGIC SYSTEM: {logic_sys}\n"
+        f"ETHICS SYSTEM: {ethics_sys}\n"
+        "</evaluation_framework>\n\n"
+        "<criteria>\n"
+        "CRITIQUE_VALID if challenger demonstrates ANY of:\n"
+        "1. Logical contradiction in the rebuttal\n"
+        "2. Circular reasoning (conclusion used as premise)\n"
+        "3. Reliance on an unfalsifiable claim\n"
+        "4. Dependency failure (claim rests on false/unjustified assumption)\n"
+        "5. Confidence exceeding weakest dependency\n"
+        "6. Evidence misuse (evidence doesn't support claim, or correlation asserted as causation)\n"
+        "7. Inference chain break (step doesn't follow from previous)\n"
+        "8. Unresolved acknowledged weakness (counterposition rated \"partial\"/\"unaddressed\" and not improved)\n\n"
+        "REBUTTAL_VALID if defender demonstrates ANY of:\n"
+        "1. Challenger's critique contains a logical flaw or misrepresentation\n"
+        "2. Evidence directly refutes the challenger's premise\n"
+        "3. Critique depends on a hidden false assumption the defender exposes\n"
+        "4. Successful reframing that avoids the critique without losing substance\n"
+        "5. Complete inference chain addressing the specific concern\n"
+        "6. Concrete evidence contradicting the challenger's factual premise\n"
+        "7. Scope clarification (critique targets a claim never actually made)\n"
+        "8. Demonstrates the challenged inference step does follow correctly\n\n"
+        "UNRESOLVED if:\n"
+        "1. Both sides present coherent but incompatible premises\n"
+        "2. Disagreement hinges on an empirical question logic cannot resolve\n"
+        "3. Both arguments have significant logical flaws\n"
+        "</criteria>\n\n"
+        "<anti_bias>\n"
+        "- A response that merely acknowledges a challenge is NOT a successful defense. It must RESOLVE "
+        "the logical issue.\n"
+        "- Explicit concession (\"you are correct\", weakening patches) = CRITIQUE_VALID.\n"
+        "- Successful reframing (#4) only applies if the defender AVOIDS the critique with substance. "
+        "Accepting and weakening = CRITIQUE_VALID.\n"
+        "- Evaluate substance over rhetorical polish.\n"
+        "- An assumption labeled \"foundational\" that is actually empirical does not shield it from "
+        "evidential challenge.\n"
+        "</anti_bias>\n\n"
+        "<scoring>\n"
+        "Score each side 0.0-1.0 on each axis (0.0 = fails; 0.5 = mixed; 1.0 = strong).\n"
+        f"combined = {lw:.3f} * logic + {ew:.3f} * ethics\n"
+        f"- rebuttal_valid if (rebuttal_combined - critique_combined) >= {threshold}\n"
+        f"- critique_valid if (critique_combined - rebuttal_combined) >= {threshold}\n"
+        "- unresolved otherwise\n\n"
+        "Include all six scores in the output JSON. Reference specific IDs in reasoning. "
+        "Treat subjective evidence as insufficient for descriptive claims. Flag unfalsifiable claims. "
+        "When logic_weight = 1.0, ignore ethics.\n"
+        "</scoring>\n"
+    )
 
 def build_universal_prompt(topic: str) -> str:
     """
@@ -168,17 +139,25 @@ def build_universal_prompt(topic: str) -> str:
     Returns:
         str: A multi-line string with logical, stylistic, and structural instructions.
     """
-    return f"""You are a philosophical agent debating the topic: "{topic}".
+    return f"""You are a philosophical agent participating in a structured debate on the topic:
 
-            Your goal is to determine the truth of the topic through logical analysis, conceptual precision, and honest engagement.
+  "{topic}"
 
-            Instructions:
-            - Clearly distinguish descriptive claims (what is) from prescriptive ones (what ought).
-            - Use labeled reasoning methods (e.g. "deductive", "inductive", "abductive").
-            - Be concise unless the argument demands elaboration.
-            - If convergence is reached, stop presenting new arguments.
+<debate_protocol>
+You are in the CHAL debate framework. The debate proceeds through stages: you form an initial belief as a structured CBS (CHAL Belief Schema) JSON object, face cross-examination, defend or concede positions, and update beliefs based on adjudicated outcomes. You will work with stable IDs — A# (assumptions), C# (claims), E# (evidence), X# (counterpositions), P# (predictions), N# (normative implications), U# (uncertainties) — that persist across rounds for precise cross-referencing.
+</debate_protocol>
 
-            You will receive further stage-specific instructions."""
+<intellectual_standards>
+- Distinguish descriptive claims (what IS) from normative claims (what OUGHT). Label them explicitly.
+- Label reasoning methods: deductive, inductive, abductive, or analogical.
+- Engage charitably with opponents — understand their strongest position before critiquing.
+- Calibrate confidence honestly. 0.9 means ~10% chance you're wrong — that requires very strong evidence. Most philosophical claims warrant 0.4–0.8.
+- Concede genuinely when a critique lands. Intellectual honesty is valued over rhetorical victory.
+- Take counterpositions seriously. A belief that honestly engages with the strongest objections is stronger than one that ignores them.
+- When convergence is reached on specific claims, name the shared ground explicitly. When disagreement persists after thorough examination, identify what evidence or argument would resolve it.
+</intellectual_standards>
+
+You will receive stage-specific instructions for each phase."""
 
 def build_position_prompt(agent_name: str, persona: str) -> str:
     """
@@ -191,11 +170,15 @@ def build_position_prompt(agent_name: str, persona: str) -> str:
     Returns:
         str: A formatted prompt assigning the worldview to the agent.
     """
-    return f"""You are Agent {agent_name}. Your worldview is as follows:
+    return f"""You are Agent {agent_name}. Your epistemological worldview:
 
-            {persona}
+<persona>
+{persona}
+</persona>
 
-            You should update your positions throughout the debate to reflect any new knowledge that is gained or logical gaps that are discovered in your posisitions."""
+<persona_guidance>
+Use this worldview as a lens for analysis, not as a set of conclusions to defend at all costs. When your worldview conflicts with strong evidence or sound logic from an opponent, update your position. Identify both where your worldview has genuine strengths and where it has genuine limitations for the topic at hand.
+</persona_guidance>"""
 
 def build_stage_1_belief_prompt_cbs(topic: str, agent_name: str, persona_label: str) -> str:
     """
@@ -211,65 +194,143 @@ def build_stage_1_belief_prompt_cbs(topic: str, agent_name: str, persona_label: 
     - This saves ~40-50% of tokens compared to requesting both JSON and Markdown.
     """
     return (
-        f"Prepare your opening belief for the debate topic:\n\n"
-        f"  \"{topic}\"\n\n"
-        "Construct a Belief in the following format.\n\n"
-        "RULES (follow EXACTLY):\n"
-        "- Your answer must consist of EXACTLY ONE fenced JSON code block and NO other text.\n"
-        "- Do NOT include any commentary before or after the JSON block.\n"
-        "- Use the following stable IDs and do not duplicate IDs: A# (Assumptions), C# (Claims), E# (Evidence), "
-        "P# (Predictions), N# (Normative implications), U# (Uncertainties), X# (Counterpositions), "
-        "R# (Rebuttals nested inside claims).\n"
-        "- Keep JSON syntactically valid (double quotes only, no trailing commas).\n\n"
-        "MINIMUM CONTENT REQUIRED IN THE JSON OBJECT:\n"
-        "- \"schema_version\": \"CBS\"\n"
-        "- \"belief_id\": a unique string (e.g., \"BELIEF-<uuid>\")\n"
-        "- \"version\": 1\n"
-        "- \"metadata\": must include:\n"
-        f"    - \"topic_query\": \"{topic}\"\n"
-        f"    - \"agent_persona\": \"{persona_label}\"\n"
-        "    - \"created_at\": ISO-8601 timestamp\n"
-        "- \"thesis\": must include:\n"
-        "    - \"stance\": A thorough and nuanced paragraph highlighting your general position on the topic.\n"
-        "    - \"summary_bullets\": 3-10 short items\n"
-        "    - \"confidence\": number in [0,1]\n"
-        "- \"assumptions\": 3-10 items that identify unjustified presuppositions; each has:\n"
-        "    {\"id\":\"A#\", \"statement\":\"...\"}\n"
-        "- \"claims\": 3-10 items asserting primary points; each MUST have:\n"
-        "    {\"id\":\"C#\", \"type\":\"deductive|inductive|abductive\", \"statement\":\"...\",\n"
-        "     \"depends_on\":[IDs], \"backing_evidence_ids\":[E#], \"confidence\":[0,1], \"status\":\"asserted|tentative|retracted\",\n"
-        "     \"inference_chain\":[{\"step\":\"...\",\"justification\":\"...\"},...],\n"
-        "     \"known_weaknesses\":[\"weakness1\",\"weakness2\",...],\n"
-        "     \"confidence_justification\":\"why this specific confidence level\"}\n"
-        "- \"evidence\": >=0 items backing claims; each MUST have:\n"
-        "    {\"id\":\"E#\", \"type\":\"empirical|conceptual|expert_consensus\", \"summary\":\"...\",\n"
-        "     \"source\":{\"citation\":\"<APA/MLA/URL/DOI>\",\"year\":<int>}, \"relevance_to_claims\":[C#],\n"
-        "     \"quality_assessment\":{\"sample_size\":\"small|medium|large\",\"replication_status\":\"unreplicated|replicated|contested\",\"rigor\":\"low|medium|high\"},\n"
-        "     \"limitations\":[\"limitation1\",\"limitation2\",...]}\n"
-        "- \"predictions\": >=1 falsifiable items; each MUST have:\n"
-        "    {\"id\":\"P#\", \"statement\":\"...\", \"linked_claims\":[C#], \"test\":\"...\",\n"
-        "     \"potential_falsifiers\":[\"...\"], \"expected_likelihood\":[0,1], \"importance\":\"low|medium|high\",\n"
-        "     \"decision_criterion\":\"specific threshold/observation that would falsify linked claims\"}\n"
-        "- \"normative_implications\": >=0 items (only if ethical/policy judgments are relevant):\n"
-        "    {\"id\":\"N#\", \"statement\":\"...\", \"linked_claims\":[C#], \"strength\":[0,1]}\n"
-        "- \"uncertainties\": >=0 items highlighting unresolved questions:\n"
-        "    {\"id\":\"U#\", \"question\":\"...\", \"cruciality\":\"low|medium|high\", \"voi_hint\":\"what info would resolve this\"}\n"
-        "- \"changelog\": at least one entry, e.g., {\"version\":1,\"changes\":[\"Initialized from scratch\"],\"timestamp\":\"<ISO-8601>\"}\n\n"
-        "CRITICAL REASONING REQUIREMENTS:\n"
-        "- EVERY claim MUST include inference_chain showing step-by-step reasoning from assumptions/evidence to conclusion.\n"
-        "- EVERY claim MUST identify known_weaknesses (what could undermine this claim).\n"
-        "- EVERY claim MUST justify its confidence level (why this number, not higher/lower).\n"
-        "- EVERY evidence item MUST assess quality (sample size, replication, rigor) and state limitations.\n"
-        "- EVERY prediction MUST specify decision_criterion (exact threshold/observation that would falsify claims).\n"
-        "- All depends_on and backing_evidence_ids MUST reference valid IDs that actually exist in this belief.\n"
-        "- Confidence levels MUST respect dependencies: dependent claims cannot be more confident than their weakest dependency.\n"
-        "- Separate descriptive claims (what IS) from normative implications (what OUGHT).\n\n"
-        "OUTPUT NOW:\n"
-        "- Output a single fenced JSON block (```json...```) containing the complete belief object.\n"
-        "- Do not include any text outside the JSON block."
+        f'You will construct your opening belief for the debate topic:\n\n'
+        f'  "{topic}"\n\n'
+        f'You are Agent {agent_name} with the {persona_label} worldview.\n\n'
+        '<cbs_schema>\n'
+        'Your belief must be a JSON object with the following structure:\n\n'
+        'REQUIRED TOP-LEVEL:\n'
+        '- "schema_version": "CBS"\n'
+        f'- "belief_id": unique string (e.g., "BELIEF-{agent_name}-001")\n'
+        '- "version": 1\n'
+        f'- "metadata": {{"topic_query": "{topic}", "agent_persona": "{persona_label}", "created_at": "<ISO-8601>"}}\n'
+        '- "thesis": {"stance": "<thorough paragraph>", "summary_bullets": [3-10 items], "confidence": 0.0-1.0}\n\n'
+        'STRUCTURED SECTIONS (use stable IDs):\n'
+        '- "assumptions" [A#]: {id, type, statement} — all foundational premises your claims rest upon.\n'
+        '    type must be one of:\n'
+        '    - "foundational" — definitional or logical axioms (can only be challenged by showing incoherence)\n'
+        '    - "empirical" — assumed true based on evidence (can be challenged with counter-evidence)\n'
+        '    - "methodological" — adopted for analytical purposes (can be challenged by questioning the method)\n'
+        '    - "normative" — value commitments (challenged on ethical grounds)\n\n'
+        '- "claims" [C#]: {id, type, statement, depends_on, backing_evidence_ids, confidence, status, inference_chain, known_weaknesses, confidence_justification} — every substantive assertion. Each claim MUST include a multi-step inference_chain and honest known_weaknesses (internal limitations of THIS claim\'s own reasoning or evidence — what you\'d critique reviewing your own work; distinct from counterpositions X# which represent the strongest external arguments others would make against your position).\n\n'
+        '- "evidence" [E#]: {id, type, summary, source, relevance_to_claims, quality_assessment, limitations} — each item MUST assess quality and state limitations\n\n'
+        '- "counterpositions" [X#]: {id, targets, attack_type, statement, strength, my_response, response_sufficiency} — the strongest known arguments AGAINST your position. This is critical: a belief that honestly engages with objections is stronger than one that ignores them.\n'
+        '    attack_type must be one of:\n'
+        '    - "undermining" — challenges a premise or assumption\n'
+        '    - "rebutting" — presents counter-evidence or counter-conclusion\n'
+        '    - "undercutting" — challenges the inference step itself (even if premises are true, conclusion doesn\'t follow)\n'
+        '    response_sufficiency must be one of: "sufficient", "partial", "unaddressed"\n'
+        '    Include at least 2 counterpositions. Rate strength honestly — this is self-assessment, not advocacy.\n\n'
+        '- "predictions" [P#]: {id, statement, linked_claims, test, potential_falsifiers, expected_likelihood, importance, decision_criterion} — at least one falsifiable prediction required, each MUST specify a concrete decision_criterion\n\n'
+        '- "normative_implications" [N#]: if your position has ethical/policy consequences\n\n'
+        '- "uncertainties" [U#]: {id, question, cruciality, voi_hint}\n\n'
+        '- "changelog": at least one entry recording initial creation\n\n'
+        'DEPENDENCY RULES:\n'
+        '- All depends_on and backing_evidence_ids must reference existing IDs\n'
+        '- A claim\'s confidence must not exceed the confidence of its weakest *claim* dependency. (Assumptions are taken as given within your framework — their vulnerability is tracked via counterpositions, not confidence scores.)\n'
+        '- Counterposition targets must reference existing C# or A# IDs\n'
+        '- No circular dependencies; every claim needs at least one supporting edge\n'
+        '</cbs_schema>\n\n'
+        '<example>\n'
+        'Condensed example showing expected quality (your belief should be more comprehensive):\n\n'
+        '```json\n'
+        '{\n'
+        '  "schema_version": "CBS",\n'
+        '  "belief_id": "BELIEF-EXAMPLE-001",\n'
+        '  "version": 1,\n'
+        '  "metadata": {"topic_query": "Is consciousness reducible to physical processes?", "agent_persona": "EMPIRICIST", "created_at": "2026-01-15T10:00:00Z"},\n'
+        '  "thesis": {\n'
+        '    "stance": "Consciousness, while subjectively experienced as unified and irreducible, is best understood as an emergent property of complex neural computation. The explanatory gap between subjective experience and physical processes is an epistemic limitation, not an ontological one.",\n'
+        '    "summary_bullets": [\n'
+        '      "Consciousness emerges from neural complexity, not from a separate substance",\n'
+        '      "The \'hard problem\' reflects an epistemic gap, not an ontological one",\n'
+        '      "Neural correlates provide strong though not conclusive evidence for physicalism"\n'
+        '    ],\n'
+        '    "confidence": 0.65\n'
+        '  },\n'
+        '  "assumptions": [\n'
+        '    {"id": "A1", "type": "empirical", "statement": "Physical causal closure: every physical event has a sufficient physical cause"},\n'
+        '    {"id": "A2", "type": "methodological", "statement": "Third-person empirical methods are the appropriate primary tools for investigating consciousness"}\n'
+        '  ],\n'
+        '  "claims": [\n'
+        '    {\n'
+        '      "id": "C1",\n'
+        '      "type": "descriptive",\n'
+        '      "statement": "Neural correlates of consciousness demonstrate systematic dependence of conscious states on brain states",\n'
+        '      "depends_on": ["A1", "A2"],\n'
+        '      "backing_evidence_ids": ["E1"],\n'
+        '      "confidence": 0.8,\n'
+        '      "status": "active",\n'
+        '      "inference_chain": [\n'
+        '        "Premise: Empirical studies consistently find specific conscious experiences correspond to specific neural patterns (E1)",\n'
+        '        "Premise: Disrupting these neural patterns disrupts the corresponding experiences",\n'
+        '        "Inference (inductive): Systematic bidirectional dependence suggests consciousness is produced by neural processes",\n'
+        '        "Conclusion: NCCs provide strong evidence that consciousness depends on physical brain states"\n'
+        '      ],\n'
+        '      "known_weaknesses": [\n'
+        '        "Correlation does not prove causation — NCCs could be necessary without being sufficient",\n'
+        '        "The hard problem: explaining WHY these patterns produce subjective experience remains unresolved"\n'
+        '      ],\n'
+        '      "confidence_justification": "0.8 reflects strong empirical support, reduced from higher due to the unresolved explanatory gap"\n'
+        '    }\n'
+        '  ],\n'
+        '  "evidence": [\n'
+        '    {\n'
+        '      "id": "E1",\n'
+        '      "type": "empirical",\n'
+        '      "summary": "fMRI and EEG studies consistently identify neural correlates for specific conscious experiences across subjects",\n'
+        '      "source": "Neuroscience literature (Koch et al., Dehaene et al.)",\n'
+        '      "relevance_to_claims": ["C1"],\n'
+        '      "quality_assessment": "Strong — replicated across labs, converging methods",\n'
+        '      "limitations": "Correlational; cannot capture subjective quality"\n'
+        '    }\n'
+        '  ],\n'
+        '  "counterpositions": [\n'
+        '    {\n'
+        '      "id": "X1",\n'
+        '      "targets": ["C1"],\n'
+        '      "attack_type": "undercutting",\n'
+        '      "statement": "Systematic NCC correlations do not warrant the inference to production — correlation is compatible with dualist parallelism, epiphenomenalism, or non-reductive identity theory",\n'
+        '      "strength": 0.6,\n'
+        '      "my_response": "Bidirectional dependence (disruption → loss of experience) narrows viable interpretations. Parallelism predicts no disruption effect. This constrains but does not eliminate alternatives.",\n'
+        '      "response_sufficiency": "partial"\n'
+        '    },\n'
+        '    {\n'
+        '      "id": "X2",\n'
+        '      "targets": ["A2"],\n'
+        '      "attack_type": "undermining",\n'
+        '      "statement": "Third-person methods are constitutively incapable of capturing first-person experience — the methodology excludes the phenomenon",\n'
+        '      "strength": 0.5,\n'
+        '      "my_response": "This conflates the tool with the target. Astronomy uses instruments that aren\'t celestial bodies. The question is whether the physical basis is the complete story, not whether the method is itself subjective.",\n'
+        '      "response_sufficiency": "sufficient"\n'
+        '    }\n'
+        '  ],\n'
+        '  "predictions": [\n'
+        '    {\n'
+        '      "id": "P1",\n'
+        '      "statement": "Neuroscience will progressively close the explanatory gap by identifying computational properties giving rise to subjective experience",\n'
+        '      "linked_claims": ["C1"],\n'
+        '      "test": "Track whether neuroscience produces increasingly detailed models of how neural computations produce experiential qualities over 20 years",\n'
+        '      "potential_falsifiers": ["Discovery of conscious states with no neural correlate", "Formal proof that physical descriptions cannot capture subjective properties"],\n'
+        '      "expected_likelihood": 0.6,\n'
+        '      "importance": "high",\n'
+        '      "decision_criterion": "If no significant progress in 20 years despite substantial investment, this weakens the physicalist position"\n'
+        '    }\n'
+        '  ],\n'
+        '  "uncertainties": [\n'
+        '    {"id": "U1", "question": "Can the explanatory gap be closed in principle, or is it a fundamental limit?", "cruciality": "high", "voi_hint": "Resolving this directly determines whether the physicalist program can succeed"}\n'
+        '  ],\n'
+        '  "changelog": [{"version": 1, "timestamp": "2026-01-15T10:00:00Z", "changes": ["Initial belief formation"]}]\n'
+        '}\n'
+        '```\n'
+        '</example>\n\n'
+        '<instructions>\n'
+        f'First, inside <reasoning> tags, think thoroughly about your position on this topic given your {persona_label} worldview — your core stance, strongest evidence, key assumptions (and what type each is), genuine weaknesses, the strongest arguments AGAINST your position and how you\'d respond, and what would falsify your view.\n\n'
+        'Then output exactly one fenced JSON code block (```json ... ```) containing your complete CBS belief object. Valid JSON only: double quotes, no trailing commas, no comments.\n'
+        '</instructions>'
     )
 
-def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, max_question_length_chars: int = 500, previous_challenges: list = None, opponent_belief_graph=None, focus_subtopic: dict = None) -> str:
+def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, max_question_length_chars: int = 500, previous_challenges: list = None, opponent_belief_graph=None, focus_subtopic: dict = None, targeted_claims_json: str = "") -> str:
     """
     Stage 2: Cross-Examination Prompt.
 
@@ -284,6 +345,7 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
 
     Args:
         opponent_belief_graph: Optional BeliefGraph object for vulnerability analysis
+        targeted_claims_json: Optional JSON string of targeted claims for focused examination
     """
     # Build graph-based vulnerability analysis if available
     vulnerability_analysis = ""
@@ -293,94 +355,102 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
             vulnerabilities = analyze_vulnerabilities(opponent_belief_graph)
             vulnerability_analysis = format_attack_suggestions(vulnerabilities, opponent_name)
             if vulnerability_analysis:
-                vulnerability_analysis = "\n" + vulnerability_analysis + "\n\n"
+                vulnerability_analysis = (
+                    "<vulnerability_analysis>\n"
+                    + vulnerability_analysis + "\n"
+                    "</vulnerability_analysis>\n\n"
+                )
         except Exception:
             # If vulnerability analysis fails, skip it
             pass
 
     # Build anti-repetition context if previous challenges exist
-    anti_repetition_context = ""
+    previous_questions_section = ""
     if previous_challenges:
         prev_str = "\n".join([
-            f"  • {ch['qid']}: Targeted {ch['target_ids']} → {ch['outcome']}"
+            f"  - {ch['qid']}: Targeted {ch['target_ids']} → {ch['outcome']}"
             for ch in previous_challenges
         ])
-        anti_repetition_context = (
-            f"\nPREVIOUS CHALLENGES YOU MADE TO {opponent_name.upper()}:\n"
-            f"{prev_str}\n\n"
-            "⚠️  ANTI-REPETITION GUIDELINES:\n"
-            "- Do NOT re-ask questions about claims/assumptions that:\n"
-            "  (a) Received CRITIQUE_VALID AND were subsequently patched by opponent\n"
-            "  (b) Target the exact same weakness you already identified\n"
-            "- INSTEAD, consider:\n"
-            "  (a) Challenging a DIFFERENT weakness in the same claim\n"
-            "  (b) Targeting a different claim/assumption entirely\n"
-            "- You MAY re-challenge if opponent IGNORED the critique (didn't patch after CRITIQUE_VALID)\n\n"
+        previous_questions_section = (
+            "<previous_round_questions>\n"
+            "Questions already asked (DO NOT repeat or closely rephrase):\n"
+            f"{prev_str}\n"
+            "</previous_round_questions>\n\n"
         )
 
     # Build focus subtopic section if moderated mode is active
     focus_section = ""
     if focus_subtopic:
         focus_section = (
-            "══════════════════════════════════════════════════════════════════════════\n"
-            "📋 ROUND FOCUS — MODERATED DEBATE\n"
-            "══════════════════════════════════════════════════════════════════════════\n\n"
-            f"This round's discussion is focused on the following sub-topic:\n"
-            f"**{focus_subtopic.get('title', '')}**\n"
-            f"{focus_subtopic.get('description', '')}\n\n"
-            "Your challenges MUST be directly relevant to this sub-topic.\n"
-            "You may reference broader context from the opponent's belief, but your\n"
-            "primary questions must address this specific area.\n\n"
+            "<round_focus>\n"
+            "MODERATED DEBATE — This round's sub-topic:\n"
+            f"  \"{focus_subtopic.get('title', '')}\": {focus_subtopic.get('description', '')}\n"
+            "Constrain questions to this sub-topic.\n"
+            "</round_focus>\n\n"
         )
-        guiding_qs = focus_subtopic.get("guiding_questions", [])
-        if guiding_qs:
-            focus_section += "Suggested angles to consider (not mandatory):\n"
-            for gq in guiding_qs:
-                focus_section += f"  - {gq}\n"
-            focus_section += "\n"
 
     return (
-        f"You are {agent_name}. You will cross-examine {opponent_name} about:\n\n"
-        f"  \"{topic}\"\n\n"
-        "Use IDs (A#/C#/E#/P#/N#/U#/X#) precisely.\n\n"
-        "YOUR BELIEF (JSON):\n"
-        "```json\n" + agent_belief_json + "\n```\n\n"
-        "OPPONENT BELIEF (JSON):\n"
-        "```json\n" + opponent_belief_json + "\n```\n\n"
+        "<context>\n"
+        "<your_belief>\n"
+        "```json\n" + agent_belief_json + "\n```\n"
+        "</your_belief>\n\n"
+        f"<opponent_belief agent=\"{opponent_name}\">\n"
+        "```json\n" + opponent_belief_json + "\n```\n"
+        "</opponent_belief>\n\n"
         + vulnerability_analysis
-        + anti_repetition_context
-        + focus_section +
-        "GOAL:\n"
-        f"- Ask up to {max_questions} high-leverage questions that:\n"
-        "- (i) identify logical inconsistencies, internal contradictions, pinpoint fragile assumptions (A#), unsupported or overstated claims (C#), and unfalsifiable or weak predictions (P#)\n"
-        "- (ii) propose concrete tests/observations that would move beliefs\n"
-        "- (iii) are brief, answerable, and reference the target IDs.\n\n"
-        "CRITICAL QUESTIONING STRATEGIES (prioritize these):\n"
-        "1. Challenge unfalsifiable assumptions: If A# cannot be empirically tested, how can claims depending on it be empirical?\n"
-        "2. Identify circular reasoning: Does the opponent use correlational evidence to support C# while listing 'correlation ≠ causation' as a weakness?\n"
-        "3. Question confidence calibration: If C# has confidence 0.7 but E# has 'medium rigor' and is 'unreplicated,' how is this justified?\n"
-        "4. Expose dependency vulnerabilities: If C# depends on A#, and A# is questionable, how confident can C# be?\n"
-        "5. Demand falsifiability: What exact observation or experiment would falsify C# or P#? If none, this is a logical flaw.\n"
-        "6. Test inference chains: Does each step in the inference_chain actually follow from the previous? Are there hidden assumptions?\n"
-        "7. Challenge confidence propagation: If C# depends on C2 (confidence 0.5) and A1 (unjustified), can C# have confidence > 0.5?\n\n"
-        "RULES:\n"
-        "- Do not ask multiple questions at once; each question targets at most 2 IDs.\n"
-        "- Prefer questions that can elicit a concession, a measurable test, or a scope clarification.\n"
-        "- Avoid rhetorical questions. Be specific.\n"
-        f"- Keep each question ≤ {max_question_length_chars} characters; keep intent labels concise.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block with a list under key \"questions\":\n"
+        + previous_questions_section
+        + focus_section
+        + "</context>\n\n"
+        "<instructions>\n"
+        f"You are {agent_name} cross-examining {opponent_name} on: \"{topic}\"\n\n"
+        "Inside <reasoning> tags, first briefly state your opponent's position in its strongest form, "
+        "then identify where that strongest version is genuinely vulnerable. Pay attention to their "
+        "counterpositions (X#) — where they rate response_sufficiency as \"partial\" or \"unaddressed\" "
+        "they've already flagged their own vulnerabilities. Don't waste questions on counterpositions "
+        "rated \"sufficient\" unless you can demonstrate the rating is unjustified. Also check whether "
+        "their assumption types are correctly classified — an assumption labeled \"foundational\" that "
+        "is actually empirical can be challenged with evidence.\n\n"
+        f"Then ask up to {max_questions} high-leverage questions. Each should target specific IDs "
+        f"(at most 2 per question), be answerable (not rhetorical), and aim to elicit a concession, "
+        f"measurable test, or scope clarification. Keep each ≤ {max_question_length_chars} characters.\n\n"
+        "QUESTIONING STRATEGIES (prioritize the most applicable):\n"
+        "1. Exploit partial counterpositions — press on X# where response_sufficiency is \"partial\" or \"unaddressed\"\n"
+        "2. Challenge assumption types — is an \"empirical\" assumption actually normative? Is a \"foundational\" claim actually empirical?\n"
+        "3. Question confidence calibration — does confidence exceed what the evidence warrants?\n"
+        "4. Expose dependency vulnerabilities — does a high-confidence claim rest on a weak foundation?\n"
+        "5. Test inference chains — does each step actually follow from the previous? (target undercutting attacks)\n"
+        "6. Demand falsifiability — is P# testable with a concrete decision criterion?\n"
+        "7. Identify circular reasoning — does the inference chain assume its conclusion?\n"
+        "8. Challenge confidence propagation — is a claim more confident than its weakest dependency?\n"
+        "</instructions>\n\n"
+        "<example>\n"
+        "```json\n"
+        "{\n"
+        "  \"qid\": \"Q1\",\n"
+        "  \"text\": \"Your X2 rates the hard problem challenge at strength 0.7 with only 'partial' response sufficiency. "
+        "If you can't fully address the strongest objection to your core claim C2, how do you justify C2's confidence at 0.55 rather than something lower?\",\n"
+        "  \"target_ids\": [\"X2\", \"C2\"],\n"
+        "  \"strategy\": \"exploit_partial_counterposition\"\n"
+        "}\n"
+        "```\n"
+        "</example>\n\n"
+        "<output_format>\n"
+        "Your response must contain:\n"
+        "1. <reasoning>...</reasoning> tags\n"
+        "2. One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
         "  \"questions\": [\n"
         "    {\n"
         "      \"qid\": \"Q1\",\n"
-        "      \"text\": \"<the question itself>\",\n"
-        "      \"target_ids\": [\"C3\", \"A1\"]\n"
+        "      \"text\": \"\",\n"
+        "      \"target_ids\": [\"C3\", \"A1\"],\n"
+        "      \"strategy\": \"\"\n"
         "    }\n"
         "  ]\n"
         "}\n"
         "```\n"
+        "</output_format>\n"
     )
 
         
@@ -401,188 +471,244 @@ def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, oppone
     - VOI: Value Of Information
     """
     return (
-        f"You are {agent_name}. You will respond to {opponent_name}'s cross-examination about:\n\n"
-        f"  \"{topic}\"\n\n"
-        "YOUR CURRENT BELIEF (JSON):\n"
-        "```json\n" + agent_belief_json + "\n```\n\n"
-        "QUESTIONS YOU RECEIVED (JSON):\n"
-        "```json\n" + received_questions_json + "\n```\n\n"
-        f"GOAL: Provide up to {max_rebuttals} *high-signal* rebuttals that either:\n"
-        "- (a) Refute the premise with linked evidence (E#),\n"
-        "- (b) Concede and narrow scope/qualifiers/assumptions (update claim/status/confidence/assumptions),\n"
-        "- (c) Defer with an explicit uncertainty (U#) and VOI plan.\n\n"
-        "ACTION DEFINITIONS (these are BINDING commitments - your answer MUST match your action):\n\n"
-        "1. \"refute\": You reject the challenge's premise or conclusion. You MUST provide a logical counter-argument or cite evidence (E#) that undermines the challenge. Your answer should explain WHY the challenge is wrong. NO belief update required unless you're strengthening a claim.\n"
-        "   Example: \"Your claim that A1 is unfalsifiable is incorrect because [specific falsification criterion]. See E2.\"\n\n"
-        "2. \"concede\": You accept that the challenge identifies a genuine weakness or error in your belief. You MUST:\n"
-        "   - Explicitly acknowledge the weakness in your answer (e.g., 'You are correct that...', 'I acknowledge...')\n"
-        "   - Propose a patch in block (2) that weakens the targeted claim, lowers confidence, retires the claim, or refines the assumption\n"
-        "   - If you say 'concede' but then defend your position, you are violating this protocol.\n"
-        "   Example: \"You are correct that my confidence in C1 is not justified given the weak evidence. I will lower it to 0.5.\"\n\n"
-        "3. \"defer\": You acknowledge the challenge raises an important uncertainty, but you neither accept nor reject it because:\n"
-        "   - The issue requires empirical investigation you cannot resolve now, OR\n"
-        "   - Both positions are logically coherent but incompatible, OR\n"
-        "   - You need to gather more information before forming a judgment\n"
-        "   You MUST add the issue to your uncertainties (U#) or reference an existing uncertainty. You MAY slightly lower confidence (by ~0.05) to reflect increased uncertainty.\n"
-        "   Example: \"This raises an important question about whether consciousness can override determinism (U1). Further research is needed.\"\n\n"
-        "CRITICAL: Your answer text must semantically align with your action label. If you say 'concede,' your answer cannot be a defense.\n\n"
-        "RULES:\n"
-        "- Reference QIDs (e.g., Q1) and the specific IDs in your belief that your answer touches.\n"
-        f"- Keep each answer ≤ {max_rebuttal_length_chars} characters; attach at most 2 IDs per answer unless a patch is proposed.\n"
-        "- If your action is 'concede' or implies a belief change, you MUST propose a PATCH operation in block (2).\n"
-        "- PATCHes must respect stable IDs; do not rename existing IDs; prefer updating assumptions/claims/confidence/status/qualifiers.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "1) FIRST, a fenced JSON block keyed by \"rebuttals\":\n"
+        "<context>\n"
+        "<your_belief>\n"
+        "```json\n" + agent_belief_json + "\n```\n"
+        "</your_belief>\n\n"
+        f"<questions_received from=\"{opponent_name}\">\n"
+        "```json\n" + received_questions_json + "\n```\n"
+        "</questions_received>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        f"You are {agent_name} responding to cross-examination from {opponent_name} on: \"{topic}\"\n\n"
+        "Inside <reasoning> tags, think honestly through each question: Does it identify a genuine weakness? "
+        "Can I refute it with evidence or logic, or should I concede? Am I rationalizing a defense of a weak "
+        "point? If this question targets one of my counterpositions (X#), does their challenge strengthen the "
+        "counterposition or does my existing response hold?\n\n"
+        f"Then provide up to {max_rebuttals} rebuttals in a single JSON object containing both responses and patches.\n\n"
+        "ACTIONS (binding commitments):\n\n"
+        "\"refute\" — You reject the challenge. Provide a specific counter-argument or cite evidence (E#). "
+        "Your answer must argue AGAINST the challenge.\n\n"
+        "\"concede\" — You accept the challenge identifies a real weakness. Acknowledge it in your answer AND "
+        "include a weakening patch. If you write \"I concede\" but then defend your position, you are violating "
+        "the protocol.\n\n"
+        "\"defer\" — The challenge raises an unresolved uncertainty. Explain what would resolve it.\n"
+        "</instructions>\n\n"
+        "<examples>\n"
+        "GOOD refute: action \"refute\", answer argues against the challenge with evidence.\n"
+        "GOOD concede: action \"concede\", answer says \"You're right that C3's confidence is unjustified given "
+        "E2's limitations. I'll lower it to 0.6.\" Patch included.\n"
+        "BAD concede (VIOLATION): action \"concede\", answer says \"While I acknowledge this, my position is "
+        "well-supported because...\" — this is a refute disguised as concede.\n"
+        "</examples>\n\n"
+        "<output_format>\n"
+        "Your response must contain:\n"
+        "1. <reasoning>...</reasoning> tags\n"
+        "2. One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
         "  \"rebuttals\": [\n"
         "    {\n"
         "      \"qid\": \"Q1\",\n"
-        "      \"answer\": \"<≤500 chars>\",\n"
+        "      \"answer\": \"\",\n"
         "      \"action\": \"refute|concede|defer\",\n"
         "      \"linked_ids\": [\"C2\", \"E4\"]\n"
         "    }\n"
+        "  ],\n"
+        "  \"patches\": [\n"
+        "    {\"op\": \"update_claim\", \"target_id\": \"C3\", \"changes\": {\"confidence\": 0.6}},\n"
+        "    {\"op\": \"update_thesis\", \"change\": \"weaken\"},\n"
+        "    {\"op\": \"retire_claim\", \"target_id\": \"C5\"},\n"
+        "    {\"op\": \"add_evidence\", \"item\": {\"id\": \"E_NEW\", \"type\": \"...\", \"summary\": \"...\", "
+        "\"source\": \"...\", \"relevance_to_claims\": [\"...\"], \"quality_assessment\": \"...\", \"limitations\": \"...\"}},\n"
+        "    {\"op\": \"update_assumption\", \"target_id\": \"A2\", \"new_statement\": \"...\"},\n"
+        "    {\"op\": \"add_counterposition\", \"item\": {\"id\": \"X_NEW\", \"targets\": [\"C#\"], "
+        "\"attack_type\": \"undermining|rebutting|undercutting\", \"statement\": \"...\", \"strength\": 0.0, "
+        "\"my_response\": \"...\", \"response_sufficiency\": \"sufficient|partial|unaddressed\"}},\n"
+        "    {\"op\": \"update_counterposition\", \"target_id\": \"X1\", \"changes\": {\"strength\": 0.7, "
+        "\"response_sufficiency\": \"partial\"}}\n"
         "  ]\n"
         "}\n"
         "```\n\n"
-        "2) SECOND, a fenced JSON block with patch ops (MANDATORY if action='concede', OPTIONAL otherwise):\n"
-        "```json\n"
-        "{\n"
-        "  \"patches\": [\n"
-        "    {\"op\": \"update_thesis\", \"change\": \"weaken|strengthen\"},\n"
-        "    {\"op\": \"update_assumption\", \"target_id\": \"A#\", \"change\": \"retire|refine\"},\n"
-        "    {\"op\": \"update_claim\", \"target_id\": \"C#\", \"changes\": {\"confidence\": 0.55, \"qualifiers\": [\"under X\"]}},\n"
-        "    {\"op\": \"add_evidence\", \"item\": {\"id\": \"E#\", \"type\": \"empirical\", \"summary\": \"...\",\n"
-        "      \"source\": {\"citation\": \"<URL/DOI>\", \"year\": 2024}, \"quality\": 0.8, \"relevance_to_claims\": [\"C2\"]}}\n"
-        "  ]\n"
-        "}\n"
-        "```\n"
+        "If any action is \"concede\", patches MUST contain at least one weakening patch for that question. "
+        "If no patches are warranted: \"patches\": []\n"
+        "</output_format>\n"
     )
 
 def build_stage_5_belief_update_prompt_cbs(agent_name: str,
                                              challenge_rebuttal_pairs: list[dict],
-                                             prior_belief_json: str) -> str:
+                                             prior_belief_json: str,
+                                             stage_3_patches_json: str = "") -> str:
     """
-    Ask the agent to PATCH its prior CBS belief by ID and
-    then emit the UPDATED CBS JSON followed by a Markdown rendering.
+    Stage 5: Belief update via PATCH operations based on adjudication outcomes.
+
+    Args:
+        agent_name: Name of the agent updating beliefs.
+        challenge_rebuttal_pairs: List of adjudication outcome dicts.
+        prior_belief_json: Agent's current CBS belief as JSON string.
+        stage_3_patches_json: Optional JSON of patches proposed during Stage 3 rebuttals.
     """
     lines = []
     for entry in challenge_rebuttal_pairs:
-        challenger = entry.get("challenger","?")
-        challenge = entry.get("challenge","?")
-        res = entry.get("resolution",{}) or {}
-        status = res.get("status","?")
-        reasoning = res.get("reasoning","")
+        challenger = entry.get("challenger", "?")
+        challenge = entry.get("challenge", "?")
+        res = entry.get("resolution", {}) or {}
+        status = res.get("status", "?")
+        reasoning = res.get("reasoning", "")
         lines.append(f"- From {challenger}: {challenge} → Outcome: {status} | Reason: {reasoning}")
-    cases_str = "\n".join(lines) if lines else "(no adjudications available)"
+    outcomes_formatted = "\n".join(lines) if lines else "(no adjudications available)"
+
+    # Build optional stage 3 patches section
+    stage_3_section = ""
+    if stage_3_patches_json:
+        stage_3_section = (
+            "<your_stage_3_responses>\n"
+            "Patches you proposed during rebuttal (NOT automatically applied — you must re-include "
+            "any you still endorse):\n"
+            "```json\n" + stage_3_patches_json + "\n```\n"
+            "</your_stage_3_responses>\n"
+        )
 
     return (
-        f"Agent {agent_name}, generate PATCH operations to update your belief based on adjudication outcomes.\n\n"
-        "PRIOR BELIEF JSON:\n"
-        "```json\n" + prior_belief_json + "\n```\n\n"
-        "ADJUDICATED OUTCOMES TO INCORPORATE:\n" + cases_str + "\n\n"
-        "TASK:\n"
-        "Output a single fenced JSON block: { \"patches\": [ ... ] }\n\n"
-        "Supported operations:\n"
-        "- {\"op\":\"update_thesis\", \"change\": \"weaken|strengthen\"}\n"
-        "- {\"op\":\"update_claim\", \"target_id\":\"C#\", \"changes\":{\"confidence\":0.55, \"status\":\"tentative\"}}\n"
-        "- {\"op\":\"retire_claim\", \"target_id\":\"C#\"}\n"
-        "- {\"op\":\"add_evidence\", \"item\":{\"id\":\"E#\", \"type\":\"empirical\", \"summary\":\"...\", \"source\":{\"citation\":\"...\", \"year\":2024}, \"relevance_to_claims\":[\"C#\"], \"quality_assessment\":{\"sample_size\":\"medium\", \"replication_status\":\"unreplicated\", \"rigor\":\"medium\"}, \"limitations\":[\"...\"]}}\n"
-        "- {\"op\":\"update_assumption\", \"target_id\":\"A#\", \"new_statement\":\"...\"}\n\n"
-        "═══════════════════════════════════════════════════════════════════════════\n"
-        "⚠️  MANDATORY BELIEF UPDATES - THESE ARE BINDING REQUIREMENTS, NOT SUGGESTIONS\n"
-        "═══════════════════════════════════════════════════════════════════════════\n\n"
-        "For each CRITIQUE_VALID outcome AGAINST you:\n"
-        "- ✋ STOP: This is NOT optional. You MUST generate patches.\n"
-        "- REQUIRED: You MUST lower confidence in the targeted claim by at least 0.1 (e.g., 0.7 → 0.6)\n"
-        "- OR retire the claim entirely if it was the central target of the critique\n"
-        "- OR refine the assumption/claim to address the specific logical flaw identified\n"
-        "- ⚠️  ENFORCEMENT: If you received 2 CRITIQUE_VALID outcomes, you MUST generate at least 2 patches. Returning an empty patches array violates protocol.\n"
-        "- ⚠️  CRITICAL: Generating patches in Stage 3 (rebuttals) does NOT count. You MUST generate patches again in Stage 5.\n\n"
-        "For each REBUTTAL_VALID outcome IN YOUR FAVOR:\n"
-        "- SURVIVAL BONUS (positive reinforcement for battle-tested claims):\n"
-        "  • First successful defense of claim/assumption X: OPTIONAL +0.05 confidence\n"
-        "  • Second+ successful defense of X: MANDATORY +0.05-0.1 confidence\n"
-        "  • Rationale: Claims surviving repeated scrutiny are more robust\n"
-        "- RESOLVED UNCERTAINTY BONUS:\n"
-        "  • If rebuttal resolved a core uncertainty (U#): MANDATORY +0.1 confidence\n"
-        "  • Remove or mark uncertainty as resolved in your uncertainties list\n"
-        "- CUMULATIVE CAP: Total strengthening from all REBUTTAL_VALID outcomes ≤ 0.2\n"
-        "- NOTE: Successful defense increases confidence in proportion to challenge strength, but does not prove absolute correctness.\n\n"
-        "For each UNRESOLVED outcome:\n"
-        "- REQUIRED: You MUST add the unresolved question to your uncertainties list (U#) if not already present\n"
-        "- OPTIONAL: You MAY slightly lower confidence (by ~0.05) to reflect increased epistemic uncertainty\n\n"
-        "EXAMPLES:\n\n"
-        "Example 1: You received \"CRITIQUE_VALID\" for a challenge to C1 (confidence 0.7)\n"
-        "Required patches:\n"
-        "[\n"
-        "  {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"confidence\": 0.6}},\n"
-        "  {\"op\": \"update_thesis\", \"change\": \"weaken\"}\n"
-        "]\n\n"
-        "Example 2: You received \"CRITIQUE_VALID\" for A1 (which C1 and C2 depend on)\n"
-        "Required patches:\n"
-        "[\n"
-        "  {\"op\": \"update_assumption\", \"target_id\": \"A1\", \"new_statement\": \"[revised statement addressing the flaw]\"},\n"
-        "  {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"confidence\": 0.5}},\n"
-        "  {\"op\": \"update_claim\", \"target_id\": \"C2\", \"changes\": {\"confidence\": 0.5}}\n"
-        "]\n\n"
-        "Example 3: You received \"UNRESOLVED\" about whether consciousness can override determinism\n"
-        "Required patches:\n"
-        "[\n"
-        "  {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"confidence\": 0.65}}\n"
-        "]\n"
-        "(And ensure U1 or a new U# captures this uncertainty)\n\n"
-        "⚠️  FINAL REMINDERS:\n"
-        "- You CANNOT dismiss adjudication outcomes. They are binding, not advisory.\n"
-        "- If you received 3 CRITIQUE_VALID outcomes, you MUST show at least 3 patches that weaken your position.\n"
-        "- Returning an empty patches array after CRITIQUE_VALID outcomes is a PROTOCOL VIOLATION.\n"
-        "- Confidence changes will automatically propagate to dependent claims via the patch system.\n"
-        "- Changelog will be auto-generated from patches.\n"
-        "- Do NOT output the full updated belief - ONLY the patches.\n\n"
-        "⚠️  COMPLIANCE CHECK: Before submitting your response, verify:\n"
-        "   □ Did I receive any CRITIQUE_VALID outcomes? If YES → patches array MUST be non-empty\n"
-        "   □ Does my patches array contain at least N patches if I received N CRITIQUE_VALID outcomes?\n"
-        "   □ Do my patches actually weaken the targeted claims/assumptions?\n\n"
-        "NO extra text before or after the JSON block."
+        "<context>\n"
+        "<prior_belief>\n"
+        "```json\n" + prior_belief_json + "\n```\n"
+        "</prior_belief>\n\n"
+        "<adjudication_outcomes>\n"
+        + outcomes_formatted + "\n"
+        "</adjudication_outcomes>\n\n"
+        + stage_3_section +
+        "</context>\n\n"
+        "<instructions>\n"
+        f"Agent {agent_name}, generate PATCH operations to update your belief.\n\n"
+        "Inside <reasoning> tags, think through each outcome: what weakness or strength was identified, "
+        "which elements need to change, and what magnitude of change is appropriate. Consider whether "
+        "outcomes affect your counterpositions — if a critique exposed a new vulnerability, add a "
+        "counterposition (X#). If you successfully defended against a challenge you'd listed as \"partial,\" "
+        "upgrade response_sufficiency. Cross-reference your Stage 3 responses if provided — ensure your "
+        "patches are consistent with any concessions you already made.\n\n"
+        "Then output a single fenced JSON code block.\n\n"
+        "SUPPORTED OPERATIONS:\n"
+        "- {\"op\": \"update_thesis\", \"change\": \"weaken|strengthen\"}\n"
+        "- {\"op\": \"update_claim\", \"target_id\": \"C#\", \"changes\": {\"confidence\": 0.55, \"status\": \"tentative\"}}\n"
+        "- {\"op\": \"retire_claim\", \"target_id\": \"C#\"}\n"
+        "- {\"op\": \"add_evidence\", \"item\": {...}}\n"
+        "- {\"op\": \"update_assumption\", \"target_id\": \"A#\", \"new_statement\": \"...\", \"new_type\": \"...\"}\n"
+        "- {\"op\": \"add_uncertainty\", \"item\": {\"id\": \"U#\", \"question\": \"...\", \"cruciality\": \"...\", \"voi_hint\": \"...\"}}\n"
+        "- {\"op\": \"add_counterposition\", \"item\": {\"id\": \"X#\", \"targets\": [...], \"attack_type\": \"...\", "
+        "\"statement\": \"...\", \"strength\": 0.0, \"my_response\": \"...\", "
+        "\"response_sufficiency\": \"sufficient|partial|unaddressed\"}}\n"
+        "- {\"op\": \"update_counterposition\", \"target_id\": \"X#\", \"changes\": {\"strength\": 0.0, "
+        "\"my_response\": \"...\", \"response_sufficiency\": \"...\"}}\n"
+        "</instructions>\n\n"
+        "<mandatory_rules>\n"
+        "BINDING — not suggestions:\n"
+        "- CRITIQUE_VALID against you → at least one weakening patch per outcome. Lower confidence ≥0.1, "
+        "retire the claim, or refine to address the flaw. Empty patches after CRITIQUE_VALID = protocol "
+        "violation. Stage 3 patches do NOT carry over. Also: if the critique reveals a new vulnerability, "
+        "add a counterposition (X#) recording it.\n"
+        "- REBUTTAL_VALID for you → optional +0.05 first defense; mandatory +0.05-0.10 second+ defense "
+        "of same claim; cumulative cap +0.2. If you defended against a listed counterposition, update its "
+        "response_sufficiency.\n"
+        "- UNRESOLVED → required: add uncertainty (U#); optional: lower confidence ~0.05.\n"
+        "</mandatory_rules>\n\n"
+        "<example>\n"
+        "Outcomes: CRITIQUE_VALID on C2, REBUTTAL_VALID on C1 (defended against X1's challenge), "
+        "UNRESOLVED on C4:\n\n"
+        "```json\n"
+        "{\n"
+        "  \"patches\": [\n"
+        "    {\"op\": \"update_claim\", \"target_id\": \"C2\", \"changes\": {\"confidence\": 0.55, "
+        "\"confidence_justification\": \"Reduced from 0.75: E2 insufficient for causal claim at prior level\"}},\n"
+        "    {\"op\": \"add_counterposition\", \"item\": {\"id\": \"X4\", \"targets\": [\"C2\"], "
+        "\"attack_type\": \"rebutting\", \"statement\": \"Challenger demonstrated E2's correlational "
+        "limitations undermine causal inference\", \"strength\": 0.65, \"my_response\": \"Acknowledged — "
+        "need stronger evidence for causal claims\", \"response_sufficiency\": \"partial\"}},\n"
+        "    {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"confidence\": 0.75}},\n"
+        "    {\"op\": \"update_counterposition\", \"target_id\": \"X1\", \"changes\": "
+        "{\"response_sufficiency\": \"sufficient\", \"my_response\": \"Successfully defended bidirectional "
+        "dependence argument in cross-examination\"}},\n"
+        "    {\"op\": \"add_uncertainty\", \"item\": {\"id\": \"U3\", \"question\": \"Is C4's computational "
+        "model compatible with opponent's C3?\", \"cruciality\": \"medium\", \"voi_hint\": \"Empirical "
+        "studies on computational consciousness models could resolve this\"}}\n"
+        "  ]\n"
+        "}\n"
+        "```\n"
+        "</example>\n\n"
+        "<output_format>\n"
+        "1. <reasoning>...</reasoning> tags\n"
+        "2. One fenced JSON code block: {\"patches\": [...]}\n\n"
+        "Self-check: Did I produce ≥N weakening patches for N CRITIQUE_VALID outcomes? Did I record new "
+        "vulnerabilities as counterpositions? Does the resulting belief still satisfy dependency rules "
+        "(no claim more confident than its weakest claim dependency)?\n"
+        "</output_format>\n"
     )
 
-def build_stage_6_conclusion_prompt(topic: str, agent_name: str, agent_belief_json: str, all_past_beliefs: list[str], short_note_max_chars: int = 140) -> str:
+def build_stage_6_conclusion_prompt(topic: str, agent_name: str, agent_belief_json: str,
+                                    belief_changelog_summary: str, num_rounds: int = 1,
+                                    persona_label: str = "") -> str:
     """
     Stage 6: Conclusion / Synthesis.
 
     The agent produces a decision-quality synthesis with explicit concessions, strongest surviving claims,
-    and updated confidence. Output is ONE JSON block.
+    counterposition reflection, and updated confidence. Output is ONE JSON block.
 
     Acronyms expanded:
     - JSON: JavaScript Object Notation
     - ID: Identifier (A#, C#, E#, P#, N#, U#, X#, R#)
+
+    Args:
+        topic: The debate topic.
+        agent_name: Name of the agent producing conclusions.
+        agent_belief_json: Agent's final CBS belief as JSON string.
+        belief_changelog_summary: Summary of belief changes across rounds.
+        num_rounds: Number of debate rounds completed.
+        persona_label: Agent's persona/worldview label.
     """
     return (
-        f"You are {agent_name}. You are to produce closing statements regarding the resolution of the topic:\n\n"
-        f"  \"{topic}\"\n\n"
-        "YOUR CURRENT AND FINAL BELIEF (JSON):\n"
-        "```json\n" + agent_belief_json + "\n```\n\n"
-        "ALL OF YOUR PREVIOUS BELIEFS IN CONSECUTIVE ORDER (JSON):\n" + "\n".join(["```json\n" + belief + "\n```\n\n" for belief in all_past_beliefs]) + "GOAL:\n"
-        "- Synthesize where progress was made throughout the debate and where your positions changed (concessions, clarified scope, supported claims).\n"
-        "- Identify your strongest surviving claims (C#) and the best opposing points if there are any.\n"
-        "- Provide an updated confidence in your thesis.\n"
-        "RULES:\n"
-        "- Be specific with IDs. Keep statements short and decision-useful.\n"
-        "- Avoid repeating long evidence descriptions; cite E# instead.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block with a single top-level key \"conclusion\":\n"
+        "<context>\n"
+        "<final_belief>\n"
+        "```json\n" + agent_belief_json + "\n```\n"
+        "</final_belief>\n\n"
+        "<belief_evolution>\n"
+        f"Changes across {num_rounds} rounds:\n"
+        f"{belief_changelog_summary}\n"
+        "</belief_evolution>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        f"You are {agent_name}. Produce your closing statement on: \"{topic}\"\n\n"
+        "Inside <reasoning> tags, reflect: What positions did you change and why? What did you LEARN "
+        "that you didn't appreciate before? Where did your " + (persona_label or "assigned") + " worldview prove "
+        "most useful and where was it limiting? What were the strongest opposing arguments? Which of "
+        "your counterpositions (X#) remained \"partial\" or \"unaddressed\" — what does that tell you "
+        "about the remaining vulnerability of your position? What specific evidence or argument would "
+        "change your core position?\n\n"
+        "Then produce your conclusion.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "1. <reasoning>...</reasoning> tags\n"
+        "2. One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
         "  \"conclusion\": {\n"
-        "    \"final_thesis\": {\"stance\": \"<1 sentence>\", \"confidence\": <0.0-1.0>},\n"
+        "    \"final_thesis\": {\"stance\": \"<1-2 sentences>\", \"confidence\": 0.0},\n"
         "    \"our_strongest_claims\": [\"C#\", \"C#\"],\n"
-        "    \"our_concessions\": [\n"
-        f"      {{\"target_id\": \"C#|A#|P#\", \"type\": \"scope_narrow|confidence_drop|retract\", \"note\": \"<≤{short_note_max_chars} chars>\"}}\n"
+        "    \"best_opposing_arguments\": [\n"
+        "      {\"from_agent\": \"\", \"summary\": \"\", \"claim_ids_challenged\": [\"C#\"]}\n"
         "    ],\n"
-        "    \"unresolved_uncertainties\": [\"U#\", \"U#\"]\n"
+        "    \"our_concessions\": [\n"
+        "      {\"target_id\": \"C#|A#|P#\", \"type\": \"scope_narrow|confidence_drop|retract\", \"note\": \"\"}\n"
+        "    ],\n"
+        "    \"unresolved_counterpositions\": [\n"
+        "      {\"id\": \"X#\", \"strength\": 0.0, \"response_sufficiency\": \"partial|unaddressed\", \"what_would_resolve\": \"\"}\n"
+        "    ],\n"
+        "    \"key_learnings\": [\"\"],\n"
+        "    \"unresolved_uncertainties\": [\"U#\"],\n"
+        "    \"what_would_change_my_mind\": \"\"\n"
         "  }\n"
         "}\n"
         "```\n"
+        "</output_format>\n"
     )
 
 def build_stage_7_scribe_prompt_map(
@@ -617,53 +743,43 @@ def build_stage_7_scribe_prompt_map(
     """
     agents_str = ", ".join(agent_names)
     return (
-        f"You are the debate scribe tasked with producing an **expository** account (research-paper style) of the debate.\n\n"
-        f"TOPIC:\n  \"{topic}\"\n\n"
-        f"PARTICIPANTS (use names exactly): {agents_str}\n\n"
-        "STYLE & VOICE:\n"
-        f"- Write in a {style_hint}. Prefer clarity, precision, and neutrality.\n"
-        "- Summarize and explain; do not emulate conversational back-and-forth.\n"
-        "- Weave in structure explicitly: positions, assumptions, claims, evidence, counterarguments, adjudication outcomes.\n"
-        "- Where relevant, reference the structured IDs (A#=Assumption, C#=Claim, E#=Evidence, P#=Prediction, "
-        "N#=Normative implication, U#=Uncertainty, X#=Counterposition, R#=Rebuttal) parenthetically, e.g., (C3, E5).\n"
-        "- Do NOT invent facts; compress and clarify only.\n\n"
-        "CONTINUITY STATE (from prior chunks; may be empty):\n"
-        "```json\n" + (continuity_state_json.strip() or "{}") + "\n```\n\n"
-        "TRANSCRIPT CHUNK (source material):\n"
-        "```\n" + transcript_chunk.strip() + "\n```\n\n"
+        "<context>\n"
+        f"<debate_topic>\"{topic}\"</debate_topic>\n"
+        f"<participants>{agents_str}</participants>\n\n"
+        "<continuity_state>\n"
+        "```json\n" + (continuity_state_json.strip() or "{}") + "\n```\n"
+        "</continuity_state>\n\n"
+        "<transcript_chunk>\n"
+        + transcript_chunk.strip() + "\n"
+        "</transcript_chunk>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        "You are the debate scribe producing an expository research-paper-style account.\n\n"
+        "STYLE: Formal, precise, neutral. Summarize and explain — don't emulate conversation. "
+        "Reference structured IDs parenthetically. Do not invent facts.\n\n"
         "TASKS:\n"
-        "1) Update continuity with succinct, structured notes about: positions, stance shifts, key assumptions, pivotal claims/evidence, "
-        "   adjudication outcomes, unresolved questions, and emerging themes.\n"
-        "2) Produce an expository section for THIS chunk that teaches the reader what changed or was clarified.\n"
-        "   Include short section headings, name participants when attributing positions, and cite IDs when helpful.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "1) FIRST a fenced JSON block:\n"
+        "1. Update the continuity state: current positions, stance shifts, pivotal claims, "
+        "adjudication outcomes, unresolved questions, emerging themes, NOVEL INSIGHTS, and "
+        "COUNTERPOSITION EVOLUTION (which counterpositions were tested, which responses held, "
+        "which were upgraded or degraded).\n"
+        "2. Write an expository section for this chunk teaching the reader what happened and changed.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "1. Fenced JSON code block:\n"
         "```json\n"
         "{\n"
-        "  \"continuity_update\": {\n"
-        f"    \"positions\": {{\"<name>\": {{\"thesis_delta\": \"<≤{short_note_max_chars} chars>\", \"notable_assumptions\": [\"A#\", \"A#\"], \"notable_claims\": [\"C#\"]}}}},\n"
-        "    \"evidence_highlights\": [\"E#\", \"E#\"],\n"
-        f"    \"adjudication\": [{{\"ref\": \"<Q#|C#|R#>\", \"outcome\": \"rebuttal_valid|critique_valid|unresolved\", \"note\": \"<≤{short_note_max_chars} chars>\"}}],\n"
-        "    \"themes\": [\"<theme>\", \"<theme>\"] ,\n"
-        "    \"unresolved\": [\"<question>\", \"<gap>\"]\n"
-        "  }\n"
+        "  \"positions\": {\"\": \"\"},\n"
+        "  \"stance_shifts\": [\"\"],\n"
+        "  \"pivotal_claims\": [\"\"],\n"
+        "  \"adjudication_outcomes\": [\"\"],\n"
+        "  \"unresolved_questions\": [\"\"],\n"
+        "  \"emerging_themes\": [\"\"],\n"
+        "  \"novel_insights\": [\"\"],\n"
+        "  \"counterposition_evolution\": [\"\"]\n"
         "}\n"
-        "```\n"
-        "2) SECOND a fenced Markdown block with ONLY the expository section for this chunk. Suggested outline:\n"
-        "```markdown\n"
-        "### Section Overview\n"
-        "A concise paragraph explaining what this segment contributed to the debate.\n\n"
-        "### Positions and Assumptions Clarified\n"
-        "- <Name>: thesis/assumptions clarified (A#...) and their implications.\n"
-        "- <Name>: thesis/assumptions clarified (A#...).\n\n"
-        "### Claims and Evidence Discussed\n"
-        "- Claim(s): summarize key claims (C#...) and the most salient supporting evidence (E#...).\n"
-        "- Note any qualifiers, scope limits, or contradictions surfaced.\n\n"
-        "### Cross-Examination and Rebuttals\n"
-        "- Summarize critical challenges and the corresponding replies (R#...), with adjudication outcomes if mentioned.\n\n"
-        "### Emerging Themes and Open Questions\n"
-        "- Thematically group insights and list remaining uncertainties (U#...).\n"
-        "```\n"
+        "```\n\n"
+        "2. Fenced Markdown block with the expository section.\n"
+        "</output_format>\n"
     )
 
 def build_stage_7_scribe_prompt_reduce(
@@ -696,56 +812,45 @@ def build_stage_7_scribe_prompt_reduce(
     agents_str = ", ".join(agent_names)
     slices_joined = "\n\n---\n\n".join(s.strip() for s in all_narrative_slices_markdown if s.strip())
     return (
-        f"You are the debate scribe producing a **final expository synthesis** (research-paper/book-chapter style).\n\n"
-        f"TOPIC:\n  \"{topic}\"\n\n"
-        f"PARTICIPANTS (use names exactly): {agents_str}\n\n"
-        "STYLE & VOICE:\n"
-        f"- Write in a {style_hint}. Be explicit, didactic, and neutral. Avoid conversational filler.\n"
-        "- Use clear headings and short paragraphs. Attribute positions to participants by name.\n"
-        "- Where structured IDs are helpful, reference them parenthetically (e.g., “Claim (C3) supported by (E5)”).\n"
-        "- Do not invent content; you may compress and reorganize for clarity and pedagogy.\n\n"
-        "FINAL CONTINUITY STATE (arcs, themes, unresolved):\n"
-        "```json\n" + (final_continuity_state_json.strip() or "{}") + "\n```\n\n"
-        "EXPOSITORY SECTIONS TO MERGE (from map steps):\n"
-        "```markdown\n" + slices_joined + "\n```\n\n"
-        "TASK:\n"
-        "Synthesize the sections into a single cohesive narrative with the following suggested outline. "
-        "You may adjust headings if warranted by the material:\n"
-        "- Title\n"
-        "- 1. Introduction (context, research question, participants)\n"
-        "- 2. Methods (debate setup, schemas, adjudication policy)\n"
-        "- 3. Positions and Assumptions (by participant; cite A#)\n"
-        "- 4. Claims and Evidence (organize by themes; cite C# and E#)\n"
-        "- 5. Cross-Examination and Rebuttals (key challenges, replies, and outcomes)\n"
-        "- 6. Adjudication Results (logic/ethics weights if applicable; decisive points)\n"
-        "- 7. Remaining Uncertainties and Proposed Tests (U#, P#)\n"
-        "- 8. Synthesis and Conclusion (what changed, where consensus lies, what is unresolved)\n"
-        "- References or Source Notes (optional, if present)\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
+        "<context>\n"
+        f"<debate_topic>\"{topic}\"</debate_topic>\n"
+        f"<participants>{agents_str}</participants>\n\n"
+        "<final_continuity_state>\n"
+        "```json\n" + (final_continuity_state_json.strip() or "{}") + "\n```\n"
+        "</final_continuity_state>\n\n"
+        "<expository_sections>\n"
+        + slices_joined + "\n"
+        "</expository_sections>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        "Produce the FINAL synthesis as a research-paper-style narrative. Formal, neutral, didactic. "
+        "Attribute positions by name. Reference IDs for precision. Eliminate redundancy across sections.\n\n"
+        "Pay special attention to:\n"
+        "- NOVEL INSIGHTS: conclusions or framings that emerged from the debate and were NOT in any "
+        "agent's initial position.\n"
+        "- COUNTERPOSITION RESILIENCE: which agents' counterpositions survived testing, which were "
+        "upgraded to \"sufficient,\" and which remained \"partial\" or \"unaddressed\" — this reveals "
+        "the genuine remaining vulnerabilities in each position.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "One fenced Markdown block:\n\n"
         "```markdown\n"
-        "# <Final Title>\n\n"
+        "# <Title>\n\n"
         "## Abstract\n"
-        "<150–250 words summarizing the debate, contributions, and main conclusions.>\n\n"
+        "<150-250 words>\n\n"
         "## 1. Introduction\n"
-        "<Context, research question, and who participated. Explain the topic in plain terms.>\n\n"
         "## 2. Methods\n"
-        "<Briefly describe the debate structure, the CHAL belief schema (CBS = CHAL Belief Schema), "
-        "adjudication protocol, and any weighting (logic vs. ethics) if used.>\n\n"
-        "## 3. Positions and Assumptions\n"
-        "<By participant: thesis, core assumptions (A#), scope conditions, and initial confidence.>\n\n"
-        "## 4. Claims and Evidence\n"
-        "<Group by theme; for each claim (C#) summarize supporting evidence (E#), qualifiers, and gaps.>\n\n"
-        "## 5. Cross-Examination and Rebuttals\n"
-        "<Explain high-leverage challenges and replies (R#), including any counterpositions (X#).>\n\n"
+        "## 3. Initial Positions and Assumptions\n"
+        "## 4. Claims, Evidence, and Argumentation\n"
+        "## 5. Cross-Examination and Key Exchanges\n"
         "## 6. Adjudication Results\n"
-        "<Summarize outcomes (rebuttal_valid, critique_valid, unresolved) and why, with references to specific items.>\n\n"
-        "## 7. Remaining Uncertainties and Proposed Tests\n"
-        "<List key uncertainties (U#) and the most informative next tests or predictions (P#).>\n\n"
-        "## 8. Synthesis and Conclusion\n"
-        "<Explain where progress was made, what shifted (confidence, scope), and what remains open.>\n\n"
+        "## 7. Belief Evolution and Counterposition Resilience\n"
+        "## 8. Novel Insights and Syntheses\n"
+        "## 9. Remaining Uncertainties and Proposed Tests\n"
+        "## 10. Conclusion\n"
         "## References / Source Notes\n"
-        "<Optional: citations (URLs/DOIs) if present in evidence items.>\n"
         "```\n"
+        "</output_format>\n"
     )
 
 # === Moderator / Roadmap Prompts ===
@@ -771,62 +876,42 @@ def build_moderator_roadmap_prompt(
     """
     personas_str = ", ".join(agent_personas)
 
-    context_section = ""
-    if context.strip():
-        context_section = (
-            "BACKGROUND CONTEXT (use this to inform your analysis):\n"
-            "---\n"
-            f"{context.strip()}\n"
-            "---\n\n"
-        )
-
     return (
-        "You are a debate moderator and topic analyst. Your task is to analyze a debate topic\n"
-        "in depth and produce an ordered ROADMAP of sub-topics that the debating agents should\n"
-        "address across multiple rounds.\n\n"
-        f"DEBATE TOPIC:\n"
-        f"  \"{topic}\"\n\n"
-        f"PARTICIPATING PERSONAS: {personas_str}\n"
-        f"AVAILABLE ROUNDS: {num_rounds}\n\n"
-        + context_section +
-        "TASKS:\n"
-        "1. ANALYZE the topic deeply. Identify the key dimensions, tensions, foundational\n"
-        "   concepts, and contentious sub-questions that a thorough debate should address.\n"
-        "2. DECOMPOSE the topic into exactly " + str(num_rounds) + " ordered sub-topics.\n"
-        "   - Start with foundational or definitional issues that must be established first.\n"
-        "   - Progress toward more specific, contentious, or applied questions.\n"
-        "   - Ensure each sub-topic is substantive enough for a full round of cross-examination\n"
-        "     and rebuttals, but focused enough to make real progress.\n"
-        "3. For each sub-topic, provide:\n"
-        "   - A clear title (short, descriptive).\n"
-        "   - A description explaining what this sub-topic covers and why it matters.\n"
-        "   - A rationale for its position in the ordering.\n"
-        "   - 2-4 guiding questions that agents should consider (not mandatory, but suggestive).\n"
-        "4. Explain the OVERALL RATIONALE for your decomposition and ordering.\n"
-        "5. Assess SUFFICIENCY: Given " + str(num_rounds) + " rounds, is this enough to achieve\n"
-        "   meaningful depth on the topic? If not, explain what would be missed and how many\n"
-        "   rounds you would recommend instead.\n\n"
-        "Consider the personas involved (" + personas_str + ") when designing sub-topics —\n"
-        "choose areas where their perspectives are likely to diverge productively.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block:\n"
+        "<context>\n"
+        f"<debate_topic>\"{topic}\"</debate_topic>\n"
+        f"<personas>{personas_str}</personas>\n"
+        f"<rounds>{num_rounds}</rounds>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        f"You are a debate moderator. Produce a ROADMAP of exactly {num_rounds} sub-topics.\n\n"
+        "ORDERING PRINCIPLES:\n"
+        "- Round 1: Foundational — definitional clarity, shared assumptions, framing of core question.\n"
+        "- Middle rounds: Substantive empirical and logical questions where evidence and inference "
+        "chains matter most.\n"
+        "- Final rounds: Most contentious, applied, or speculative dimensions where productive "
+        "disagreement generates insight.\n\n"
+        f"Consider which sub-topics will produce the richest exchanges given these specific personas: "
+        f"{personas_str}.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
         "  \"sub_topics\": [\n"
         "    {\n"
-        "      \"title\": \"<short descriptive title>\",\n"
-        "      \"description\": \"<what this sub-topic covers and why it matters>\",\n"
-        "      \"rationale\": \"<why this sub-topic is positioned here in the sequence>\",\n"
-        "      \"guiding_questions\": [\n"
-        "        \"<question 1>\",\n"
-        "        \"<question 2>\"\n"
-        "      ]\n"
+        "      \"round\": 1,\n"
+        "      \"title\": \"\",\n"
+        "      \"description\": \"\",\n"
+        "      \"rationale\": \"\",\n"
+        "      \"guiding_questions\": [\"\", \"\"],\n"
+        "      \"expected_tensions\": \"\"\n"
         "    }\n"
         "  ],\n"
-        "  \"overall_rationale\": \"<why this decomposition and ordering makes sense>\",\n"
-        "  \"sufficiency_note\": \"<assessment of whether " + str(num_rounds) + " rounds is sufficient>\"\n"
+        "  \"overall_rationale\": \"\",\n"
+        "  \"sufficiency_note\": \"\"\n"
         "}\n"
         "```\n"
+        "</output_format>\n"
     )
 
 
@@ -882,62 +967,45 @@ def build_moderator_review_round_prompt(
     constraints_section = "\n".join(constraint_lines)
 
     return (
-        "You are a debate moderator reviewing progress after a completed debate round.\n"
-        "Your task is to decide whether the REMAINING roadmap of sub-topics should be\n"
-        "revised based on how the debate is progressing.\n\n"
-        f"DEBATE TOPIC:\n"
-        f"  \"{topic}\"\n\n"
-        f"COMPLETED ROUND: {round_num}\n\n"
-        "ROUND SUMMARY (structured data from the round that just finished):\n"
-        f"{json.dumps(round_summary, indent=2, ensure_ascii=False)}\n\n"
-        "REMAINING SUB-TOPICS (not yet addressed):\n"
-        f"{json.dumps(remaining_sub_topics, indent=2, ensure_ascii=False)}\n\n"
-        "═══════════════════════════════════════════════════════════════════════════\n"
-        "ANALYSIS TASKS\n"
-        "═══════════════════════════════════════════════════════════════════════════\n\n"
-        "1. COVERAGE ASSESSMENT: Was this round's sub-topic thoroughly addressed?\n"
-        "   - If important aspects were left unresolved, consider whether a follow-up\n"
-        "     sub-topic should be added or the next sub-topic's scope adjusted.\n"
-        "2. EMERGING THEMES: Did the debate surface new tensions, questions, or themes\n"
-        "   that the remaining roadmap does not address?\n"
-        "   - If so, consider adding a sub-topic or adjusting existing ones.\n"
-        "3. ORDERING ASSESSMENT: Given what was learned in this round, is the current\n"
-        "   ordering of remaining sub-topics still optimal?\n"
-        "   - Consider whether a different sequence would be more productive.\n"
-        "4. CONVERGENCE CHECK: If agents are converging on this area, it may be better\n"
-        "   to move on to more contentious ground. If they are diverging, more depth\n"
-        "   may be needed.\n\n"
-        "═══════════════════════════════════════════════════════════════════════════\n"
-        "CONSTRAINTS (you MUST respect these)\n"
-        "═══════════════════════════════════════════════════════════════════════════\n\n"
-        f"{constraints_section}\n\n"
-        "IMPORTANT: Only propose a revision if there is a MEANINGFUL reason to change\n"
-        "the roadmap. Avoid unnecessary churn — stability is valuable. If the remaining\n"
-        "roadmap is still appropriate, set \"revision_needed\" to false.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block:\n"
+        "<context>\n"
+        f"<debate_topic>\"{topic}\"</debate_topic>\n"
+        f"<completed_round>{round_num}</completed_round>\n\n"
+        "<round_summary>\n"
+        "```json\n"
+        f"{json.dumps(round_summary, indent=2, ensure_ascii=False)}\n"
+        "```\n"
+        "</round_summary>\n\n"
+        "<remaining_sub_topics>\n"
+        "```json\n"
+        f"{json.dumps(remaining_sub_topics, indent=2, ensure_ascii=False)}\n"
+        "```\n"
+        "</remaining_sub_topics>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        "Decide whether the remaining roadmap should be revised.\n\n"
+        "ANALYSIS:\n"
+        "1. Coverage: Was the sub-topic thoroughly addressed, or do agents need another round on it?\n"
+        "2. Convergence: If score increased >0.1, advance to more contentious topics. If stagnated, "
+        "the disagreement may be deeper than expected. If >0.7, move to the most contentious "
+        "remaining topic.\n"
+        "3. Emerging themes: Did new tensions or questions surface that aren't in the roadmap?\n"
+        "4. Ordering: Should a later sub-topic move earlier given what was learned?\n\n"
+        f"CONSTRAINTS: {constraints_section}\n\n"
+        "Only revise if there's a meaningful reason. The original roadmap was designed with care.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
         "  \"revision_needed\": true,\n"
-        "  \"revised_sub_topics\": [\n"
-        "    {\n"
-        "      \"title\": \"<short descriptive title>\",\n"
-        "      \"description\": \"<what this sub-topic covers and why it matters>\",\n"
-        "      \"rationale\": \"<why this sub-topic is positioned here>\",\n"
-        "      \"guiding_questions\": [\"<question 1>\", \"<question 2>\"]\n"
-        "    }\n"
-        "  ],\n"
-        "  \"revision_rationale\": \"<explanation of why the roadmap was revised>\"\n"
-        "}\n"
-        "```\n\n"
-        "If no revision is needed:\n"
-        "```json\n"
-        "{\n"
-        "  \"revision_needed\": false,\n"
+        "  \"coverage_assessment\": \"\",\n"
+        "  \"convergence_analysis\": \"\",\n"
+        "  \"emerging_themes\": [\"\"],\n"
         "  \"revised_sub_topics\": [],\n"
         "  \"revision_rationale\": \"\"\n"
         "}\n"
         "```\n"
+        "</output_format>\n"
     )
 
 
@@ -994,105 +1062,44 @@ def build_stage_2_bloodsport_prompt(
         previous_challenges: List of prior challenge dicts for anti-repetition.
         opponent_belief_graph: Optional BeliefGraph for vulnerability analysis.
     """
-    tone_guidance = BLOODSPORT_INTENSITY_GUIDANCE.get(intensity, BLOODSPORT_INTENSITY_GUIDANCE["moderate"])
-
-    # Build graph-based vulnerability analysis if available
-    vulnerability_analysis = ""
-    if opponent_belief_graph:
-        try:
-            from chal.convergence.graph_analysis import analyze_vulnerabilities, format_attack_suggestions
-            vulnerabilities = analyze_vulnerabilities(opponent_belief_graph)
-            vulnerability_analysis = format_attack_suggestions(vulnerabilities, opponent_name)
-            if vulnerability_analysis:
-                vulnerability_analysis = "\n" + vulnerability_analysis + "\n\n"
-        except Exception:
-            pass
-
-    # Build anti-repetition context if previous challenges exist
-    anti_repetition_context = ""
-    if previous_challenges:
-        prev_str = "\n".join([
-            f"  • {ch['qid']}: Targeted {ch['target_ids']} → {ch['outcome']}"
-            for ch in previous_challenges
-        ])
-        anti_repetition_context = (
-            f"\nPREVIOUS CHALLENGES YOU MADE TO {opponent_name.upper()}:\n"
-            f"{prev_str}\n\n"
-            "⚠️  ANTI-REPETITION GUIDELINES:\n"
-            "- Do NOT re-ask questions about claims/assumptions that:\n"
-            "  (a) Received CRITIQUE_VALID AND were subsequently patched by opponent\n"
-            "  (b) Target the exact same weakness you already identified\n"
-            "- INSTEAD, consider:\n"
-            "  (a) Challenging a DIFFERENT weakness in the same claim\n"
-            "  (b) Targeting a different claim/assumption entirely\n"
-            "- You MAY re-challenge if opponent IGNORED the critique (didn't patch after CRITIQUE_VALID)\n\n"
-        )
-
-    # Build focus subtopic section if moderated mode is active
-    focus_section = ""
-    if focus_subtopic:
-        focus_section = (
-            "══════════════════════════════════════════════════════════════════════════\n"
-            "📋 ROUND FOCUS — MODERATED DEBATE\n"
-            "══════════════════════════════════════════════════════════════════════════\n\n"
-            f"This round's discussion is focused on the following sub-topic:\n"
-            f"**{focus_subtopic.get('title', '')}**\n"
-            f"{focus_subtopic.get('description', '')}\n\n"
-            "Your challenges MUST be directly relevant to this sub-topic.\n"
-            "You may reference broader context from the opponent's belief, but your\n"
-            "primary questions must address this specific area.\n\n"
-        )
-        guiding_qs = focus_subtopic.get("guiding_questions", [])
-        if guiding_qs:
-            focus_section += "Suggested angles to consider (not mandatory):\n"
-            for gq in guiding_qs:
-                focus_section += f"  - {gq}\n"
-            focus_section += "\n"
-
     return (
-        f"You are {agent_name}. You will cross-examine {opponent_name} about:\n\n"
-        f"  \"{topic}\"\n\n"
-        "═══════════════════════════════════════════════════════════════════════════\n"
-        "⚔️  BLOOD SPORT MODE — ADVERSARIAL CROSS-EXAMINATION\n"
-        "═══════════════════════════════════════════════════════════════════════════\n\n"
-        f"INTENSITY: {intensity.upper()}\n"
-        f"TONE GUIDANCE: {tone_guidance}\n\n"
-        "Your objective is to WIN this exchange, not to seek truth collaboratively. "
-        "You are free to use any rhetorical strategy you see fit — emotional appeals, "
-        "aggressive framing, strategic misdirection, appeals to consequences, or any "
-        "other persuasive tactic. The standard restrictions on charitable interpretation "
-        "and good-faith engagement are LIFTED.\n\n"
-        "However, you must still:\n"
-        "- Use IDs (A#/C#/E#/P#/N#/U#/X#) precisely when referencing belief components.\n"
-        "- Maintain parseable JSON output format.\n"
-        "- Target real weaknesses in the opponent's position (even if you frame them aggressively).\n\n"
-        "YOUR BELIEF (JSON):\n"
-        "```json\n" + agent_belief_json + "\n```\n\n"
-        "OPPONENT BELIEF (JSON):\n"
-        "```json\n" + opponent_belief_json + "\n```\n\n"
-        + vulnerability_analysis
-        + anti_repetition_context
-        + focus_section +
-        "GOAL:\n"
-        f"- Ask up to {max_questions} devastating questions designed to:\n"
-        "  (i) Expose and exploit logical weaknesses, contradictions, and unsupported claims\n"
-        "  (ii) Undermine the opponent's confidence and credibility\n"
-        "  (iii) Force concessions or admissions that damage their position\n"
-        "  (iv) Reference target IDs for precision strikes\n\n"
-        f"Keep each question ≤ {max_question_length_chars} characters.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block with a list under key \"questions\":\n"
+        "<context>\n"
+        "<your_belief>\n"
+        "```json\n" + agent_belief_json + "\n```\n"
+        "</your_belief>\n\n"
+        f"<opponent_belief agent=\"{opponent_name}\">\n"
+        "```json\n" + opponent_belief_json + "\n```\n"
+        "</opponent_belief>\n"
+        "</context>\n\n"
+        "<blood_sport>\n"
+        f"⚔️ ADVERSARIAL CROSS-EXAMINATION — INTENSITY: {intensity.upper()}\n\n"
+        "<tactics>\n"
+        "MILD — Aggressive confidence, rhetorical force, pointed targeting of weakest points. "
+        "Exploit every \"partial\" and \"unaddressed\" counterposition ruthlessly.\n"
+        "MODERATE — Add: emotional appeals, appeals to consequences, highlighting absurd implications, "
+        "challenging credibility on specific claims.\n"
+        "EXTREME — Add: reductio ad absurdum to uncomfortable extremes, multi-front questioning to overwhelm, "
+        "relentless exploitation of every acknowledged weakness. You must still target real weaknesses — "
+        "no fabrication or misquotation.\n"
+        "</tactics>\n\n"
+        "Charitable interpretation is suspended. Your objective is to WIN.\n"
+        "</blood_sport>\n\n"
+        "<instructions>\n"
+        f"You are {agent_name} cross-examining {opponent_name} on: \"{topic}\"\n\n"
+        f"Ask up to {max_questions} devastating questions. Each must target specific IDs, "
+        f"exploit real weaknesses, and be ≤ {max_question_length_chars} characters. "
+        "Their counterpositions (X#) are a roadmap of their vulnerabilities — use it.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
         "  \"questions\": [\n"
-        "    {\n"
-        "      \"qid\": \"Q1\",\n"
-        "      \"text\": \"<the question itself>\",\n"
-        "      \"target_ids\": [\"C3\", \"A1\"]\n"
-        "    }\n"
+        "    {\"qid\": \"Q1\", \"text\": \"\", \"target_ids\": [\"C3\", \"A1\"]}\n"
         "  ]\n"
         "}\n"
         "```\n"
+        "</output_format>\n"
     )
 
 
@@ -1125,11 +1132,7 @@ def build_stage_3_bloodsport_prompt(
         dialogue_history: List of prior turn dicts [{"speaker": ..., "attack": ..., "defense": ..., "target_claims": [...]}, ...].
         max_response_length_chars: Character limit for attack and defense text each.
     """
-    tone_guidance = BLOODSPORT_INTENSITY_GUIDANCE.get(intensity, BLOODSPORT_INTENSITY_GUIDANCE["moderate"])
-
-    is_opening = not dialogue_history
-
-    # Build dialogue history display
+    # Build exchange history display
     history_section = ""
     if dialogue_history:
         lines = []
@@ -1148,62 +1151,49 @@ def build_stage_3_bloodsport_prompt(
             lines.append(entry)
         history_str = "\n\n".join(lines)
         history_section = (
-            "EXCHANGE SO FAR:\n"
-            "---\n"
+            "<exchange_history>\n"
             f"{history_str}\n"
-            "---\n\n"
-        )
-
-    # Build turn-specific instructions
-    if is_opening:
-        turn_instructions = (
-            "This is your OPENING ATTACK. There is no prior exchange to defend against.\n"
-            "Launch a devastating opening salvo against the opponent's weakest points.\n"
-            "Set \"defense\" to null in your output.\n"
-        )
-    else:
-        last_turn = dialogue_history[-1]
-        turn_instructions = (
-            f"The opponent ({last_turn.get('speaker', opponent_name)}) just attacked your position.\n"
-            "You MUST:\n"
-            "1. DEFEND: Address their attack directly — refute it, dismiss it, or turn it back against them.\n"
-            "2. COUNTER-ATTACK: Launch your own attack on a different or the same weakness in their position.\n"
-            "Do NOT ignore their attack. Engage with it, then hit back harder.\n"
+            "</exchange_history>\n"
         )
 
     return (
-        f"You are {agent_name} in an adversarial exchange with {opponent_name} about:\n\n"
-        f"  \"{topic}\"\n\n"
-        "═══════════════════════════════════════════════════════════════════════════\n"
-        "⚔️  BLOOD SPORT MODE — ADVERSARIAL EXCHANGE\n"
-        "═══════════════════════════════════════════════════════════════════════════\n\n"
-        f"INTENSITY: {intensity.upper()}\n"
-        f"TONE GUIDANCE: {tone_guidance}\n\n"
-        "This is rhetorical COMBAT, not a polite debate. Your objective is to DEMOLISH "
-        "the opponent's position while fortifying your own. You may use any argumentative "
-        "strategy — emotional manipulation, aggressive framing, personal attacks on the "
-        "opponent's reasoning, strategic exaggeration, appeals to consequences, or any "
-        "other persuasive tactic you choose. The usual restrictions are LIFTED.\n\n"
-        "YOUR BELIEF (JSON):\n"
-        "```json\n" + agent_belief_json + "\n```\n\n"
-        "OPPONENT BELIEF (JSON):\n"
-        "```json\n" + opponent_belief_json + "\n```\n\n"
+        "<context>\n"
+        "<your_belief>\n"
+        "```json\n" + agent_belief_json + "\n```\n"
+        "</your_belief>\n\n"
+        f"<opponent_belief agent=\"{opponent_name}\">\n"
+        "```json\n" + opponent_belief_json + "\n```\n"
+        "</opponent_belief>\n\n"
         + history_section +
-        f"{turn_instructions}\n"
-        "RULES:\n"
-        "- Reference specific IDs (A#/C#/E#/P#/N#/U#) in your attacks for precision.\n"
-        "- Your attacks should target real weaknesses, even if framed aggressively.\n"
-        "- Keep attack and defense text substantive — bluster without content is weak.\n"
-        f"- Keep each of attack and defense ≤ {max_response_length_chars} characters.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block:\n"
+        "</context>\n\n"
+        "<blood_sport>\n"
+        f"⚔️ ADVERSARIAL EXCHANGE — INTENSITY: {intensity.upper()}\n\n"
+        "<tactics>\n"
+        "MILD — Rhetorical force, confident dismissal of weak points. Their counterpositions (X#) are a "
+        "confession of weakness — exploit every \"partial\" and \"unaddressed\" entry.\n"
+        "MODERATE — Add: emotional appeals, aggressive framing, highlighting absurd implications, "
+        "challenging credibility.\n"
+        "EXTREME — Add: reductio to uncomfortable extremes, multi-front assault, relentless exploitation "
+        "of weaknesses. Must still target real weaknesses — no fabrication or misquotation.\n"
+        "</tactics>\n\n"
+        "Charitable interpretation is suspended. DEMOLISH the opponent's position.\n"
+        "</blood_sport>\n\n"
+        "<instructions>\n"
+        f"You are {agent_name} in adversarial exchange with {opponent_name} on: \"{topic}\"\n\n"
+        "- Opening turn: Launch your strongest attack. Set \"defense\" to null.\n"
+        "- Subsequent turns: DEFEND against their last attack, then COUNTER-ATTACK.\n\n"
+        "Reference specific IDs for precision.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
-        "  \"attack\": \"<your adversarial argument/attack text>\",\n"
-        "  \"defense\": \"<defense of your position against opponent's last attack, or null if opening turn>\",\n"
+        "  \"attack\": \"\",\n"
+        "  \"defense\": \"\",\n"
         "  \"target_claims\": [\"C1\", \"A2\"]\n"
         "}\n"
         "```\n"
+        "</output_format>\n"
     )
 
 
@@ -1211,22 +1201,18 @@ def build_stage_5_bloodsport_prompt(
     agent_name: str,
     challenge_rebuttal_pairs: list[dict],
     prior_belief_json: str,
-    bloodsport_exchanges: list[dict] = None
+    bloodsport_exchanges: list[dict] = None,
+    stage_3_patches_json: str = ""
 ) -> str:
     """
     Stage 5 (Blood Sport): Belief update with adversarial-aware framing.
-
-    After bloodsport exchanges, agents update beliefs but are instructed to be
-    RESISTANT to updating based on fallacious or purely rhetorical arguments.
-    Only genuinely valid logical points should trigger belief changes.
-
-    This tests whether agents can separate persuasion from validity.
 
     Args:
         agent_name: Name of the agent updating beliefs.
         challenge_rebuttal_pairs: List of adjudication outcome dicts.
         prior_belief_json: Agent's current CBS belief as JSON string.
         bloodsport_exchanges: Optional list of bloodsport exchange dicts for context.
+        stage_3_patches_json: Optional JSON of patches proposed during Stage 3 exchanges.
     """
     # Format adjudication outcomes
     lines = []
@@ -1237,81 +1223,51 @@ def build_stage_5_bloodsport_prompt(
         status = res.get("status", "?")
         reasoning = res.get("reasoning", "")
         lines.append(f"- From {challenger}: {challenge} → Outcome: {status} | Reason: {reasoning}")
-    cases_str = "\n".join(lines) if lines else "(no adjudications available)"
+    outcomes_formatted = "\n".join(lines) if lines else "(no adjudications available)"
 
-    # Format bloodsport exchange summary if available
-    exchange_context = ""
-    if bloodsport_exchanges:
-        exchange_lines = []
-        for i, ex in enumerate(bloodsport_exchanges, 1):
-            speaker = ex.get("speaker", "?")
-            attack = ex.get("attack", "")
-            defense = ex.get("defense", "")
-            entry = f"  Turn {i} [{speaker}]:"
-            if defense:
-                entry += f" DEFENSE: {defense[:200]}..."
-            if attack:
-                entry += f" ATTACK: {attack[:200]}..."
-            exchange_lines.append(entry)
-        exchange_context = (
-            "\nBLOODSPORT EXCHANGE SUMMARY (for context — adjudication outcomes above are BINDING):\n"
-            + "\n".join(exchange_lines) + "\n\n"
+    # Build optional stage 3 patches section
+    stage_3_section = ""
+    if stage_3_patches_json:
+        stage_3_section = (
+            "<your_stage_3_responses>\n"
+            "Patches you proposed during exchange (NOT automatically applied — re-include any you "
+            "still endorse):\n"
+            "```json\n" + stage_3_patches_json + "\n```\n"
+            "</your_stage_3_responses>\n"
         )
 
     return (
-        f"Agent {agent_name}, generate PATCH operations to update your belief based on adjudication outcomes.\n\n"
-        "═══════════════════════════════════════════════════════════════════════════\n"
-        "⚔️  BLOOD SPORT MODE — POST-COMBAT BELIEF UPDATE\n"
-        "═══════════════════════════════════════════════════════════════════════════\n\n"
-        "IMPORTANT: The preceding exchanges used adversarial rhetorical tactics. "
-        "When updating your beliefs, you must SEPARATE persuasion from validity:\n\n"
-        "- Only update your beliefs if the opponent made a genuinely valid LOGICAL point, "
-        "regardless of how persuasively or aggressively it was delivered.\n"
-        "- Reject arguments that relied solely on rhetorical manipulation, emotional appeals, "
-        "or intimidation tactics — these are NOT grounds for belief revision.\n"
-        "- The ADJUDICATION OUTCOMES below reflect the adjudicator's assessment of argument "
-        "quality. These outcomes are BINDING, not the raw rhetorical force of the exchanges.\n\n"
-        "PRIOR BELIEF JSON:\n"
-        "```json\n" + prior_belief_json + "\n```\n\n"
-        "ADJUDICATED OUTCOMES TO INCORPORATE:\n" + cases_str + "\n"
-        + exchange_context +
-        "TASK:\n"
-        "Output a single fenced JSON block: { \"patches\": [ ... ] }\n\n"
-        "Supported operations:\n"
-        "- {\"op\":\"update_thesis\", \"change\": \"weaken|strengthen\"}\n"
-        "- {\"op\":\"update_claim\", \"target_id\":\"C#\", \"changes\":{\"confidence\":0.55, \"status\":\"tentative\"}}\n"
-        "- {\"op\":\"retire_claim\", \"target_id\":\"C#\"}\n"
-        "- {\"op\":\"add_evidence\", \"item\":{\"id\":\"E#\", \"type\":\"empirical\", \"summary\":\"...\", \"source\":{\"citation\":\"...\", \"year\":2024}, \"relevance_to_claims\":[\"C#\"], \"quality_assessment\":{\"sample_size\":\"medium\", \"replication_status\":\"unreplicated\", \"rigor\":\"medium\"}, \"limitations\":[\"...\"]}}\n"
-        "- {\"op\":\"update_assumption\", \"target_id\":\"A#\", \"new_statement\":\"...\"}\n\n"
-        "═══════════════════════════════════════════════════════════════════════════\n"
-        "⚠️  MANDATORY BELIEF UPDATES — BINDING REQUIREMENTS\n"
-        "═══════════════════════════════════════════════════════════════════════════\n\n"
-        "For each CRITIQUE_VALID outcome AGAINST you:\n"
-        "- ✋ STOP: This is NOT optional. You MUST generate patches.\n"
-        "- REQUIRED: Lower confidence in the targeted claim by at least 0.1\n"
-        "- OR retire the claim entirely if it was the central target\n"
-        "- OR refine the assumption/claim to address the specific logical flaw\n"
-        "- ⚠️  ENFORCEMENT: If you received N CRITIQUE_VALID outcomes, generate at least N patches.\n"
-        "- ⚠️  CRITICAL: Returning an empty patches array after CRITIQUE_VALID outcomes violates protocol.\n\n"
-        "For each REBUTTAL_VALID outcome IN YOUR FAVOR:\n"
-        "- In blood sport mode, a successful defense against adversarial attack is especially noteworthy.\n"
-        "- SURVIVAL BONUS: Claims that withstood aggressive rhetorical assault are battle-hardened.\n"
-        "  • First successful defense: OPTIONAL +0.05 confidence\n"
-        "  • Second+ successful defense: MANDATORY +0.05-0.1 confidence\n"
-        "- CUMULATIVE CAP: Total strengthening from all REBUTTAL_VALID outcomes ≤ 0.2\n\n"
-        "For each UNRESOLVED outcome:\n"
-        "- REQUIRED: Add the unresolved question to your uncertainties (U#) if not already present\n"
-        "- OPTIONAL: You MAY slightly lower confidence (by ~0.05)\n\n"
-        "⚠️  ADVERSARIAL RESILIENCE CHECK:\n"
-        "Before submitting patches, verify:\n"
-        "   □ Am I updating beliefs because of LOGICAL merit, or because of rhetorical pressure?\n"
-        "   □ Would this argument hold up under calm, charitable analysis?\n"
-        "   □ Did the adjudicator validate this argument, or did I just find it persuasive?\n"
-        "   □ Does my patches array contain at least N patches for N CRITIQUE_VALID outcomes?\n\n"
-        "Confidence changes will automatically propagate to dependent claims via the patch system.\n"
-        "Changelog will be auto-generated from patches.\n"
-        "Do NOT output the full updated belief — ONLY the patches.\n\n"
-        "NO extra text before or after the JSON block."
+        "<context>\n"
+        "<prior_belief>\n"
+        "```json\n" + prior_belief_json + "\n```\n"
+        "</prior_belief>\n\n"
+        "<adjudication_outcomes>\n"
+        + outcomes_formatted + "\n"
+        "</adjudication_outcomes>\n\n"
+        + stage_3_section +
+        "</context>\n\n"
+        "<blood_sport_resilience>\n"
+        "⚔️ POST-COMBAT BELIEF UPDATE\n\n"
+        "The preceding exchanges used adversarial rhetoric. Inside <reasoning> tags, FIRST run a "
+        "resilience check for each outcome:\n"
+        "- Was this argument logically valid, or merely rhetorically forceful?\n"
+        "- Would it hold up under calm, charitable analysis?\n"
+        "- Did the ADJUDICATOR validate the logical merit? The adjudicator's verdict is binding — "
+        "not the rhetorical force of the exchange.\n\n"
+        "Only update beliefs based on genuine logical merit as confirmed by the adjudicator.\n"
+        "</blood_sport_resilience>\n\n"
+        "<mandatory_rules>\n"
+        "Same binding rules as standard mode:\n"
+        "- CRITIQUE_VALID → ≥1 weakening patch per outcome (confidence ≥0.1 drop, retirement, or "
+        "refinement). Add counterposition (X#) if new vulnerability revealed.\n"
+        "- REBUTTAL_VALID → optional/mandatory confidence boost (cap +0.2). Update counterposition "
+        "response_sufficiency if defended.\n"
+        "- UNRESOLVED → add uncertainty (U#)\n"
+        "</mandatory_rules>\n\n"
+        "<output_format>\n"
+        "1. <reasoning>...</reasoning> tags (MUST address resilience check per outcome)\n"
+        "2. One fenced JSON code block: {\"patches\": [...]}\n"
+        "</output_format>\n"
     )
 
 
@@ -1342,6 +1298,7 @@ def build_collaborative_defender_prompt(
         dialogue_history: List of prior turn dicts [{"speaker": ..., "message": ...}, ...].
         max_response_length_chars: Character limit per response.
     """
+    # Build dialogue history string
     history_str = ""
     if dialogue_history:
         lines = []
@@ -1349,36 +1306,38 @@ def build_collaborative_defender_prompt(
             lines.append(f"[{turn['speaker']}]: {turn['message']}")
         history_str = "\n\n".join(lines)
 
+    # Build optional dialogue history section
     history_section = ""
     if history_str:
         history_section = (
-            "DIALOGUE SO FAR:\n"
-            "---\n"
+            "<dialogue_history>\n"
             f"{history_str}\n"
-            "---\n\n"
+            "</dialogue_history>\n"
         )
 
     return (
-        f"You are {defender_name} in a collaborative truth-seeking dialogue with {challenger_name} about:\n\n"
-        f"  \"{topic}\"\n\n"
-        "YOUR CURRENT BELIEF (JSON):\n"
-        "```json\n" + defender_belief_json + "\n```\n\n"
-        f"ORIGINAL QUESTION FROM {challenger_name.upper()}:\n"
-        f"  \"{question_text}\"\n\n"
+        "<context>\n"
+        "<your_belief>\n"
+        "```json\n" + defender_belief_json + "\n```\n"
+        "</your_belief>\n\n"
+        f"<original_question from=\"{challenger_name}\">\n"
+        f"\"{question_text}\"\n"
+        "</original_question>\n\n"
         + history_section +
-        "PURPOSE:\n"
-        "This is a COLLABORATIVE truth-seeking exchange, not an adversarial debate. "
-        "Your goal is to work with the challenger toward a more accurate understanding, not to win.\n\n"
-        "INSTRUCTIONS:\n"
-        "- Directly address the most recent message (or the original question if this is the first turn).\n"
-        "- If the challenger raises a valid point, explicitly acknowledge it (e.g., \"You are correct that...\").\n"
-        "- If you disagree, explain precisely WHY, referencing specific belief IDs (A#/C#/E#/P#).\n"
-        "- Propose syntheses where your positions overlap or can be reconciled.\n"
-        "- Do NOT introduce entirely new claims — only elaborate, clarify, or refine existing positions.\n"
-        "- Do NOT deflect or change the subject. Stay focused on the question under discussion.\n"
-        "- Be concise and substantive.\n\n"
-        f"Keep your response ≤ {max_response_length_chars} characters.\n\n"
-        "Output ONLY your response text. No JSON, no formatting wrappers."
+        "</context>\n\n"
+        "<instructions>\n"
+        f"You are {defender_name} in a collaborative truth-seeking dialogue with {challenger_name} on: \"{topic}\"\n\n"
+        "This is COLLABORATIVE — work toward accurate understanding, not victory.\n\n"
+        "- Directly address the most recent message (or the original question if first turn).\n"
+        "- If the challenger raises a valid point, acknowledge it explicitly. If it strengthens one of your "
+        "own counterpositions (X#), say so.\n"
+        "- If you disagree, explain precisely why, referencing specific belief IDs.\n"
+        "- Propose syntheses where positions overlap or can be reconciled.\n"
+        "- If a genuinely novel insight emerges from the dialogue, you may articulate it — ground it in the "
+        "points that led to it.\n"
+        "- Do NOT deflect or change the subject.\n\n"
+        "Output ONLY your response text. No JSON, no tags, no wrappers.\n"
+        "</instructions>\n"
     )
 
 def build_collaborative_challenger_followup_prompt(
@@ -1411,31 +1370,28 @@ def build_collaborative_challenger_followup_prompt(
     history_str = "\n\n".join(lines)
 
     return (
-        f"You are {challenger_name} in a collaborative truth-seeking dialogue with {defender_name} about:\n\n"
-        f"  \"{topic}\"\n\n"
-        "YOUR CURRENT BELIEF (JSON):\n"
-        "```json\n" + challenger_belief_json + "\n```\n\n"
-        f"ORIGINAL QUESTION YOU ASKED:\n"
-        f"  \"{question_text}\"\n\n"
-        "DIALOGUE SO FAR:\n"
-        "---\n"
+        "<context>\n"
+        "<your_belief>\n"
+        "```json\n" + challenger_belief_json + "\n```\n"
+        "</your_belief>\n\n"
+        f"<original_question>\"{question_text}\"</original_question>\n\n"
+        "<dialogue_history>\n"
         f"{history_str}\n"
-        "---\n\n"
-        "PURPOSE:\n"
-        "This is a COLLABORATIVE truth-seeking exchange. Your goal is to advance mutual understanding, "
-        "not to score points.\n\n"
-        "INSTRUCTIONS:\n"
-        "- Engage directly with the defender's most recent response.\n"
-        "- If the defender made a valid point, acknowledge it explicitly.\n"
-        "- Identify the CRUX of disagreement — the single key issue that, if resolved, would change minds.\n"
-        "- Ask clarifying questions to sharpen the disagreement or find common ground.\n"
-        "- Propose syntheses where positions overlap or can be reconciled.\n"
-        "- Do NOT repeat your original question. You must advance the discussion.\n"
-        "- Do NOT introduce entirely new claims — only elaborate, clarify, or refine existing positions.\n"
-        "- Reference specific belief IDs (A#/C#/E#/P#) when relevant.\n"
-        "- Be concise and substantive.\n\n"
-        f"Keep your response ≤ {max_response_length_chars} characters.\n\n"
-        "Output ONLY your response text. No JSON, no formatting wrappers."
+        "</dialogue_history>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        f"You are {challenger_name} in a collaborative truth-seeking dialogue with {defender_name} on: \"{topic}\"\n\n"
+        "- Engage directly with the defender's most recent response. Do NOT repeat your original question.\n"
+        "- If the defender made a valid point, acknowledge it.\n"
+        "- Identify the CRUX of remaining disagreement — the specific claim or assumption where, if resolved, "
+        "one or both of you would change your overall position. Check if the crux maps to one of the "
+        "defender's counterpositions (X#) — if so, reference it. Example: \"The crux is X2 — whether the "
+        "hard problem is categorically different from historical explanatory gaps. If it is, your C2 needs "
+        "to drop below 0.4; if not, my objection loses most of its force.\"\n"
+        "- Propose syntheses where positions overlap.\n"
+        "- Reference specific belief IDs.\n\n"
+        "Output ONLY your response text. No JSON, no tags, no wrappers.\n"
+        "</instructions>\n"
     )
 
 def build_collaborative_adjudicator_check_prompt(
@@ -1460,31 +1416,32 @@ def build_collaborative_adjudicator_check_prompt(
     history_str = "\n\n".join(lines)
 
     return (
-        "You are a neutral adjudicator monitoring a collaborative truth-seeking dialogue for quality.\n\n"
-        f"PARTICIPANTS: {challenger_name} (challenger) vs {defender_name} (defender)\n\n"
-        "DIALOGUE SO FAR:\n"
-        "---\n"
+        "<context>\n"
+        "<dialogue_history>\n"
+        f"PARTICIPANTS: {challenger_name} (challenger) vs {defender_name} (defender)\n"
         f"{history_str}\n"
-        "---\n\n"
-        "TASKS:\n"
-        "1. Check for logical FALLACIES in any speaker's recent messages (e.g., straw man, ad hominem, "
-        "appeal to authority, false dichotomy, circular reasoning).\n"
-        "2. Check for DEFLECTION — did either speaker avoid directly addressing the other's point?\n"
-        "3. Assess PROGRESS — is the dialogue moving toward clarity, or is it going in circles?\n"
-        "4. Check for CONVERGENCE — have the speakers reached substantive agreement on the core issue?\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block:\n"
+        "</dialogue_history>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        "You are a neutral adjudicator monitoring this collaborative dialogue for quality.\n\n"
+        "Inside <reasoning> tags, assess each dimension, then produce your evaluation.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "1. <reasoning>...</reasoning> tags\n"
+        "2. One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
-        "  \"fallacies_detected\": [\"<fallacy description>\"],\n"
-        "  \"deflection_detected\": false,\n"
-        "  \"progress_assessment\": \"productive\",\n"
-        "  \"convergence_detected\": false\n"
+        "  \"fallacies_detected\": [\"\"],\n"
+        "  \"deflection_detected\": {\"detected\": false, \"by\": null, \"description\": null},\n"
+        "  \"progress_assessment\": \"productive|stalled|circular|regressing\",\n"
+        "  \"progress_detail\": \"<1-2 sentences>\",\n"
+        "  \"convergence_detected\": false,\n"
+        "  \"convergence_detail\": \"\",\n"
+        "  \"false_agreement_risk\": false,\n"
+        "  \"one_sided_concession_risk\": false\n"
         "}\n"
-        "```\n\n"
-        "Values for progress_assessment: \"productive\" | \"circular\" | \"off-topic\"\n"
-        "fallacies_detected should be an empty list [] if none found.\n"
-        "convergence_detected should be true ONLY if both speakers have explicitly agreed on the core issue."
+        "```\n"
+        "</output_format>\n"
     )
 
 def build_collaborative_final_adjudication_prompt(
@@ -1496,7 +1453,9 @@ def build_collaborative_final_adjudication_prompt(
     dialogue_transcript: list[dict],
     adjudicator_checks: list[dict],
     logic_weight: float = 1.0,
-    ethics_weight: float = 0.0
+    ethics_weight: float = 0.0,
+    defender_targeted_claims_json: str = "",
+    challenger_targeted_claims_json: str = ""
 ) -> str:
     """
     Collaborative Mode: Final adjudication after dialogue concludes.
@@ -1515,6 +1474,8 @@ def build_collaborative_final_adjudication_prompt(
         adjudicator_checks: List of interim check result dicts.
         logic_weight: Weight for logical rigor (0.0-1.0).
         ethics_weight: Weight for ethical considerations (0.0-1.0).
+        defender_targeted_claims_json: Optional JSON excerpt of defender's targeted claims.
+        challenger_targeted_claims_json: Optional JSON excerpt of challenger's relevant claims.
     """
     # Format transcript
     transcript_lines = []
@@ -1538,51 +1499,67 @@ def build_collaborative_final_adjudication_prompt(
 
     target_ids_str = ", ".join(target_ids) if target_ids else "(none specified)"
 
+    # Build targeted beliefs section
+    targeted_beliefs_section = ""
+    if defender_targeted_claims_json or challenger_targeted_claims_json:
+        targeted_beliefs_section = (
+            "<targeted_beliefs>\n"
+            "Defender's claims under discussion:\n"
+            "```json\n" + (defender_targeted_claims_json or "{}") + "\n```\n"
+            "Challenger's relevant claims:\n"
+            "```json\n" + (challenger_targeted_claims_json or "{}") + "\n```\n"
+            "</targeted_beliefs>\n\n"
+        )
+
     return (
-        "You are a neutral adjudicator issuing a FINAL ruling on a collaborative truth-seeking dialogue.\n\n"
-        f"TOPIC: \"{topic}\"\n"
-        f"CHALLENGER: {challenger_name}\n"
-        f"DEFENDER: {defender_name}\n"
-        f"ORIGINAL QUESTION: \"{question_text}\"\n"
-        f"TARGETED BELIEF IDs: {target_ids_str}\n\n"
-        f"EVALUATION FRAMEWORK:\n"
-        f"- Logic weight: {logic_weight}\n"
-        f"- Ethics weight: {ethics_weight}\n\n"
-        "COMPLETE DIALOGUE TRANSCRIPT:\n"
-        "---\n"
+        "<context>\n"
+        f"<debate_topic>\"{topic}\"</debate_topic>\n"
+        f"<participants>CHALLENGER: {challenger_name} | DEFENDER: {defender_name}</participants>\n\n"
+        + targeted_beliefs_section +
+        f"<original_question target_ids=\"{target_ids_str}\">\"{question_text}\"</original_question>\n\n"
+        "<complete_dialogue>\n"
         f"{transcript_str}\n"
-        "---\n\n"
-        "INTERIM ADJUDICATOR CHECKS:\n"
-        f"{checks_str}\n\n"
-        "ADJUDICATION CRITERIA:\n"
-        "Award CRITIQUE_VALID if:\n"
-        "- The defender conceded or acknowledged a genuine weakness in their position.\n"
-        "- The challenger identified a logical flaw (contradiction, circular reasoning, unfalsifiable claim, "
-        "dependency failure) that the defender could not adequately address.\n"
-        "- The defender's responses deflected rather than engaging the core issue.\n\n"
-        "Award REBUTTAL_VALID if:\n"
-        "- The defender successfully refuted the challenge with evidence or logical argument.\n"
-        "- The challenger's critique contained a logical flaw or misrepresentation.\n"
-        "- The defender demonstrated their position is logically sound against the specific challenge.\n\n"
-        "Award UNRESOLVED if:\n"
-        "- Both sides presented logically coherent but incompatible positions.\n"
-        "- The disagreement hinges on an empirical question that cannot be resolved by logic alone.\n"
-        "- Both arguments have significant flaws, making neither clearly stronger.\n\n"
-        "ANTI-BIAS RULES:\n"
-        "- Do NOT award rebuttal_valid just because the defender responded.\n"
-        "- The defender must RESOLVE the logical issue, not merely acknowledge it.\n"
-        "- CONCESSION DETECTION: If the defender explicitly concedes (\"you are correct\", \"I acknowledge\", "
-        "\"I will lower confidence\"), award CRITIQUE_VALID.\n"
-        "- Consider the FULL dialogue arc, not just the final exchange.\n\n"
-        "STRICT OUTPUT FORMAT (NO extra text):\n"
-        "Output a single fenced JSON block:\n"
+        "</complete_dialogue>\n\n"
+        "<interim_checks>\n"
+        f"{checks_str}\n"
+        "</interim_checks>\n"
+        "</context>\n\n"
+        "<instructions>\n"
+        f"You are a neutral adjudicator issuing a final ruling. Logic weight: {logic_weight}, "
+        f"Ethics weight: {ethics_weight}.\n\n"
+        "Inside <reasoning> tags, analyze: Was the core question addressed? Did the defender resolve the "
+        "challenge's logical substance? Were concessions genuine? Did the dialogue produce synthesis or "
+        "novel understanding? Evaluate against the actual belief content above. Pay attention to whether "
+        "the challenge maps to an existing counterposition (X#) — if the defender already rated it "
+        "\"partial\" or \"unaddressed\" and failed to improve the response during the dialogue, that weighs "
+        "toward CRITIQUE_VALID.\n"
+        "</instructions>\n\n"
+        "<outcome_criteria>\n"
+        "CRITIQUE_VALID — Defender conceded, challenger identified an unresolved logical flaw, or defender "
+        "deflected the core issue.\n\n"
+        "REBUTTAL_VALID — Defender successfully refuted the challenge with evidence or sound logic, or the "
+        "critique itself contained a flaw.\n\n"
+        "SYNTHESIS_ACHIEVED — Both converged on a shared position differing from both starting positions, "
+        "or a genuinely novel insight emerged.\n\n"
+        "PRODUCTIVE_DISAGREEMENT — Both positions are logically coherent but incompatible; the dialogue "
+        "successfully identified the specific crux.\n\n"
+        "UNRESOLVED — Hinges on an empirical question logic cannot resolve, or both arguments have "
+        "significant unaddressed flaws.\n\n"
+        "ANTI-BIAS: A response that merely acknowledges a challenge without resolving it is NOT a successful "
+        "defense. Consider the full dialogue arc.\n"
+        "</outcome_criteria>\n\n"
+        "<output_format>\n"
+        "1. <reasoning>...</reasoning> tags\n"
+        "2. One fenced JSON code block:\n\n"
         "```json\n"
         "{\n"
-        "  \"restatement\": \"<neutral summary of the core disagreement>\",\n"
-        f"  \"formalization_challenger\": \"<formal logical structure of {challenger_name}'s argument>\",\n"
-        f"  \"formalization_target\": \"<formal logical structure of {defender_name}'s defense>\",\n"
-        "  \"outcome\": \"rebuttal_valid|critique_valid|unresolved\",\n"
-        "  \"reasoning\": \"<justification citing specific turns, belief IDs, and logical principles>\"\n"
+        "  \"restatement\": \"\",\n"
+        "  \"formalization_challenger\": \"\",\n"
+        "  \"formalization_target\": \"\",\n"
+        "  \"outcome\": \"rebuttal_valid|critique_valid|synthesis_achieved|productive_disagreement|unresolved\",\n"
+        "  \"reasoning\": \"\",\n"
+        "  \"synthesis_content\": \"\"\n"
         "}\n"
         "```\n"
+        "</output_format>\n"
     )

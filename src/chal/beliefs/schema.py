@@ -103,13 +103,55 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
 
         # --- Optional but recommended sections (lists of structured nodes) ---
 
-        "assumptions": { "type": "array" },       # List of A# items (axioms/background/heuristics), each with 'id'
+        "assumptions": {                             # List of A# items with typed categories, each with 'id'
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "type", "statement"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "type": {
+                        "type": "string",
+                        "enum": ["foundational", "empirical", "methodological", "normative"]
+                    },
+                    "statement": { "type": "string" }
+                }
+            }
+        },
         "claims": { "type": "array" },            # List of C# items (deductive/inductive/abductive claims), each with 'id'
         "evidence": { "type": "array" },          # List of E# items (empirical/conceptual/expert_consensus), each with 'id'
         "predictions": { "type": "array" },       # List of P# items (falsifiable consequences/tests), each with 'id'
         "normative_implications": { "type": "array" },  # List of N# items (ethical/policy implications), each with 'id'
         "uncertainties": { "type": "array" },     # List of U# items (key unknowns + VOI notes), each with 'id'
-        #"counterposition_map": { "type": "array" },# List of X# items (steelman opposing theses/responses), each with 'id'
+        "counterpositions": {                        # List of X# items (opponent objections + responses), each with 'id'
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "targets", "attack_type", "statement", "strength", "my_response", "response_sufficiency"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "targets": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "attack_type": {
+                        "type": "string",
+                        "enum": ["undermining", "rebutting", "undercutting"]
+                    },
+                    "statement": { "type": "string" },
+                    "strength": {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    },
+                    "my_response": { "type": "string" },
+                    "response_sufficiency": {
+                        "type": "string",
+                        "enum": ["sufficient", "partial", "unaddressed"]
+                    }
+                }
+            }
+        },
 
         # --- Governance of updates & audit trail ---
 
@@ -156,12 +198,12 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
         "predictions",
         "normative_implications",
         "uncertainties",
-        "counterposition_map"
+        "counterpositions"
     )
 
     # prefix_ok maps the first letter of an ID to the expected collection
     # A#: assumptions, C#: claims, E#: evidence, P#: predictions,
-    # N#: normative_implications, U#: uncertainties, X#: counterposition_map
+    # N#: normative_implications, U#: uncertainties, X#: counterpositions
     prefix_ok = {
         "A": "assumptions",
         "C": "claims",
@@ -169,7 +211,7 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
         "P": "predictions",
         "N": "normative_implications",
         "U": "uncertainties",
-        "X": "counterposition_map"
+        "X": "counterpositions"
     }
 
     # Track all IDs across all collections for duplicate detection
@@ -198,5 +240,35 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
                     f"Duplicate ID '{_id}' found in '{field}'. IDs must be unique across all collections."
                 )
             all_ids.add(_id)
+
+    # --- Enum validation for v3 typed fields (works without jsonschema) ---
+    VALID_ASSUMPTION_TYPES = {"foundational", "empirical", "methodological", "normative"}
+    for item in belief.get("assumptions", []) or []:
+        atype = item.get("type")
+        if atype is not None and atype not in VALID_ASSUMPTION_TYPES:
+            errors.append(
+                f"Invalid assumption type '{atype}'. "
+                f"Must be one of: {sorted(VALID_ASSUMPTION_TYPES)}"
+            )
+        elif "type" not in item and item.get("id"):
+            errors.append(
+                f"Assumption '{item.get('id')}' is missing required 'type' field"
+            )
+
+    VALID_ATTACK_TYPES = {"undermining", "rebutting", "undercutting"}
+    VALID_SUFFICIENCY = {"sufficient", "partial", "unaddressed"}
+    for item in belief.get("counterpositions", []) or []:
+        at = item.get("attack_type")
+        if at is not None and at not in VALID_ATTACK_TYPES:
+            errors.append(
+                f"Invalid attack_type '{at}'. "
+                f"Must be one of: {sorted(VALID_ATTACK_TYPES)}"
+            )
+        rs = item.get("response_sufficiency")
+        if rs is not None and rs not in VALID_SUFFICIENCY:
+            errors.append(
+                f"Invalid response_sufficiency '{rs}'. "
+                f"Must be one of: {sorted(VALID_SUFFICIENCY)}"
+            )
 
     return errors

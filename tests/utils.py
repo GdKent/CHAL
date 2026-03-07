@@ -53,9 +53,11 @@ def create_sample_belief(
 
     # Add assumptions
     if num_assumptions > 0:
+        assumption_types = ["empirical", "foundational", "methodological", "normative"]
         belief["assumptions"] = [
             {
                 "id": f"A{i+1}",
+                "type": assumption_types[i % len(assumption_types)],
                 "statement": f"Assumption {i+1}"
             }
             for i in range(num_assumptions)
@@ -282,6 +284,14 @@ def create_mock_adjudication_response(outcome: str = "rebuttal_valid") -> str:
   "restatement": "Test disagreement restatement",
   "formalization_challenger": "P1 → Q",
   "formalization_target": "¬P1",
+  "scores": {{
+    "challenger_logic": 0.6,
+    "challenger_ethics": 0.0,
+    "defender_logic": 0.7,
+    "defender_ethics": 0.0,
+    "challenger_combined": 0.6,
+    "defender_combined": 0.7
+  }},
   "outcome": "{outcome}",
   "reasoning": "Test reasoning for {outcome}"
 }}

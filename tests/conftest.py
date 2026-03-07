@@ -96,7 +96,7 @@ def sample_complete_belief() -> Dict[str, Any]:
             "confidence": 0.80
         },
         "assumptions": [
-            {"id": "A1", "statement": "Rational deliberation is a real phenomenon"}
+            {"id": "A1", "type": "empirical", "statement": "Rational deliberation is a real phenomenon"}
         ],
         "claims": [
             {

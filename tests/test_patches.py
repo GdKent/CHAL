@@ -769,3 +769,409 @@ def test_validate_patches_update_assumption_missing_target():
 
     assert len(errors) == 1
     assert "missing target_id" in errors[0]
+
+
+# ==============================================
+# 11. v3 Patch Operations Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_apply_patches_update_assumption_type(test_patches):
+    """Test updating assumption type via new_type field."""
+    belief = create_sample_belief(num_assumptions=1)
+    original_type = belief["assumptions"][0]["type"]
+    patches = test_patches["update_assumption_type"]
+
+    updated = apply_patches(belief, patches)
+
+    assert updated["assumptions"][0]["type"] == "methodological"
+    assert updated["assumptions"][0]["type"] != original_type
+
+
+@pytest.mark.unit
+def test_apply_patches_update_assumption_statement_and_type(test_patches):
+    """Test updating both statement and type of an assumption."""
+    belief = create_sample_belief(num_assumptions=1)
+    patches = test_patches["update_assumption_both"]
+
+    updated = apply_patches(belief, patches)
+
+    assert updated["assumptions"][0]["statement"] == "Revised assumption"
+    assert updated["assumptions"][0]["type"] == "normative"
+
+
+@pytest.mark.unit
+def test_apply_patches_add_counterposition(test_patches):
+    """Test adding a new counterposition."""
+    belief = create_sample_belief(num_claims=1)
+
+    patches = test_patches["add_counterposition"]
+
+    updated = apply_patches(belief, patches)
+
+    assert "counterpositions" in updated
+    assert len(updated["counterpositions"]) == 1
+    cp = updated["counterpositions"][0]
+    assert cp["id"] == "X1"
+    assert cp["targets"] == ["C1"]
+    assert cp["attack_type"] == "rebutting"
+    assert cp["strength"] == 0.6
+    assert cp["response_sufficiency"] == "partial"
+
+
+@pytest.mark.unit
+def test_apply_patches_add_counterposition_no_array():
+    """Test adding counterposition when counterpositions array doesn't exist."""
+    belief = create_sample_belief(num_claims=1)
+    # Ensure no counterpositions array exists
+    belief.pop("counterpositions", None)
+
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "undermining",
+            "statement": "Test",
+            "strength": 0.5,
+            "my_response": "Response",
+            "response_sufficiency": "sufficient"
+        }
+    }]
+
+    updated = apply_patches(belief, patches)
+
+    assert "counterpositions" in updated
+    assert len(updated["counterpositions"]) == 1
+
+
+@pytest.mark.unit
+def test_apply_patches_add_counterposition_missing_id():
+    """Test error when counterposition item has no id."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test"
+        }
+    }]
+
+    with pytest.raises(ValueError):
+        apply_patches(belief, patches)
+
+
+@pytest.mark.unit
+def test_apply_patches_update_counterposition(test_patches):
+    """Test updating an existing counterposition."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Original statement",
+        "strength": 0.5,
+        "my_response": "Original response",
+        "response_sufficiency": "partial"
+    }]
+
+    patches = test_patches["update_counterposition"]
+
+    updated = apply_patches(belief, patches)
+
+    assert updated["counterpositions"][0]["strength"] == 0.8
+    assert updated["counterpositions"][0]["response_sufficiency"] == "unaddressed"
+    # Unchanged fields should remain
+    assert updated["counterpositions"][0]["statement"] == "Original statement"
+
+
+@pytest.mark.unit
+def test_apply_patches_update_counterposition_not_found():
+    """Test error when updating non-existent counterposition."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = []
+
+    patches = [{
+        "op": "update_counterposition",
+        "target_id": "X99",
+        "changes": {"strength": 0.9}
+    }]
+
+    with pytest.raises(ValueError):
+        apply_patches(belief, patches)
+
+
+@pytest.mark.unit
+def test_apply_patches_add_uncertainty(test_patches):
+    """Test adding a new uncertainty."""
+    belief = create_sample_belief()
+
+    patches = test_patches["add_uncertainty"]
+
+    updated = apply_patches(belief, patches)
+
+    assert "uncertainties" in updated
+    assert len(updated["uncertainties"]) == 1
+    u = updated["uncertainties"][0]
+    assert u["id"] == "U1"
+    assert u["question"] == "Can the explanatory gap be closed?"
+    assert u["cruciality"] == "high"
+
+
+@pytest.mark.unit
+def test_apply_patches_add_uncertainty_no_array():
+    """Test adding uncertainty when uncertainties array doesn't exist."""
+    belief = create_sample_belief()
+    belief.pop("uncertainties", None)
+
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {
+            "id": "U1",
+            "question": "Test question",
+            "cruciality": "medium",
+            "voi_hint": "Test hint"
+        }
+    }]
+
+    updated = apply_patches(belief, patches)
+
+    assert "uncertainties" in updated
+    assert len(updated["uncertainties"]) == 1
+
+
+@pytest.mark.unit
+def test_apply_patches_add_uncertainty_missing_id():
+    """Test error when uncertainty item has no id."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {
+            "question": "No ID here"
+        }
+    }]
+
+    with pytest.raises(ValueError):
+        apply_patches(belief, patches)
+
+
+# ==============================================
+# 12. v3 Patch Validation Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_patches_add_counterposition_valid():
+    """Test validation of valid add_counterposition patch."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test",
+            "strength": 0.5,
+            "my_response": "Response",
+            "response_sufficiency": "partial"
+        }
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_patches_add_counterposition_missing_item():
+    """Test validation catches add_counterposition without item."""
+    belief = create_sample_belief()
+    patches = [{"op": "add_counterposition"}]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("missing item" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_patches_add_counterposition_missing_id():
+    """Test validation catches add_counterposition item without id."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "add_counterposition",
+        "item": {"statement": "No ID"}
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("missing 'id' field" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_patches_add_counterposition_duplicate_id():
+    """Test validation catches duplicate counterposition ID."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Existing",
+        "strength": 0.5,
+        "my_response": "Response",
+        "response_sufficiency": "sufficient"
+    }]
+
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "undermining",
+            "statement": "Duplicate",
+            "strength": 0.3,
+            "my_response": "Response",
+            "response_sufficiency": "partial"
+        }
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("exists" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_patches_add_counterposition_missing_required_fields():
+    """Test validation catches counterposition missing required fields."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "statement": "Missing fields"
+            # Missing: targets, attack_type, strength, my_response, response_sufficiency
+        }
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+
+
+@pytest.mark.unit
+def test_validate_patches_update_counterposition_valid():
+    """Test validation of valid update_counterposition patch."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Test",
+        "strength": 0.5,
+        "my_response": "Response",
+        "response_sufficiency": "partial"
+    }]
+
+    patches = [{
+        "op": "update_counterposition",
+        "target_id": "X1",
+        "changes": {"strength": 0.8}
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_patches_update_counterposition_bad_id():
+    """Test validation catches update_counterposition with non-existent ID."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "update_counterposition",
+        "target_id": "X99",
+        "changes": {"strength": 0.9}
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("X99" in e or "non-existent" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_patches_update_counterposition_missing_target():
+    """Test validation catches update_counterposition without target_id."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "update_counterposition",
+        "changes": {"strength": 0.5}
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("missing target_id" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_patches_add_uncertainty_valid():
+    """Test validation of valid add_uncertainty patch."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {
+            "id": "U1",
+            "question": "Test?",
+            "cruciality": "high",
+            "voi_hint": "Hint"
+        }
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_patches_add_uncertainty_missing_item():
+    """Test validation catches add_uncertainty without item."""
+    belief = create_sample_belief()
+    patches = [{"op": "add_uncertainty"}]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("missing item" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_patches_add_uncertainty_missing_id():
+    """Test validation catches add_uncertainty item without id."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {"question": "No ID"}
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("missing 'id' field" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_patches_add_uncertainty_duplicate_id():
+    """Test validation catches duplicate uncertainty ID."""
+    belief = create_sample_belief()
+    belief["uncertainties"] = [{
+        "id": "U1",
+        "question": "Existing",
+        "cruciality": "high",
+        "voi_hint": "Hint"
+    }]
+
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {
+            "id": "U1",
+            "question": "Duplicate",
+            "cruciality": "low",
+            "voi_hint": "Hint"
+        }
+    }]
+
+    errors = validate_patches(patches, belief)
+    assert len(errors) > 0
+    assert any("exists" in e.lower() for e in errors)

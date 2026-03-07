@@ -1079,18 +1079,33 @@ class DebateController:
 
             self._log(f"Dialogue completed after {len(dialogue_history)} turn(s)", "INFO")
 
-            # Final adjudication
+            # Final adjudication — extract targeted beliefs for context
             self._log("Running final adjudication...", "INFO")
+            collab_target_ids = entry.get("target_ids", [])
+            defender_targeted_claims_json = ""
+            challenger_targeted_claims_json = ""
+            if collab_target_ids:
+                if df_belief_obj:
+                    excerpt = _extract_belief_excerpt(df_belief_obj, collab_target_ids)
+                    if excerpt:
+                        defender_targeted_claims_json = json.dumps(excerpt, ensure_ascii=False, indent=2)
+                if ch_belief_obj:
+                    excerpt = _extract_belief_excerpt(ch_belief_obj, collab_target_ids)
+                    if excerpt:
+                        challenger_targeted_claims_json = json.dumps(excerpt, ensure_ascii=False, indent=2)
+
             final_prompt = prompts.build_collaborative_final_adjudication_prompt(
                 topic=topic,
                 challenger_name=challenger_name,
                 defender_name=defender_name,
                 question_text=question_text,
-                target_ids=entry.get("target_ids", []),
+                target_ids=collab_target_ids,
                 dialogue_transcript=entry["collaborative_transcript"],
                 adjudicator_checks=entry["adjudicator_checks"],
                 logic_weight=logic_weight,
-                ethics_weight=ethics_weight
+                ethics_weight=ethics_weight,
+                defender_targeted_claims_json=defender_targeted_claims_json,
+                challenger_targeted_claims_json=challenger_targeted_claims_json
             )
             self._log_prompt("Adjudicator", final_prompt, f"Stage 3B - Final Adjudication ({qid})")
             final_response = self.adjudicator.agent.generate(
@@ -1430,6 +1445,9 @@ class DebateController:
         self._add_to_markdown(markdown_header)
         self._notify("stage_start", {"stage": 4, "name": "Adjudication"})
 
+        # Build agent lookup for belief excerpt extraction
+        agent_by_name = {agent.name: agent for agent in self.agents}
+
         adjudication_count = 0
         for entry in self.challenge_rebuttal_pairs:
             # Skip if missing key elements
@@ -1445,13 +1463,35 @@ class DebateController:
             self._log(f"Challenge: {entry['challenge'][:100]}...", "DEBUG")
             self._log(f"Rebuttal: {entry['rebuttal'][:100]}...", "DEBUG")
 
+            # Extract targeted belief excerpts for the adjudicator
+            target_ids = entry.get("target_ids", [])
+            challenger_belief_excerpt_json = ""
+            target_belief_excerpt_json = ""
+            if target_ids:
+                challenger_agent = agent_by_name.get(entry["challenger"])
+                target_agent = agent_by_name.get(entry["target"])
+                if challenger_agent:
+                    ch_belief = challenger_agent.get_internal_belief_obj()
+                    if ch_belief:
+                        excerpt = _extract_belief_excerpt(ch_belief, target_ids)
+                        if excerpt:
+                            challenger_belief_excerpt_json = json.dumps(excerpt, ensure_ascii=False, indent=2)
+                if target_agent:
+                    tgt_belief = target_agent.get_internal_belief_obj()
+                    if tgt_belief:
+                        excerpt = _extract_belief_excerpt(tgt_belief, target_ids)
+                        if excerpt:
+                            target_belief_excerpt_json = json.dumps(excerpt, ensure_ascii=False, indent=2)
+
             # Run logic enforcement pipeline
             self._log("Calling adjudicator.run()...", "INFO")
             resolution = self.adjudicator.run(
                 challenge=entry["challenge"],
                 rebuttal=entry["rebuttal"],
                 challenger=entry["challenger"],
-                target=entry["target"]
+                target=entry["target"],
+                challenger_belief_excerpt_json=challenger_belief_excerpt_json,
+                target_belief_excerpt_json=target_belief_excerpt_json
             )
 
             self._log(f"Adjudication outcome: {resolution.get('status', 'unknown').upper()}", "INFO")
@@ -1568,19 +1608,27 @@ class DebateController:
                     if "bloodsport_transcript" in e:
                         bloodsport_exchanges.extend(e["bloodsport_transcript"])
 
+                stage_3_patches = self.last_rebuttals_patches.get(name, [])
+                stage_3_patches_json = json.dumps(stage_3_patches, ensure_ascii=False, indent=2) if stage_3_patches else ""
+
                 prompt = prompts.build_stage_5_bloodsport_prompt(
                     agent_name=agent.name,
                     challenge_rebuttal_pairs=relevant_entries,
                     prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2),
-                    bloodsport_exchanges=bloodsport_exchanges if bloodsport_exchanges else None
+                    bloodsport_exchanges=bloodsport_exchanges if bloodsport_exchanges else None,
+                    stage_3_patches_json=stage_3_patches_json
                 )
             elif prior_json is not None:
                 self._log(f"Using CBS patch/update prompt for {name}", "DEBUG")
                 # Use CBS patch/update builder
+                stage_3_patches = self.last_rebuttals_patches.get(name, [])
+                stage_3_patches_json = json.dumps(stage_3_patches, ensure_ascii=False, indent=2) if stage_3_patches else ""
+
                 prompt = prompts.build_stage_5_belief_update_prompt_cbs(
                     agent_name=agent.name,
                     challenge_rebuttal_pairs=relevant_entries,
-                    prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2)
+                    prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2),
+                    stage_3_patches_json=stage_3_patches_json
                 )
             else:
                 self._log(f"Using legacy belief update prompt for {name}", "DEBUG")
@@ -1774,13 +1822,26 @@ class DebateController:
             self._log(f"Final belief size: {len(a_belief_json)} chars", "DEBUG")
             self._log(f"Belief history: {len(agent.all_beliefs_held)} snapshots", "DEBUG")
 
-            short_note_max = self.config.stages.short_note_max_chars if self.config else 140
+            # Build changelog summary from all belief versions
+            changelog_entries = []
+            for i, belief_json_str in enumerate(agent.all_beliefs_held):
+                try:
+                    belief = json.loads(belief_json_str) if isinstance(belief_json_str, str) else belief_json_str
+                    for entry in belief.get("changelog", []):
+                        changelog_entries.append(
+                            f"v{entry.get('version', i+1)}: {'; '.join(entry.get('changes', []))}"
+                        )
+                except Exception:
+                    pass
+            belief_changelog_summary = "\n".join(changelog_entries) if changelog_entries else "(no changelog available)"
+
             prompt = prompts.build_stage_6_conclusion_prompt(
                 topic=self.topic if hasattr(self, "topic") else "<topic>",
                 agent_name=name,
                 agent_belief_json=a_belief_json,
-                all_past_beliefs=agent.all_beliefs_held,
-                short_note_max_chars=short_note_max
+                belief_changelog_summary=belief_changelog_summary,
+                num_rounds=self.current_round if hasattr(self, "current_round") else 1,
+                persona_label=agent.persona_label if hasattr(agent, "persona_label") else ""
             )
 
             # Log prompt
@@ -2408,6 +2469,18 @@ class DebateController:
             }
 
 # --- Helper Functions ---
+def _extract_belief_excerpt(belief: dict, target_ids: list) -> dict:
+    """Extract claims, assumptions, evidence, and counterpositions referenced by target_ids."""
+    excerpt = {}
+    for section in ["assumptions", "claims", "evidence", "counterpositions"]:
+        items = [item for item in belief.get(section, [])
+                 if item.get("id") in target_ids or
+                 any(tid in item.get("depends_on", []) for tid in target_ids) or
+                 any(tid in item.get("targets", []) for tid in target_ids)]
+        if items:
+            excerpt[section] = items
+    return excerpt
+
 def _extract_first_json_block(text: str) -> Optional[Dict[str, Any]]:
     m = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
     return json.loads(m.group(1)) if m else None

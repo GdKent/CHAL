@@ -79,7 +79,7 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         for item in items:
             md.append(formatter(item))
 
-    list_block("Assumptions", "assumptions", lambda a: f"- [{a.get('id','')}] {a.get('statement','')}")
+    list_block("Assumptions", "assumptions", lambda a: f"- [{a.get('id','')}] ({a.get('type','')}) {a.get('statement','')}")
     def claim_fmt(c):
         parts = [f"- [{c.get('id','')}] {c.get('type','')}: {c.get('statement','')}"]
         if c.get("depends_on"): parts.append(f"  - Depends on: {', '.join(c['depends_on'])}")
@@ -121,16 +121,13 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     list_block("Uncertainties", "uncertainties",
                lambda u: f"- [{u.get('id','')}] {u.get('question','')} | cruciality: {u.get('cruciality','')} | VOI: {u.get('voi_hint','')}")
     def x_fmt(x):
-        lines = [f"- [{x.get('id','')}] Thesis: {x.get('thesis','')}"]
-        if x.get("steelman"): lines.append(f"  - Steelman: {x.get('steelman')}")
-        if x.get("strongest_arguments"): lines.append(f"  - Strongest arguments: {', '.join(x['strongest_arguments'])}")
-        if x.get("our_responses"):
-            lines.append("  - Our responses:")
-            for r in x["our_responses"]:
-                lines.append(f"    - To {r.get('to','')}: {r.get('response','')}")
-        if x.get("comparative_assessment"): lines.append(f"  - When theirs might win: {x['comparative_assessment']}")
+        lines = [f"- [{x.get('id','')}] → targets: {', '.join(x.get('targets', []))} | attack: {x.get('attack_type','')}"]
+        lines.append(f"  - Statement: {x.get('statement','')}")
+        lines.append(f"  - Strength: {x.get('strength','')} | Sufficiency: {x.get('response_sufficiency','')}")
+        if x.get("my_response"):
+            lines.append(f"  - My response: {x['my_response']}")
         return "\n".join(lines)
-    list_block("Counterposition Map", "counterposition_map", x_fmt)
+    list_block("Counterpositions", "counterpositions", x_fmt)
 
     if belief.get("update_policy"):
         up = belief["update_policy"]
@@ -197,5 +194,16 @@ def project_for_embedding(belief: Dict[str, Any]) -> str:
     if belief.get("uncertainties"):
         u = belief["uncertainties"][0]
         lines.append(f"Uncertainty {u.get('id')}: {u.get('question')} (cruciality={u.get('cruciality')})")
+
+    # Top 2 counterpositions by strength
+    counterpositions = sorted(
+        (belief.get("counterpositions") or []),
+        key=lambda x: -(x.get("strength", 0.0))
+    )[:2]
+    for x in counterpositions:
+        lines.append(
+            f"Counterposition {x.get('id')}: {x.get('statement')} "
+            f"(attack={x.get('attack_type')}, strength={x.get('strength')}, sufficiency={x.get('response_sufficiency')})"
+        )
 
     return "\n".join(lines)

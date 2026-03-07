@@ -302,16 +302,15 @@ def test_build_stage_6_conclusion_prompt():
     """Test building Stage 6 conclusion prompt."""
     from chal.agents.prompts import build_stage_6_conclusion_prompt
 
-    all_past_beliefs = [
-        '{"version": 1, "thesis": {"statement": "Initial"}}',
-        '{"version": 2, "thesis": {"statement": "Updated"}}'
-    ]
+    belief_changelog_summary = "v1: Initial belief formation\nv2: Lowered C1 confidence to 0.7"
 
     prompt = build_stage_6_conclusion_prompt(
         topic="Future of AI",
         agent_name="Agent-Futurist",
         agent_belief_json='{"thesis": {"statement": "Final position"}}',
-        all_past_beliefs=all_past_beliefs
+        belief_changelog_summary=belief_changelog_summary,
+        num_rounds=2,
+        persona_label="EMPIRICIST"
     )
 
     assert isinstance(prompt, str)

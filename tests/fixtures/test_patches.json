@@ -78,6 +78,56 @@
       }
     }
   ],
+  "update_assumption_type": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "new_type": "methodological"
+    }
+  ],
+  "update_assumption_both": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "new_statement": "Revised assumption",
+      "new_type": "normative"
+    }
+  ],
+  "add_counterposition": [
+    {
+      "op": "add_counterposition",
+      "item": {
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Counter-evidence contradicts C1",
+        "strength": 0.6,
+        "my_response": "The counter-evidence has methodological flaws",
+        "response_sufficiency": "partial"
+      }
+    }
+  ],
+  "update_counterposition": [
+    {
+      "op": "update_counterposition",
+      "target_id": "X1",
+      "changes": {
+        "strength": 0.8,
+        "response_sufficiency": "unaddressed"
+      }
+    }
+  ],
+  "add_uncertainty": [
+    {
+      "op": "add_uncertainty",
+      "item": {
+        "id": "U1",
+        "question": "Can the explanatory gap be closed?",
+        "cruciality": "high",
+        "voi_hint": "Resolving this directly determines the physicalist program's viability"
+      }
+    }
+  ],
   "invalid_missing_op": [
     {
       "target_id": "C1",

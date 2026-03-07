@@ -291,12 +291,14 @@ def test_validate_thesis_empty_bullets():
 
 @pytest.mark.unit
 def test_validate_assumptions_structure():
-    """Test validation of assumption objects."""
+    """Test validation of assumption objects with typed categories."""
     belief = create_sample_belief(num_assumptions=2)
     assert "assumptions" in belief
     assert len(belief["assumptions"]) == 2
     assert "id" in belief["assumptions"][0]
+    assert "type" in belief["assumptions"][0]
     assert "statement" in belief["assumptions"][0]
+    assert belief["assumptions"][0]["type"] in ("foundational", "empirical", "methodological", "normative")
     errors = validate_belief(belief)
     assert len(errors) == 0
 
@@ -359,3 +361,171 @@ def test_validate_normative_implications_structure(test_beliefs):
             implication = implications[0]
             assert "id" in implication
             assert "statement" in implication
+
+
+# ==============================================
+# 7. Assumption Type Validation Tests (v3)
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_assumption_type_valid():
+    """Test that valid assumption types are accepted."""
+    for atype in ("foundational", "empirical", "methodological", "normative"):
+        belief = create_sample_belief(num_assumptions=1)
+        belief["assumptions"][0]["type"] = atype
+        errors = validate_belief(belief)
+        assert len(errors) == 0, f"Type '{atype}' should be valid, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_assumption_type_invalid():
+    """Test that invalid assumption type is rejected."""
+    belief = create_sample_belief(num_assumptions=1)
+    belief["assumptions"][0]["type"] = "speculative"
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Invalid assumption type 'speculative' should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_assumption_missing_type():
+    """Test that missing assumption type is rejected."""
+    belief = create_sample_belief(num_assumptions=1)
+    del belief["assumptions"][0]["type"]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Missing assumption type should produce errors"
+
+
+# ==============================================
+# 8. Counterposition Validation Tests (v3)
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_counterpositions_structure(test_beliefs):
+    """Test validation of counterposition objects with all required fields."""
+    belief = test_beliefs["complete_valid"]
+    assert "counterpositions" in belief
+    assert len(belief["counterpositions"]) >= 2
+
+    cp = belief["counterpositions"][0]
+    assert "id" in cp
+    assert "targets" in cp
+    assert "attack_type" in cp
+    assert "statement" in cp
+    assert "strength" in cp
+    assert "my_response" in cp
+    assert "response_sufficiency" in cp
+    errors = validate_belief(belief)
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_counterposition_attack_type_valid():
+    """Test that valid attack types are accepted."""
+    for attack_type in ("undermining", "rebutting", "undercutting"):
+        belief = create_sample_belief(num_claims=1)
+        belief["counterpositions"] = [{
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": attack_type,
+            "statement": "Test counterposition",
+            "strength": 0.5,
+            "my_response": "Test response",
+            "response_sufficiency": "partial"
+        }]
+        errors = validate_belief(belief)
+        assert len(errors) == 0, f"Attack type '{attack_type}' should be valid, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_counterposition_attack_type_invalid():
+    """Test that invalid attack type is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "destroying",
+        "statement": "Test counterposition",
+        "strength": 0.5,
+        "my_response": "Test response",
+        "response_sufficiency": "partial"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Invalid attack_type 'destroying' should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_counterposition_response_sufficiency_valid():
+    """Test that valid response_sufficiency values are accepted."""
+    for sufficiency in ("sufficient", "partial", "unaddressed"):
+        belief = create_sample_belief(num_claims=1)
+        belief["counterpositions"] = [{
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test counterposition",
+            "strength": 0.5,
+            "my_response": "Test response",
+            "response_sufficiency": sufficiency
+        }]
+        errors = validate_belief(belief)
+        assert len(errors) == 0, f"Sufficiency '{sufficiency}' should be valid, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_counterposition_response_sufficiency_invalid():
+    """Test that invalid response_sufficiency is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Test counterposition",
+        "strength": 0.5,
+        "my_response": "Test response",
+        "response_sufficiency": "maybe"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Invalid response_sufficiency 'maybe' should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_counterposition_id_prefix():
+    """Test that counterposition IDs must start with X."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "C99",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Test counterposition",
+        "strength": 0.5,
+        "my_response": "Test response",
+        "response_sufficiency": "partial"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Counterposition with C-prefix ID should produce errors"
+    assert any("prefix" in e.lower() or "wrong" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_counterposition_field_name():
+    """Test that the field is called 'counterpositions' not 'counterposition_map'."""
+    belief = create_sample_belief(num_claims=1)
+    # Using the old field name should NOT be validated
+    belief["counterposition_map"] = [{"id": "X1", "statement": "test"}]
+    # The validator only checks 'counterpositions', not 'counterposition_map'
+    # So counterposition_map is just an unknown extra field (allowed by additionalProperties: True)
+    errors = validate_belief(belief)
+    # No errors from the old field name (it's just ignored)
+    # Verify that the correct field name works
+    belief2 = create_sample_belief(num_claims=1)
+    belief2["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Test",
+        "strength": 0.5,
+        "my_response": "Response",
+        "response_sufficiency": "sufficient"
+    }]
+    errors2 = validate_belief(belief2)
+    assert len(errors2) == 0

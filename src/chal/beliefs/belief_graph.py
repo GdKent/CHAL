@@ -4,8 +4,8 @@ belief_graph.py
 Represents belief structure as a directed acyclic graph (DAG) for validation and analysis.
 
 This module transforms CBS belief objects into graph structures where:
-- Nodes: assumptions (A#), claims (C#), evidence (E#), predictions (P#)
-- Edges: dependency relationships (depends_on, backing_evidence_ids, linked_claims)
+- Nodes: assumptions (A#), claims (C#), evidence (E#), predictions (P#), counterpositions (X#)
+- Edges: dependency relationships (depends_on, backing_evidence_ids, linked_claims, targets)
 
 The graph enables:
 1. Structural validation (broken links, circular dependencies)
@@ -77,6 +77,13 @@ class BeliefGraph:
                     "data": prediction
                 }
 
+        for cp in self.belief.get("counterpositions", []):
+            if "id" in cp:
+                self.nodes[cp["id"]] = {
+                    "type": "counterposition",
+                    "data": cp
+                }
+
         # Build edges from dependency relationships
         for claim in self.belief.get("claims", []):
             claim_id = claim.get("id")
@@ -99,6 +106,15 @@ class BeliefGraph:
 
             for claim_id in prediction.get("linked_claims", []):
                 self.edges.append((claim_id, pred_id, "predicts"))
+
+        # counterpositions target claims/assumptions
+        for cp in self.belief.get("counterpositions", []):
+            cp_id = cp.get("id")
+            if not cp_id:
+                continue
+
+            for target_id in cp.get("targets", []):
+                self.edges.append((cp_id, target_id, "challenges"))
 
     def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
         """Get node data by ID."""
@@ -317,7 +333,8 @@ class BeliefGraph:
                 "assumptions": sum(1 for n in self.nodes.values() if n["type"] == "assumption"),
                 "claims": sum(1 for n in self.nodes.values() if n["type"] == "claim"),
                 "evidence": sum(1 for n in self.nodes.values() if n["type"] == "evidence"),
-                "predictions": sum(1 for n in self.nodes.values() if n["type"] == "prediction")
+                "predictions": sum(1 for n in self.nodes.values() if n["type"] == "prediction"),
+                "counterpositions": sum(1 for n in self.nodes.values() if n["type"] == "counterposition")
             },
             "critical_path_count": len(self.find_critical_paths()),
             "orphaned_claims": self._find_orphaned_claims(),

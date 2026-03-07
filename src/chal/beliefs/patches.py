@@ -9,7 +9,10 @@ Supported patch operations:
 - update_claim: Modify claim properties (confidence, status, etc.)
 - retire_claim: Mark claim as retracted with 0 confidence
 - add_evidence: Add new evidence item
-- update_assumption: Refine assumption statement
+- update_assumption: Refine assumption statement or change type
+- add_counterposition: Add new X# counterposition item
+- update_counterposition: Modify counterposition properties
+- add_uncertainty: Add new U# uncertainty item
 """
 
 from __future__ import annotations
@@ -124,41 +127,90 @@ def apply_patches(
         elif op == "update_assumption":
             target_id = patch.get("target_id")
             new_statement = patch.get("new_statement")
+            new_type = patch.get("new_type")
 
             assumption_found = False
             for assumption in updated.get("assumptions", []):
                 if assumption["id"] == target_id:
                     assumption_found = True
                     if new_statement:
-                        old_statement = assumption.get("statement", "")
                         assumption["statement"] = new_statement
-                        changes.append(f"Refined {target_id}")
+                        changes.append(f"Refined {target_id} statement")
+                    if new_type:
+                        assumption["type"] = new_type
+                        changes.append(f"Changed {target_id} type to {new_type}")
                     break
 
             if not assumption_found:
                 raise ValueError(f"Patch references non-existent assumption: {target_id}")
 
+        elif op == "add_counterposition":
+            item = patch.get("item")
+            if not item or "id" not in item:
+                raise ValueError("add_counterposition patch requires valid item with 'id'")
+            if "counterpositions" not in updated:
+                updated["counterpositions"] = []
+            updated["counterpositions"].append(item)
+            changes.append(f"Added counterposition {item.get('id')}")
+
+        elif op == "update_counterposition":
+            target_id = patch.get("target_id")
+            patch_changes = patch.get("changes", {})
+            cp_found = False
+            for cp in updated.get("counterpositions", []):
+                if cp["id"] == target_id:
+                    cp_found = True
+                    for key, value in patch_changes.items():
+                        old_value = cp.get(key)
+                        cp[key] = value
+                        changes.append(f"{target_id}.{key}: {old_value} → {value}")
+                    break
+            if not cp_found:
+                raise ValueError(f"Patch references non-existent counterposition: {target_id}")
+
+        elif op == "add_uncertainty":
+            item = patch.get("item")
+            if not item or "id" not in item:
+                raise ValueError("add_uncertainty patch requires valid item with 'id'")
+            if "uncertainties" not in updated:
+                updated["uncertainties"] = []
+            updated["uncertainties"].append(item)
+            changes.append(f"Added uncertainty {item.get('id')}")
+
         else:
             # Unknown operation - log warning but don't fail
             changes.append(f"Warning: Unknown patch operation '{op}' skipped")
 
-    # PROPAGATE CONFIDENCE CHANGES through dependency graph
+    # PROPAGATE CONFIDENCE CHANGES through dependency graph (BFS level-by-level)
+    # v3 rule: A claim's confidence must not exceed the confidence of its weakest
+    # *claim* dependency. Assumptions are tracked via counterpositions, not confidence scores,
+    # so they are intentionally excluded from the propagation cap (filtered at line type=="claim").
     if propagate_confidence and confidence_changes:
         try:
+            from collections import deque
             graph = BeliefGraph(updated)
 
-            for changed_id, new_conf in confidence_changes.items():
-                # Find all claims that depend on this one
-                dependent_ids = graph.get_dependent_nodes(changed_id)
+            # BFS: process nodes level-by-level so parents are updated before children
+            queue = deque(confidence_changes.keys())
+            visited = set()
 
-                for dep_id in dependent_ids:
-                    # Get the dependent claim (check graph node type, not data type)
+            while queue:
+                current_id = queue.popleft()
+                if current_id in visited:
+                    continue
+                visited.add(current_id)
+
+                # Get direct dependents only (nodes that list current_id as a dependency)
+                direct_deps = [to_id for from_id, to_id, _ in graph.edges
+                               if from_id == current_id]
+
+                for dep_id in direct_deps:
                     node_info = graph.nodes.get(dep_id)
                     if not node_info or node_info.get("type") != "claim":
                         continue
                     dep_claim = node_info.get("data", {})
 
-                    # Get all dependencies of this dependent claim
+                    # Get all claim dependencies of this dependent
                     all_deps = dep_claim.get("depends_on", []) + dep_claim.get("backing_evidence_ids", [])
                     dep_confidences = []
 
@@ -167,23 +219,23 @@ def apply_patches(
                         if dep_node_info and dep_node_info.get("type") == "claim":
                             dep_data = dep_node_info.get("data", {})
                             dep_confidences.append(dep_data.get("confidence", 0.5))
-                            # Evidence doesn't have confidence, skip
 
                     if dep_confidences:
                         min_dep_conf = min(dep_confidences)
                         current_conf = dep_claim.get("confidence", 0.5)
 
-                        # Propagation rule: dependent claims cannot be more confident than weakest dependency
+                        # Propagation rule: dependent claims cannot exceed weakest dependency
                         if min_dep_conf < current_conf:
-                            # Find the claim in updated belief and modify it
                             for claim in updated.get("claims", []):
                                 if claim["id"] == dep_id:
                                     claim["confidence"] = min_dep_conf
                                     changes.append(
                                         f"Propagated: {dep_id} confidence → {min_dep_conf:.2f} "
-                                        f"(limited by {changed_id})"
+                                        f"(limited by {current_id})"
                                     )
                                     break
+                            # Enqueue to propagate further downstream
+                            queue.append(dep_id)
         except Exception as e:
             # If propagation fails, log it but don't fail the entire patch operation
             changes.append(f"Warning: Confidence propagation failed: {e}")
@@ -223,6 +275,8 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> List[str]:
     assumption_ids = {a["id"] for a in belief.get("assumptions", []) if "id" in a}
     claim_ids = {c["id"] for c in belief.get("claims", []) if "id" in c}
     evidence_ids = {e["id"] for e in belief.get("evidence", []) if "id" in e}
+    counterposition_ids = {x["id"] for x in belief.get("counterpositions", []) if "id" in x}
+    uncertainty_ids = {u["id"] for u in belief.get("uncertainties", []) if "id" in u}
 
     for i, patch in enumerate(patches):
         op = patch.get("op")
@@ -265,6 +319,36 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> List[str]:
                 errors.append(f"Patch {i}: update_assumption missing target_id")
             elif target_id not in assumption_ids:
                 errors.append(f"Patch {i}: update_assumption references non-existent assumption '{target_id}'")
+
+        elif op == "add_counterposition":
+            item = patch.get("item")
+            if not item:
+                errors.append(f"Patch {i}: add_counterposition missing item")
+            elif "id" not in item:
+                errors.append(f"Patch {i}: add_counterposition item missing 'id' field")
+            else:
+                if item["id"] in counterposition_ids:
+                    errors.append(f"Patch {i}: add_counterposition item ID '{item['id']}' already exists")
+                required_fields = ["targets", "attack_type", "statement", "strength", "my_response", "response_sufficiency"]
+                for field in required_fields:
+                    if field not in item:
+                        errors.append(f"Patch {i}: add_counterposition item missing required field '{field}'")
+
+        elif op == "update_counterposition":
+            target_id = patch.get("target_id")
+            if not target_id:
+                errors.append(f"Patch {i}: update_counterposition missing target_id")
+            elif target_id not in counterposition_ids:
+                errors.append(f"Patch {i}: update_counterposition references non-existent counterposition '{target_id}'")
+
+        elif op == "add_uncertainty":
+            item = patch.get("item")
+            if not item:
+                errors.append(f"Patch {i}: add_uncertainty missing item")
+            elif "id" not in item:
+                errors.append(f"Patch {i}: add_uncertainty item missing 'id' field")
+            elif item["id"] in uncertainty_ids:
+                errors.append(f"Patch {i}: add_uncertainty item ID '{item['id']}' already exists")
 
         else:
             errors.append(f"Patch {i}: Unknown operation '{op}'")

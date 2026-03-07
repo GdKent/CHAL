@@ -3,6 +3,14 @@
     "restatement": "The disagreement concerns whether compatibilism is a legitimate solution to the free will problem or merely semantic redefinition.",
     "formalization_challenger": "P1: Compatibilism redefines free will to avoid contradiction\nP2: Redefinitions are not solutions\nC: Therefore, compatibilism is not a legitimate solution",
     "formalization_target": "P1: Free will means acting according to one's own reasons\nP2: This is compatible with determinism\nC: Therefore, compatibilism is legitimate",
+    "scores": {
+      "challenger_logic": 0.4,
+      "challenger_ethics": 0.0,
+      "defender_logic": 0.7,
+      "defender_ethics": 0.0,
+      "challenger_combined": 0.4,
+      "defender_combined": 0.7
+    },
     "outcome": "rebuttal_valid",
     "reasoning": "The target's rebuttal successfully demonstrates that compatibilism is analyzing what freedom means rather than arbitrarily redefining it. The challenger's premise that 'redefinitions are not solutions' is too strong—conceptual analysis is a legitimate philosophical methodology."
   },
@@ -10,14 +18,29 @@
     "restatement": "The disagreement is whether the Libet experiments undermine the compatibilist account of free will.",
     "formalization_challenger": "P1: Libet experiments show decisions occur before conscious awareness\nP2: Free will requires conscious awareness\nC: Therefore, free will doesn't exist",
     "formalization_target": "P1: Conscious mind has veto power\nP2: Experiments only tested trivial decisions\nC: Therefore, Libet experiments don't undermine free will",
+    "scores": {
+      "challenger_logic": 0.75,
+      "challenger_ethics": 0.0,
+      "defender_logic": 0.45,
+      "defender_ethics": 0.0,
+      "challenger_combined": 0.75,
+      "defender_combined": 0.45
+    },
     "outcome": "critique_valid",
-    "reasoning": "The challenger's formalization is stronger. While the target correctly notes the veto power, this still suggests that the initiation of action is unconscious. The target's dismissal of the experiments as 'trivial' doesn't adequately address the underlying mechanism.",
     "reasoning": "The challenger successfully identifies a weakness in the target's position that is not adequately addressed by the rebuttal."
   },
   "unresolved": {
     "restatement": "The disagreement concerns whether moral responsibility requires indeterminism or only the right kind of deterministic process.",
     "formalization_challenger": "P1: Moral responsibility requires genuine alternatives\nP2: Determinism eliminates genuine alternatives\nC: Therefore, compatibilism fails",
     "formalization_target": "P1: Moral responsibility requires action from one's character\nP2: This is compatible with determinism\nC: Therefore, compatibilism succeeds",
+    "scores": {
+      "challenger_logic": 0.6,
+      "challenger_ethics": 0.0,
+      "defender_logic": 0.55,
+      "defender_ethics": 0.0,
+      "challenger_combined": 0.6,
+      "defender_combined": 0.55
+    },
     "outcome": "unresolved",
     "reasoning": "Both formalizations are internally consistent and rely on different intuitions about what 'moral responsibility' requires. The challenger emphasizes alternative possibilities (Principle of Alternative Possibilities), while the target emphasizes source/actual-sequence conditions. This is a genuine philosophical deadlock that cannot be resolved through logic alone—it requires deeper normative commitments about the foundations of responsibility."
   },

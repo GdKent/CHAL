@@ -95,6 +95,8 @@ def test_run_rebuttal_valid(mock_adjudicator_agent, test_adjudications):
     assert result["status"] == "rebuttal_valid"
     assert "restatement" in result
     assert "reasoning" in result
+    assert "scores" in result
+    assert isinstance(result["scores"], dict)
 
 
 @pytest.mark.unit
@@ -117,6 +119,7 @@ def test_run_critique_valid(mock_adjudicator_agent, test_adjudications):
 
     assert result["status"] == "critique_valid"
     assert "reasoning" in result
+    assert "scores" in result
 
 
 @pytest.mark.unit
@@ -139,6 +142,7 @@ def test_run_unresolved(mock_adjudicator_agent, test_adjudications):
 
     assert result["status"] == "unresolved"
     assert "reasoning" in result
+    assert "scores" in result
 
 
 # ==============================================
@@ -387,3 +391,77 @@ def test_adjudicator_generates_prompt_correctly(mock_adjudicator_agent):
     # Should include challenge and rebuttal in messages
     assert any(challenge in str(msg) for msg in messages)
     assert any(rebuttal in str(msg) for msg in messages)
+
+
+# ==============================================
+# 7. Score Extraction Tests (v3)
+# ==============================================
+
+@pytest.mark.unit
+def test_run_extracts_scores(mock_adjudicator_agent, test_adjudications):
+    """Test that scores are extracted from v3 JSON format."""
+    adjudication = test_adjudications["rebuttal_valid"]
+    mock_response = Message(
+        role="assistant",
+        content=f"```json\n{json.dumps(adjudication)}\n```"
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    result = adjudicator.run("Challenge", "Rebuttal", challenger="Agent-A", target="Agent-B")
+
+    assert "scores" in result
+    scores = result["scores"]
+    assert "challenger_logic" in scores
+    assert "defender_logic" in scores
+    assert "challenger_combined" in scores
+    assert "defender_combined" in scores
+    assert scores["challenger_logic"] == 0.4
+    assert scores["defender_logic"] == 0.7
+
+
+@pytest.mark.unit
+def test_run_scores_empty_when_missing(mock_adjudicator_agent):
+    """Test that scores is empty dict when not in response."""
+    mock_response = Message(
+        role="assistant",
+        content='```json\n{"outcome": "unresolved", "reasoning": "Test"}\n```'
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    result = adjudicator.run("Challenge", "Rebuttal", challenger="Agent-A", target="Agent-B")
+
+    assert "scores" in result
+    assert result["scores"] == {}
+
+
+@pytest.mark.unit
+def test_run_with_belief_excerpts(mock_adjudicator_agent, test_adjudications):
+    """Test that adjudicator accepts belief excerpt parameters."""
+    adjudication = test_adjudications["rebuttal_valid"]
+    mock_response = Message(
+        role="assistant",
+        content=f"```json\n{json.dumps(adjudication)}\n```"
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+
+    challenger_excerpt = '{"claims": [{"id": "C1", "statement": "Test"}]}'
+    target_excerpt = '{"claims": [{"id": "C2", "statement": "Counter"}]}'
+
+    result = adjudicator.run(
+        "Challenge", "Rebuttal",
+        challenger="Agent-A", target="Agent-B",
+        challenger_belief_excerpt_json=challenger_excerpt,
+        target_belief_excerpt_json=target_excerpt
+    )
+
+    assert result["status"] == "rebuttal_valid"
+    # Verify the excerpts were included in the prompt
+    call_args = mock_adjudicator_agent.generate.call_args
+    messages = call_args[0][0]
+    prompt_content = str(messages[0].content)
+    assert "challenger_belief_excerpt" in prompt_content
+    assert "target_belief_excerpt" in prompt_content
