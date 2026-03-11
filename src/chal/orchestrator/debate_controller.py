@@ -535,13 +535,20 @@ class DebateController:
                 agent.set_internal_belief(md_view)  # keep human-readable string too
                 agent.all_beliefs_held.append(json.dumps(belief_obj, ensure_ascii=False, indent=2) if belief_obj else "") # track beliefs
             else:
-                # Fallback to legacy behavior if parsing failed
+                # Fallback when parsing or validation failed
                 err_details = f"Errors: {errs}" if errs else "No belief object returned"
                 self._log_parse_result(False, f"Failed to parse CBS belief for {agent.name}. {err_details}")
                 self._log("Falling back to raw response content", "WARN")
-                agent.set_internal_belief(response.content.strip())
-                agent.all_beliefs_held.append(response.content.strip()) # track beliefs
-                md_view = response.content.strip()
+                if belief_obj is not None:
+                    # JSON parsed but failed schema validation — still render what we have
+                    try:
+                        md_view = belief_to_markdown(belief_obj)
+                    except Exception:
+                        md_view = re.sub(r"```(?:json)?\s*", "", response.content).replace("```", "").strip()
+                else:
+                    md_view = re.sub(r"```(?:json)?\s*", "", response.content).replace("```", "").strip()
+                agent.set_internal_belief(md_view)
+                agent.all_beliefs_held.append(md_view) # track beliefs
 
             # Log result
             self.round_histories[self.current_round_key].append(response)
@@ -1871,12 +1878,26 @@ class DebateController:
                 self._log_parse_result(True, f"Successfully parsed structured conclusion for {name}")
                 self.debug_log.append(f"\n--- PARSED CONCLUSION JSON ({name}) ---\n{json.dumps(concl_obj['conclusion'], ensure_ascii=False, indent=2)}\n--- END CONCLUSION ---\n")
                 self.conclusions[name] = concl_obj["conclusion"]
-                markdown_content = response.content
+                c = concl_obj["conclusion"]
+                ft = c.get("final_thesis", {})
+                lines = []
+                if ft.get("stance"):
+                    lines.append(f"**Final stance**: {ft['stance']}")
+                if ft.get("confidence") is not None:
+                    lines.append(f"**Final confidence**: {ft['confidence']}")
+                if c.get("our_strongest_claims"):
+                    lines.append(f"**Strongest claims**: {', '.join(c['our_strongest_claims'])}")
+                if c.get("our_concessions"):
+                    lines.append("**Concessions**:")
+                    for con in c["our_concessions"]:
+                        lines.append(f"  - {con.get('target_id','?')} ({con.get('type','?')}): {con.get('note','')}")
+                if c.get("unresolved_uncertainties"):
+                    lines.append(f"**Unresolved uncertainties**: {', '.join(c['unresolved_uncertainties'])}")
+                markdown_content = "\n".join(lines)
             else:
                 self._log_parse_result(False, f"No structured conclusion found for {name}, using raw text")
-                # Fallback: keep raw text
-                self.conclusions[name] = response.content.strip()
-                markdown_content = response.content.strip()
+                markdown_content = re.sub(r"```(?:json)?\s*", "", response.content).replace("```", "").strip()
+                self.conclusions[name] = markdown_content
 
             # Record training data
             if self.recorder:

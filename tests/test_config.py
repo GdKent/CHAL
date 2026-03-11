@@ -88,6 +88,40 @@ def test_quick_test_agent_providers():
     assert config.adjudication.provider == "openai"
 
 
+def test_agent_provider_explicit_ollama(tmp_path):
+    """provider: 'ollama' on an agent is parsed and stored correctly from YAML."""
+    yaml_content = textwrap.dedent("""\
+        metadata:
+          name: "Ollama Test"
+          version: "1.0"
+        debate:
+          topic: "Test topic"
+          max_rounds: 1
+        agents:
+          - name: "Agent-Local"
+            persona: "EMPIRICIST"
+            model: "deepseek-r1:14b"
+            temperature: 0.7
+            provider: "ollama"
+        adjudication:
+          model: "deepseek-r1:14b"
+          provider: "ollama"
+          logic_weight: 1.0
+          ethics_weight: 0.0
+          logic_system: "Classical logic"
+          ethics_system: "None"
+    """)
+    config_file = tmp_path / "ollama_inline_test.yaml"
+    config_file.write_text(yaml_content)
+
+    from chal.config import DebateConfig
+    config = DebateConfig.from_yaml(config_file)
+
+    assert config.agents[0].provider == "ollama"
+    assert config.agents[0].model == "deepseek-r1:14b"
+    assert config.adjudication.provider == "ollama"
+
+
 def test_agent_provider_explicit_anthropic(tmp_path):
     """provider: 'anthropic' on an agent is parsed correctly from YAML."""
     yaml_content = textwrap.dedent("""\

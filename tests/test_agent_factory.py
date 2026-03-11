@@ -175,3 +175,53 @@ def test_create_agent_from_config_default_provider(MockOpenAI):
     # provider defaults to "openai" in AgentConfig dataclass
     create_agent_from_config(cfg)
     MockOpenAI.assert_called_once()
+
+
+# ==============================================
+# 7. Ollama Provider Tests
+# ==============================================
+
+@pytest.mark.unit
+@patch('chal.agents.ollama_agent.OllamaAgent')
+def test_create_ollama_agent(MockOllama):
+    """provider='ollama' dispatches to OllamaAgent."""
+    agent = create_agent("MyAgent", "deepseek-r1:14b", "ollama")
+    MockOllama.assert_called_once_with(
+        model="deepseek-r1:14b", name="MyAgent", system_prompt=""
+    )
+    assert agent is MockOllama.return_value
+
+
+@pytest.mark.unit
+@patch('chal.agents.ollama_agent.OllamaAgent')
+def test_provider_case_insensitive_ollama(MockOllama):
+    """'Ollama' and 'OLLAMA' both dispatch correctly."""
+    create_agent("A", "deepseek-r1:14b", "Ollama")
+    create_agent("B", "deepseek-r1:8b", "OLLAMA")
+    assert MockOllama.call_count == 2
+
+
+@pytest.mark.unit
+def test_unknown_provider_error_message_lists_ollama():
+    """The ValueError message includes 'ollama' in the valid options list."""
+    with pytest.raises(ValueError) as exc_info:
+        create_agent("MyAgent", "gpt-4o", "unknown")
+    msg = str(exc_info.value)
+    assert "ollama" in msg
+
+
+@pytest.mark.unit
+@patch('chal.agents.ollama_agent.OllamaAgent')
+def test_create_agent_from_config_ollama(MockOllama):
+    """AgentConfig with provider='ollama' is correctly unpacked."""
+    cfg = AgentConfig(
+        name="Agent-Local",
+        persona="EMPIRICIST",
+        model="deepseek-r1:14b",
+        provider="ollama",
+    )
+    agent = create_agent_from_config(cfg)
+    MockOllama.assert_called_once_with(
+        model="deepseek-r1:14b", name="Agent-Local", system_prompt=""
+    )
+    assert agent is MockOllama.return_value

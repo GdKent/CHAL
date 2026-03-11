@@ -190,21 +190,30 @@ def apply_patches(
             from collections import deque
             graph = BeliefGraph(updated)
 
-            # BFS: process nodes level-by-level so parents are updated before children
-            queue = deque(confidence_changes.keys())
-            visited = set()
+            # Track live confidences so multi-hop propagation sees updated values
+            current_confidences: Dict[str, float] = {
+                claim["id"]: claim.get("confidence", 0.5)
+                for claim in updated.get("claims", [])
+            }
 
-            while queue:
-                current_id = queue.popleft()
-                if current_id in visited:
+            # BFS worklist: process one hop at a time so each level's
+            # updated confidence is visible to the next level
+            worklist = list(confidence_changes.keys())
+            processed: set = set()
+
+            while worklist:
+                changed_id = worklist.pop(0)
+                if changed_id in processed:
                     continue
-                visited.add(current_id)
+                processed.add(changed_id)
 
-                # Get direct dependents only (nodes that list current_id as a dependency)
-                direct_deps = [to_id for from_id, to_id, _ in graph.edges
-                               if from_id == current_id]
+                # Find direct dependents only (one level at a time)
+                direct_dependents = [
+                    to_id for from_id, to_id, _ in graph.edges
+                    if from_id == changed_id
+                ]
 
-                for dep_id in direct_deps:
+                for dep_id in direct_dependents:
                     node_info = graph.nodes.get(dep_id)
                     if not node_info or node_info.get("type") != "claim":
                         continue
@@ -217,25 +226,33 @@ def apply_patches(
                     for dep_node_id in all_deps:
                         dep_node_info = graph.nodes.get(dep_node_id)
                         if dep_node_info and dep_node_info.get("type") == "claim":
-                            dep_data = dep_node_info.get("data", {})
-                            dep_confidences.append(dep_data.get("confidence", 0.5))
+                            # Use live confidence, not the stale graph snapshot
+                            dep_confidences.append(
+                                current_confidences.get(dep_node_id,
+                                    dep_node_info["data"].get("confidence", 0.5))
+                            )
+                            # Evidence has no confidence field — skip
 
                     if dep_confidences:
                         min_dep_conf = min(dep_confidences)
-                        current_conf = dep_claim.get("confidence", 0.5)
+                        current_conf = current_confidences.get(dep_id, dep_claim.get("confidence", 0.5))
 
-                        # Propagation rule: dependent claims cannot exceed weakest dependency
+                        # Propagation rule: a claim cannot be more confident than its weakest dependency
                         if min_dep_conf < current_conf:
                             for claim in updated.get("claims", []):
                                 if claim["id"] == dep_id:
                                     claim["confidence"] = min_dep_conf
                                     changes.append(
                                         f"Propagated: {dep_id} confidence → {min_dep_conf:.2f} "
-                                        f"(limited by {current_id})"
+                                        f"(limited by {changed_id})"
                                     )
                                     break
-                            # Enqueue to propagate further downstream
-                            queue.append(dep_id)
+
+                            # Update live tracking and queue dep_id for its own downstream
+                            current_confidences[dep_id] = min_dep_conf
+                            if dep_id not in processed:
+                                worklist.append(dep_id)
+
         except Exception as e:
             # If propagation fails, log it but don't fail the entire patch operation
             changes.append(f"Warning: Confidence propagation failed: {e}")

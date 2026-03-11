@@ -44,9 +44,13 @@ def create_agent(name: str, model: str, provider: str = "openai",
         from chal.agents.google_agent import GoogleAgent
         return GoogleAgent(model=model, name=name, system_prompt=system_prompt)
 
+    elif provider == "ollama":
+        from chal.agents.ollama_agent import OllamaAgent
+        return OllamaAgent(model=model, name=name, system_prompt=system_prompt)
+
     else:
         raise ValueError(
-            f"Unknown provider '{provider}'. Must be one of: openai, anthropic, google"
+            f"Unknown provider '{provider}'. Must be one of: openai, anthropic, google, ollama"
         )
 
 

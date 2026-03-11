@@ -32,7 +32,9 @@ def parse_model_output_to_belief(output: str) -> Tuple[Optional[Dict[str, Any]],
     belief_obj = None
     if json_match:
         try:
-            belief_obj = json.loads(json_match.group(1))
+            # Normalize IDs: some models use "A#1" instead of "A1"
+            raw_json = re.sub(r'"([ACEPNUX])#(\d+)"', r'"\1\2"', json_match.group(1))
+            belief_obj = json.loads(raw_json)
         except Exception as e:
             errors.append(f"JSON parse error: {e}")
 

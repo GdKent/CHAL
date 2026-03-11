@@ -14,6 +14,10 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env before any other imports so API keys are available
+load_dotenv(Path(__file__).parent / ".env")
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
