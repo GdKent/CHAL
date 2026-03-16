@@ -1755,7 +1755,7 @@ class DebateController:
                     # VALIDATE: Check if agent should have generated patches
                     critique_valid_count = sum(
                         1 for entry in relevant_entries
-                        if entry.get("resolution", {}).get("status") == "critique_valid"
+                        if (entry.get("resolution") or {}).get("status") == "critique_valid"
                     )
 
                     if critique_valid_count > 0:
@@ -2508,11 +2508,67 @@ def _extract_belief_excerpt(belief: dict, target_ids: list) -> dict:
     return excerpt
 
 def _extract_first_json_block(text: str) -> Optional[Dict[str, Any]]:
+    # Try fenced block first, then fall back to raw JSON object
     m = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
-    return json.loads(m.group(1)) if m else None
+    if m:
+        try:
+            return json.loads(m.group(1))
+        except Exception:
+            return None
+    # No fenced block — try to parse the first raw JSON object
+    raw = re.search(r"(\{.*\})", text, flags=re.DOTALL)
+    if raw:
+        try:
+            return json.loads(raw.group(1))
+        except Exception:
+            return None
+    return None
 
 def _extract_all_json_blocks(text: str) -> List[str]:
-    return re.findall(r"```json\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
+    # Try fenced blocks first
+    blocks = re.findall(r"```json\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
+    if blocks:
+        return blocks
+    # No fenced blocks — extract all top-level JSON objects using brace-depth tracking
+    raw_blocks = []
+    i = 0
+    while i < len(text):
+        if text[i] == '{':
+            depth = 0
+            start = i
+            in_string = False
+            escape_next = False
+            for j in range(i, len(text)):
+                ch = text[j]
+                if escape_next:
+                    escape_next = False
+                    continue
+                if ch == '\\' and in_string:
+                    escape_next = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        candidate = text[start:j + 1]
+                        try:
+                            json.loads(candidate)
+                            raw_blocks.append(candidate)
+                        except Exception:
+                            pass
+                        i = j + 1
+                        break
+            else:
+                i += 1
+        else:
+            i += 1
+    return raw_blocks
 
 def _extract_first_markdown_block(text: str) -> Optional[str]:
     m = re.search(r"```markdown\s*(.*?)\s*```", text, flags=re.DOTALL)

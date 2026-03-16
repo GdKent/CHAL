@@ -48,9 +48,17 @@ def create_agent(name: str, model: str, provider: str = "openai",
         from chal.agents.ollama_agent import OllamaAgent
         return OllamaAgent(model=model, name=name, system_prompt=system_prompt)
 
+    elif provider == "xai":
+        from chal.agents.xai_agent import XAIAgent
+        return XAIAgent(model=model, name=name, system_prompt=system_prompt)
+
+    elif provider == "perplexity":
+        from chal.agents.perplexity_agent import PerplexityAgent
+        return PerplexityAgent(model=model, name=name, system_prompt=system_prompt)
+
     else:
         raise ValueError(
-            f"Unknown provider '{provider}'. Must be one of: openai, anthropic, google, ollama"
+            f"Unknown provider '{provider}'. Must be one of: openai, anthropic, google, ollama, xai, perplexity"
         )
 
 

@@ -128,25 +128,65 @@ class Adjudicator:
         )
         response = self.agent.generate([Message(role="user", content=prompt)])
 
-        # Parse JSON response
-        json_match = re.search(r'```json\s*(\{.*?\})\s*```', response.content, flags=re.DOTALL)
-        if json_match:
+        # Parse JSON response — try fenced block first, then brace-depth scanning
+        result = None
+        fenced = re.search(r'```json\s*(\{.*?\})\s*```', response.content, flags=re.DOTALL)
+        if fenced:
             try:
-                result = json.loads(json_match.group(1))
-                return {
-                    "status": result.get("outcome", "unknown").lower(),
-                    "reasoning": result.get("reasoning", ""),
-                    "restatement": result.get("restatement", ""),
-                    "formalizations": {
-                        "challenger": result.get("formalization_challenger", ""),
-                        "target": result.get("formalization_target", "")
-                    },
-                    "scores": result.get("scores", {})
-                }
+                result = json.loads(fenced.group(1))
             except json.JSONDecodeError:
                 pass
 
-        # Fallback: try to parse old format
+        if result is None:
+            # Brace-depth scanning: find the first valid top-level JSON object
+            text = response.content
+            i = 0
+            while i < len(text):
+                if text[i] == '{':
+                    depth, in_string, escape_next = 0, False, False
+                    for j in range(i, len(text)):
+                        ch = text[j]
+                        if escape_next:
+                            escape_next = False
+                            continue
+                        if ch == '\\' and in_string:
+                            escape_next = True
+                            continue
+                        if ch == '"':
+                            in_string = not in_string
+                            continue
+                        if in_string:
+                            continue
+                        if ch == '{':
+                            depth += 1
+                        elif ch == '}':
+                            depth -= 1
+                            if depth == 0:
+                                try:
+                                    result = json.loads(text[i:j + 1])
+                                except json.JSONDecodeError:
+                                    pass
+                                i = j + 1
+                                break
+                    else:
+                        i += 1
+                else:
+                    i += 1
+                if result is not None:
+                    break
+
+        if result is not None:
+            return {
+                "status": result.get("outcome", "unknown").lower(),
+                "reasoning": result.get("reasoning", ""),
+                "restatement": result.get("restatement", ""),
+                "formalizations": {
+                    "challenger": result.get("formalization_challenger", ""),
+                    "target": result.get("formalization_target", "")
+                }
+            }
+
+        # Fallback: try to parse old plain-text format
         outcome_match = re.search(r'(?:Outcome|outcome):\s*(\w+)', response.content)
         status = outcome_match.group(1).strip().lower() if outcome_match else "unknown"
 

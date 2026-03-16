@@ -27,14 +27,21 @@ def parse_model_output_to_belief(output: str) -> Tuple[Optional[Dict[str, Any]],
     """
     errors: List[str] = []
 
-    # Extract JSON fenced block
+    # Extract JSON — try fenced block first, then fall back to raw JSON
     json_match = re.search(r"```json\s*(\{.*?\})\s*```", output, flags=re.DOTALL)
     belief_obj = None
     if json_match:
+        raw_json_str = json_match.group(1)
+    else:
+        # No fenced block — try to extract a top-level JSON object directly
+        raw_match = re.search(r"(\{.*\})", output, flags=re.DOTALL)
+        raw_json_str = raw_match.group(1) if raw_match else None
+
+    if raw_json_str:
         try:
             # Normalize IDs: some models use "A#1" instead of "A1"
-            raw_json = re.sub(r'"([ACEPNUX])#(\d+)"', r'"\1\2"', json_match.group(1))
-            belief_obj = json.loads(raw_json)
+            raw_json_str = re.sub(r'"([ACEPNUX])#(\d+)"', r'"\1\2"', raw_json_str)
+            belief_obj = json.loads(raw_json_str)
         except Exception as e:
             errors.append(f"JSON parse error: {e}")
 

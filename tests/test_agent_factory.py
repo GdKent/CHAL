@@ -225,3 +225,87 @@ def test_create_agent_from_config_ollama(MockOllama):
         model="deepseek-r1:14b", name="Agent-Local", system_prompt=""
     )
     assert agent is MockOllama.return_value
+
+
+# ==============================================
+# 8. xAI Provider Tests
+# ==============================================
+
+@pytest.mark.unit
+@patch('chal.agents.xai_agent.XAIAgent')
+def test_create_xai_agent(MockXAI):
+    """provider='xai' dispatches to XAIAgent."""
+    agent = create_agent("MyAgent", "grok-2", "xai")
+    MockXAI.assert_called_once_with(model="grok-2", name="MyAgent", system_prompt="")
+    assert agent is MockXAI.return_value
+
+
+@pytest.mark.unit
+@patch('chal.agents.xai_agent.XAIAgent')
+def test_provider_case_insensitive_xai(MockXAI):
+    """'XAI' and 'xAi' both dispatch correctly."""
+    create_agent("A", "grok-2", "XAI")
+    create_agent("B", "grok-beta", "xAi")
+    assert MockXAI.call_count == 2
+
+
+@pytest.mark.unit
+@patch('chal.agents.xai_agent.XAIAgent')
+def test_create_agent_from_config_xai(MockXAI):
+    """AgentConfig with provider='xai' is correctly unpacked."""
+    cfg = AgentConfig(
+        name="Agent-Grok",
+        persona="EMPIRICIST",
+        model="grok-2",
+        provider="xai",
+    )
+    agent = create_agent_from_config(cfg)
+    MockXAI.assert_called_once_with(model="grok-2", name="Agent-Grok", system_prompt="")
+    assert agent is MockXAI.return_value
+
+
+# ==============================================
+# 9. Perplexity Provider Tests
+# ==============================================
+
+@pytest.mark.unit
+@patch('chal.agents.perplexity_agent.PerplexityAgent')
+def test_create_perplexity_agent(MockPerplexity):
+    """provider='perplexity' dispatches to PerplexityAgent."""
+    agent = create_agent("MyAgent", "sonar-pro", "perplexity")
+    MockPerplexity.assert_called_once_with(model="sonar-pro", name="MyAgent", system_prompt="")
+    assert agent is MockPerplexity.return_value
+
+
+@pytest.mark.unit
+@patch('chal.agents.perplexity_agent.PerplexityAgent')
+def test_provider_case_insensitive_perplexity(MockPerplexity):
+    """'Perplexity' and 'PERPLEXITY' both dispatch correctly."""
+    create_agent("A", "sonar-pro", "Perplexity")
+    create_agent("B", "sonar-reasoning", "PERPLEXITY")
+    assert MockPerplexity.call_count == 2
+
+
+@pytest.mark.unit
+@patch('chal.agents.perplexity_agent.PerplexityAgent')
+def test_create_agent_from_config_perplexity(MockPerplexity):
+    """AgentConfig with provider='perplexity' is correctly unpacked."""
+    cfg = AgentConfig(
+        name="Agent-Sonar",
+        persona="RATIONALIST",
+        model="sonar-pro",
+        provider="perplexity",
+    )
+    agent = create_agent_from_config(cfg)
+    MockPerplexity.assert_called_once_with(model="sonar-pro", name="Agent-Sonar", system_prompt="")
+    assert agent is MockPerplexity.return_value
+
+
+@pytest.mark.unit
+def test_unknown_provider_error_message_lists_xai_and_perplexity():
+    """The ValueError message lists xai and perplexity as valid options."""
+    with pytest.raises(ValueError) as exc_info:
+        create_agent("MyAgent", "grok-2", "unknown")
+    msg = str(exc_info.value)
+    assert "xai" in msg
+    assert "perplexity" in msg
