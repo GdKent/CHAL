@@ -217,8 +217,6 @@ def save_debate_outputs(
         console.print(f"  [green]>[/green] Agent stats: {path.name}")
         saved_files.append(path.name)
 
-    return saved_files
-
     # Generate embeddings and plot if enabled
     if config.outputs.generate_embeddings or config.outputs.plot_trajectories:
         embeddings_path = config.outputs.storage_dir / config.outputs.embeddings_file
@@ -240,6 +238,7 @@ def save_debate_outputs(
                     console.print(
                         f"  [green]>[/green] Belief trajectory plot: {trajectory_path.name}"
                     )
+                    saved_files.append(trajectory_path.name)
                 except Exception as e:
                     console.print(f"  [yellow]Warning:[/yellow] Could not generate plot: {e}")
         else:
@@ -261,9 +260,12 @@ def save_debate_outputs(
                 output_path=graph_path,
             )
             console.print(f"  [green]>[/green] Interactive graph: {graph_path.name}")
+            saved_files.append(graph_path.name)
         except Exception as e:
             console.print(
                 f"  [yellow]Warning:[/yellow] Could not generate graph visualization: {e}"
             )
             if verbose:
                 console.print(traceback.format_exc())
+
+    return saved_files
