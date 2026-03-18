@@ -73,7 +73,7 @@
         ],
         "confidence": 0.85,
         "confidence_justification": "Strong empirical support",
-        "status": "accepted",
+        "status": "active",
         "known_weaknesses": ["Does not address hard incompatibilism"],
         "known_rebuttals": []
       },
@@ -85,7 +85,7 @@
         "backing_evidence_ids": ["E2"],
         "confidence": 0.75,
         "confidence_justification": "Philosophical consensus among compatibilists",
-        "status": "accepted",
+        "status": "active",
         "known_weaknesses": [],
         "known_rebuttals": []
       }
@@ -95,20 +95,24 @@
         "id": "E1",
         "type": "empirical",
         "summary": "Studies show humans consider alternatives before deciding",
-        "citation": "Libet et al. (1983)"
+        "source": "Libet et al. (1983)",
+        "relevance_to_claims": ["C1"]
       },
       {
         "id": "E2",
         "type": "conceptual",
         "summary": "Compatibilist arguments from Hume and Dennett",
-        "citation": "Dennett (2003)"
+        "source": "Dennett (2003)",
+        "relevance_to_claims": ["C2"]
       }
     ],
     "predictions": [
       {
         "id": "P1",
         "statement": "People will report feeling in control when making deliberate choices",
-        "linked_claims": ["C1"]
+        "linked_claims": ["C1"],
+        "test": "Survey participants after deliberate vs. reflexive choices",
+        "decision_criterion": "If >70% report feeling in control during deliberate choices, prediction is confirmed"
       }
     ],
     "normative_implications": [
@@ -160,7 +164,7 @@
         "depends_on": ["C2"],
         "backing_evidence_ids": [],
         "confidence": 0.7,
-        "status": "accepted"
+        "status": "active"
       },
       {
         "id": "C2",
@@ -169,7 +173,7 @@
         "depends_on": ["C1"],
         "backing_evidence_ids": [],
         "confidence": 0.7,
-        "status": "accepted"
+        "status": "active"
       }
     ]
   },
@@ -195,7 +199,7 @@
         "depends_on": [],
         "backing_evidence_ids": [],
         "confidence": 0.7,
-        "status": "accepted"
+        "status": "active"
       }
     ]
   }

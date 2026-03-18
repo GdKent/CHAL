@@ -90,9 +90,9 @@ def _find_weak_evidence_chains(belief_graph: BeliefGraph) -> List[Dict[str, Any]
     Find claims backed by low-quality or unreplicated evidence.
 
     Focuses on evidence substance rather than numeric confidence scores.
-    Low-quality evidence indicators:
-    - rigor: "low" or "medium"
-    - replication_status: "unreplicated", "failed", "contested"
+    Extracts quality signals from the free-text quality_assessment field.
+    Low-quality indicators: "weak", "limited", "preliminary", "anecdotal", etc.
+    Strong-quality indicators: "strong", "replicated", "robust", "rigorous", etc.
 
     Returns:
         List of dicts with weak evidence chain info
@@ -111,22 +111,33 @@ def _find_weak_evidence_chains(belief_graph: BeliefGraph) -> List[Dict[str, Any]
 
         weak_evidence = []
         for ev_id in evidence_ids:
-            ev_node = belief_graph.get_node(ev_id)
-            if ev_node and ev_node.get("type") == "evidence":
-                ev_data = ev_node.get("data", {})
-                rigor = ev_data.get("rigor", "medium").lower()
-                replication = ev_data.get("replication_status", "unreplicated").lower()
+            # get_node() returns the raw data dict directly, not the wrapper
+            ev_data = belief_graph.get_node(ev_id)
+            if ev_data:
+                qa_text = (ev_data.get("quality_assessment") or "").lower()
 
-                # Flag as weak if low/medium rigor OR problematic replication
-                is_weak_rigor = rigor in ["low", "medium"]
-                is_weak_replication = any(keyword in replication for keyword in ["unreplicated", "failed", "contested", "preliminary"])
+                # Extract quality signals from free-text assessment
+                weak_quality_keywords = [
+                    "weak", "low", "poor", "limited", "preliminary",
+                    "anecdotal", "contested", "unreplicated",
+                    "failed replication", "small sample"
+                ]
+                strong_quality_keywords = [
+                    "strong", "replicated", "robust", "rigorous",
+                    "converging", "meta-analysis", "large sample"
+                ]
 
-                if is_weak_rigor or is_weak_replication:
+                has_weak_signal = any(kw in qa_text for kw in weak_quality_keywords)
+                has_strong_signal = any(kw in qa_text for kw in strong_quality_keywords)
+
+                # Flag as weak if explicit weak signals present, or no quality info at all
+                is_weak = has_weak_signal or (not qa_text and not has_strong_signal)
+
+                if is_weak:
                     weak_evidence.append({
                         "ev_id": ev_id,
-                        "rigor": rigor,
-                        "replication_status": replication,
-                        "description": ev_data.get("description", "")[:80]
+                        "quality_assessment": qa_text or "(none)",
+                        "description": ev_data.get("summary", ev_data.get("description", ""))[:80]
                     })
 
         if weak_evidence:
@@ -223,9 +234,8 @@ def format_attack_suggestions(vulnerabilities: Dict[str, Any], opponent_name: st
             sections.append(f"   {claim_id} relies on {len(weak_ev)} weak evidence source(s):")
             for ev in weak_ev[:2]:  # Show first 2 weak evidence items
                 ev_id = ev["ev_id"]
-                rigor = ev["rigor"]
-                replication = ev["replication_status"]
-                sections.append(f"      - {ev_id}: rigor={rigor}, replication={replication}")
+                qa = ev.get("quality_assessment", "(none)")
+                sections.append(f"      - {ev_id}: quality={qa}")
         sections.append(f"   💡 ATTACK STRATEGY: Challenge evidence quality, demand stronger studies, replication, or more rigorous methodology.\n")
 
     # 3. Weak foundations

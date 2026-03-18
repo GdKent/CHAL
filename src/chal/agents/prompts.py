@@ -427,6 +427,18 @@ rated "sufficient" unless you can demonstrate the rating is unjustified. Also ch
 their assumption types are correctly classified — an assumption labeled "foundational" that \
 is actually empirical can be challenged with evidence.
 
+<attack_framework>
+When planning your questions, identify which attack vector applies:
+- UNDERMINING: Challenge a premise or assumption directly. Target A# nodes or foundational claims.
+  Example: "Your A2 assumes empirical methods are appropriate here -- but this is a normative question..."
+- REBUTTING: Present counter-evidence or a counter-conclusion that directly opposes a claim.
+  Example: "C3 claims X, but study Y found the opposite..."
+- UNDERCUTTING: Challenge the inference step -- even if the premises are true, the conclusion doesn't follow.
+  Example: "Even granting E1 and A1, your inference_chain step 3 is a non sequitur because..."
+
+The most effective questions often combine vectors. Use this framework in your reasoning, not as rigid categories.
+</attack_framework>
+
 Then ask up to {max_questions} high-leverage questions. Each should target specific IDs \
 (at most 2 per question), be answerable (not rhetorical), and aim to elicit a concession, \
 measurable test, or scope clarification. Keep each ≤ {max_question_length_chars} characters.
@@ -1187,6 +1199,12 @@ You are {agent_name} cross-examining {opponent_name} on: "{topic}"
 Ask up to {max_questions} devastating questions. Each must target specific IDs, \
 exploit real weaknesses, and be ≤ {max_question_length_chars} characters. \
 Their counterpositions (X#) are a roadmap of their vulnerabilities — use it.
+
+When targeting weaknesses, classify your attack vector:
+- UNDERMINING: Destroy a premise. If A# falls, everything built on it collapses.
+- REBUTTING: Produce counter-evidence that directly contradicts C#.
+- UNDERCUTTING: Show the inference doesn't follow -- the logic is broken even if the premises stand.
+Their counterpositions (X#) already identify their own attack_type -- hit the same vector harder.
 </instructions>
 
 <output_format>

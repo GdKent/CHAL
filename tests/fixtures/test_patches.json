@@ -47,7 +47,7 @@
         "id": "E3",
         "type": "empirical",
         "summary": "New evidence from recent study",
-        "citation": "Smith et al. (2026)"
+        "source": "Smith et al. (2026)"
       }
     }
   ],
@@ -65,7 +65,7 @@
       "target_id": "C1",
       "changes": {
         "confidence": 0.55,
-        "status": "under_review"
+        "status": "revised"
       }
     },
     {
@@ -74,7 +74,7 @@
         "id": "E4",
         "type": "conceptual",
         "summary": "Additional supporting evidence",
-        "citation": "Jones (2026)"
+        "source": "Jones (2026)"
       }
     }
   ],

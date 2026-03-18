@@ -111,11 +111,16 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         src_str = ", ".join([f"{k}: {v}" for k,v in src.items()])
         lines = [f"- [{e.get('id','')}] {e.get('type','')}: {e.get('summary','')}"]
         lines.append(f"  - Source: {src_str} → supports: {', '.join(e.get('relevance_to_claims') or [])}")
-        if e.get("quality_assessment") and isinstance(e["quality_assessment"], dict):
-            qa = e["quality_assessment"]
+        qa = e.get("quality_assessment", "")
+        if isinstance(qa, dict):
             lines.append(f"  - Quality: sample_size={qa.get('sample_size','')}, replication={qa.get('replication_status','')}, rigor={qa.get('rigor','')}")
-        if e.get("limitations"):
-            lines.append(f"  - Limitations: {', '.join(e['limitations'])}")
+        elif qa:
+            lines.append(f"  - Quality: {qa}")
+        lim = e.get("limitations", "")
+        if isinstance(lim, list):
+            lines.append(f"  - Limitations: {', '.join(lim)}")
+        elif lim:
+            lines.append(f"  - Limitations: {lim}")
         return "\n".join(lines)
     list_block("Evidence", "evidence", ev_fmt)
     def pred_fmt(p):

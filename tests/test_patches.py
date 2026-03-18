@@ -215,7 +215,8 @@ def test_apply_patches_add_evidence_no_evidence_array():
             "id": "E1",
             "type": "empirical",
             "summary": "New evidence",
-            "citation": "Test (2026)"
+            "source": "Test (2026)",
+            "relevance_to_claims": []
         }
     }]
 
@@ -571,7 +572,8 @@ def test_validate_patches_add_evidence_duplicate_id():
             "id": "E1",  # Already exists
             "type": "empirical",
             "summary": "Duplicate",
-            "citation": "Test (2026)"
+            "source": "Test (2026)",
+            "relevance_to_claims": []
         }
     }]
 

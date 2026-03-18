@@ -118,11 +118,136 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                 }
             }
         },
-        "claims": { "type": "array" },            # List of C# items (deductive/inductive/abductive claims), each with 'id'
-        "evidence": { "type": "array" },          # List of E# items (empirical/conceptual/expert_consensus), each with 'id'
-        "predictions": { "type": "array" },       # List of P# items (falsifiable consequences/tests), each with 'id'
-        "normative_implications": { "type": "array" },  # List of N# items (ethical/policy implications), each with 'id'
-        "uncertainties": { "type": "array" },     # List of U# items (key unknowns + VOI notes), each with 'id'
+        "claims": {                                  # List of C# items (claims with type/confidence/status), each with 'id'
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "type", "statement", "depends_on",
+                             "backing_evidence_ids", "confidence", "status"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "type": { "type": "string" },              # Free-form claim category (e.g., "descriptive", "causal")
+                    "statement": { "type": "string" },
+                    "depends_on": {                            # References to A#/C# IDs this claim builds on
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "backing_evidence_ids": {                  # References to E# IDs supporting this claim
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "confidence": {                            # Calibrated confidence in [0, 1]
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["active", "revised", "retracted"]
+                    },
+                    # --- Optional enrichment fields (display-only, not structurally consumed) ---
+                    "inference_chain": {                        # Steps of reasoning leading to this claim
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "minItems": 1
+                    },
+                    "known_weaknesses": {                      # Self-identified weaknesses (overlaps with X#)
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "confidence_justification": { "type": "string" }  # Rationale for the confidence number
+                }
+            }
+        },
+        "evidence": {                                # List of E# items (empirical/conceptual/expert_consensus), each with 'id'
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "type", "summary", "source", "relevance_to_claims"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "type": {
+                        "type": "string",
+                        "enum": ["empirical", "conceptual", "expert_consensus"]
+                    },
+                    "summary": { "type": "string" },
+                    "source": { "type": "string" },            # Citation or provenance string
+                    "relevance_to_claims": {                   # Cross-references to C# IDs
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    # --- Optional enrichment fields ---
+                    "quality_assessment": { "type": "string" },  # Free-text quality evaluation
+                    "limitations": { "type": "string" }          # Caveats about the evidence
+                }
+            }
+        },
+        "predictions": {                             # List of P# items (falsifiable consequences/tests), each with 'id'
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "statement", "linked_claims", "test",
+                             "decision_criterion"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "statement": { "type": "string" },
+                    "linked_claims": {                         # References to C# IDs this prediction derives from
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "test": { "type": "string" },              # How to evaluate the prediction
+                    "decision_criterion": { "type": "string" },# Concrete rule for confirmation/falsification
+                    # --- Optional enrichment fields ---
+                    "potential_falsifiers": {                   # What would disprove the prediction
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "expected_likelihood": {                    # Probability estimate [0.0, 1.0]
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    },
+                    "importance": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"]
+                    }
+                }
+            }
+        },
+        "normative_implications": {                  # List of N# items (ethical/policy implications), each with 'id'
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "statement"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "statement": { "type": "string" },
+                    # --- Optional enrichment fields ---
+                    "linked_claims": {                         # References to C# IDs driving this implication
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "strength": { "type": "string" }           # Strength of the normative implication
+                }
+            }
+        },
+        "uncertainties": {                           # List of U# items (key unknowns + VOI notes), each with 'id'
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "question", "cruciality"],
+                "properties": {
+                    "id": { "type": "string" },
+                    "question": { "type": "string" },
+                    "cruciality": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"]
+                    },
+                    # --- Optional enrichment fields ---
+                    "voi_hint": { "type": "string" }           # Value of Information hint
+                }
+            }
+        },
         "counterpositions": {                        # List of X# items (opponent objections + responses), each with 'id'
             "type": "array",
             "items": {
@@ -156,7 +281,21 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
         # --- Governance of updates & audit trail ---
 
         #"update_policy": { "type": "object" },    # Optional rules: revision triggers, confidence update rule, retirement criteria
-        "changelog": { "type": "array" }          # Optional list of versioned change records (who/when/what changed)
+        "changelog": {                               # Optional list of versioned change records (who/when/what changed)
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["version", "changes", "timestamp"],
+                "properties": {
+                    "version": { "type": "integer", "minimum": 1 },
+                    "changes": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
+                    "timestamp": { "type": "string" }
+                }
+            }
+        }
     },
     "additionalProperties": True  # Allow forward-compatible keys; safer during research iteration
 }
@@ -181,6 +320,25 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
     # Enforce the exact schema label (useful for migrations later)
     if belief.get("schema_version") != SCHEMA_VERSION:
         errors.append(f"schema_version must be '{SCHEMA_VERSION}'")
+
+    # --- Version type and range checks ---
+    ver = belief.get("version")
+    if ver is not None and not isinstance(ver, int):
+        errors.append(f"'version' must be an integer, not {type(ver).__name__}")
+    elif isinstance(ver, int) and ver < 1:
+        errors.append(f"'version' must be >= 1, got {ver}")
+
+    # --- Thesis field-level checks ---
+    thesis = belief.get("thesis")
+    if isinstance(thesis, dict):
+        t_conf = thesis.get("confidence")
+        if t_conf is not None and not (0.0 <= t_conf <= 1.0):
+            errors.append(
+                f"thesis.confidence {t_conf} out of range [0.0, 1.0]"
+            )
+        bullets = thesis.get("summary_bullets")
+        if isinstance(bullets, list) and len(bullets) == 0:
+            errors.append("thesis.summary_bullets must not be empty")
 
     # --- Type checks for fields that must be dicts/arrays ---
     # These are critical even without jsonschema, since downstream code
@@ -281,6 +439,53 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
             errors.append(
                 f"Invalid response_sufficiency '{rs}'. "
                 f"Must be one of: {sorted(VALID_SUFFICIENCY)}"
+            )
+
+    VALID_CLAIM_STATUSES = {"active", "revised", "retracted"}
+    for item in belief.get("claims", []) or []:
+        status = item.get("status")
+        if status is not None and status not in VALID_CLAIM_STATUSES:
+            errors.append(
+                f"Invalid claim status '{status}'. "
+                f"Must be one of: {sorted(VALID_CLAIM_STATUSES)}"
+            )
+        conf = item.get("confidence")
+        if conf is not None and not (0.0 <= conf <= 1.0):
+            errors.append(
+                f"Claim '{item.get('id')}' confidence {conf} out of range [0.0, 1.0]"
+            )
+
+    VALID_EVIDENCE_TYPES = {"empirical", "conceptual", "expert_consensus"}
+    for item in belief.get("evidence", []) or []:
+        etype = item.get("type")
+        if etype is not None and etype not in VALID_EVIDENCE_TYPES:
+            errors.append(
+                f"Invalid evidence type '{etype}'. "
+                f"Must be one of: {sorted(VALID_EVIDENCE_TYPES)}"
+            )
+
+    VALID_IMPORTANCE = {"low", "medium", "high"}
+    for item in belief.get("predictions", []) or []:
+        imp = item.get("importance")
+        if imp is not None and imp not in VALID_IMPORTANCE:
+            errors.append(
+                f"Invalid prediction importance '{imp}'. "
+                f"Must be one of: {sorted(VALID_IMPORTANCE)}"
+            )
+        likelihood = item.get("expected_likelihood")
+        if likelihood is not None and not (0.0 <= likelihood <= 1.0):
+            errors.append(
+                f"Prediction '{item.get('id')}' expected_likelihood {likelihood} "
+                f"out of range [0.0, 1.0]"
+            )
+
+    VALID_CRUCIALITY = {"low", "medium", "high"}
+    for item in belief.get("uncertainties", []) or []:
+        cruciality = item.get("cruciality")
+        if cruciality is not None and cruciality not in VALID_CRUCIALITY:
+            errors.append(
+                f"Invalid uncertainty cruciality '{cruciality}'. "
+                f"Must be one of: {sorted(VALID_CRUCIALITY)}"
             )
 
     return errors

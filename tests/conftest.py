@@ -105,14 +105,13 @@ def sample_complete_belief() -> Dict[str, Any]:
                 "statement": "Humans can make choices based on reasons",
                 "depends_on": ["A1"],
                 "backing_evidence_ids": ["E1"],
+                "confidence": 0.85,
+                "status": "active",
                 "inference_chain": [
                     {"step": "P1: Rational beings deliberate", "justification": "Empirical observation"}
                 ],
-                "confidence": 0.85,
                 "confidence_justification": "Strong empirical support",
-                "status": "accepted",
-                "known_weaknesses": [],
-                "known_rebuttals": []
+                "known_weaknesses": []
             }
         ],
         "evidence": [
@@ -120,14 +119,17 @@ def sample_complete_belief() -> Dict[str, Any]:
                 "id": "E1",
                 "type": "empirical",
                 "summary": "Studies show humans consider alternatives before deciding",
-                "citation": "Libet et al. (1983)"
+                "source": "Libet et al. (1983)",
+                "relevance_to_claims": ["C1"]
             }
         ],
         "predictions": [
             {
                 "id": "P1",
                 "statement": "People will report feeling in control when making deliberate choices",
-                "linked_claims": ["C1"]
+                "linked_claims": ["C1"],
+                "test": "Survey participants after deliberate vs. reflexive choices",
+                "decision_criterion": "If >70% report feeling in control during deliberate choices, prediction is confirmed"
             }
         ],
         "normative_implications": [
@@ -166,7 +168,7 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
                 "depends_on": ["C2"],
                 "backing_evidence_ids": [],
                 "confidence": 0.7,
-                "status": "accepted"
+                "status": "active"
             },
             {
                 "id": "C2",
@@ -175,7 +177,7 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
                 "depends_on": ["C1"],
                 "backing_evidence_ids": [],
                 "confidence": 0.7,
-                "status": "accepted"
+                "status": "active"
             }
         ]
     }
@@ -208,7 +210,7 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
                 "depends_on": [],
                 "backing_evidence_ids": [],
                 "confidence": 0.7,
-                "status": "accepted"
+                "status": "active"
             }
         ]
     }

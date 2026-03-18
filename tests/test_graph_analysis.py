@@ -393,3 +393,103 @@ def test_identify_contested_nodes_malformed_challenge():
     contested = identify_contested_nodes(challenges)
 
     assert isinstance(contested, dict)
+
+
+# ==============================================
+# 8. Weak Evidence Detection Tests (Part 6B)
+# ==============================================
+
+@pytest.mark.unit
+def test_weak_evidence_detection_string_quality():
+    """Test that evidence with weak quality_assessment string is flagged."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["evidence"][0]["quality_assessment"] = "Weak, preliminary study with small sample"
+    graph = BeliefGraph(belief)
+
+    vulns = analyze_vulnerabilities(graph)
+    weak_chains = vulns["weak_evidence_chains"]
+
+    assert len(weak_chains) > 0, "Evidence with weak quality should be flagged"
+    assert weak_chains[0]["claim_id"] == "C1"
+    assert any(ev["ev_id"] == "E1" for ev in weak_chains[0]["weak_evidence"])
+
+
+@pytest.mark.unit
+def test_strong_evidence_not_flagged():
+    """Test that evidence with strong quality_assessment string is NOT flagged."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["evidence"][0]["quality_assessment"] = "Strong — replicated across labs, converging methods"
+    graph = BeliefGraph(belief)
+
+    vulns = analyze_vulnerabilities(graph)
+    weak_chains = vulns["weak_evidence_chains"]
+
+    assert len(weak_chains) == 0, f"Strong evidence should not be flagged, got: {weak_chains}"
+
+
+@pytest.mark.unit
+def test_evidence_no_quality_assessment():
+    """Test that evidence without quality_assessment field is flagged as unknown quality."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    # Remove quality_assessment entirely (default from create_sample_belief has none)
+    belief["evidence"][0].pop("quality_assessment", None)
+    graph = BeliefGraph(belief)
+
+    vulns = analyze_vulnerabilities(graph)
+    weak_chains = vulns["weak_evidence_chains"]
+
+    assert len(weak_chains) > 0, "Evidence without quality_assessment should be flagged"
+    weak_ev = weak_chains[0]["weak_evidence"][0]
+    assert weak_ev["quality_assessment"] == "(none)"
+
+
+# ==============================================
+# 9. Prompt Attack Framework Tests (Part 6C)
+# ==============================================
+
+@pytest.mark.unit
+def test_stage_2_prompt_contains_attack_framework():
+    """Test that standard Stage 2 prompt includes the attack framework section."""
+    from chal.agents.prompts import build_stage_2_prompt
+    from tests.utils import create_sample_belief, create_mock_belief_response
+    import json
+
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief_json = json.dumps(belief)
+
+    prompt = build_stage_2_prompt(
+        topic="Test topic",
+        agent_name="Agent-A",
+        opponent_name="Agent-B",
+        agent_belief_json=belief_json,
+        opponent_belief_json=belief_json
+    )
+
+    assert "<attack_framework>" in prompt
+    assert "UNDERMINING" in prompt
+    assert "REBUTTING" in prompt
+    assert "UNDERCUTTING" in prompt
+    assert "</attack_framework>" in prompt
+
+
+@pytest.mark.unit
+def test_stage_2_bloodsport_prompt_contains_attack_vectors():
+    """Test that blood sport Stage 2 prompt includes attack vector taxonomy."""
+    from chal.agents.prompts import build_stage_2_bloodsport_prompt
+    import json
+
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief_json = json.dumps(belief)
+
+    prompt = build_stage_2_bloodsport_prompt(
+        topic="Test topic",
+        agent_name="Agent-A",
+        opponent_name="Agent-B",
+        agent_belief_json=belief_json,
+        opponent_belief_json=belief_json
+    )
+
+    assert "UNDERMINING" in prompt
+    assert "REBUTTING" in prompt
+    assert "UNDERCUTTING" in prompt
+    assert "attack vector" in prompt.lower()

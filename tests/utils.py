@@ -70,7 +70,8 @@ def create_sample_belief(
                 "id": f"E{i+1}",
                 "type": "empirical",
                 "summary": f"Evidence {i+1}",
-                "citation": f"Test et al. (2026)"
+                "source": f"Test et al. (2026)",
+                "relevance_to_claims": [f"C{i+1}"] if num_claims > i else []
             }
             for i in range(num_evidence)
         ]
@@ -84,11 +85,8 @@ def create_sample_belief(
                 "statement": f"Claim {i+1}",
                 "depends_on": ["A1"] if num_assumptions > 0 else [],
                 "backing_evidence_ids": ["E1"] if num_evidence > 0 else [],
-                "confidence": confidence - 0.1,
-                "confidence_justification": "Test justification",
-                "status": "accepted",
-                "known_weaknesses": [],
-                "known_rebuttals": []
+                "confidence": max(0.0, confidence - 0.1),
+                "status": "active"
             }
             for i in range(num_claims)
         ]
@@ -143,7 +141,7 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "depends_on": ["C2"],
                 "backing_evidence_ids": [],
                 "confidence": 0.7,
-                "status": "accepted"
+                "status": "active"
             },
             {
                 "id": "C2",
@@ -152,7 +150,7 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "depends_on": ["C1"],
                 "backing_evidence_ids": [],
                 "confidence": 0.7,
-                "status": "accepted"
+                "status": "active"
             }
         ]
     elif error_type == "orphaned_claim":
@@ -164,7 +162,7 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "depends_on": [],
                 "backing_evidence_ids": [],
                 "confidence": 0.7,
-                "status": "accepted"
+                "status": "active"
             }
         ]
         base_belief["assumptions"] = []
