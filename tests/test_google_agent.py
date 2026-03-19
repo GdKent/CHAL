@@ -138,6 +138,53 @@ def test_system_messages_filtered(mock_retry, mock_client_class):
 @pytest.mark.unit
 @patch('chal.agents.google_agent.genai.Client')
 @patch('chal.agents.google_agent.retry_google_generate')
+def test_system_prompt_prepended(mock_retry, mock_client_class):
+    """Non-empty system_prompt is passed as the system_prompt kwarg to retry."""
+    from chal.agents.google_agent import GoogleAgent
+
+    mock_response = MagicMock()
+    mock_response.text = "Response"
+    mock_retry.return_value = mock_response
+
+    agent = GoogleAgent(
+        model="gemini-2.0-flash", name="Agent-Test", system_prompt="Be concise."
+    )
+    agent.generate([Message(role="user", content="Question?")])
+
+    call_kwargs = mock_retry.call_args.kwargs
+    assert call_kwargs["system_prompt"] == "Be concise."
+
+
+@pytest.mark.unit
+@patch('chal.agents.google_agent.genai.Client')
+@patch('chal.agents.google_agent.retry_google_generate')
+def test_generate_conversation_history(mock_retry, mock_client_class):
+    """Multi-turn history is preserved in the contents kwarg (assistant -> model)."""
+    from chal.agents.google_agent import GoogleAgent
+
+    mock_response = MagicMock()
+    mock_response.text = "Response"
+    mock_retry.return_value = mock_response
+
+    agent = GoogleAgent(model="gemini-2.0-flash", name="Agent-Test")
+    history = [
+        Message(role="user", content="First message"),
+        Message(role="assistant", content="First response"),
+        Message(role="user", content="Second message"),
+    ]
+    agent.generate(history)
+
+    contents_sent = mock_retry.call_args.kwargs["contents"]
+    assert len(contents_sent) >= 3
+    roles = [c.role for c in contents_sent]
+    assert roles[0] == "user"
+    assert roles[1] == "model"  # assistant mapped to model
+    assert roles[2] == "user"
+
+
+@pytest.mark.unit
+@patch('chal.agents.google_agent.genai.Client')
+@patch('chal.agents.google_agent.retry_google_generate')
 def test_generate_error_returns_error_message(mock_retry, mock_client_class):
     """Exceptions from retry are caught and returned as a labelled error Message."""
     from chal.agents.google_agent import GoogleAgent
@@ -311,3 +358,24 @@ def test_api_key_from_env(mock_client_class, monkeypatch):
 
     agent = GoogleAgent(model="gemini-2.0-flash", name="Agent-Test")
     assert agent.api_key == "test-google-key"
+
+
+# ==============================================
+# 7. Error Handling Tests
+# ==============================================
+
+@pytest.mark.unit
+@patch('chal.agents.google_agent.genai.Client')
+@patch('chal.agents.google_agent.retry_google_generate')
+def test_generate_empty_response(mock_retry, mock_client_class):
+    """Empty content from model is returned without crash."""
+    from chal.agents.google_agent import GoogleAgent
+
+    mock_response = MagicMock()
+    mock_response.text = ""
+    mock_retry.return_value = mock_response
+
+    agent = GoogleAgent(model="gemini-2.0-flash", name="Agent-Test")
+    result = agent.generate([Message(role="user", content="Question")])
+
+    assert result.content == ""

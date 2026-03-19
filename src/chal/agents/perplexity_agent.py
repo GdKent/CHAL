@@ -2,22 +2,24 @@
 perplexity_agent.py
 
 Defines an LLM-powered agent that uses Perplexity's Chat Completions API
-(e.g., sonar-pro, sonar-reasoning) to generate responses. This agent implements
+(e.g., sonar-pro, sonar-reasoning-pro) to generate responses. This agent implements
 the abstract `Agent` interface defined in `base.py`.
 
 Usage:
 - Requires a Perplexity API key to be available in the environment as `PERPLEXITY_API_KEY`.
 - Can be instantiated with any supported Perplexity chat model (e.g., "sonar-pro").
 - Obtain your API key at https://www.perplexity.ai/settings/api
+
+SDK: perplexityai (v0.30+). Import path: `from perplexity import Perplexity`.
+The SDK uses httpx and follows the OpenAI client pattern.
 """
 
 import os
-import httpx
+import time
+import perplexity as perplexity_module
+from perplexity import Perplexity
 from chal.agents.base import Agent, Message
 from typing import List
-import time
-import json
-from httpx import HTTPStatusError, TimeoutException, RequestError
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -52,6 +54,7 @@ class PerplexityAgent(Agent):
         self.belief_graph = None
         self.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
         self.all_beliefs_held = []
+        self._client = None  # Lazy init: created on first generate() call
 
     def set_internal_belief(self, belief_text: str) -> None:
         """
@@ -121,31 +124,39 @@ class PerplexityAgent(Agent):
         Constructs a prompt from conversation history, sends it to Perplexity,
         and returns the model's reply wrapped in a Message object.
         """
-
-        messages = [{"role": m.role, "content": m.content} for m in history]
+        messages = [
+            {"role": m.role, "content": m.content}
+            for m in history
+            if m.role in ("user", "assistant")
+        ]
 
         if self.system_prompt:
             messages.insert(0, {"role": "system", "content": self.system_prompt})
 
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": temperature,
-        }
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        # Lazy-init client on first use (avoids requiring API key at construction time)
+        if self._client is None:
+            self._client = Perplexity(api_key=self.api_key)
 
         try:
-            data = retry_perplexity_chat_completion(httpx.post, payload, headers)
+            response = retry_perplexity_chat_completion(
+                client=self._client,
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+            )
 
-            raw_msg = data["choices"][0]["message"]
+            usage = {}
+            if response.usage:
+                usage = {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens,
+                }
+
             return Message(
-                role=raw_msg["role"],
-                content=raw_msg["content"],
-                metadata=data
+                role="assistant",
+                content=response.choices[0].message.content,
+                metadata={"model": response.model, "usage": usage}
             )
 
         except Exception as e:
@@ -156,34 +167,35 @@ class PerplexityAgent(Agent):
 
 
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
-def retry_perplexity_chat_completion(post_func, payload, headers, max_retries=5, base_delay=60.0):
+def retry_perplexity_chat_completion(client, model, messages, temperature,
+                                      max_retries=5, base_delay=60.0):
     """
     Wrapper to retry Perplexity chat completions with exponential backoff.
 
     Args:
-        post_func (callable): Function to call, e.g. httpx.post
-        payload (dict): JSON payload for Perplexity API
-        headers (dict): HTTP headers including API key
+        client: Instantiated perplexity.Perplexity client
+        model (str): Perplexity model name
+        messages (list): List of {"role": ..., "content": ...} dicts
+        temperature (float): Sampling temperature
         max_retries (int): Max retry attempts
         base_delay (float): Delay factor in seconds
 
     Returns:
-        dict: JSON-decoded response from Perplexity
+        perplexity.types.StreamChunk: The Perplexity SDK response object
     """
     for attempt in range(max_retries):
         try:
-            response = post_func(
-                "https://api.perplexity.ai/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=300
+            return client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
             )
-            response.raise_for_status()
-            return response.json()
 
-        except (HTTPStatusError, TimeoutException, RequestError) as e:
+        except (perplexity_module.RateLimitError,
+                perplexity_module.APIStatusError,
+                perplexity_module.APIConnectionError) as e:
             wait = base_delay * (2 ** attempt)
-            print(f"[Retry {attempt+1}/{max_retries}] API call failed: {e}. Retrying in {wait:.1f} seconds.")
+            print(f"[Retry {attempt+1}/{max_retries}] Perplexity API call failed: {e}. Retrying in {wait:.1f} seconds.")
             time.sleep(wait)
 
     raise RuntimeError("Exceeded max retries for Perplexity API call.")

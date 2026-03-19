@@ -103,6 +103,31 @@ def test_system_prompt_prepended(mock_retry):
 
 @pytest.mark.unit
 @patch('chal.agents.ollama_agent.retry_ollama_chat')
+def test_generate_conversation_history(mock_retry):
+    """Multi-turn history is preserved in the messages passed to retry."""
+    from chal.agents.ollama_agent import OllamaAgent
+
+    mock_response = MagicMock()
+    mock_response.message.content = "Response"
+    mock_retry.return_value = mock_response
+
+    agent = OllamaAgent(model="deepseek-r1:14b", name="Agent-Test")
+    history = [
+        Message(role="user", content="First message"),
+        Message(role="assistant", content="First response"),
+        Message(role="user", content="Second message"),
+    ]
+    agent.generate(history)
+
+    messages_sent = mock_retry.call_args[0][1]
+    assert len(messages_sent) >= 3
+    assert messages_sent[0]["role"] == "user"
+    assert messages_sent[1]["role"] == "assistant"
+    assert messages_sent[2]["role"] == "user"
+
+
+@pytest.mark.unit
+@patch('chal.agents.ollama_agent.retry_ollama_chat')
 def test_generate_error_returns_error_message(mock_retry):
     """Exception from retry is caught and returned as a labelled error Message."""
     from chal.agents.ollama_agent import OllamaAgent
@@ -287,3 +312,23 @@ def test_generate_catches_runtime_error(mock_retry):
 
     assert "[Error from Agent-Test]" in result.content
     assert result.role == "assistant"
+
+
+# ==============================================
+# 6. Error Handling Tests
+# ==============================================
+
+@pytest.mark.unit
+@patch('chal.agents.ollama_agent.retry_ollama_chat')
+def test_generate_empty_response(mock_retry):
+    """Empty content from model is returned without crash."""
+    from chal.agents.ollama_agent import OllamaAgent
+
+    mock_response = MagicMock()
+    mock_response.message.content = ""
+    mock_retry.return_value = mock_response
+
+    agent = OllamaAgent(model="deepseek-r1:14b", name="Agent-Test")
+    result = agent.generate([Message(role="user", content="Question")])
+
+    assert result.content == ""

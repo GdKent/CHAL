@@ -183,7 +183,8 @@ class Adjudicator:
                 "formalizations": {
                     "challenger": result.get("formalization_challenger", ""),
                     "target": result.get("formalization_target", "")
-                }
+                },
+                "scores": result.get("scores", {})
             }
 
         # Fallback: try to parse old plain-text format

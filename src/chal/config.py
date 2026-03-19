@@ -24,7 +24,7 @@ class AgentConfig:
     persona: str
     model: str = "gpt-4o"
     temperature: float = 0.7
-    provider: str = "openai"  # "openai" | "anthropic" | "google"
+    provider: str = "openai"  # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
 
 
 @dataclass
@@ -35,7 +35,7 @@ class AdjudicationConfig:
     ethics_weight: float = 0.0
     logic_system: str = "CLASSICAL_BAYESIAN"
     ethics_system: str = "NONE"
-    provider: str = "openai"  # "openai" | "anthropic" | "google"
+    provider: str = "openai"  # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
 
 
 @dataclass
@@ -135,7 +135,7 @@ class BloodSportConfig:
 class ModeratorConfig:
     """Configuration for the debate moderator/roadmap agent."""
     model: str = "o4-mini"
-    provider: str = "openai"       # "openai" | "anthropic" | "google"
+    provider: str = "openai"       # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
     temperature: float = 0.3
     context: str = ""              # Optional free-text context (placeholder for future RAG)
     moderator_mode: str = "static" # "static" | "adaptive"

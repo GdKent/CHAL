@@ -51,12 +51,15 @@ PERSONA_CHOICES = [
     for key in PERSONAS
 ]
 
-PROVIDER_CHOICES = ["openai", "anthropic", "google"]
+PROVIDER_CHOICES = ["openai", "anthropic", "google", "ollama", "xai", "perplexity"]
 
 MODEL_SUGGESTIONS: dict[str, list[str]] = {
     "openai": ["gpt-4o", "gpt-4o-mini", "o4-mini", "o3-mini"],
     "anthropic": ["claude-sonnet-4-5-20250929", "claude-opus-4-6", "claude-haiku-4-5-20251001"],
     "google": ["gemini-2.0-flash", "gemini-2.0-pro"],
+    "ollama": ["deepseek-r1:14b", "llama3.1:8b", "phi4", "qwen2.5:14b"],
+    "xai": ["grok-3-mini", "grok-2"],
+    "perplexity": ["sonar-pro", "sonar-reasoning-pro", "sonar"],
 }
 
 # (display label, OutputConfig attribute, default value)
@@ -212,9 +215,13 @@ Choose which LLM provider to use for this agent:
   \u2022 [bold]openai[/bold] \u2014 GPT-4o and o-series reasoning models.
   \u2022 [bold]anthropic[/bold] \u2014 Claude Sonnet, Opus, and Haiku models.
   \u2022 [bold]google[/bold] \u2014 Gemini 2.0 Flash and Pro models.
+  \u2022 [bold]ollama[/bold] \u2014 Local inference via Ollama. No API key required.
+  \u2022 [bold]xai[/bold] \u2014 Grok models from xAI.
+  \u2022 [bold]perplexity[/bold] \u2014 Sonar models from Perplexity.
 
 [dim]Make sure you have the corresponding API key set in your .env file \
-(OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY).[/dim]\
+(OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, XAI_API_KEY, or \
+PERPLEXITY_API_KEY). Ollama runs locally and needs no key.[/dim]\
 """
 
 HELP_MODEL = """\
@@ -234,6 +241,20 @@ HELP_MODEL = """\
 [bold]Google:[/bold]
   \u2022 gemini-2.0-pro \u2014 Strongest Gemini model. [bold](Recommended)[/bold]
   \u2022 gemini-2.0-flash \u2014 Fast and efficient for lighter workloads.
+
+[bold]Ollama:[/bold]
+  \u2022 deepseek-r1:14b \u2014 Deep reasoning model. Good balance of quality and speed. [bold](Recommended)[/bold]
+  \u2022 llama3.1:8b \u2014 Meta's Llama 3.1. Fast local inference.
+  \u2022 phi4 \u2014 Microsoft's compact reasoning model.
+
+[bold]xAI:[/bold]
+  \u2022 grok-3-mini \u2014 Compact Grok model. Fast and cost-effective. [bold](Recommended)[/bold]
+  \u2022 grok-2 \u2014 Full Grok model. Strongest reasoning.
+
+[bold]Perplexity:[/bold]
+  \u2022 sonar-pro \u2014 Enhanced search-augmented model. [bold](Recommended)[/bold]
+  \u2022 sonar-reasoning-pro \u2014 Multi-step reasoning with citations.
+  \u2022 sonar \u2014 Base search-augmented model.
 
 [dim]Tip: For the most rigorous debates, use reasoning-focused models (o4-mini, \
 claude-opus-4-6, gemini-2.0-pro). You can also type any valid model name \

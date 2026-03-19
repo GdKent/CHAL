@@ -21,7 +21,7 @@ def create_agent(name: str, model: str, provider: str = "openai",
     Args:
         name (str): Display name for the agent, e.g. "Agent-Skeptic".
         model (str): Model identifier, e.g. "gpt-4o", "claude-sonnet-4-6".
-        provider (str): One of "openai", "anthropic", "google". Default "openai".
+        provider (str): One of "openai", "anthropic", "google", "ollama", "xai", "perplexity". Default "openai".
         system_prompt (str): Optional initial system prompt.
 
     Returns:

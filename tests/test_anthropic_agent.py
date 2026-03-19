@@ -116,6 +116,56 @@ def test_generate_filters_system_role(mock_retry, mock_anthropic_class):
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
 @patch('chal.agents.anthropic_agent.retry_anthropic_message')
+def test_system_prompt_prepended(mock_retry, mock_anthropic_class):
+    """Non-empty system_prompt is passed as the system_prompt kwarg to retry."""
+    from chal.agents.anthropic_agent import AnthropicAgent
+
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="Response")]
+    mock_response.model = "claude-sonnet-4-6"
+    mock_response.usage = MagicMock()
+    mock_retry.return_value = mock_response
+
+    agent = AnthropicAgent(
+        model="claude-sonnet-4-6", name="Agent-Test", system_prompt="Be concise."
+    )
+    agent.generate([Message(role="user", content="Question?")])
+
+    call_kwargs = mock_retry.call_args.kwargs
+    assert call_kwargs["system_prompt"] == "Be concise."
+
+
+@pytest.mark.unit
+@patch('chal.agents.anthropic_agent.anthropic.Anthropic')
+@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+def test_generate_conversation_history(mock_retry, mock_anthropic_class):
+    """Multi-turn history is preserved in the messages kwarg."""
+    from chal.agents.anthropic_agent import AnthropicAgent
+
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="Response")]
+    mock_response.model = "claude-sonnet-4-6"
+    mock_response.usage = MagicMock()
+    mock_retry.return_value = mock_response
+
+    agent = AnthropicAgent(model="claude-sonnet-4-6", name="Agent-Test")
+    history = [
+        Message(role="user", content="First message"),
+        Message(role="assistant", content="First response"),
+        Message(role="user", content="Second message"),
+    ]
+    agent.generate(history)
+
+    messages_sent = mock_retry.call_args.kwargs["messages"]
+    assert len(messages_sent) >= 3
+    assert messages_sent[0]["role"] == "user"
+    assert messages_sent[1]["role"] == "assistant"
+    assert messages_sent[2]["role"] == "user"
+
+
+@pytest.mark.unit
+@patch('chal.agents.anthropic_agent.anthropic.Anthropic')
+@patch('chal.agents.anthropic_agent.retry_anthropic_message')
 def test_generate_error_returns_error_message(mock_retry, mock_anthropic_class):
     """Exceptions from retry are caught and returned as a labelled error Message."""
     from chal.agents.anthropic_agent import AnthropicAgent
@@ -292,3 +342,26 @@ def test_api_key_from_env(mock_anthropic_class, monkeypatch):
 
     agent = AnthropicAgent(model="claude-sonnet-4-6", name="Agent-Test")
     assert agent.api_key == "test-key-from-env"
+
+
+# ==============================================
+# 7. Error Handling Tests
+# ==============================================
+
+@pytest.mark.unit
+@patch('chal.agents.anthropic_agent.anthropic.Anthropic')
+@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+def test_generate_empty_response(mock_retry, mock_anthropic_class):
+    """Empty content from model is returned without crash."""
+    from chal.agents.anthropic_agent import AnthropicAgent
+
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="")]
+    mock_response.model = "claude-sonnet-4-6"
+    mock_response.usage = MagicMock()
+    mock_retry.return_value = mock_response
+
+    agent = AnthropicAgent(model="claude-sonnet-4-6", name="Agent-Test")
+    result = agent.generate([Message(role="user", content="Question")])
+
+    assert result.content == ""

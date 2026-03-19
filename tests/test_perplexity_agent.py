@@ -1,7 +1,7 @@
 """
 Unit tests for PerplexityAgent implementation.
 
-All tests use mocked HTTP calls — no actual Perplexity API access needed.
+All tests use mocked SDK calls — no actual Perplexity API access needed.
 
 Tests cover:
 - Agent initialization
@@ -14,8 +14,16 @@ Tests cover:
 
 import pytest
 import os
+import httpx
+import perplexity as perplexity_module
 from unittest.mock import Mock, patch, MagicMock
 from chal.agents.base import Message
+
+
+def _make_rate_limit_error():
+    """Create a perplexity.RateLimitError suitable for testing."""
+    mock_response = httpx.Response(429, request=httpx.Request("POST", "https://api.perplexity.ai"))
+    return perplexity_module.RateLimitError("Rate limited", response=mock_response, body=None)
 
 
 # ==============================================
@@ -75,12 +83,15 @@ def test_api_key_from_env(monkeypatch):
 @pytest.mark.unit
 @patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
 def test_generate_success(mock_retry):
-    """Mocked Perplexity response is parsed into a Message with role='assistant'."""
+    """Mocked Perplexity SDK response is parsed into a Message with role='assistant'."""
     from chal.agents.perplexity_agent import PerplexityAgent
 
-    mock_retry.return_value = {
-        "choices": [{"message": {"role": "assistant", "content": "Mocked Perplexity response"}}]
-    }
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Mocked Perplexity response"
+    mock_response.model = "sonar-pro"
+    mock_response.usage = None
+    mock_retry.return_value = mock_response
 
     agent = PerplexityAgent(model="sonar-pro", name="Agent-Test", api_key="k")
     result = agent.generate([Message(role="user", content="Hello?")])
@@ -93,19 +104,50 @@ def test_generate_success(mock_retry):
 @pytest.mark.unit
 @patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
 def test_system_prompt_prepended(mock_retry):
-    """Non-empty system_prompt appears as first message in the payload."""
+    """Non-empty system_prompt appears as first message in the messages kwarg."""
     from chal.agents.perplexity_agent import PerplexityAgent
 
-    mock_retry.return_value = {
-        "choices": [{"message": {"role": "assistant", "content": "Response"}}]
-    }
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Response"
+    mock_response.model = "sonar-pro"
+    mock_response.usage = None
+    mock_retry.return_value = mock_response
 
     agent = PerplexityAgent(model="sonar-pro", name="Agent-Test", api_key="k", system_prompt="Be concise.")
     agent.generate([Message(role="user", content="Question?")])
 
-    payload_sent = mock_retry.call_args[0][1]
-    assert payload_sent["messages"][0]["role"] == "system"
-    assert payload_sent["messages"][0]["content"] == "Be concise."
+    messages = mock_retry.call_args.kwargs['messages']
+    assert messages[0]["role"] == "system"
+    assert messages[0]["content"] == "Be concise."
+
+
+@pytest.mark.unit
+@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+def test_generate_conversation_history(mock_retry):
+    """Multi-turn history is preserved in the messages kwarg."""
+    from chal.agents.perplexity_agent import PerplexityAgent
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Response"
+    mock_response.model = "sonar-pro"
+    mock_response.usage = None
+    mock_retry.return_value = mock_response
+
+    agent = PerplexityAgent(model="sonar-pro", name="Agent-Test", api_key="k")
+    history = [
+        Message(role="user", content="First message"),
+        Message(role="assistant", content="First response"),
+        Message(role="user", content="Second message"),
+    ]
+    agent.generate(history)
+
+    messages_sent = mock_retry.call_args.kwargs['messages']
+    assert len(messages_sent) >= 3
+    assert messages_sent[0]["role"] == "user"
+    assert messages_sent[1]["role"] == "assistant"
+    assert messages_sent[2]["role"] == "user"
 
 
 @pytest.mark.unit
@@ -191,47 +233,45 @@ def test_set_internal_belief_obj_none_clears_graph():
 
 @pytest.mark.unit
 @patch('chal.agents.perplexity_agent.time.sleep')
-@patch('chal.agents.perplexity_agent.httpx.post')
-def test_retry_on_rate_limit(mock_post, mock_sleep):
-    """429 response triggers retry; succeeds on second attempt."""
+def test_retry_on_rate_limit(mock_sleep):
+    """RateLimitError triggers retry; succeeds on second attempt."""
     import chal.agents.perplexity_agent as mod
-    from httpx import HTTPStatusError, Request, Response
 
-    mock_request = Request("POST", "https://api.perplexity.ai/chat/completions")
-    error_response = Response(429, request=mock_request)
-    success_response = MagicMock()
-    success_response.raise_for_status = MagicMock()
-    success_response.json.return_value = {
-        "choices": [{"message": {"role": "assistant", "content": "OK"}}]
-    }
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "OK"
 
-    mock_post.side_effect = [
-        HTTPStatusError("429", request=mock_request, response=error_response),
-        success_response,
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = [
+        _make_rate_limit_error(),
+        mock_response,
     ]
 
-    result = mod.retry_perplexity_chat_completion(mock_post, {}, {}, max_retries=5, base_delay=1.0)
-    assert result["choices"][0]["message"]["content"] == "OK"
-    assert mock_post.call_count == 2
+    result = mod.retry_perplexity_chat_completion(
+        client=mock_client, model="sonar-pro", messages=[], temperature=0.7,
+        max_retries=5, base_delay=1.0,
+    )
+    assert result.choices[0].message.content == "OK"
+    assert mock_client.chat.completions.create.call_count == 2
     mock_sleep.assert_called_once()
 
 
 @pytest.mark.unit
 @patch('chal.agents.perplexity_agent.time.sleep')
-@patch('chal.agents.perplexity_agent.httpx.post')
-def test_retry_exhausted_raises(mock_post, mock_sleep):
+def test_retry_exhausted_raises(mock_sleep):
     """After max_retries failures, RuntimeError is raised."""
     import chal.agents.perplexity_agent as mod
-    from httpx import HTTPStatusError, Request, Response
 
-    mock_request = Request("POST", "https://api.perplexity.ai/chat/completions")
-    error_response = Response(500, request=mock_request)
-    mock_post.side_effect = HTTPStatusError("500", request=mock_request, response=error_response)
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.side_effect = _make_rate_limit_error()
 
     with pytest.raises(RuntimeError, match="Exceeded max retries"):
-        mod.retry_perplexity_chat_completion(mock_post, {}, {}, max_retries=3, base_delay=1.0)
+        mod.retry_perplexity_chat_completion(
+            client=mock_client, model="sonar-pro", messages=[], temperature=0.7,
+            max_retries=3, base_delay=1.0,
+        )
 
-    assert mock_post.call_count == 3
+    assert mock_client.chat.completions.create.call_count == 3
 
 
 @pytest.mark.unit
@@ -247,3 +287,26 @@ def test_generate_catches_runtime_error(mock_retry):
 
     assert "[Error from Agent-Test]" in result.content
     assert result.role == "assistant"
+
+
+# ==============================================
+# 6. Error Handling Tests
+# ==============================================
+
+@pytest.mark.unit
+@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+def test_generate_empty_response(mock_retry):
+    """Empty content from model is returned without crash."""
+    from chal.agents.perplexity_agent import PerplexityAgent
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = ""
+    mock_response.model = "sonar-pro"
+    mock_response.usage = None
+    mock_retry.return_value = mock_response
+
+    agent = PerplexityAgent(model="sonar-pro", name="Agent-Test", api_key="k")
+    result = agent.generate([Message(role="user", content="Question")])
+
+    assert result.content == ""

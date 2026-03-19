@@ -46,7 +46,7 @@ agents:
     persona: "EMPIRICIST"              # Requires empirical evidence
     model: "gpt-4o"                    # OpenAI model to use
     temperature: 0.7                   # Agent creativity (0.0-1.0, higher = more creative)
-    provider: "openai"                 # LLM provider: "openai" | "anthropic" | "google" | "ollama"
+    provider: "openai"                 # LLM provider: "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
 
   - name: "Agent-Supernaturalist"
     persona: "SUPERNATURALIST"         # Accepts non-empirical truths
@@ -90,7 +90,7 @@ adjudication:
   # - o1: More thorough but slower and more expensive (use for high-stakes debates)
   # - gpt-4o: Adequate but less rigorous than reasoning models
   model: "o4-mini"                     # Model for the adjudicator
-  provider: "openai"                   # LLM provider: "openai" | "anthropic" | "google"
+  provider: "openai"                   # LLM provider: "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
 
   # Weighting for evaluation criteria (should sum to 1.0)
   logic_weight: 1.0                    # Weight for logical rigor (0.0-1.0)
@@ -263,7 +263,7 @@ scribe:
 #
 # moderator:
 #   model: "o4-mini"                 # Model for roadmap generation
-#   provider: "openai"               # LLM provider: "openai" | "anthropic" | "google"
+#   provider: "openai"               # LLM provider: "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
 #   temperature: 0.3                 # Low temperature for structured reasoning
 #   context: ""                      # Optional free-text context (future RAG integration)
 #   moderator_mode: "static"         # "static" (fixed roadmap) | "adaptive" (revises between rounds)

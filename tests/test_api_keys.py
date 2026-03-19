@@ -135,6 +135,62 @@ class TestCheckApiKeys:
         assert result["anthropic"] is False
 
     @pytest.mark.unit
+    @patch.dict(os.environ, {"XAI_API_KEY": "xai-test123"}, clear=False)
+    def test_xai_key_present(self):
+        """check_api_keys returns True for xAI when XAI_API_KEY is set."""
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="xai")],
+            adjudication=AdjudicationConfig(provider="xai"),
+        )
+        result = check_api_keys(config)
+        assert result["xai"] is True
+
+    @pytest.mark.unit
+    @patch.dict(os.environ, {}, clear=False)
+    def test_xai_key_missing(self):
+        """check_api_keys returns False for xAI when XAI_API_KEY is not set."""
+        os.environ.pop("XAI_API_KEY", None)
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="xai")],
+            adjudication=AdjudicationConfig(provider="xai"),
+        )
+        result = check_api_keys(config)
+        assert result["xai"] is False
+
+    @pytest.mark.unit
+    @patch.dict(os.environ, {"PERPLEXITY_API_KEY": "pplx-test123"}, clear=False)
+    def test_perplexity_key_present(self):
+        """check_api_keys returns True for Perplexity when PERPLEXITY_API_KEY is set."""
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="perplexity")],
+            adjudication=AdjudicationConfig(provider="perplexity"),
+        )
+        result = check_api_keys(config)
+        assert result["perplexity"] is True
+
+    @pytest.mark.unit
+    @patch.dict(os.environ, {}, clear=False)
+    def test_perplexity_key_missing(self):
+        """check_api_keys returns False for Perplexity when PERPLEXITY_API_KEY is not set."""
+        os.environ.pop("PERPLEXITY_API_KEY", None)
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="perplexity")],
+            adjudication=AdjudicationConfig(provider="perplexity"),
+        )
+        result = check_api_keys(config)
+        assert result["perplexity"] is False
+
+    @pytest.mark.unit
+    def test_ollama_no_key_required(self):
+        """Ollama is not in PROVIDER_ENV_VARS, so it always returns True (no key needed)."""
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="ollama")],
+            adjudication=AdjudicationConfig(provider="ollama"),
+        )
+        result = check_api_keys(config)
+        assert result["ollama"] is True
+
+    @pytest.mark.unit
     def test_unknown_provider_returns_true(self):
         """Unknown providers (not in PROVIDER_ENV_VARS) are treated as valid."""
         config = _minimal_config(
@@ -219,6 +275,44 @@ class TestPromptMissingKeys:
 
         mock_questionary.text.assert_not_called()
 
+    @pytest.mark.unit
+    @patch("chal.cli.api_keys.questionary")
+    @patch.dict(os.environ, {}, clear=False)
+    def test_prompts_for_missing_xai_key(self, mock_questionary):
+        """When XAI_API_KEY is missing, the user is prompted and the env var is set."""
+        os.environ.pop("XAI_API_KEY", None)
+
+        mock_questionary.text.return_value.ask.return_value = "xai-secret"
+
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="xai")],
+            adjudication=AdjudicationConfig(provider="xai"),
+        )
+        console = _console()
+        prompt_missing_keys(config, console)
+
+        mock_questionary.text.assert_called_once()
+        assert os.environ.get("XAI_API_KEY") == "xai-secret"
+
+    @pytest.mark.unit
+    @patch("chal.cli.api_keys.questionary")
+    @patch.dict(os.environ, {}, clear=False)
+    def test_prompts_for_missing_perplexity_key(self, mock_questionary):
+        """When PERPLEXITY_API_KEY is missing, the user is prompted and the env var is set."""
+        os.environ.pop("PERPLEXITY_API_KEY", None)
+
+        mock_questionary.text.return_value.ask.return_value = "pplx-secret"
+
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="perplexity")],
+            adjudication=AdjudicationConfig(provider="perplexity"),
+        )
+        console = _console()
+        prompt_missing_keys(config, console)
+
+        mock_questionary.text.assert_called_once()
+        assert os.environ.get("PERPLEXITY_API_KEY") == "pplx-secret"
+
 
 # =========================================================================
 # 4. warn_missing_keys
@@ -258,6 +352,42 @@ class TestWarnMissingKeys:
 
         output = buf.getvalue()
         assert "OPENAI_API_KEY" not in output
+
+    @pytest.mark.unit
+    @patch.dict(os.environ, {}, clear=False)
+    def test_warns_missing_xai_key(self):
+        """A warning is printed when XAI_API_KEY is missing."""
+        os.environ.pop("XAI_API_KEY", None)
+
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="xai")],
+            adjudication=AdjudicationConfig(provider="xai"),
+        )
+        buf = StringIO()
+        console = Console(file=buf)
+        warn_missing_keys(config, console)
+
+        output = buf.getvalue()
+        assert "XAI_API_KEY" in output
+        assert "not set" in output
+
+    @pytest.mark.unit
+    @patch.dict(os.environ, {}, clear=False)
+    def test_warns_missing_perplexity_key(self):
+        """A warning is printed when PERPLEXITY_API_KEY is missing."""
+        os.environ.pop("PERPLEXITY_API_KEY", None)
+
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="perplexity")],
+            adjudication=AdjudicationConfig(provider="perplexity"),
+        )
+        buf = StringIO()
+        console = Console(file=buf)
+        warn_missing_keys(config, console)
+
+        output = buf.getvalue()
+        assert "PERPLEXITY_API_KEY" in output
+        assert "not set" in output
 
 
 # =========================================================================

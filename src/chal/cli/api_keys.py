@@ -24,6 +24,8 @@ PROVIDER_ENV_VARS: Dict[str, str] = {
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "google": "GOOGLE_API_KEY",
+    "xai": "XAI_API_KEY",
+    "perplexity": "PERPLEXITY_API_KEY",
 }
 
 
