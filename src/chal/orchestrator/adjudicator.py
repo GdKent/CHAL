@@ -17,6 +17,17 @@ from chal.agents.base import Agent, Message
 import json
 import re
 
+VALID_VERDICTS = {"critique_valid", "rebuttal_valid", "unresolved"}
+
+
+def _normalize_verdict(raw: str) -> str:
+    """Normalize a parsed verdict to one of the three valid values.
+
+    Returns 'unresolved' for any unrecognized value.
+    """
+    cleaned = raw.strip().lower()
+    return cleaned if cleaned in VALID_VERDICTS else "unresolved"
+
 
 class Adjudicator:
     """
@@ -177,7 +188,7 @@ class Adjudicator:
 
         if result is not None:
             return {
-                "status": result.get("outcome", "unknown").lower(),
+                "status": _normalize_verdict(result.get("outcome", "")),
                 "reasoning": result.get("reasoning", ""),
                 "restatement": result.get("restatement", ""),
                 "formalizations": {
@@ -189,7 +200,8 @@ class Adjudicator:
 
         # Fallback: try to parse old plain-text format
         outcome_match = re.search(r'(?:Outcome|outcome):\s*(\w+)', response.content)
-        status = outcome_match.group(1).strip().lower() if outcome_match else "unknown"
+        raw_status = outcome_match.group(1).strip().lower() if outcome_match else ""
+        status = _normalize_verdict(raw_status)
 
         reason_match = re.search(r'(?:Reasoning|reasoning):\s*(.+)', response.content, re.DOTALL)
         reasoning = reason_match.group(1).strip() if reason_match else response.content.strip()

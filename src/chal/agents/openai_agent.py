@@ -35,7 +35,8 @@ class OpenAIAgent(Agent):
         name (str): Display name for the agent, e.g., "Agent-Empiricist".
     """
 
-    def __init__(self, model: str, name: str, api_key: str = None, system_prompt: str = ""):
+    def __init__(self, model: str, name: str, api_key: str = None,
+                 system_prompt: str = "", key_pool=None):
         """
         Initializes the OpenAIAgent with model and optional prompt/key.
 
@@ -44,6 +45,7 @@ class OpenAIAgent(Agent):
             name (str): Display name for the agent, e.g., "Agent-Skeptic".
             api_key (str, optional): Explicit API key override (fallback is env var).
             system_prompt (str, optional): Optional system message to set agent behavior.
+            key_pool: Optional KeyPool instance for rate-limit-aware key rotation.
         """
         self.model = model
         self.name = name
@@ -54,6 +56,7 @@ class OpenAIAgent(Agent):
         self.belief_graph = None
         self.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
         self.all_beliefs_held = []
+        self.key_pool = key_pool
         self._client = None  # Lazy init: created on first generate() call
 
     def set_internal_belief(self, belief_text: str) -> None:
@@ -142,6 +145,13 @@ class OpenAIAgent(Agent):
         if self.system_prompt:
             messages.insert(0, {"role": "system", "content": self.system_prompt})
 
+        # Refresh key from pool (picks a non-cooling-down key)
+        if self.key_pool is not None:
+            fresh_key = self.key_pool.get_key("openai")
+            if fresh_key != self.api_key:
+                self.api_key = fresh_key
+                self._client = None  # Force client rebuild with new key
+
         # Lazy-init client on first use (avoids requiring API key at construction time)
         if self._client is None:
             self._client = OpenAI(api_key=self.api_key)
@@ -152,6 +162,8 @@ class OpenAIAgent(Agent):
                 model=self.model,
                 messages=messages,
                 temperature=temperature,
+                key_pool=self.key_pool,
+                current_key=self.api_key,
             )
 
             return Message(
@@ -169,9 +181,16 @@ class OpenAIAgent(Agent):
 
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
 def retry_openai_chat_completion(client, model, messages, temperature,
-                                  max_retries=5, base_delay=60.0):
+                                  max_retries=5, base_delay=60.0,
+                                  key_pool=None, current_key=""):
     """
     Wrapper to retry OpenAI chat completions with exponential backoff.
+
+    When a KeyPool is provided, rate-limit errors trigger key rotation:
+    the current key is marked as cooling down, a fresh key is drawn from
+    the pool, the client is rebuilt, and the request is retried immediately
+    (no exponential backoff sleep).  Non-rate-limit errors still use the
+    standard exponential backoff.
 
     Args:
         client: Instantiated OpenAI client
@@ -180,6 +199,9 @@ def retry_openai_chat_completion(client, model, messages, temperature,
         temperature (float): Sampling temperature
         max_retries (int): Max retry attempts
         base_delay (float): Delay factor in seconds
+        key_pool: Optional KeyPool for rate-limit-aware key rotation.
+        current_key (str): The API key currently in use (needed to mark it
+            as rate-limited in the pool).
 
     Returns:
         openai.types.chat.ChatCompletion: The raw OpenAI response object
@@ -196,6 +218,14 @@ def retry_openai_chat_completion(client, model, messages, temperature,
             return client.chat.completions.create(**kwargs)
 
         except (openai.RateLimitError, openai.APIStatusError, openai.APIConnectionError) as e:
+            # On rate limit with key pool: rotate key and retry immediately
+            if isinstance(e, openai.RateLimitError) and key_pool is not None:
+                key_pool.mark_rate_limited("openai", current_key, cooldown_seconds=60)
+                current_key = key_pool.get_key("openai")
+                client = OpenAI(api_key=current_key)
+                print(f"[KeyPool] Rotated openai API key after rate limit (attempt {attempt+1}/{max_retries}).")
+                continue
+
             wait = base_delay * (2 ** attempt)
             print(f"[Retry {attempt+1}/{max_retries}] OpenAI API call failed: {e}. Retrying in {wait:.1f} seconds.")
             time.sleep(wait)

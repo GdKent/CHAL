@@ -2,17 +2,18 @@
 wizard.py
 
 Interactive configuration wizard for CHAL debates.
-Walks the user through 10 steps to build a DebateConfig, with a review/edit
+Walks the user through 12 steps to build a DebateConfig, with a review/edit
 loop before launching.
 
 Navigation:
     Esc      - Exit wizard
     Ctrl+Z   - Go back one step
-    F1       - Show help for current prompt
+    Ctrl+F1  - Show help for current prompt
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import yaml
@@ -34,12 +35,14 @@ from chal.config import (
     DebateConfig,
     ModeratorConfig,
     OutputConfig,
+    ParallelConfig,
     CONFIG_DIR,
     DEFAULT_STORAGE_DIR,
 )
 from chal.agents.epistemic_personas import PERSONAS, PERSONA_DESCRIPTIONS
 from chal.agents.logic_systems import LOGIC_LABELS, LOGIC_DESCRIPTIONS
 from chal.agents.ethics_systems import ETHICS_LABELS, ETHICS_DESCRIPTIONS
+from chal.cli.api_keys import PROVIDER_ENV_VARS
 
 
 # =========================================================================
@@ -109,7 +112,7 @@ positions, and social pressures routinely derail even well-intentioned discourse
 
 CHAL addresses this by deploying AI agents as rigorous interlocutors capable of \
 [italic]belief search[/italic]: systematically exploring argument space, tracking formal belief \
-structures with dependency graphs and confidence scores, and converging toward \
+structures with dependency graphs and strength scores, and converging toward \
 well-supported conclusions through structured debate.
 
 [bold]Implications[/bold]
@@ -144,12 +147,12 @@ configuration to YAML, or edit individual settings before proceeding.
 
   [bold]\u2022[/bold] [bold]Esc[/bold] \u2014 Exit the wizard at any time
   [bold]\u2022[/bold] [bold]Ctrl+Z[/bold] \u2014 Go back to the previous step
-  [bold]\u2022[/bold] [bold]F1[/bold] \u2014 Show help for the current prompt\
+  [bold]\u2022[/bold] [bold]Ctrl+F1[/bold] \u2014 Show help for the current prompt\
 """
 
 
 # =========================================================================
-# Help texts — context-sensitive guidance displayed via F1
+# Help texts — context-sensitive guidance displayed via Ctrl+F1
 # =========================================================================
 
 HELP_MAIN_MENU = """\
@@ -426,7 +429,7 @@ Select which outputs to generate after the debate:
 
   \u2022 [bold]Debate transcript[/bold] \u2014 Full text of all agent exchanges.
   \u2022 [bold]Narrative synthesis[/bold] \u2014 Scribe-generated summary of key arguments.
-  \u2022 [bold]Belief trajectories[/bold] \u2014 Plot showing how confidence scores evolved.
+  \u2022 [bold]Belief trajectories[/bold] \u2014 Plot showing how strength scores evolved.
   \u2022 [bold]Agent statistics[/bold] \u2014 Per-agent metrics (claims, evidence, revisions).
   \u2022 [bold]Initial beliefs[/bold] \u2014 Each agent's CBS belief structure before debate.
   \u2022 [bold]Final beliefs[/bold] \u2014 Each agent's CBS belief structure after debate.
@@ -459,6 +462,67 @@ Enter a file path for saving the configuration as YAML.
   \u2022 Saved configs can be reloaded with [bold]chal --config path.yaml[/bold].\
 """
 
+HELP_PARALLELIZATION = """\
+CHAL's debate pipeline is sequential, but many stages contain independent API \
+calls that can run concurrently:
+
+  \u2022 [bold]Stage 1[/bold] \u2014 Opening positions (one call per agent)
+  \u2022 [bold]Stage 2[/bold] \u2014 Cross-examination (one call per agent pair)
+  \u2022 [bold]Stage 3[/bold] \u2014 Rebuttals (one call per agent per challenge)
+  \u2022 [bold]Stage 4[/bold] \u2014 Adjudication (one call per challenge-rebuttal pair)
+  \u2022 [bold]Stage 6[/bold] \u2014 Concluding remarks (one call per agent)
+
+With parallelization enabled, these independent calls fire concurrently using \
+a thread pool, significantly reducing wall-clock time.
+
+[bold yellow]Important:[/bold yellow] Most LLM providers enforce per-key rate limits. Under \
+parallel mode, multiple requests hit the API simultaneously, which can trigger \
+rate-limit errors. To avoid this, [bold]use multiple API keys[/bold] for each \
+provider \u2014 CHAL's key pool rotates keys automatically.
+
+[dim]Recommendation: Enable parallelization and enter 2\u20134 API keys per provider \
+in the next step.[/dim]\
+"""
+
+HELP_MAX_WORKERS = """\
+The [bold]max workers[/bold] setting controls how many API calls can run \
+simultaneously in the thread pool.
+
+[bold]Recommendations:[/bold]
+  • [bold]2–3 agents:[/bold] 5 threads (default) is plenty — one thread per \
+agent plus headroom for adjudication calls.
+  • [bold]4–6 agents:[/bold] 5–8 threads works well.
+  • [bold]7+ agents:[/bold] Consider 8–12 threads if your API keys support it.
+
+[bold yellow]Key consideration:[/bold yellow] Each concurrent thread makes an \
+API call, so the number of threads should not exceed the rate limits of your \
+API keys. If you have [bold]N[/bold] API keys for a provider, CHAL's key pool \
+rotates through them — so N keys × provider rate limit = your effective \
+concurrency ceiling.
+
+[dim]Higher values use more system threads but won't help if the API is the \
+bottleneck. The default of 5 works well for most setups.[/dim]\
+"""
+
+HELP_API_KEYS = """\
+Enter API keys for each LLM provider used in this debate. Keys are set for \
+this session only and are [bold]not[/bold] persisted to disk.
+
+For each provider, you can enter [bold]multiple keys[/bold] for rate-limit \
+rotation \u2014 CHAL will cycle through them automatically when making parallel \
+API calls.
+
+  \u2022 [bold]OpenAI[/bold] \u2014 OPENAI_API_KEY (required for GPT and o-series models)
+  \u2022 [bold]Anthropic[/bold] \u2014 ANTHROPIC_API_KEY (required for Claude models)
+  \u2022 [bold]Google[/bold] \u2014 GOOGLE_API_KEY (required for Gemini models)
+  \u2022 [bold]xAI[/bold] \u2014 XAI_API_KEY (required for Grok models)
+  \u2022 [bold]Perplexity[/bold] \u2014 PERPLEXITY_API_KEY (required for Sonar models)
+  \u2022 [bold]Ollama[/bold] \u2014 No API key needed (local inference)
+
+[dim]Tip: If you already have keys in your .env file, they will be detected \
+automatically and you can skip this step.[/dim]\
+"""
+
 
 # =========================================================================
 # Wizard navigation
@@ -485,12 +549,12 @@ class WizardBack(Exception):
 
 
 def _ask(question, help_text: str | None = None):
-    """Run a questionary Question with Esc, Ctrl+Z, and F1 bindings.
+    """Run a questionary Question with Esc, Ctrl+Z, and Ctrl+F1 bindings.
 
     Injects prompt_toolkit key bindings before running the prompt:
-      - Esc:    exit wizard  (raises WizardExit)
-      - Ctrl+Z: go back      (raises WizardBack)
-      - F1:     show help    (displays help_text, then re-shows prompt)
+      - Esc:      exit wizard  (raises WizardExit)
+      - Ctrl+Z:   go back      (raises WizardBack)
+      - Ctrl+F1:  show help    (displays help_text, then re-shows prompt)
       - Ctrl+C: cancel       (raises KeyboardInterrupt, unchanged)
     """
     try:
@@ -505,7 +569,7 @@ def _ask(question, help_text: str | None = None):
         def _handle_back(event):
             event.app.exit(result=_BACK)
 
-        @nav_kb.add('f1')
+        @nav_kb.add('c-f1')
         def _handle_help(event):
             event.app.exit(result=_HELP)
 
@@ -610,7 +674,7 @@ def ask_main_menu() -> str:
 # Preset selection
 # =========================================================================
 
-_PRESET_ORDER = ["quick_test", "default", "collaborative", "bloodsport_example"]
+_PRESET_ORDER = ["default"]
 
 
 def _scan_presets() -> list[tuple[str, str, Path]]:
@@ -1071,6 +1135,102 @@ def ask_output_toggles(default: OutputConfig | None = None) -> dict[str, bool]:
     return {attr: (attr in selected) for attr in all_attrs}
 
 
+def ask_parallelization(default: bool = True) -> bool:
+    """Step 10: Ask whether to enable parallel API dispatch."""
+    return _ask(questionary.confirm(
+        "Enable parallel API dispatch? (recommended)",
+        default=default,
+    ), help_text=HELP_PARALLELIZATION)
+
+
+def ask_max_workers(default: int = 5) -> int:
+    """Step 10b: Ask how many threads to use for parallel dispatch."""
+    answer = _ask(questionary.text(
+        "Max parallel threads:",
+        default=str(default),
+    ), help_text=HELP_MAX_WORKERS)
+    try:
+        value = int(answer)
+        if value < 1:
+            return 1
+        return value
+    except ValueError:
+        return default
+
+
+def ask_api_keys_for_config(state: dict) -> None:
+    """Step 11: Prompt for API keys for each provider used in this config.
+
+    Collects providers from agent configs, adjudication, and moderator.
+    Skips providers that already have keys set in the environment and
+    providers that don't need keys (e.g. ollama).
+    """
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    console = Console()
+
+    # Collect unique providers
+    providers: set[str] = set()
+    for ac in state.get('agent_configs', []):
+        providers.add(ac.provider)
+    adj = state.get('adjudication')
+    if adj:
+        providers.add(adj.provider)
+    if state.get('stage2_mode') == 'moderated':
+        mod = state.get('moderator')
+        if mod:
+            providers.add(mod.provider)
+
+    # Filter to providers that need API keys
+    providers = {p for p in providers if p in PROVIDER_ENV_VARS}
+
+    if not providers:
+        return
+
+    console.print("\n[bold]API Key Configuration:[/bold]")
+    console.print("  [dim]Keys are set for this session only (not persisted).[/dim]")
+
+    for provider in sorted(providers):
+        env_var = PROVIDER_ENV_VARS[provider]
+        if os.environ.get(env_var):
+            console.print(f"  [dim]{env_var} already set — skipping.[/dim]")
+            continue
+
+        console.print(f"\n  [yellow]![/yellow] {env_var} is not set.")
+        keys: list[str] = []
+        key_num = 1
+        while True:
+            prompt = (
+                f"Enter your {provider.capitalize()} API key (or press Enter to skip):"
+                if key_num == 1
+                else f"Enter your {provider.capitalize()} API key #{key_num} (or press Enter to finish):"
+            )
+            answer = _ask(questionary.text(prompt), help_text=HELP_API_KEYS)
+            if not answer.strip():
+                break
+            keys.append(answer.strip())
+            console.print(f"  [green]>[/green] Key set.")
+            add_more = _ask(questionary.confirm(
+                f"Add another {provider.capitalize()} key for rate-limit rotation?",
+                default=False,
+            ), help_text=HELP_API_KEYS)
+            if not add_more:
+                break
+            key_num += 1
+
+        if keys:
+            os.environ[env_var] = ",".join(keys)
+            count_note = f" ({len(keys)} keys for rotation)" if len(keys) > 1 else ""
+            console.print(f"  [green]>[/green] {env_var} set for this session{count_note}.")
+        else:
+            console.print(
+                f"  [dim]Skipped. The debate may fail if {provider} calls are needed.[/dim]"
+            )
+
+    state['api_keys_configured'] = True
+
+
 # =========================================================================
 # Review panel
 # =========================================================================
@@ -1124,6 +1284,11 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
             enabled.append(label.split(" (")[0])  # strip parenthetical
     table.add_row("Outputs", ", ".join(enabled) if enabled else "None")
 
+    if config.parallel.enabled:
+        table.add_row("Parallelization", f"Enabled ({config.parallel.max_workers} threads)")
+    else:
+        table.add_row("Parallelization", "Disabled")
+
     panel = Panel(table, title="[bold #B8405E]Debate Configuration[/bold #B8405E]", border_style="#B8405E")
     console.print(panel)
 
@@ -1155,6 +1320,7 @@ def ask_edit_section(show_moderator: bool = False) -> str:
     if show_moderator:
         choices.append(Choice("Moderator", value="moderator"))
     choices.append(Choice("Output toggles", value="outputs"))
+    choices.append(Choice("Parallelization", value="parallelization"))
 
     return _ask(questionary.select(
         "Which section would you like to edit?",
@@ -1201,6 +1367,8 @@ def _populate_state_from_config(config: DebateConfig, state: dict) -> None:
         attr: getattr(config.outputs, attr, fallback)
         for _, attr, fallback in OUTPUT_TOGGLES
     }
+    state['parallel_enabled'] = config.parallel.enabled
+    state['max_workers'] = config.parallel.max_workers
 
 
 def _step_preset(state: dict) -> bool:
@@ -1325,6 +1493,22 @@ def _step_outputs(state: dict) -> bool:
     return True
 
 
+def _step_parallelization(state: dict) -> bool:
+    """Step 10: Parallelization toggle + max workers."""
+    default = state.get('parallel_enabled', True)
+    state['parallel_enabled'] = ask_parallelization(default=default)
+    if state['parallel_enabled']:
+        default_workers = state.get('max_workers', 5)
+        state['max_workers'] = ask_max_workers(default=default_workers)
+    return True
+
+
+def _step_api_keys(state: dict) -> bool:
+    """Step 11: API key collection."""
+    ask_api_keys_for_config(state)
+    return True
+
+
 def _build_config(state: dict) -> DebateConfig:
     """Build a DebateConfig from wizard state dict."""
     pf = state.get('prefill')
@@ -1350,6 +1534,7 @@ def _build_config(state: dict) -> DebateConfig:
         collaborative=collaborative,
         bloodsport=bloodsport,
         moderator=state.get('moderator', ModeratorConfig()),
+        parallel=ParallelConfig(enabled=state.get('parallel_enabled', True), max_workers=state.get('max_workers', 5)),
     )
 
 
@@ -1358,16 +1543,18 @@ def _build_config(state: dict) -> DebateConfig:
 # =========================================================================
 
 _WIZARD_STEPS = [
-    _step_preset,       # 0: Preset selection
-    _step_topic,        # 1: Debate topic
-    _step_num_agents,   # 2: Number of agents
-    _step_agents,       # 3: Agent configurations
-    _step_stage2,       # 4: Cross-exam mode
-    _step_stage3,       # 5: Debate mode
-    _step_rounds,       # 6: Number of rounds
-    _step_adjudicator,  # 7: Adjudicator
-    _step_moderator,    # 8: Moderator (conditional)
-    _step_outputs,      # 9: Output toggles
+    _step_preset,          # 0: Preset selection
+    _step_topic,           # 1: Debate topic
+    _step_num_agents,      # 2: Number of agents
+    _step_agents,          # 3: Agent configurations
+    _step_stage2,          # 4: Cross-exam mode
+    _step_stage3,          # 5: Debate mode
+    _step_rounds,          # 6: Number of rounds
+    _step_adjudicator,     # 7: Adjudicator
+    _step_moderator,       # 8: Moderator (conditional)
+    _step_outputs,         # 9: Output toggles
+    _step_parallelization, # 10: Parallelization toggle
+    _step_api_keys,        # 11: API key collection
 ]
 
 
@@ -1386,7 +1573,7 @@ def run_wizard(
         "launch", "save", "cancel".
         config is None if cancelled.
     """
-    console.print("  [dim]Press Esc to exit  \u2022  Ctrl+Z to go back  \u2022  F1 for help[/dim]\n")
+    console.print("  [dim]Press Esc to exit  \u2022  Ctrl+Z to go back  \u2022  Ctrl+F1 for help[/dim]\n")
 
     # Outer loop allows returning to the main menu via Ctrl+Z at step 0
     while True:
@@ -1545,5 +1732,12 @@ def _apply_edit(config: DebateConfig, section: str, console: Console) -> DebateC
         output_flags = ask_output_toggles(default=config.outputs)
         for attr, val in output_flags.items():
             setattr(config.outputs, attr, val)
+
+    elif section == "parallelization":
+        enabled = ask_parallelization(default=config.parallel.enabled)
+        workers = config.parallel.max_workers
+        if enabled:
+            workers = ask_max_workers(default=config.parallel.max_workers)
+        config.parallel = ParallelConfig(enabled=enabled, max_workers=workers)
 
     return config

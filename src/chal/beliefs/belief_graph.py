@@ -4,13 +4,20 @@ belief_graph.py
 Represents belief structure as a directed acyclic graph (DAG) for validation and analysis.
 
 This module transforms CBS belief objects into graph structures where:
-- Nodes: assumptions (A#), claims (C#), evidence (E#), predictions (P#), counterpositions (X#)
-- Edges: dependency relationships (depends_on, backing_evidence_ids, linked_claims, targets)
+- Nodes: THESIS, assumptions (A#), claims (C#), evidence (E#), counterpositions (X#), uncertainties (U#)
+- Edges: dependency relationships (depends_on, targets)
+
+DAG structure:
+    X# ──challenges──→ A#/E#/C#
+    U# ──questions───→ A#/E#/C#
+    A# ──supports────→ C#
+    E# ──supports────→ C#
+    C# ──supports────→ THESIS
 
 The graph enables:
 1. Structural validation (broken links, circular dependencies)
 2. Critical path analysis (single points of failure)
-3. Confidence propagation (ensuring consistency with dependencies)
+3. Strength propagation (ensuring consistency with dependencies)
 4. Argument robustness metrics
 """
 
@@ -48,6 +55,11 @@ class BeliefGraph:
 
     def _build_graph(self):
         """Extract nodes and edges from belief object."""
+        # Add THESIS as a formal DAG node
+        thesis = self.belief.get("thesis", {})
+        if thesis:
+            self.nodes["THESIS"] = {"type": "thesis", "data": thesis}
+
         # Add all nodes by category
         for assumption in self.belief.get("assumptions", []):
             if "id" in assumption:
@@ -70,18 +82,18 @@ class BeliefGraph:
                     "data": evidence
                 }
 
-        for prediction in self.belief.get("predictions", []):
-            if "id" in prediction:
-                self.nodes[prediction["id"]] = {
-                    "type": "prediction",
-                    "data": prediction
-                }
-
         for cp in self.belief.get("counterpositions", []):
             if "id" in cp:
                 self.nodes[cp["id"]] = {
                     "type": "counterposition",
                     "data": cp
+                }
+
+        for uncertainty in self.belief.get("uncertainties", []):
+            if "id" in uncertainty:
+                self.nodes[uncertainty["id"]] = {
+                    "type": "uncertainty",
+                    "data": uncertainty
                 }
 
         # Build edges from dependency relationships
@@ -90,24 +102,15 @@ class BeliefGraph:
             if not claim_id:
                 continue
 
-            # depends_on: claim depends on assumptions/other claims
+            # depends_on: claim depends on assumptions, evidence, or other claims
             for dep_id in claim.get("depends_on", []):
                 self.edges.append((dep_id, claim_id, "supports"))
 
-            # backing_evidence_ids: evidence supports claim
-            for ev_id in claim.get("backing_evidence_ids", []):
-                self.edges.append((ev_id, claim_id, "evidences"))
+            # Active claims support THESIS
+            if claim.get("status") != "retracted" and thesis:
+                self.edges.append((claim_id, "THESIS", "supports"))
 
-        # predictions linked to claims
-        for prediction in self.belief.get("predictions", []):
-            pred_id = prediction.get("id")
-            if not pred_id:
-                continue
-
-            for claim_id in prediction.get("linked_claims", []):
-                self.edges.append((claim_id, pred_id, "predicts"))
-
-        # counterpositions target claims/assumptions
+        # counterpositions target claims/assumptions/evidence
         for cp in self.belief.get("counterpositions", []):
             cp_id = cp.get("id")
             if not cp_id:
@@ -115,6 +118,15 @@ class BeliefGraph:
 
             for target_id in cp.get("targets", []):
                 self.edges.append((cp_id, target_id, "challenges"))
+
+        # uncertainties target claims/assumptions/evidence
+        for uncertainty in self.belief.get("uncertainties", []):
+            u_id = uncertainty.get("id")
+            if not u_id:
+                continue
+
+            for target_id in uncertainty.get("targets", []):
+                self.edges.append((u_id, target_id, "questions"))
 
     def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
         """Get node data by ID."""
@@ -134,8 +146,7 @@ class BeliefGraph:
 
         Checks:
         - All depends_on IDs exist
-        - All backing_evidence_ids exist
-        - All linked_claims in predictions exist
+        - All counterposition/uncertainty targets exist
         - No circular dependencies (BLOCKING)
         - No orphaned claims (BLOCKING)
         """
@@ -200,18 +211,27 @@ class BeliefGraph:
 
     def _find_orphaned_claims(self) -> List[str]:
         """
-        Find claims that have no incoming edges (no evidence or assumptions).
+        Find claims that have no incoming support edges (no evidence or assumptions).
+
+        Only "supports" edges count as support.
+        "challenges" and "questions" edges do not provide support.
+        THESIS is excluded from orphan detection.
 
         Returns:
             List of claim IDs with no support
         """
-        # Get all claim IDs
+        SUPPORT_EDGE_TYPES = {"supports"}
+
+        # Get all claim IDs (THESIS is not a claim)
         claim_ids = {node_id for node_id, node in self.nodes.items() if node["type"] == "claim"}
 
-        # Get all claims that have incoming edges
-        supported_claims = {to_id for from_id, to_id, _ in self.edges if to_id in claim_ids}
+        # Get all claims that have incoming support edges
+        supported_claims = {
+            to_id for from_id, to_id, edge_type in self.edges
+            if to_id in claim_ids and edge_type in SUPPORT_EDGE_TYPES
+        }
 
-        # Orphans are claims with no incoming edges
+        # Orphans are claims with no incoming support edges
         orphans = claim_ids - supported_claims
 
         return list(orphans)
@@ -274,10 +294,10 @@ class BeliefGraph:
         # Find all assumption nodes
         assumptions = [node_id for node_id, node in self.nodes.items() if node["type"] == "assumption"]
 
-        # Find all high-confidence claims (>0.7) as targets
+        # Find all high-strength claims (>0.7) as targets
         key_claims = [
             node_id for node_id, node in self.nodes.items()
-            if node["type"] == "claim" and node["data"].get("confidence", 0) > 0.7
+            if node["type"] == "claim" and node["data"].get("strength", 0) > 0.7
         ]
 
         # For each assumption, find paths to key claims
@@ -330,11 +350,12 @@ class BeliefGraph:
             "total_nodes": len(self.nodes),
             "total_edges": len(self.edges),
             "node_counts": {
+                "thesis": 1 if "THESIS" in self.nodes else 0,
                 "assumptions": sum(1 for n in self.nodes.values() if n["type"] == "assumption"),
                 "claims": sum(1 for n in self.nodes.values() if n["type"] == "claim"),
                 "evidence": sum(1 for n in self.nodes.values() if n["type"] == "evidence"),
-                "predictions": sum(1 for n in self.nodes.values() if n["type"] == "prediction"),
-                "counterpositions": sum(1 for n in self.nodes.values() if n["type"] == "counterposition")
+                "counterpositions": sum(1 for n in self.nodes.values() if n["type"] == "counterposition"),
+                "uncertainties": sum(1 for n in self.nodes.values() if n["type"] == "uncertainty")
             },
             "critical_path_count": len(self.find_critical_paths()),
             "orphaned_claims": self._find_orphaned_claims(),

@@ -5,12 +5,15 @@
   "update_thesis_strengthen": [
     {"op": "update_thesis", "change": "strengthen"}
   ],
-  "update_claim_confidence": [
+  "update_thesis_new_strength": [
+    {"op": "update_thesis", "new_strength": 0.55}
+  ],
+  "update_claim_strength": [
     {
       "op": "update_claim",
       "target_id": "C1",
       "changes": {
-        "confidence": 0.6
+        "strength": 0.6
       }
     }
   ],
@@ -28,9 +31,8 @@
       "op": "update_claim",
       "target_id": "C1",
       "changes": {
-        "confidence": 0.65,
-        "status": "revised",
-        "known_weaknesses": ["Weakness identified in debate"]
+        "strength": 0.65,
+        "status": "revised"
       }
     }
   ],
@@ -47,7 +49,17 @@
         "id": "E3",
         "type": "empirical",
         "summary": "New evidence from recent study",
-        "source": "Smith et al. (2026)"
+        "source": "Smith et al. (2026)",
+        "strength": 0.8
+      }
+    }
+  ],
+  "update_evidence": [
+    {
+      "op": "update_evidence",
+      "target_id": "E1",
+      "changes": {
+        "strength": 0.9
       }
     }
   ],
@@ -56,26 +68,6 @@
       "op": "update_assumption",
       "target_id": "A1",
       "new_statement": "Revised assumption statement"
-    }
-  ],
-  "multiple_patches": [
-    {"op": "update_thesis", "change": "weaken"},
-    {
-      "op": "update_claim",
-      "target_id": "C1",
-      "changes": {
-        "confidence": 0.55,
-        "status": "revised"
-      }
-    },
-    {
-      "op": "add_evidence",
-      "item": {
-        "id": "E4",
-        "type": "conceptual",
-        "summary": "Additional supporting evidence",
-        "source": "Jones (2026)"
-      }
     }
   ],
   "update_assumption_type": [
@@ -90,7 +82,37 @@
       "op": "update_assumption",
       "target_id": "A1",
       "new_statement": "Revised assumption",
-      "new_type": "normative"
+      "new_type": "methodological"
+    }
+  ],
+  "update_assumption_strength": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "changes": {
+        "strength": 0.7
+      }
+    }
+  ],
+  "multiple_patches": [
+    {"op": "update_thesis", "change": "weaken"},
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "strength": 0.55,
+        "status": "revised"
+      }
+    },
+    {
+      "op": "add_evidence",
+      "item": {
+        "id": "E4",
+        "type": "conceptual",
+        "summary": "Additional supporting evidence",
+        "source": "Jones (2026)",
+        "strength": 0.75
+      }
     }
   ],
   "add_counterposition": [
@@ -101,7 +123,6 @@
         "targets": ["C1"],
         "attack_type": "rebutting",
         "statement": "Counter-evidence contradicts C1",
-        "strength": 0.6,
         "my_response": "The counter-evidence has methodological flaws",
         "response_sufficiency": "partial"
       }
@@ -112,7 +133,6 @@
       "op": "update_counterposition",
       "target_id": "X1",
       "changes": {
-        "strength": 0.8,
         "response_sufficiency": "unaddressed"
       }
     }
@@ -122,16 +142,35 @@
       "op": "add_uncertainty",
       "item": {
         "id": "U1",
+        "targets": ["C1"],
         "question": "Can the explanatory gap be closed?",
-        "cruciality": "high",
-        "voi_hint": "Resolving this directly determines the physicalist program's viability"
+        "status": "active",
+        "importance": "Resolving this directly determines the physicalist program's viability"
       }
+    }
+  ],
+  "add_uncertainty_with_targets": [
+    {
+      "op": "add_uncertainty",
+      "item": {
+        "id": "U1",
+        "targets": ["C1"],
+        "question": "What is the mechanism?",
+        "status": "active"
+      }
+    }
+  ],
+  "resolve_uncertainty": [
+    {
+      "op": "resolve_uncertainty",
+      "target_id": "U1",
+      "resolution_note": "Resolved by new claim C4 with evidence E3"
     }
   ],
   "invalid_missing_op": [
     {
       "target_id": "C1",
-      "changes": {"confidence": 0.5}
+      "changes": {"strength": 0.5}
     }
   ],
   "invalid_unknown_op": [

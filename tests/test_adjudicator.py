@@ -255,7 +255,7 @@ def test_run_malformed_json(mock_adjudicator_agent, test_adjudications):
 
 @pytest.mark.unit
 def test_run_missing_outcome(mock_adjudicator_agent):
-    """Test that missing outcome returns 'unknown' or error."""
+    """Test that missing outcome defaults to 'unresolved'."""
     # Response without outcome field
     mock_response = Message(
         role="assistant",
@@ -271,8 +271,7 @@ def test_run_missing_outcome(mock_adjudicator_agent):
     adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
     result = adjudicator.run("Challenge", "Rebuttal", challenger="Agent-A", target="Agent-B")
 
-    # Should have outcome field, possibly "unknown"
-    assert "status" in result
+    assert result["status"] == "unresolved"
 
 
 @pytest.mark.unit

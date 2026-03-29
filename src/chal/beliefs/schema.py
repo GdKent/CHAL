@@ -84,7 +84,7 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
             "required": [
                 "stance",                          # One-sentence position statement
                 "summary_bullets",                 # 2–3 short bullets highlighting key points
-                "confidence"                       # Author's calibrated confidence in [0, 1]
+                "strength"                         # Author's calibrated strength in [0, 1]
             ],
             "properties": {
                 "stance": { "type": "string" },    # Single-sentence thesis
@@ -93,7 +93,7 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                     "items": { "type": "string" }, # Each bullet is a short string
                     "minItems": 1                  # At least one bullet (recommend 2–3)
                 },
-                "confidence": {                    # Self-reported confidence (0 = no confidence, 1 = certain)
+                "strength": {                      # Calibrated strength (0 = no support, 1 = definitive)
                     "type": "number",
                     "minimum": 0.0,
                     "maximum": 1.0
@@ -107,36 +107,44 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["id", "type", "statement"],
+                "required": ["id", "type", "statement", "strength", "status", "strength_justification"],
                 "properties": {
                     "id": { "type": "string" },
                     "type": {
                         "type": "string",
-                        "enum": ["foundational", "empirical", "methodological", "normative"]
+                        "enum": ["foundational", "empirical", "methodological"]
                     },
-                    "statement": { "type": "string" }
+                    "statement": { "type": "string" },
+                    "strength": {                        # Calibrated strength (0.0 - 1.0)
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    },
+                    "status": {                          # Lifecycle status
+                        "type": "string",
+                        "enum": ["active", "revised", "retracted"]
+                    },
+                    "strength_justification": { "type": "string" }  # Rationale for the strength number
                 }
             }
         },
-        "claims": {                                  # List of C# items (claims with type/confidence/status), each with 'id'
+        "claims": {                                  # List of C# items (claims with type/strength/status), each with 'id'
             "type": "array",
             "items": {
                 "type": "object",
                 "required": ["id", "type", "statement", "depends_on",
-                             "backing_evidence_ids", "confidence", "status"],
+                             "strength", "status",
+                             "predictions", "strength_justification",
+                             "inference_chain"],
                 "properties": {
                     "id": { "type": "string" },
                     "type": { "type": "string" },              # Free-form claim category (e.g., "descriptive", "causal")
                     "statement": { "type": "string" },
-                    "depends_on": {                            # References to A#/C# IDs this claim builds on
+                    "depends_on": {                            # References to A#/E#/C# IDs this claim builds on
                         "type": "array",
                         "items": { "type": "string" }
                     },
-                    "backing_evidence_ids": {                  # References to E# IDs supporting this claim
-                        "type": "array",
-                        "items": { "type": "string" }
-                    },
-                    "confidence": {                            # Calibrated confidence in [0, 1]
+                    "strength": {                              # Calibrated strength in [0, 1]
                         "type": "number",
                         "minimum": 0.0,
                         "maximum": 1.0
@@ -145,25 +153,38 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                         "type": "string",
                         "enum": ["active", "revised", "retracted"]
                     },
-                    # --- Optional enrichment fields (display-only, not structurally consumed) ---
+                    "predictions": {                           # Falsifiable predictions (at least one per claim)
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["statement", "test", "decision_criterion"],
+                            "properties": {
+                                "statement": { "type": "string" },
+                                "test": { "type": "string" },
+                                "decision_criterion": { "type": "string" },
+                                "potential_falsifiers": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                }
+                            }
+                        },
+                        "minItems": 1
+                    },
+                    "strength_justification": { "type": "string" },  # Rationale for the strength number
                     "inference_chain": {                        # Steps of reasoning leading to this claim
                         "type": "array",
                         "items": { "type": "string" },
                         "minItems": 1
-                    },
-                    "known_weaknesses": {                      # Self-identified weaknesses (overlaps with X#)
-                        "type": "array",
-                        "items": { "type": "string" }
-                    },
-                    "confidence_justification": { "type": "string" }  # Rationale for the confidence number
+                    }
                 }
             }
         },
-        "evidence": {                                # List of E# items (empirical/conceptual/expert_consensus), each with 'id'
+        "evidence": {                                # List of E# items, each with 'id'
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["id", "type", "summary", "source", "relevance_to_claims"],
+                "required": ["id", "type", "summary", "source", "relevance_to_claims",
+                             "strength", "status", "strength_justification"],
                 "properties": {
                     "id": { "type": "string" },
                     "type": {
@@ -176,83 +197,46 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                         "type": "array",
                         "items": { "type": "string" }
                     },
-                    # --- Optional enrichment fields ---
-                    "quality_assessment": { "type": "string" },  # Free-text quality evaluation
-                    "limitations": { "type": "string" }          # Caveats about the evidence
-                }
-            }
-        },
-        "predictions": {                             # List of P# items (falsifiable consequences/tests), each with 'id'
-            "type": "array",
-            "items": {
-                "type": "object",
-                "required": ["id", "statement", "linked_claims", "test",
-                             "decision_criterion"],
-                "properties": {
-                    "id": { "type": "string" },
-                    "statement": { "type": "string" },
-                    "linked_claims": {                         # References to C# IDs this prediction derives from
-                        "type": "array",
-                        "items": { "type": "string" }
-                    },
-                    "test": { "type": "string" },              # How to evaluate the prediction
-                    "decision_criterion": { "type": "string" },# Concrete rule for confirmation/falsification
-                    # --- Optional enrichment fields ---
-                    "potential_falsifiers": {                   # What would disprove the prediction
-                        "type": "array",
-                        "items": { "type": "string" }
-                    },
-                    "expected_likelihood": {                    # Probability estimate [0.0, 1.0]
+                    "strength": {                              # Calibrated strength (0.0 - 1.0)
                         "type": "number",
                         "minimum": 0.0,
                         "maximum": 1.0
                     },
-                    "importance": {
+                    "status": {                                # Lifecycle status
                         "type": "string",
-                        "enum": ["low", "medium", "high"]
-                    }
+                        "enum": ["active", "revised", "retracted"]
+                    },
+                    "strength_justification": { "type": "string" }  # Rationale for the strength number
                 }
             }
         },
-        "normative_implications": {                  # List of N# items (ethical/policy implications), each with 'id'
+        "uncertainties": {                           # List of U# items (key unknowns), each with 'id'
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["id", "statement"],
+                "required": ["id", "targets", "question", "status"],
                 "properties": {
                     "id": { "type": "string" },
-                    "statement": { "type": "string" },
-                    # --- Optional enrichment fields ---
-                    "linked_claims": {                         # References to C# IDs driving this implication
+                    "targets": {                               # References to A#/E#/C# IDs this uncertainty questions
                         "type": "array",
                         "items": { "type": "string" }
                     },
-                    "strength": { "type": "string" }           # Strength of the normative implication
-                }
-            }
-        },
-        "uncertainties": {                           # List of U# items (key unknowns + VOI notes), each with 'id'
-            "type": "array",
-            "items": {
-                "type": "object",
-                "required": ["id", "question", "cruciality"],
-                "properties": {
-                    "id": { "type": "string" },
                     "question": { "type": "string" },
-                    "cruciality": {
+                    "status": {                                # Whether the uncertainty has been resolved
                         "type": "string",
-                        "enum": ["low", "medium", "high"]
+                        "enum": ["active", "resolved"]
                     },
                     # --- Optional enrichment fields ---
-                    "voi_hint": { "type": "string" }           # Value of Information hint
+                    "importance": { "type": "string" },         # Why resolving this uncertainty matters
+                    "resolution_note": { "type": "string" }    # How the uncertainty was resolved (required when resolving)
                 }
             }
         },
-        "counterpositions": {                        # List of X# items (opponent objections + responses), each with 'id'
+        "counterpositions": {                        # List of X# items (prepared defenses + responses), each with 'id'
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["id", "targets", "attack_type", "statement", "strength", "my_response", "response_sufficiency"],
+                "required": ["id", "targets", "attack_type", "statement", "my_response", "response_sufficiency"],
                 "properties": {
                     "id": { "type": "string" },
                     "targets": {
@@ -264,11 +248,6 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                         "enum": ["undermining", "rebutting", "undercutting"]
                     },
                     "statement": { "type": "string" },
-                    "strength": {
-                        "type": "number",
-                        "minimum": 0.0,
-                        "maximum": 1.0
-                    },
                     "my_response": { "type": "string" },
                     "response_sufficiency": {
                         "type": "string",
@@ -331,10 +310,10 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
     # --- Thesis field-level checks ---
     thesis = belief.get("thesis")
     if isinstance(thesis, dict):
-        t_conf = thesis.get("confidence")
-        if t_conf is not None and not (0.0 <= t_conf <= 1.0):
+        t_str = thesis.get("strength")
+        if t_str is not None and not (0.0 <= t_str <= 1.0):
             errors.append(
-                f"thesis.confidence {t_conf} out of range [0.0, 1.0]"
+                f"thesis.strength {t_str} out of range [0.0, 1.0]"
             )
         bullets = thesis.get("summary_bullets")
         if isinstance(bullets, list) and len(bullets) == 0:
@@ -347,8 +326,8 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
         errors.append("'thesis' must be an object, not a " + type(belief["thesis"]).__name__)
     if "metadata" in belief and not isinstance(belief["metadata"], dict):
         errors.append("'metadata' must be an object, not a " + type(belief["metadata"]).__name__)
-    for arr_key in ("assumptions", "claims", "evidence", "predictions",
-                     "normative_implications", "uncertainties", "counterpositions", "changelog"):
+    for arr_key in ("assumptions", "claims", "evidence",
+                     "uncertainties", "counterpositions", "changelog"):
         if arr_key in belief and not isinstance(belief[arr_key], list):
             errors.append(f"'{arr_key}' must be an array, not a " + type(belief[arr_key]).__name__)
 
@@ -365,21 +344,16 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
         "assumptions",
         "claims",
         "evidence",
-        "predictions",
-        "normative_implications",
         "uncertainties",
         "counterpositions"
     )
 
     # prefix_ok maps the first letter of an ID to the expected collection
-    # A#: assumptions, C#: claims, E#: evidence, P#: predictions,
-    # N#: normative_implications, U#: uncertainties, X#: counterpositions
+    # A#: assumptions, C#: claims, E#: evidence, U#: uncertainties, X#: counterpositions
     prefix_ok = {
         "A": "assumptions",
         "C": "claims",
         "E": "evidence",
-        "P": "predictions",
-        "N": "normative_implications",
         "U": "uncertainties",
         "X": "counterpositions"
     }
@@ -394,7 +368,7 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
                 # If there's no 'id' key, we skip here—jsonschema (if present) can catch detailed structure issues.
                 continue
             # Enforce simple 'Prefix + digits' format, e.g., "C1", "E12"
-            if not re.match(r"^[ACEPNUX]\d+$", _id):
+            if not re.match(r"^[ACEUX]\d+$", _id):
                 errors.append(
                     f"Invalid ID format '{_id}' in '{field}'. Expected like 'C1', 'E2', etc."
                 )
@@ -412,7 +386,7 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
             all_ids.add(_id)
 
     # --- Enum validation for v3 typed fields (works without jsonschema) ---
-    VALID_ASSUMPTION_TYPES = {"foundational", "empirical", "methodological", "normative"}
+    VALID_ASSUMPTION_TYPES = {"foundational", "empirical", "methodological"}
     for item in belief.get("assumptions", []) or []:
         atype = item.get("type")
         if atype is not None and atype not in VALID_ASSUMPTION_TYPES:
@@ -449,10 +423,56 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
                 f"Invalid claim status '{status}'. "
                 f"Must be one of: {sorted(VALID_CLAIM_STATUSES)}"
             )
-        conf = item.get("confidence")
-        if conf is not None and not (0.0 <= conf <= 1.0):
+        c_str = item.get("strength")
+        if c_str is not None and not (0.0 <= c_str <= 1.0):
             errors.append(
-                f"Claim '{item.get('id')}' confidence {conf} out of range [0.0, 1.0]"
+                f"Claim '{item.get('id')}' strength {c_str} out of range [0.0, 1.0]"
+            )
+        # Predictions are required on claims (at least one per claim)
+        preds = item.get("predictions")
+        claim_id = item.get("id", "?")
+        if preds is None:
+            errors.append(
+                f"Claim '{claim_id}' is missing required 'predictions' field"
+            )
+        elif not isinstance(preds, list):
+            errors.append(
+                f"Claim '{claim_id}' predictions must be an array"
+            )
+        elif len(preds) == 0:
+            errors.append(
+                f"Claim '{claim_id}' predictions must have at least one item"
+            )
+        else:
+            for j, pred in enumerate(preds):
+                if not isinstance(pred, dict):
+                    errors.append(
+                        f"Claim '{claim_id}' prediction {j} must be an object"
+                    )
+                    continue
+                for req_field in ("statement", "test", "decision_criterion"):
+                    if req_field not in pred:
+                        errors.append(
+                            f"Claim '{claim_id}' prediction {j} missing required field '{req_field}'"
+                        )
+        # strength_justification is required on claims
+        if "strength_justification" not in item:
+            errors.append(
+                f"Claim '{claim_id}' is missing required 'strength_justification' field"
+            )
+        # inference_chain is required on claims (at least one step)
+        ic = item.get("inference_chain")
+        if ic is None:
+            errors.append(
+                f"Claim '{claim_id}' is missing required 'inference_chain' field"
+            )
+        elif not isinstance(ic, list):
+            errors.append(
+                f"Claim '{claim_id}' inference_chain must be an array"
+            )
+        elif len(ic) == 0:
+            errors.append(
+                f"Claim '{claim_id}' inference_chain must have at least one step"
             )
 
     VALID_EVIDENCE_TYPES = {"empirical", "conceptual", "expert_consensus"}
@@ -463,29 +483,55 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
                 f"Invalid evidence type '{etype}'. "
                 f"Must be one of: {sorted(VALID_EVIDENCE_TYPES)}"
             )
-
-    VALID_IMPORTANCE = {"low", "medium", "high"}
-    for item in belief.get("predictions", []) or []:
-        imp = item.get("importance")
-        if imp is not None and imp not in VALID_IMPORTANCE:
+        e_str = item.get("strength")
+        if e_str is not None and not (0.0 <= e_str <= 1.0):
             errors.append(
-                f"Invalid prediction importance '{imp}'. "
-                f"Must be one of: {sorted(VALID_IMPORTANCE)}"
+                f"Evidence '{item.get('id')}' strength {e_str} out of range [0.0, 1.0]"
             )
-        likelihood = item.get("expected_likelihood")
-        if likelihood is not None and not (0.0 <= likelihood <= 1.0):
+        # strength_justification is required on evidence
+        if "strength_justification" not in item:
             errors.append(
-                f"Prediction '{item.get('id')}' expected_likelihood {likelihood} "
-                f"out of range [0.0, 1.0]"
+                f"Evidence '{item.get('id', '?')}' is missing required 'strength_justification' field"
             )
 
-    VALID_CRUCIALITY = {"low", "medium", "high"}
+    # --- Assumption strength range and status checks ---
+    VALID_ASSUMPTION_STATUSES = {"active", "revised", "retracted"}
+    for item in belief.get("assumptions", []) or []:
+        a_str = item.get("strength")
+        if a_str is not None and not (0.0 <= a_str <= 1.0):
+            errors.append(
+                f"Assumption '{item.get('id')}' strength {a_str} out of range [0.0, 1.0]"
+            )
+        a_status = item.get("status")
+        if a_status is not None and a_status not in VALID_ASSUMPTION_STATUSES:
+            errors.append(
+                f"Invalid assumption status '{a_status}'. "
+                f"Must be one of: {sorted(VALID_ASSUMPTION_STATUSES)}"
+            )
+        # strength_justification is required on assumptions
+        if "strength_justification" not in item:
+            errors.append(
+                f"Assumption '{item.get('id', '?')}' is missing required 'strength_justification' field"
+            )
+
+    # --- Evidence status checks ---
+    VALID_EVIDENCE_STATUSES = {"active", "revised", "retracted"}
+    for item in belief.get("evidence", []) or []:
+        e_status = item.get("status")
+        if e_status is not None and e_status not in VALID_EVIDENCE_STATUSES:
+            errors.append(
+                f"Invalid evidence status '{e_status}'. "
+                f"Must be one of: {sorted(VALID_EVIDENCE_STATUSES)}"
+            )
+
+    # --- Uncertainty status validation ---
+    VALID_UNCERTAINTY_STATUS = {"active", "resolved"}
     for item in belief.get("uncertainties", []) or []:
-        cruciality = item.get("cruciality")
-        if cruciality is not None and cruciality not in VALID_CRUCIALITY:
+        u_status = item.get("status")
+        if u_status is not None and u_status not in VALID_UNCERTAINTY_STATUS:
             errors.append(
-                f"Invalid uncertainty cruciality '{cruciality}'. "
-                f"Must be one of: {sorted(VALID_CRUCIALITY)}"
+                f"Invalid uncertainty status '{u_status}'. "
+                f"Must be one of: {sorted(VALID_UNCERTAINTY_STATUS)}"
             )
 
     return errors

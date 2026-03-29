@@ -8,6 +8,11 @@ Tests cover:
 - Metadata validation
 - Thesis validation
 - Optional collections validation
+- Assumption type and strength validation
+- Counterposition validation (no numeric strength)
+- Claims validation (strength, predictions)
+- Evidence validation (strength)
+- Uncertainty validation (targets, status)
 """
 
 import pytest
@@ -100,7 +105,7 @@ def test_validate_belief_wrong_schema_version():
     belief = create_invalid_belief("wrong_schema_version")
     errors = validate_belief(belief)
     assert len(errors) > 0
-    assert any("cbs-v1" in error.lower() or "schema" in error.lower() for error in errors)
+    assert any("cbs-v0" in error.lower() or "schema" in error.lower() for error in errors)
 
 
 @pytest.mark.unit
@@ -155,7 +160,7 @@ def test_validate_belief_missing_thesis():
 
 @pytest.mark.unit
 def test_validate_id_format_valid():
-    """Test validation of valid ID formats: A1, C12, E3, P1, N5."""
+    """Test validation of valid ID formats: A1, C12, E3."""
     belief = create_sample_belief(num_assumptions=3, num_claims=2, num_evidence=2)
     errors = validate_belief(belief)
     assert len(errors) == 0
@@ -193,6 +198,20 @@ def test_validate_id_uniqueness():
     errors = validate_belief(belief)
     assert len(errors) > 0
     assert any("duplicate" in error.lower() or "unique" in error.lower() for error in errors)
+
+
+@pytest.mark.unit
+def test_validate_id_p_and_n_prefixes_rejected():
+    """Test that P# and N# IDs are rejected by the ID regex."""
+    belief = create_sample_belief(num_assumptions=1)
+    belief["assumptions"][0]["id"] = "P1"
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "P# IDs should be rejected"
+
+    belief = create_sample_belief(num_assumptions=1)
+    belief["assumptions"][0]["id"] = "N1"
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "N# IDs should be rejected"
 
 
 # ==============================================
@@ -238,18 +257,18 @@ def test_validate_metadata_definitions_structure(test_beliefs):
 
 @pytest.mark.unit
 def test_validate_thesis_required_fields():
-    """Test that thesis contains required fields: stance, summary_bullets, confidence."""
+    """Test that thesis contains required fields: stance, summary_bullets, strength."""
     belief = create_sample_belief()
     assert "stance" in belief["thesis"]
     assert "summary_bullets" in belief["thesis"]
-    assert "confidence" in belief["thesis"]
+    assert "strength" in belief["thesis"]
     errors = validate_belief(belief)
     assert len(errors) == 0
 
 
 @pytest.mark.unit
-def test_validate_thesis_confidence_range():
-    """Test that confidence is in range [0.0, 1.0]."""
+def test_validate_thesis_strength_range():
+    """Test that strength is in range [0.0, 1.0]."""
     belief = create_sample_belief(confidence=0.0)
     errors = validate_belief(belief)
     assert len(errors) == 0
@@ -264,12 +283,12 @@ def test_validate_thesis_confidence_range():
 
 
 @pytest.mark.unit
-def test_validate_thesis_confidence_out_of_bounds():
-    """Test detection of confidence < 0 or > 1."""
-    belief = create_invalid_belief("confidence_out_of_bounds")
+def test_validate_thesis_strength_out_of_bounds():
+    """Test detection of strength < 0 or > 1."""
+    belief = create_invalid_belief("strength_out_of_bounds")
     errors = validate_belief(belief)
     assert len(errors) > 0
-    assert any("confidence" in error.lower() for error in errors)
+    assert any("strength" in error.lower() for error in errors)
 
 
 @pytest.mark.unit
@@ -287,14 +306,15 @@ def test_validate_thesis_empty_bullets():
 
 @pytest.mark.unit
 def test_validate_assumptions_structure():
-    """Test validation of assumption objects with typed categories."""
+    """Test validation of assumption objects with typed categories and strength."""
     belief = create_sample_belief(num_assumptions=2)
     assert "assumptions" in belief
     assert len(belief["assumptions"]) == 2
     assert "id" in belief["assumptions"][0]
     assert "type" in belief["assumptions"][0]
     assert "statement" in belief["assumptions"][0]
-    assert belief["assumptions"][0]["type"] in ("foundational", "empirical", "methodological", "normative")
+    assert "strength" in belief["assumptions"][0]
+    assert belief["assumptions"][0]["type"] in ("foundational", "empirical", "methodological")
     errors = validate_belief(belief)
     assert len(errors) == 0
 
@@ -310,16 +330,17 @@ def test_validate_claims_structure():
     assert "type" in claim
     assert "statement" in claim
     assert "depends_on" in claim
-    assert "backing_evidence_ids" in claim
-    assert "confidence" in claim
+    assert "depends_on" in claim
+    assert "strength" in claim
     assert "status" in claim
+    assert "predictions" in claim
     errors = validate_belief(belief)
     assert len(errors) == 0
 
 
 @pytest.mark.unit
 def test_validate_evidence_structure():
-    """Test validation of evidence objects."""
+    """Test validation of evidence objects with strength."""
     belief = create_sample_belief(num_evidence=2)
     assert "evidence" in belief
     assert len(belief["evidence"]) == 2
@@ -328,45 +349,19 @@ def test_validate_evidence_structure():
     assert "type" in evidence
     assert "summary" in evidence
     assert "source" in evidence
+    assert "strength" in evidence
     errors = validate_belief(belief)
     assert len(errors) == 0
 
 
-@pytest.mark.unit
-def test_validate_predictions_structure(test_beliefs):
-    """Test validation of prediction objects."""
-    belief = test_beliefs["complete_valid"]
-    if "predictions" in belief:
-        predictions = belief["predictions"]
-        assert isinstance(predictions, list)
-        if len(predictions) > 0:
-            prediction = predictions[0]
-            assert "id" in prediction
-            assert "statement" in prediction
-            assert "linked_claims" in prediction
-
-
-@pytest.mark.unit
-def test_validate_normative_implications_structure(test_beliefs):
-    """Test validation of normative_implications objects."""
-    belief = test_beliefs["complete_valid"]
-    if "normative_implications" in belief:
-        implications = belief["normative_implications"]
-        assert isinstance(implications, list)
-        if len(implications) > 0:
-            implication = implications[0]
-            assert "id" in implication
-            assert "statement" in implication
-
-
 # ==============================================
-# 7. Assumption Type Validation Tests (v3)
+# 7. Assumption Validation Tests
 # ==============================================
 
 @pytest.mark.unit
 def test_validate_assumption_type_valid():
     """Test that valid assumption types are accepted."""
-    for atype in ("foundational", "empirical", "methodological", "normative"):
+    for atype in ("foundational", "empirical", "methodological"):
         belief = create_sample_belief(num_assumptions=1)
         belief["assumptions"][0]["type"] = atype
         errors = validate_belief(belief)
@@ -383,6 +378,15 @@ def test_validate_assumption_type_invalid():
 
 
 @pytest.mark.unit
+def test_validate_assumption_type_normative_rejected():
+    """Test that 'normative' assumption type is rejected."""
+    belief = create_sample_belief(num_assumptions=1)
+    belief["assumptions"][0]["type"] = "normative"
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "'normative' assumption type should be rejected"
+
+
+@pytest.mark.unit
 def test_validate_assumption_missing_type():
     """Test that missing assumption type is rejected."""
     belief = create_sample_belief(num_assumptions=1)
@@ -391,13 +395,33 @@ def test_validate_assumption_missing_type():
     assert len(errors) > 0, "Missing assumption type should produce errors"
 
 
+@pytest.mark.unit
+def test_validate_assumption_strength_range():
+    """Test that assumption strength is validated in [0.0, 1.0]."""
+    belief = create_sample_belief(num_assumptions=1)
+    belief["assumptions"][0]["strength"] = 0.5
+    errors = validate_belief(belief)
+    assert len(errors) == 0
+
+    belief = create_sample_belief(num_assumptions=1)
+    belief["assumptions"][0]["strength"] = 1.5
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Assumption strength 1.5 should produce errors"
+    assert any("strength" in e.lower() for e in errors)
+
+    belief = create_sample_belief(num_assumptions=1)
+    belief["assumptions"][0]["strength"] = -0.1
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Assumption strength -0.1 should produce errors"
+
+
 # ==============================================
-# 8. Counterposition Validation Tests (v3)
+# 8. Counterposition Validation Tests
 # ==============================================
 
 @pytest.mark.unit
 def test_validate_counterpositions_structure(test_beliefs):
-    """Test validation of counterposition objects with all required fields."""
+    """Test validation of counterposition objects with all required fields (no numeric strength)."""
     belief = test_beliefs["complete_valid"]
     assert "counterpositions" in belief
     assert len(belief["counterpositions"]) >= 2
@@ -407,11 +431,28 @@ def test_validate_counterpositions_structure(test_beliefs):
     assert "targets" in cp
     assert "attack_type" in cp
     assert "statement" in cp
-    assert "strength" in cp
     assert "my_response" in cp
     assert "response_sufficiency" in cp
+    # X# should NOT have a numeric strength field
+    assert "strength" not in cp
     errors = validate_belief(belief)
     assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_counterposition_valid_without_strength():
+    """Test that counterpositions are valid without a strength field."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Test counterposition",
+        "my_response": "Test response",
+        "response_sufficiency": "partial"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"Counterposition without strength should pass, got: {errors}"
 
 
 @pytest.mark.unit
@@ -424,7 +465,6 @@ def test_validate_counterposition_attack_type_valid():
             "targets": ["C1"],
             "attack_type": attack_type,
             "statement": "Test counterposition",
-            "strength": 0.5,
             "my_response": "Test response",
             "response_sufficiency": "partial"
         }]
@@ -441,7 +481,6 @@ def test_validate_counterposition_attack_type_invalid():
         "targets": ["C1"],
         "attack_type": "destroying",
         "statement": "Test counterposition",
-        "strength": 0.5,
         "my_response": "Test response",
         "response_sufficiency": "partial"
     }]
@@ -459,7 +498,6 @@ def test_validate_counterposition_response_sufficiency_valid():
             "targets": ["C1"],
             "attack_type": "rebutting",
             "statement": "Test counterposition",
-            "strength": 0.5,
             "my_response": "Test response",
             "response_sufficiency": sufficiency
         }]
@@ -476,7 +514,6 @@ def test_validate_counterposition_response_sufficiency_invalid():
         "targets": ["C1"],
         "attack_type": "rebutting",
         "statement": "Test counterposition",
-        "strength": 0.5,
         "my_response": "Test response",
         "response_sufficiency": "maybe"
     }]
@@ -493,7 +530,6 @@ def test_validate_counterposition_id_prefix():
         "targets": ["C1"],
         "attack_type": "rebutting",
         "statement": "Test counterposition",
-        "strength": 0.5,
         "my_response": "Test response",
         "response_sufficiency": "partial"
     }]
@@ -519,7 +555,6 @@ def test_validate_counterposition_field_name():
         "targets": ["C1"],
         "attack_type": "rebutting",
         "statement": "Test",
-        "strength": 0.5,
         "my_response": "Response",
         "response_sufficiency": "sufficient"
     }]
@@ -528,7 +563,7 @@ def test_validate_counterposition_field_name():
 
 
 # ==============================================
-# 9. Claims Validation Tests (Part 6A)
+# 9. Claims Validation Tests
 # ==============================================
 
 @pytest.mark.unit
@@ -536,22 +571,18 @@ def test_validate_claim_valid_structure():
     """Test that a full claim with all required fields passes validation."""
     belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
     belief["claims"][0]["inference_chain"] = ["Step 1: premise", "Step 2: conclusion"]
-    belief["claims"][0]["known_weaknesses"] = ["Does not address edge case"]
-    belief["claims"][0]["confidence_justification"] = "Strong empirical support"
+    belief["claims"][0]["strength_justification"] = "Strong empirical support"
     errors = validate_belief(belief)
     assert len(errors) == 0, f"Full claim should pass validation, got: {errors}"
 
 
 @pytest.mark.unit
-def test_validate_claim_valid_without_optional():
-    """Test that claim without optional fields still passes validation."""
+def test_validate_claim_valid_with_all_required():
+    """Test that claim with all required fields passes validation."""
     belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
-    # Ensure no optional fields are present
-    claim = belief["claims"][0]
-    for opt_field in ("inference_chain", "known_weaknesses", "confidence_justification"):
-        claim.pop(opt_field, None)
+    # All fields are now required — no optional fields remain on claims
     errors = validate_belief(belief)
-    assert len(errors) == 0, f"Claim without optional fields should pass, got: {errors}"
+    assert len(errors) == 0, f"Claim with all required fields should pass, got: {errors}"
 
 
 @pytest.mark.unit
@@ -565,43 +596,85 @@ def test_validate_claim_invalid_status():
 
 
 @pytest.mark.unit
-def test_validate_claim_confidence_out_of_bounds():
-    """Test that claim confidence outside [0.0, 1.0] is rejected."""
+def test_validate_claim_strength_out_of_bounds():
+    """Test that claim strength outside [0.0, 1.0] is rejected."""
     belief = create_sample_belief(num_claims=1)
-    belief["claims"][0]["confidence"] = 1.5
+    belief["claims"][0]["strength"] = 1.5
     errors = validate_belief(belief)
-    assert len(errors) > 0, "Claim confidence 1.5 should produce errors"
-    assert any("confidence" in e.lower() for e in errors)
+    assert len(errors) > 0, "Claim strength 1.5 should produce errors"
+    assert any("strength" in e.lower() for e in errors)
 
     belief2 = create_sample_belief(num_claims=1)
-    belief2["claims"][0]["confidence"] = -0.1
+    belief2["claims"][0]["strength"] = -0.1
     errors2 = validate_belief(belief2)
-    assert len(errors2) > 0, "Claim confidence -0.1 should produce errors"
-    assert any("confidence" in e.lower() for e in errors2)
+    assert len(errors2) > 0, "Claim strength -0.1 should produce errors"
+    assert any("strength" in e.lower() for e in errors2)
+
+
+@pytest.mark.unit
+def test_validate_claim_predictions_required():
+    """Test that claims require a predictions array with at least one item."""
+    belief = create_sample_belief(num_claims=1)
+    del belief["claims"][0]["predictions"]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Claim without predictions should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_claim_predictions_empty_rejected():
+    """Test that a claim with empty predictions array is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["claims"][0]["predictions"] = []
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Claim with empty predictions should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_claim_prediction_required_fields():
+    """Test that each prediction requires statement, test, decision_criterion."""
+    belief = create_sample_belief(num_claims=1)
+    # Prediction missing 'test' field
+    belief["claims"][0]["predictions"] = [
+        {"statement": "Test prediction", "decision_criterion": "Some criterion"}
+    ]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Prediction missing 'test' should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_claim_prediction_with_optional_falsifiers():
+    """Test that prediction with optional potential_falsifiers passes."""
+    belief = create_sample_belief(num_claims=1)
+    belief["claims"][0]["predictions"] = [{
+        "statement": "Test prediction",
+        "test": "Test method",
+        "decision_criterion": "Some criterion",
+        "potential_falsifiers": ["Falsifier A", "Falsifier B"]
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"Prediction with falsifiers should pass, got: {errors}"
 
 
 # ==============================================
-# 10. Evidence Validation Tests (Part 6A)
+# 10. Evidence Validation Tests
 # ==============================================
 
 @pytest.mark.unit
-def test_validate_evidence_valid_with_optional():
-    """Test that evidence with all fields (including optional) passes."""
+def test_validate_evidence_valid_with_all_fields():
+    """Test that evidence with all required fields passes."""
     belief = create_sample_belief(num_evidence=1, num_claims=1)
-    belief["evidence"][0]["quality_assessment"] = "Strong — replicated across labs"
+    # All required fields (including status, strength_justification) are set by create_sample_belief
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"Evidence with all fields should pass, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_evidence_valid_with_extra_fields():
+    """Test that evidence with extra fields still passes (additionalProperties=True)."""
+    belief = create_sample_belief(num_evidence=1, num_claims=1)
     belief["evidence"][0]["limitations"] = "Limited to Western populations"
     errors = validate_belief(belief)
-    assert len(errors) == 0, f"Evidence with optional fields should pass, got: {errors}"
-
-
-@pytest.mark.unit
-def test_validate_evidence_valid_without_optional():
-    """Test that evidence without optional fields still passes."""
-    belief = create_sample_belief(num_evidence=1, num_claims=1)
-    for opt_field in ("quality_assessment", "limitations"):
-        belief["evidence"][0].pop(opt_field, None)
-    errors = validate_belief(belief)
-    assert len(errors) == 0, f"Evidence without optional fields should pass, got: {errors}"
+    assert len(errors) == 0, f"Evidence with extra fields should pass, got: {errors}"
 
 
 @pytest.mark.unit
@@ -614,90 +687,40 @@ def test_validate_evidence_invalid_type():
     assert any("evidence type" in e.lower() or "anecdotal" in e.lower() for e in errors)
 
 
-# ==============================================
-# 11. Predictions Validation Tests (Part 6A)
-# ==============================================
-
 @pytest.mark.unit
-def test_validate_prediction_valid_structure():
-    """Test that a full prediction with all fields passes validation."""
-    belief = create_sample_belief(num_claims=1)
-    belief["predictions"] = [{
-        "id": "P1",
-        "statement": "Test prediction",
-        "linked_claims": ["C1"],
-        "test": "Run experiment X",
-        "decision_criterion": "If result > threshold, confirmed",
-        "potential_falsifiers": ["Counter-result Y"],
-        "expected_likelihood": 0.7,
-        "importance": "high"
-    }]
+def test_validate_evidence_strength_range():
+    """Test that evidence strength is validated in [0.0, 1.0]."""
+    belief = create_sample_belief(num_evidence=1, num_claims=1)
+    belief["evidence"][0]["strength"] = 0.5
     errors = validate_belief(belief)
-    assert len(errors) == 0, f"Full prediction should pass, got: {errors}"
+    assert len(errors) == 0
 
-
-@pytest.mark.unit
-def test_validate_prediction_valid_without_optional():
-    """Test that prediction without optional fields still passes."""
-    belief = create_sample_belief(num_claims=1)
-    belief["predictions"] = [{
-        "id": "P1",
-        "statement": "Test prediction",
-        "linked_claims": ["C1"],
-        "test": "Run experiment X",
-        "decision_criterion": "If result > threshold, confirmed"
-    }]
+    belief = create_sample_belief(num_evidence=1, num_claims=1)
+    belief["evidence"][0]["strength"] = 1.5
     errors = validate_belief(belief)
-    assert len(errors) == 0, f"Prediction without optional fields should pass, got: {errors}"
+    assert len(errors) > 0, "Evidence strength 1.5 should produce errors"
+    assert any("strength" in e.lower() for e in errors)
 
-
-@pytest.mark.unit
-def test_validate_prediction_invalid_importance():
-    """Test that invalid prediction importance is rejected."""
-    belief = create_sample_belief(num_claims=1)
-    belief["predictions"] = [{
-        "id": "P1",
-        "statement": "Test prediction",
-        "linked_claims": ["C1"],
-        "test": "Run experiment X",
-        "decision_criterion": "Threshold check",
-        "importance": "critical"
-    }]
+    belief = create_sample_belief(num_evidence=1, num_claims=1)
+    belief["evidence"][0]["strength"] = -0.1
     errors = validate_belief(belief)
-    assert len(errors) > 0, "Invalid importance 'critical' should produce errors"
-    assert any("importance" in e.lower() for e in errors)
-
-
-@pytest.mark.unit
-def test_validate_prediction_likelihood_out_of_bounds():
-    """Test that expected_likelihood outside [0.0, 1.0] is rejected."""
-    belief = create_sample_belief(num_claims=1)
-    belief["predictions"] = [{
-        "id": "P1",
-        "statement": "Test prediction",
-        "linked_claims": ["C1"],
-        "test": "Run experiment X",
-        "decision_criterion": "Threshold check",
-        "expected_likelihood": 1.5
-    }]
-    errors = validate_belief(belief)
-    assert len(errors) > 0, "Likelihood 1.5 should produce errors"
-    assert any("expected_likelihood" in e.lower() or "likelihood" in e.lower() for e in errors)
+    assert len(errors) > 0, "Evidence strength -0.1 should produce errors"
 
 
 # ==============================================
-# 12. Uncertainties Validation Tests (Part 6A)
+# 11. Uncertainty Validation Tests
 # ==============================================
 
 @pytest.mark.unit
 def test_validate_uncertainty_valid_structure():
-    """Test that a full uncertainty with all fields passes validation."""
-    belief = create_sample_belief()
+    """Test that a valid uncertainty with targets and status passes validation."""
+    belief = create_sample_belief(num_claims=1)
     belief["uncertainties"] = [{
         "id": "U1",
+        "targets": ["C1"],
         "question": "Can the explanatory gap be closed?",
-        "cruciality": "high",
-        "voi_hint": "Resolving this directly determines viability"
+        "status": "active",
+        "importance": "Resolving this directly determines viability"
     }]
     errors = validate_belief(belief)
     assert len(errors) == 0, f"Full uncertainty should pass, got: {errors}"
@@ -705,33 +728,64 @@ def test_validate_uncertainty_valid_structure():
 
 @pytest.mark.unit
 def test_validate_uncertainty_valid_without_optional():
-    """Test that uncertainty without voi_hint still passes."""
-    belief = create_sample_belief()
+    """Test that uncertainty without optional fields still passes."""
+    belief = create_sample_belief(num_claims=1)
     belief["uncertainties"] = [{
         "id": "U1",
+        "targets": ["C1"],
         "question": "Is this assumption valid?",
-        "cruciality": "medium"
+        "status": "active"
     }]
     errors = validate_belief(belief)
-    assert len(errors) == 0, f"Uncertainty without voi_hint should pass, got: {errors}"
+    assert len(errors) == 0, f"Uncertainty without optional fields should pass, got: {errors}"
 
 
 @pytest.mark.unit
-def test_validate_uncertainty_invalid_cruciality():
-    """Test that invalid cruciality is rejected."""
-    belief = create_sample_belief()
+def test_validate_uncertainty_resolved_with_note():
+    """Test that a resolved uncertainty with resolution_note passes."""
+    belief = create_sample_belief(num_claims=1)
     belief["uncertainties"] = [{
         "id": "U1",
-        "question": "Test question",
-        "cruciality": "extreme"
+        "targets": ["C1"],
+        "question": "Can the explanatory gap be closed?",
+        "status": "resolved",
+        "resolution_note": "Resolved by new claim C2 with evidence E2"
     }]
     errors = validate_belief(belief)
-    assert len(errors) > 0, "Invalid cruciality 'extreme' should produce errors"
-    assert any("cruciality" in e.lower() for e in errors)
+    assert len(errors) == 0, f"Resolved uncertainty should pass, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_uncertainty_invalid_status():
+    """Test that invalid uncertainty status is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["uncertainties"] = [{
+        "id": "U1",
+        "targets": ["C1"],
+        "question": "Test question",
+        "status": "pending"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Invalid status 'pending' should produce errors"
+    assert any("status" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_uncertainty_valid_without_cruciality():
+    """Test that uncertainties are valid without a cruciality field (removed)."""
+    belief = create_sample_belief(num_claims=1)
+    belief["uncertainties"] = [{
+        "id": "U1",
+        "targets": ["C1"],
+        "question": "Test question",
+        "status": "active"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"Uncertainty without cruciality should pass, got: {errors}"
 
 
 # ==============================================
-# 13. Changelog Validation Tests (Part 6A)
+# 12. Changelog Validation Tests
 # ==============================================
 
 @pytest.mark.unit
@@ -740,7 +794,7 @@ def test_validate_changelog_valid_structure():
     belief = create_sample_belief()
     belief["changelog"] = [{
         "version": 2,
-        "changes": ["Updated thesis confidence", "Revised claim C1"],
+        "changes": ["Updated thesis strength", "Revised claim C1"],
         "timestamp": "2026-02-16T10:00:00Z"
     }]
     errors = validate_belief(belief)
@@ -765,3 +819,94 @@ def test_validate_changelog_multiple_entries():
     ]
     errors = validate_belief(belief)
     assert len(errors) == 0, f"Multiple changelog entries should pass, got: {errors}"
+
+
+# ==============================================
+# 13. Assumption Status Validation Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_assumption_status_valid():
+    """Test that valid assumption statuses are accepted."""
+    for status in ("active", "revised", "retracted"):
+        belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+        belief["assumptions"][0]["status"] = status
+        errors = validate_belief(belief)
+        assert not any("assumption status" in e.lower() for e in errors), \
+            f"Valid status '{status}' should not produce status errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_assumption_status_invalid():
+    """Test that invalid assumption status is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["assumptions"][0]["status"] = "pending_review"
+    errors = validate_belief(belief)
+    assert any("assumption status" in e.lower() for e in errors), \
+        f"Invalid assumption status should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_evidence_status_valid():
+    """Test that valid evidence statuses are accepted."""
+    for status in ("active", "revised", "retracted"):
+        belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+        belief["evidence"][0]["status"] = status
+        errors = validate_belief(belief)
+        assert not any("evidence status" in e.lower() for e in errors), \
+            f"Valid status '{status}' should not produce status errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_evidence_status_invalid():
+    """Test that invalid evidence status is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["evidence"][0]["status"] = "archived"
+    errors = validate_belief(belief)
+    assert any("evidence status" in e.lower() for e in errors), \
+        f"Invalid evidence status should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_strength_justification_required_for_claims():
+    """Test that missing strength_justification on claims triggers error."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    del belief["claims"][0]["strength_justification"]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Missing strength_justification on claims should produce errors"
+
+
+@pytest.mark.unit
+def test_strength_justification_required_for_assumptions():
+    """Test that missing strength_justification on assumptions triggers error."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    del belief["assumptions"][0]["strength_justification"]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Missing strength_justification on assumptions should produce errors"
+
+
+@pytest.mark.unit
+def test_strength_justification_required_for_evidence():
+    """Test that missing strength_justification on evidence triggers error."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    del belief["evidence"][0]["strength_justification"]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Missing strength_justification on evidence should produce errors"
+
+
+@pytest.mark.unit
+def test_inference_chain_required_for_claims():
+    """Test that missing inference_chain on claims triggers error."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    del belief["claims"][0]["inference_chain"]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Missing inference_chain on claims should produce errors"
+
+
+@pytest.mark.unit
+def test_inference_chain_empty_rejected():
+    """Test that empty inference_chain on claims triggers error."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["claims"][0]["inference_chain"] = []
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Empty inference_chain on claims should produce errors"

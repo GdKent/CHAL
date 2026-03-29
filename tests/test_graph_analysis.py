@@ -59,8 +59,7 @@ def test_analyze_debate_graph_structure_complex():
 
     # Create complex dependencies
     for i, claim in enumerate(belief["claims"]):
-        claim["depends_on"] = [f"A{(i % 5) + 1}"]
-        claim["backing_evidence_ids"] = [f"E{(i % 5) + 1}"]
+        claim["depends_on"] = [f"A{(i % 5) + 1}", f"E{(i % 5) + 1}"]
 
     graph = BeliefGraph(belief)
     analysis = analyze_debate_graph_structure(graph)
@@ -256,8 +255,7 @@ def test_graph_density_calculation():
     # Dense graph: many edges relative to nodes
     belief_dense = create_sample_belief(num_assumptions=3, num_claims=6, num_evidence=3)
     for claim in belief_dense["claims"]:
-        claim["depends_on"] = ["A1", "A2", "A3"]  # Each claim depends on all assumptions
-        claim["backing_evidence_ids"] = ["E1", "E2", "E3"]
+        claim["depends_on"] = ["A1", "A2", "A3", "E1", "E2", "E3"]  # Each claim depends on all assumptions and evidence
 
     graph_dense = BeliefGraph(belief_dense)
     analysis_dense = analyze_debate_graph_structure(graph_dense)
@@ -266,7 +264,6 @@ def test_graph_density_calculation():
     belief_sparse = create_sample_belief(num_assumptions=3, num_claims=3, num_evidence=0)
     for i, claim in enumerate(belief_sparse["claims"]):
         claim["depends_on"] = [f"A{i+1}"]  # Each claim depends on one assumption
-        claim["backing_evidence_ids"] = []
 
     graph_sparse = BeliefGraph(belief_sparse)
     analysis_sparse = analyze_debate_graph_structure(graph_sparse)
@@ -283,22 +280,19 @@ def test_graph_density_calculation():
 @pytest.mark.skip(reason="Function analyze_debate_graph_structure not yet implemented")
 @pytest.mark.unit
 def test_identify_critical_assumptions():
-    """Test identifying assumptions that support high-confidence claims."""
+    """Test identifying assumptions that support high-strength claims."""
     belief = create_sample_belief(num_assumptions=3, num_claims=3, num_evidence=0)
 
-    # Make C1 high confidence and depend on A1
-    belief["claims"][0]["confidence"] = 0.95
+    # Make C1 high strength and depend on A1
+    belief["claims"][0]["strength"] = 0.95
     belief["claims"][0]["depends_on"] = ["A1"]
-    belief["claims"][0]["backing_evidence_ids"] = []
 
-    # Make C2, C3 low confidence
-    belief["claims"][1]["confidence"] = 0.4
+    # Make C2, C3 low strength
+    belief["claims"][1]["strength"] = 0.4
     belief["claims"][1]["depends_on"] = ["A2"]
-    belief["claims"][1]["backing_evidence_ids"] = []
 
-    belief["claims"][2]["confidence"] = 0.3
+    belief["claims"][2]["strength"] = 0.3
     belief["claims"][2]["depends_on"] = ["A3"]
-    belief["claims"][2]["backing_evidence_ids"] = []
 
     graph = BeliefGraph(belief)
     analysis = analyze_debate_graph_structure(graph)
@@ -318,14 +312,10 @@ def test_detect_hierarchical_structure():
     belief = create_sample_belief(num_assumptions=2, num_claims=4, num_evidence=2)
 
     # Create hierarchy: A1,A2 → C1,C2 → C3,C4
-    belief["claims"][0]["depends_on"] = ["A1"]
-    belief["claims"][0]["backing_evidence_ids"] = ["E1"]
-    belief["claims"][1]["depends_on"] = ["A2"]
-    belief["claims"][1]["backing_evidence_ids"] = ["E2"]
+    belief["claims"][0]["depends_on"] = ["A1", "E1"]
+    belief["claims"][1]["depends_on"] = ["A2", "E2"]
     belief["claims"][2]["depends_on"] = ["C1", "C2"]
-    belief["claims"][2]["backing_evidence_ids"] = []
     belief["claims"][3]["depends_on"] = ["C1", "C2"]
-    belief["claims"][3]["backing_evidence_ids"] = []
 
     graph = BeliefGraph(belief)
     analysis = analyze_debate_graph_structure(graph)
@@ -342,8 +332,7 @@ def test_detect_flat_structure():
 
     # All claims depend directly on assumptions (no claim-claim dependencies)
     for i, claim in enumerate(belief["claims"]):
-        claim["depends_on"] = [f"A{i+1}"]
-        claim["backing_evidence_ids"] = [f"E{i+1}"]
+        claim["depends_on"] = [f"A{i+1}", f"E{i+1}"]
 
     graph = BeliefGraph(belief)
     analysis = analyze_debate_graph_structure(graph)
@@ -401,24 +390,24 @@ def test_identify_contested_nodes_malformed_challenge():
 
 @pytest.mark.unit
 def test_weak_evidence_detection_string_quality():
-    """Test that evidence with weak quality_assessment string is flagged."""
+    """Test that evidence with weak strength_justification string is flagged."""
     belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
-    belief["evidence"][0]["quality_assessment"] = "Weak, preliminary study with small sample"
+    belief["evidence"][0]["strength_justification"] = "Weak, preliminary study with small sample"
     graph = BeliefGraph(belief)
 
     vulns = analyze_vulnerabilities(graph)
     weak_chains = vulns["weak_evidence_chains"]
 
-    assert len(weak_chains) > 0, "Evidence with weak quality should be flagged"
+    assert len(weak_chains) > 0, "Evidence with weak justification should be flagged"
     assert weak_chains[0]["claim_id"] == "C1"
     assert any(ev["ev_id"] == "E1" for ev in weak_chains[0]["weak_evidence"])
 
 
 @pytest.mark.unit
 def test_strong_evidence_not_flagged():
-    """Test that evidence with strong quality_assessment string is NOT flagged."""
+    """Test that evidence with strong strength_justification string is NOT flagged."""
     belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
-    belief["evidence"][0]["quality_assessment"] = "Strong — replicated across labs, converging methods"
+    belief["evidence"][0]["strength_justification"] = "Strong — replicated across labs, converging methods"
     graph = BeliefGraph(belief)
 
     vulns = analyze_vulnerabilities(graph)
@@ -428,19 +417,19 @@ def test_strong_evidence_not_flagged():
 
 
 @pytest.mark.unit
-def test_evidence_no_quality_assessment():
-    """Test that evidence without quality_assessment field is flagged as unknown quality."""
+def test_evidence_no_strength_justification():
+    """Test that evidence without strength_justification field is flagged as unknown quality."""
     belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
-    # Remove quality_assessment entirely (default from create_sample_belief has none)
-    belief["evidence"][0].pop("quality_assessment", None)
+    # Remove strength_justification entirely
+    belief["evidence"][0].pop("strength_justification", None)
     graph = BeliefGraph(belief)
 
     vulns = analyze_vulnerabilities(graph)
     weak_chains = vulns["weak_evidence_chains"]
 
-    assert len(weak_chains) > 0, "Evidence without quality_assessment should be flagged"
+    assert len(weak_chains) > 0, "Evidence without strength_justification should be flagged"
     weak_ev = weak_chains[0]["weak_evidence"][0]
-    assert weak_ev["quality_assessment"] == "(none)"
+    assert weak_ev["strength_justification"] == "(none)"
 
 
 # ==============================================

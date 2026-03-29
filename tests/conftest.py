@@ -63,7 +63,7 @@ def sample_minimal_belief() -> Dict[str, Any]:
                 "Neuroscience shows decisions occur before conscious awareness",
                 "Physical determinism governs all events"
             ],
-            "confidence": 0.75
+            "strength": 0.75
         }
     }
 
@@ -93,25 +93,30 @@ def sample_complete_belief() -> Dict[str, Any]:
                 "Determinism and free will are compatible",
                 "Humans have the capacity for rational deliberation"
             ],
-            "confidence": 0.80
+            "strength": 0.80
         },
         "assumptions": [
-            {"id": "A1", "type": "empirical", "statement": "Rational deliberation is a real phenomenon"}
+            {"id": "A1", "type": "empirical", "statement": "Rational deliberation is a real phenomenon", "strength": 0.9, "status": "active", "strength_justification": "Well-established through cognitive science research"}
         ],
         "claims": [
             {
                 "id": "C1",
                 "type": "deductive",
                 "statement": "Humans can make choices based on reasons",
-                "depends_on": ["A1"],
-                "backing_evidence_ids": ["E1"],
-                "confidence": 0.85,
+                "depends_on": ["A1", "E1"],
+                "strength": 0.85,
                 "status": "active",
+                "predictions": [
+                    {
+                        "statement": "People will report feeling in control when making deliberate choices",
+                        "test": "Survey participants after deliberate vs. reflexive choices",
+                        "decision_criterion": "If >70% report feeling in control during deliberate choices, prediction is confirmed"
+                    }
+                ],
                 "inference_chain": [
                     {"step": "P1: Rational beings deliberate", "justification": "Empirical observation"}
                 ],
-                "confidence_justification": "Strong empirical support",
-                "known_weaknesses": []
+                "strength_justification": "Strong empirical support"
             }
         ],
         "evidence": [
@@ -120,22 +125,10 @@ def sample_complete_belief() -> Dict[str, Any]:
                 "type": "empirical",
                 "summary": "Studies show humans consider alternatives before deciding",
                 "source": "Libet et al. (1983)",
-                "relevance_to_claims": ["C1"]
-            }
-        ],
-        "predictions": [
-            {
-                "id": "P1",
-                "statement": "People will report feeling in control when making deliberate choices",
-                "linked_claims": ["C1"],
-                "test": "Survey participants after deliberate vs. reflexive choices",
-                "decision_criterion": "If >70% report feeling in control during deliberate choices, prediction is confirmed"
-            }
-        ],
-        "normative_implications": [
-            {
-                "id": "N1",
-                "statement": "Moral responsibility requires free will"
+                "relevance_to_claims": ["C1"],
+                "strength": 0.8,
+                "status": "active",
+                "strength_justification": "Replicated across labs with converging methods"
             }
         ]
     }
@@ -158,7 +151,7 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
         "thesis": {
             "stance": "Test stance",
             "summary_bullets": ["Test bullet"],
-            "confidence": 0.5
+            "strength": 0.5
         },
         "claims": [
             {
@@ -166,18 +159,22 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
                 "type": "deductive",
                 "statement": "Claim 1 depends on Claim 2",
                 "depends_on": ["C2"],
-                "backing_evidence_ids": [],
-                "confidence": 0.7,
-                "status": "active"
+                "strength": 0.7,
+                "strength_justification": "Test justification",
+                "status": "active",
+                "inference_chain": ["Step 1: C2 implies C1"],
+                "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             },
             {
                 "id": "C2",
                 "type": "deductive",
                 "statement": "Claim 2 depends on Claim 1",
                 "depends_on": ["C1"],
-                "backing_evidence_ids": [],
-                "confidence": 0.7,
-                "status": "active"
+                "strength": 0.7,
+                "strength_justification": "Test justification",
+                "status": "active",
+                "inference_chain": ["Step 1: C1 implies C2"],
+                "predictions": [{"statement": "P2", "test": "T2", "decision_criterion": "DC2"}]
             }
         ]
     }
@@ -200,7 +197,7 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
         "thesis": {
             "stance": "Test stance",
             "summary_bullets": ["Test bullet"],
-            "confidence": 0.5
+            "strength": 0.5
         },
         "claims": [
             {
@@ -208,9 +205,11 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
                 "type": "deductive",
                 "statement": "Orphaned claim with no support",
                 "depends_on": [],
-                "backing_evidence_ids": [],
-                "confidence": 0.7,
-                "status": "active"
+                "strength": 0.7,
+                "strength_justification": "Test justification",
+                "status": "active",
+                "inference_chain": ["Step 1: Orphaned reasoning"],
+                "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             }
         ]
     }
@@ -222,7 +221,7 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
 
 @pytest.fixture
 def sample_patches_update_thesis() -> List[Dict[str, Any]]:
-    """Sample patches for updating thesis confidence."""
+    """Sample patches for updating thesis strength."""
     return [
         {"op": "update_thesis", "change": "weaken"}
     ]
@@ -236,7 +235,7 @@ def sample_patches_update_claim() -> List[Dict[str, Any]]:
             "op": "update_claim",
             "target_id": "C1",
             "changes": {
-                "confidence": 0.6,
+                "strength": 0.6,
                 "status": "revised"
             }
         }

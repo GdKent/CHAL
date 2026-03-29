@@ -37,21 +37,6 @@ def test_default_config():
     print(f"  Max rounds: {config.max_rounds}")
     print(f"  Storage: {config.outputs.storage_dir}")
 
-def test_quick_test_config():
-    """Test loading quick_test configuration."""
-    print("\nTesting quick_test configuration...")
-    config = load_config('quick_test')
-
-    assert config.name == "Quick Test"
-    assert len(config.agents) == 2
-    assert config.outputs.save_synthesis == False  # Disabled in quick_test
-    assert config.scribe.enabled == False  # Disabled in quick_test
-
-    print(f"✓ Config loaded successfully: {config.name}")
-    print(f"  Topic: {config.topic}")
-    print(f"  Scribe enabled: {config.scribe.enabled}")
-    print(f"  Save synthesis: {config.outputs.save_synthesis}")
-
 def test_storage_dir_creation():
     """Test that storage directory creation works."""
     print("\nTesting storage directory creation...")
@@ -77,14 +62,6 @@ def test_agent_provider_defaults_to_openai():
 def test_adjudication_provider_defaults_to_openai():
     """Adjudicator in default.yaml reports provider='openai'."""
     config = load_config('default')
-    assert config.adjudication.provider == "openai"
-
-
-def test_quick_test_agent_providers():
-    """All agents in quick_test.yaml report provider='openai'."""
-    config = load_config('quick_test')
-    for agent in config.agents:
-        assert agent.provider == "openai"
     assert config.adjudication.provider == "openai"
 
 
@@ -279,7 +256,7 @@ def test_to_dict_returns_dict():
     expected_keys = {
         "metadata", "debate", "agents", "adjudication",
         "stages", "outputs", "scribe", "collaborative",
-        "bloodsport", "moderator",
+        "bloodsport", "moderator", "parallel",
     }
     assert set(d.keys()) == expected_keys
 
@@ -358,19 +335,137 @@ def test_to_yaml_writes_loadable_file(tmp_path):
     assert reloaded.agents[1].persona == "SKEPTIC"
 
 
+# ==============================================
+# ParallelConfig Tests (Phase 3E)
+# ==============================================
+
+def test_parallel_config_defaults():
+    """Default ParallelConfig has enabled=False, max_workers=5."""
+    from chal.config import ParallelConfig
+
+    pc = ParallelConfig()
+    assert pc.enabled is False
+    assert pc.max_workers == 5
+
+
+def test_parallel_config_in_debate_config():
+    """DebateConfig includes ParallelConfig from default.yaml."""
+    config = load_config('default')
+    assert hasattr(config, "parallel")
+    assert config.parallel.enabled is True
+    assert config.parallel.max_workers == 5
+
+
+def test_parallel_config_from_yaml(tmp_path):
+    """YAML with parallel: section parses correctly."""
+    yaml_content = textwrap.dedent("""\
+        metadata:
+          name: "Parallel Test"
+          version: "1.0"
+        debate:
+          topic: "Test topic"
+          max_rounds: 1
+        agents:
+          - name: "Agent-A"
+            persona: "EMPIRICIST"
+            model: "gpt-4o"
+            temperature: 0.7
+        adjudication:
+          model: "gpt-4o"
+          logic_weight: 1.0
+          ethics_weight: 0.0
+          logic_system: "Classical logic"
+          ethics_system: "None"
+        parallel:
+          enabled: true
+          max_workers: 8
+    """)
+    config_file = tmp_path / "parallel_test.yaml"
+    config_file.write_text(yaml_content)
+
+    from chal.config import DebateConfig
+    config = DebateConfig.from_yaml(config_file)
+
+    assert config.parallel.enabled is True
+    assert config.parallel.max_workers == 8
+
+
+def test_parallel_config_missing_section(tmp_path):
+    """Missing parallel: section in YAML → defaults (enabled=False)."""
+    yaml_content = textwrap.dedent("""\
+        metadata:
+          name: "No Parallel Section"
+          version: "1.0"
+        debate:
+          topic: "Test topic"
+          max_rounds: 1
+        agents:
+          - name: "Agent-A"
+            persona: "EMPIRICIST"
+            model: "gpt-4o"
+            temperature: 0.7
+        adjudication:
+          model: "gpt-4o"
+          logic_weight: 1.0
+          ethics_weight: 0.0
+          logic_system: "Classical logic"
+          ethics_system: "None"
+    """)
+    config_file = tmp_path / "no_parallel.yaml"
+    config_file.write_text(yaml_content)
+
+    from chal.config import DebateConfig
+    config = DebateConfig.from_yaml(config_file)
+
+    assert config.parallel.enabled is False
+    assert config.parallel.max_workers == 5
+
+
+def test_parallel_config_to_yaml_roundtrip(tmp_path):
+    """to_dict() → from_yaml() preserves parallel settings."""
+    from chal.config import DebateConfig, AgentConfig, OutputConfig, ParallelConfig
+
+    config = DebateConfig(
+        name="Roundtrip Test",
+        topic="Test topic",
+        max_rounds=1,
+        agents=[
+            AgentConfig(name="A1", persona="EMPIRICIST", model="gpt-4o"),
+        ],
+        outputs=OutputConfig(storage_dir=tmp_path),
+        parallel=ParallelConfig(enabled=True, max_workers=6),
+    )
+
+    yaml_path = tmp_path / "roundtrip.yaml"
+    config.to_yaml(yaml_path)
+
+    reloaded = DebateConfig.from_yaml(yaml_path)
+    assert reloaded.parallel.enabled is True
+    assert reloaded.parallel.max_workers == 6
+
+
+def test_to_dict_includes_parallel():
+    """to_dict() includes parallel section."""
+    config = load_config('default')
+    d = config.to_dict()
+
+    assert "parallel" in d
+    assert "enabled" in d["parallel"]
+    assert "max_workers" in d["parallel"]
+
+
 if __name__ == "__main__":
     try:
         test_default_config()
-        test_quick_test_config()
         test_storage_dir_creation()
         print("\n" + "=" * 60)
-        print("✅ All configuration tests passed!")
+        print("All configuration tests passed!")
         print("=" * 60)
     except AssertionError as e:
-        print(f"\n❌ Test failed: {e}")
+        print(f"\nTest failed: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

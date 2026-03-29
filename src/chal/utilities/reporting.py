@@ -221,20 +221,20 @@ def generate_analysis_report(
             final_claims = len(final_obj.get("claims", []))
             sections.append(f"- **Claims**: {initial_claims} → {final_claims}")
 
-            # Confidence drift
-            initial_confidences = {
-                c.get("id", ""): c.get("confidence", 0)
+            # Strength drift
+            initial_strengths = {
+                c.get("id", ""): c.get("strength", 0)
                 for c in initial_obj.get("claims", [])
             }
-            final_confidences = {
-                c.get("id", ""): c.get("confidence", 0)
+            final_strengths = {
+                c.get("id", ""): c.get("strength", 0)
                 for c in final_obj.get("claims", [])
             }
-            shared_ids = set(initial_confidences.keys()) & set(final_confidences.keys())
+            shared_ids = set(initial_strengths.keys()) & set(final_strengths.keys())
             if shared_ids:
-                drifts = [final_confidences[cid] - initial_confidences[cid] for cid in shared_ids]
+                drifts = [final_strengths[cid] - initial_strengths[cid] for cid in shared_ids]
                 avg_drift = sum(drifts) / len(drifts)
-                sections.append(f"- **Avg confidence drift**: {avg_drift:+.3f} (across {len(shared_ids)} shared claims)")
+                sections.append(f"- **Avg strength drift**: {avg_drift:+.3f} (across {len(shared_ids)} shared claims)")
         else:
             sections.append("- *(Structured belief comparison unavailable)*")
         sections.append("")

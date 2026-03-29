@@ -7,6 +7,7 @@ Tests cover:
 - Wizard orchestration (build config, cancel, save, edit loop)
 """
 
+import os
 import pytest
 from unittest.mock import patch, MagicMock, call
 from io import StringIO
@@ -21,6 +22,7 @@ from chal.config import (
     DebateConfig,
     ModeratorConfig,
     OutputConfig,
+    ParallelConfig,
     DEFAULT_STORAGE_DIR,
 )
 from chal.cli.wizard import (
@@ -33,6 +35,9 @@ from chal.cli.wizard import (
     ask_adjudicator_config,
     ask_moderator_config,
     ask_output_toggles,
+    ask_parallelization,
+    ask_max_workers,
+    ask_api_keys_for_config,
     show_review_panel,
     ask_review_action,
     ask_edit_section,
@@ -369,6 +374,175 @@ class TestShowReviewPanel:
         output = buf.getvalue()
         assert "extreme" in output
 
+    @pytest.mark.unit
+    def test_shows_parallelization_enabled(self):
+        """Review panel shows 'Enabled (N threads)' when parallelization is on."""
+        config = DebateConfig(
+            topic="Test",
+            agents=[AgentConfig(name="A1", persona="EMPIRICIST")],
+            parallel=ParallelConfig(enabled=True, max_workers=5),
+        )
+        buf = StringIO()
+        console = Console(file=buf)
+        show_review_panel(config, console)
+        output = buf.getvalue()
+        assert "Parallelization" in output
+        assert "Enabled" in output
+        assert "5 threads" in output
+
+    @pytest.mark.unit
+    def test_shows_parallelization_disabled(self):
+        """Review panel shows 'Disabled' when parallelization is off."""
+        config = DebateConfig(
+            topic="Test",
+            agents=[AgentConfig(name="A1", persona="EMPIRICIST")],
+            parallel=ParallelConfig(enabled=False),
+        )
+        buf = StringIO()
+        console = Console(file=buf)
+        show_review_panel(config, console)
+        output = buf.getvalue()
+        assert "Parallelization" in output
+        assert "Disabled" in output
+
+
+# =========================================================================
+# 3b. Parallelization & API Keys
+# =========================================================================
+
+class TestAskParallelization:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.confirm")
+    def test_returns_true_when_accepted(self, mock_confirm):
+        """ask_parallelization returns True when user accepts."""
+        mock_confirm.return_value.ask.return_value = True
+        assert ask_parallelization() is True
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.confirm")
+    def test_returns_false_when_declined(self, mock_confirm):
+        """ask_parallelization returns False when user declines."""
+        mock_confirm.return_value.ask.return_value = False
+        assert ask_parallelization() is False
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.confirm")
+    def test_default_is_true(self, mock_confirm):
+        """Default value passed to questionary.confirm is True."""
+        mock_confirm.return_value.ask.return_value = True
+        ask_parallelization()
+        _, kwargs = mock_confirm.call_args
+        assert kwargs.get("default") is True
+
+
+class TestAskMaxWorkers:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_returns_entered_value(self, mock_text):
+        """ask_max_workers returns the integer the user types."""
+        mock_text.return_value.ask.return_value = "8"
+        assert ask_max_workers() == 8
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_default_is_5(self, mock_text):
+        """Default value passed to questionary.text is '5'."""
+        mock_text.return_value.ask.return_value = "5"
+        ask_max_workers()
+        _, kwargs = mock_text.call_args
+        assert kwargs.get("default") == "5"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_invalid_input_returns_default(self, mock_text):
+        """Non-integer input falls back to the default."""
+        mock_text.return_value.ask.return_value = "abc"
+        assert ask_max_workers(default=5) == 5
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_zero_returns_one(self, mock_text):
+        """Value < 1 is clamped to 1."""
+        mock_text.return_value.ask.return_value = "0"
+        assert ask_max_workers() == 1
+
+
+class TestAskApiKeysForConfig:
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.confirm")
+    @patch("chal.cli.wizard.questionary.text")
+    @patch.dict(os.environ, {}, clear=False)
+    def test_single_key_entry(self, mock_text, mock_confirm, monkeypatch):
+        """Entering one key and declining more sets env var."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        mock_text.return_value.ask.return_value = "sk-test"
+        mock_confirm.return_value.ask.return_value = False
+
+        state = {
+            'agent_configs': [AgentConfig(name="A", persona="EMPIRICIST", provider="openai")],
+            'adjudication': AdjudicationConfig(provider="openai"),
+        }
+        ask_api_keys_for_config(state)
+        assert os.environ.get("OPENAI_API_KEY") == "sk-test"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.confirm")
+    @patch("chal.cli.wizard.questionary.text")
+    @patch.dict(os.environ, {}, clear=False)
+    def test_multi_key_entry(self, mock_text, mock_confirm, monkeypatch):
+        """Entering two keys produces comma-separated env var."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        mock_text.return_value.ask.side_effect = ["sk-a", "sk-b"]
+        mock_confirm.return_value.ask.side_effect = [True, False]
+
+        state = {
+            'agent_configs': [AgentConfig(name="A", persona="EMPIRICIST", provider="openai")],
+            'adjudication': AdjudicationConfig(provider="openai"),
+        }
+        ask_api_keys_for_config(state)
+        assert os.environ.get("OPENAI_API_KEY") == "sk-a,sk-b"
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-present"}, clear=False)
+    def test_skips_already_set(self, mock_text):
+        """Providers with keys already set are skipped."""
+        state = {
+            'agent_configs': [AgentConfig(name="A", persona="EMPIRICIST", provider="openai")],
+            'adjudication': AdjudicationConfig(provider="openai"),
+        }
+        ask_api_keys_for_config(state)
+        mock_text.assert_not_called()
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    def test_skips_ollama(self, mock_text):
+        """Ollama provider is skipped (no API key needed)."""
+        state = {
+            'agent_configs': [AgentConfig(name="A", persona="EMPIRICIST", provider="ollama")],
+            'adjudication': AdjudicationConfig(provider="ollama"),
+        }
+        ask_api_keys_for_config(state)
+        mock_text.assert_not_called()
+
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.text")
+    @patch.dict(os.environ, {}, clear=False)
+    def test_skip_when_empty_input(self, mock_text, monkeypatch):
+        """Pressing Enter (empty input) skips the provider."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        mock_text.return_value.ask.return_value = ""
+
+        state = {
+            'agent_configs': [AgentConfig(name="A", persona="EMPIRICIST", provider="openai")],
+            'adjudication': AdjudicationConfig(provider="openai"),
+        }
+        ask_api_keys_for_config(state)
+        assert os.environ.get("OPENAI_API_KEY") is None
+
 
 # =========================================================================
 # 4. Review Action
@@ -411,6 +585,17 @@ class TestEditSection:
         choice_values = [c.value for c in kwargs["choices"]]
         assert "moderator" not in choice_values
 
+    @pytest.mark.unit
+    @patch("chal.cli.wizard.questionary.select")
+    def test_parallelization_in_choices(self, mock_select):
+        """Edit section includes parallelization option."""
+        mock_select.return_value.ask.return_value = "parallelization"
+        result = ask_edit_section()
+        assert result == "parallelization"
+        _, kwargs = mock_select.call_args
+        choice_values = [c.value for c in kwargs["choices"]]
+        assert "parallelization" in choice_values
+
 
 # =========================================================================
 # 5. Wizard Orchestration
@@ -429,14 +614,15 @@ class TestRunWizard:
         }
 
     @pytest.mark.unit
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=False)
     def test_wizard_cancel(self):
         """Wizard returns (None, 'cancel') when user cancels at review."""
         with patch("chal.cli.wizard.questionary.text") as m_text, \
              patch("chal.cli.wizard.questionary.select") as m_select, \
              patch("chal.cli.wizard.questionary.autocomplete") as m_auto, \
-             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox:
+             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox, \
+             patch("chal.cli.wizard.questionary.confirm") as m_confirm:
 
-            # Step 1: topic
             m_text.return_value.ask.side_effect = [
                 "Test topic",  # topic
                 "2",           # num_agents
@@ -445,11 +631,8 @@ class TestRunWizard:
                 "3",           # num_rounds
                 "1.0",         # adj logic weight
                 "0.0",         # adj ethics weight
+                "5",           # max_workers
             ]
-            # select calls: main_menu, preset, persona1, provider1,
-            # persona2, provider2, stage2_mode, stage3_mode,
-            # adj_provider, adj_logic_sys, adj_ethics_sys, adj_balance,
-            # review_action
             m_select.return_value.ask.side_effect = [
                 "debate",                     # main menu
                 "__custom__",                 # ask_preset
@@ -469,6 +652,7 @@ class TestRunWizard:
                 "o1-mini", # adjudicator model
             ]
             m_checkbox.return_value.ask.return_value = ["save_transcript", "save_debug_log"]
+            m_confirm.return_value.ask.return_value = True  # parallelization
 
             config, action = run_wizard(_console())
 
@@ -476,12 +660,14 @@ class TestRunWizard:
             assert action == "cancel"
 
     @pytest.mark.unit
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test", "ANTHROPIC_API_KEY": "ant-test"}, clear=False)
     def test_wizard_launch(self):
         """Wizard builds a valid DebateConfig when user launches."""
         with patch("chal.cli.wizard.questionary.text") as m_text, \
              patch("chal.cli.wizard.questionary.select") as m_select, \
              patch("chal.cli.wizard.questionary.autocomplete") as m_auto, \
-             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox:
+             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox, \
+             patch("chal.cli.wizard.questionary.confirm") as m_confirm:
 
             m_text.return_value.ask.side_effect = [
                 "Does free will exist?",  # topic
@@ -491,6 +677,7 @@ class TestRunWizard:
                 "3",                       # num_rounds
                 "1.0",                     # adj logic weight
                 "0.0",                     # adj ethics weight
+                "5",                       # max_workers
             ]
             m_select.return_value.ask.side_effect = [
                 "debate",                # main menu
@@ -513,6 +700,7 @@ class TestRunWizard:
             m_checkbox.return_value.ask.return_value = [
                 "save_transcript", "save_synthesis", "save_debug_log",
             ]
+            m_confirm.return_value.ask.return_value = True  # parallelization
 
             config, action = run_wizard(_console())
 
@@ -528,8 +716,10 @@ class TestRunWizard:
             assert config.max_rounds == 3
             assert config.outputs.save_transcript is True
             assert config.outputs.save_training_data is False
+            assert config.parallel.enabled is True
 
     @pytest.mark.unit
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=False)
     def test_wizard_save(self, tmp_path):
         """Wizard saves config to YAML when user selects save."""
         yaml_path = tmp_path / "test_debate.yaml"
@@ -537,7 +727,8 @@ class TestRunWizard:
         with patch("chal.cli.wizard.questionary.text") as m_text, \
              patch("chal.cli.wizard.questionary.select") as m_select, \
              patch("chal.cli.wizard.questionary.autocomplete") as m_auto, \
-             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox:
+             patch("chal.cli.wizard.questionary.checkbox") as m_checkbox, \
+             patch("chal.cli.wizard.questionary.confirm") as m_confirm:
 
             m_text.return_value.ask.side_effect = [
                 "Save test topic",  # topic
@@ -547,6 +738,7 @@ class TestRunWizard:
                 "1",                # num_rounds
                 "1.0",              # adj logic weight
                 "0.0",              # adj ethics weight
+                "5",                # max_workers
                 str(yaml_path),     # save path
             ]
             m_select.return_value.ask.side_effect = [
@@ -567,6 +759,7 @@ class TestRunWizard:
                 "gpt-4o", "gpt-4o", "o1-mini",
             ]
             m_checkbox.return_value.ask.return_value = ["save_transcript"]
+            m_confirm.return_value.ask.return_value = True  # parallelization
 
             config, action = run_wizard(_console())
 

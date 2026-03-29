@@ -120,12 +120,9 @@ class TestCheckApiKeys:
         assert result["openai"] is True
 
     @pytest.mark.unit
-    @patch.dict(os.environ, {}, clear=False)
-    def test_returns_false_when_key_missing(self):
+    def test_returns_false_when_key_missing(self, monkeypatch):
         """check_api_keys returns False for a provider whose key is not set."""
-        # Ensure the key is absent
-        env_var = PROVIDER_ENV_VARS["anthropic"]
-        os.environ.pop(env_var, None)
+        monkeypatch.delenv(PROVIDER_ENV_VARS["anthropic"], raising=False)
 
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="anthropic")],
@@ -146,10 +143,9 @@ class TestCheckApiKeys:
         assert result["xai"] is True
 
     @pytest.mark.unit
-    @patch.dict(os.environ, {}, clear=False)
-    def test_xai_key_missing(self):
+    def test_xai_key_missing(self, monkeypatch):
         """check_api_keys returns False for xAI when XAI_API_KEY is not set."""
-        os.environ.pop("XAI_API_KEY", None)
+        monkeypatch.delenv("XAI_API_KEY", raising=False)
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="xai")],
             adjudication=AdjudicationConfig(provider="xai"),
@@ -169,10 +165,9 @@ class TestCheckApiKeys:
         assert result["perplexity"] is True
 
     @pytest.mark.unit
-    @patch.dict(os.environ, {}, clear=False)
-    def test_perplexity_key_missing(self):
+    def test_perplexity_key_missing(self, monkeypatch):
         """check_api_keys returns False for Perplexity when PERPLEXITY_API_KEY is not set."""
-        os.environ.pop("PERPLEXITY_API_KEY", None)
+        monkeypatch.delenv("PERPLEXITY_API_KEY", raising=False)
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="perplexity")],
             adjudication=AdjudicationConfig(provider="perplexity"),
@@ -209,12 +204,12 @@ class TestPromptMissingKeys:
 
     @pytest.mark.unit
     @patch("chal.cli.api_keys.questionary")
-    @patch.dict(os.environ, {}, clear=False)
-    def test_prompts_for_missing_key(self, mock_questionary):
+    def test_prompts_for_missing_key(self, mock_questionary, monkeypatch):
         """When a key is missing, the user is prompted and the env var is set."""
-        os.environ.pop("ANTHROPIC_API_KEY", None)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
         mock_questionary.text.return_value.ask.return_value = "sk-ant-secret"
+        mock_questionary.confirm.return_value.ask.return_value = False
 
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="anthropic")],
@@ -228,10 +223,9 @@ class TestPromptMissingKeys:
 
     @pytest.mark.unit
     @patch("chal.cli.api_keys.questionary")
-    @patch.dict(os.environ, {}, clear=False)
-    def test_skip_when_empty_input(self, mock_questionary):
+    def test_skip_when_empty_input(self, mock_questionary, monkeypatch):
         """When the user presses Enter (empty input), the key is not set."""
-        os.environ.pop("ANTHROPIC_API_KEY", None)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
         mock_questionary.text.return_value.ask.return_value = ""
 
@@ -246,10 +240,9 @@ class TestPromptMissingKeys:
 
     @pytest.mark.unit
     @patch("chal.cli.api_keys.questionary")
-    @patch.dict(os.environ, {}, clear=False)
-    def test_ctrl_c_raises_keyboard_interrupt(self, mock_questionary):
+    def test_ctrl_c_raises_keyboard_interrupt(self, mock_questionary, monkeypatch):
         """When questionary returns None (Ctrl+C), KeyboardInterrupt is raised."""
-        os.environ.pop("ANTHROPIC_API_KEY", None)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
         mock_questionary.text.return_value.ask.return_value = None
 
@@ -277,12 +270,12 @@ class TestPromptMissingKeys:
 
     @pytest.mark.unit
     @patch("chal.cli.api_keys.questionary")
-    @patch.dict(os.environ, {}, clear=False)
-    def test_prompts_for_missing_xai_key(self, mock_questionary):
+    def test_prompts_for_missing_xai_key(self, mock_questionary, monkeypatch):
         """When XAI_API_KEY is missing, the user is prompted and the env var is set."""
-        os.environ.pop("XAI_API_KEY", None)
+        monkeypatch.delenv("XAI_API_KEY", raising=False)
 
         mock_questionary.text.return_value.ask.return_value = "xai-secret"
+        mock_questionary.confirm.return_value.ask.return_value = False
 
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="xai")],
@@ -296,12 +289,12 @@ class TestPromptMissingKeys:
 
     @pytest.mark.unit
     @patch("chal.cli.api_keys.questionary")
-    @patch.dict(os.environ, {}, clear=False)
-    def test_prompts_for_missing_perplexity_key(self, mock_questionary):
+    def test_prompts_for_missing_perplexity_key(self, mock_questionary, monkeypatch):
         """When PERPLEXITY_API_KEY is missing, the user is prompted and the env var is set."""
-        os.environ.pop("PERPLEXITY_API_KEY", None)
+        monkeypatch.delenv("PERPLEXITY_API_KEY", raising=False)
 
         mock_questionary.text.return_value.ask.return_value = "pplx-secret"
+        mock_questionary.confirm.return_value.ask.return_value = False
 
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="perplexity")],
@@ -313,6 +306,42 @@ class TestPromptMissingKeys:
         mock_questionary.text.assert_called_once()
         assert os.environ.get("PERPLEXITY_API_KEY") == "pplx-secret"
 
+    @pytest.mark.unit
+    @patch("chal.cli.api_keys.questionary")
+    def test_multi_key_entry(self, mock_questionary, monkeypatch):
+        """User enters two keys, confirm yes then no → comma-separated env var."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        mock_questionary.text.return_value.ask.side_effect = ["sk-key1", "sk-key2"]
+        mock_questionary.confirm.return_value.ask.side_effect = [True, False]
+
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="openai")],
+            adjudication=AdjudicationConfig(provider="openai"),
+        )
+        console = _console()
+        prompt_missing_keys(config, console)
+
+        assert os.environ.get("OPENAI_API_KEY") == "sk-key1,sk-key2"
+
+    @pytest.mark.unit
+    @patch("chal.cli.api_keys.questionary")
+    def test_single_key_declined_extra(self, mock_questionary, monkeypatch):
+        """User enters one key, declines adding more → single value in env var."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        mock_questionary.text.return_value.ask.return_value = "sk-only"
+        mock_questionary.confirm.return_value.ask.return_value = False
+
+        config = _minimal_config(
+            agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="openai")],
+            adjudication=AdjudicationConfig(provider="openai"),
+        )
+        console = _console()
+        prompt_missing_keys(config, console)
+
+        assert os.environ.get("OPENAI_API_KEY") == "sk-only"
+
 
 # =========================================================================
 # 4. warn_missing_keys
@@ -321,10 +350,9 @@ class TestPromptMissingKeys:
 class TestWarnMissingKeys:
 
     @pytest.mark.unit
-    @patch.dict(os.environ, {}, clear=False)
-    def test_warns_about_missing_key(self):
+    def test_warns_about_missing_key(self, monkeypatch):
         """A warning is printed for a missing key."""
-        os.environ.pop("ANTHROPIC_API_KEY", None)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="anthropic")],
@@ -354,10 +382,9 @@ class TestWarnMissingKeys:
         assert "OPENAI_API_KEY" not in output
 
     @pytest.mark.unit
-    @patch.dict(os.environ, {}, clear=False)
-    def test_warns_missing_xai_key(self):
+    def test_warns_missing_xai_key(self, monkeypatch):
         """A warning is printed when XAI_API_KEY is missing."""
-        os.environ.pop("XAI_API_KEY", None)
+        monkeypatch.delenv("XAI_API_KEY", raising=False)
 
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="xai")],
@@ -372,10 +399,9 @@ class TestWarnMissingKeys:
         assert "not set" in output
 
     @pytest.mark.unit
-    @patch.dict(os.environ, {}, clear=False)
-    def test_warns_missing_perplexity_key(self):
+    def test_warns_missing_perplexity_key(self, monkeypatch):
         """A warning is printed when PERPLEXITY_API_KEY is missing."""
-        os.environ.pop("PERPLEXITY_API_KEY", None)
+        monkeypatch.delenv("PERPLEXITY_API_KEY", raising=False)
 
         config = _minimal_config(
             agents=[AgentConfig(name="A", persona="EMPIRICIST", provider="perplexity")],

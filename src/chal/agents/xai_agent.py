@@ -36,7 +36,8 @@ class XAIAgent(Agent):
         name (str): Display name for the agent, e.g., "Agent-Empiricist".
     """
 
-    def __init__(self, model: str, name: str, api_key: str = None, system_prompt: str = ""):
+    def __init__(self, model: str, name: str, api_key: str = None,
+                 system_prompt: str = "", key_pool=None):
         """
         Initializes the XAIAgent with model and optional prompt/key.
 
@@ -45,6 +46,7 @@ class XAIAgent(Agent):
             name (str): Display name for the agent, e.g., "Agent-Skeptic".
             api_key (str, optional): Explicit API key override (fallback is env var).
             system_prompt (str, optional): Optional system message to set agent behavior.
+            key_pool: Optional KeyPool instance for rate-limit-aware key rotation.
         """
         self.model = model
         self.name = name
@@ -55,6 +57,7 @@ class XAIAgent(Agent):
         self.belief_graph = None
         self.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
         self.all_beliefs_held = []
+        self.key_pool = key_pool
         self._client = None  # Lazy init: created on first generate() call
 
     def set_internal_belief(self, belief_text: str) -> None:
@@ -135,6 +138,13 @@ class XAIAgent(Agent):
             elif m.role == "assistant":
                 messages.append(xai_assistant(m.content))
 
+        # Refresh key from pool (picks a non-cooling-down key)
+        if self.key_pool is not None:
+            fresh_key = self.key_pool.get_key("xai")
+            if fresh_key != self.api_key:
+                self.api_key = fresh_key
+                self._client = None  # Force client rebuild with new key
+
         # Lazy-init client on first use (avoids requiring API key at construction time)
         if self._client is None:
             self._client = Client(api_key=self.api_key)
@@ -145,6 +155,8 @@ class XAIAgent(Agent):
                 model=self.model,
                 messages=messages,
                 temperature=temperature,
+                key_pool=self.key_pool,
+                current_key=self.api_key,
             )
 
             usage = {}
@@ -170,9 +182,15 @@ class XAIAgent(Agent):
 
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
 def retry_xai_chat_completion(client, model, messages, temperature,
-                               max_retries=5, base_delay=60.0):
+                               max_retries=5, base_delay=60.0,
+                               key_pool=None, current_key=""):
     """
     Wrapper to retry xAI chat completions with exponential backoff.
+
+    When a KeyPool is provided, RESOURCE_EXHAUSTED errors (rate limits)
+    trigger key rotation: the current key is marked as cooling down, a
+    fresh key is drawn from the pool, the client is rebuilt, and the
+    request is retried immediately.
 
     Args:
         client: Instantiated xai_sdk.Client
@@ -181,6 +199,8 @@ def retry_xai_chat_completion(client, model, messages, temperature,
         temperature (float): Sampling temperature
         max_retries (int): Max retry attempts
         base_delay (float): Delay factor in seconds
+        key_pool: Optional KeyPool for rate-limit-aware key rotation.
+        current_key (str): The API key currently in use.
 
     Returns:
         xai_sdk.chat.Response: The xAI SDK response object
@@ -199,6 +219,14 @@ def retry_xai_chat_completion(client, model, messages, temperature,
             if code in (grpc.StatusCode.RESOURCE_EXHAUSTED,
                         grpc.StatusCode.UNAVAILABLE,
                         grpc.StatusCode.DEADLINE_EXCEEDED):
+                # On rate limit (RESOURCE_EXHAUSTED) with key pool: rotate
+                if code == grpc.StatusCode.RESOURCE_EXHAUSTED and key_pool is not None:
+                    key_pool.mark_rate_limited("xai", current_key, cooldown_seconds=60)
+                    current_key = key_pool.get_key("xai")
+                    client = Client(api_key=current_key)
+                    print(f"[KeyPool] Rotated xai API key after rate limit (attempt {attempt+1}/{max_retries}).")
+                    continue
+
                 wait = base_delay * (2 ** attempt)
                 print(f"[Retry {attempt+1}/{max_retries}] xAI API call failed: {e.details()}. Retrying in {wait:.1f} seconds.")
                 time.sleep(wait)

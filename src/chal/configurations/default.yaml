@@ -44,13 +44,13 @@ debate:
 agents:
   - name: "Agent-Empiricist"
     persona: "EMPIRICIST"              # Requires empirical evidence
-    model: "gpt-4o"                    # OpenAI model to use
+    model: "o4-mini"                   # OpenAI model to use
     temperature: 0.7                   # Agent creativity (0.0-1.0, higher = more creative)
     provider: "openai"                 # LLM provider: "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
 
   - name: "Agent-Supernaturalist"
     persona: "SUPERNATURALIST"         # Accepts non-empirical truths
-    model: "gpt-4o"
+    model: "o4-mini"
     temperature: 0.7
     provider: "openai"
 
@@ -274,3 +274,14 @@ scribe:
 #   allow_add_topics: true           # Can the moderator insert new topics?
 #   allow_remove_topics: false       # Can the moderator drop topics? (conservative default)
 #   max_revisions: -1                # Max total revisions (-1 = unlimited)
+
+# ============================================================================
+# PARALLELIZATION SETTINGS
+# ============================================================================
+# Fire independent API calls concurrently within each stage to reduce latency.
+# Requires no code changes to agents — uses ThreadPoolExecutor internally.
+# Off by default; enable to speed up stages 1, 2, 3 (rebuttal), 4, and 6.
+#
+parallel:
+  enabled: true                      # Master switch (default: false)
+  max_workers: 5                     # Max concurrent threads (default: 5)

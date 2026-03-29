@@ -6,7 +6,7 @@ Provides vulnerability detection and attack suggestion generation based on belie
 This module enables agents to identify structural weaknesses in opponent beliefs:
 - Critical paths (single points of failure)
 - Orphaned claims (unsupported assertions)
-- Overcalibrated claims (confidence exceeds dependency support)
+- Overcalibrated claims (strength exceeds dependency support)
 - Circular dependencies (invalid reasoning)
 
 These vulnerabilities are formatted as strategic attack suggestions for Stage 2 (Cross-Examination).
@@ -29,7 +29,7 @@ def analyze_vulnerabilities(belief_graph: BeliefGraph) -> Dict[str, Any]:
         - orphaned_claims: List of claim IDs with no support
         - weak_evidence_chains: Claims backed by low-quality or unreplicated evidence
         - circular_dependencies: Boolean indicating if cycles exist
-        - weak_foundations: Claims depending on low-confidence (<0.5) dependencies
+        - weak_foundations: Claims depending on low-strength (<0.5) dependencies
     """
     vulnerabilities = {
         "critical_paths": [],
@@ -75,7 +75,7 @@ def analyze_vulnerabilities(belief_graph: BeliefGraph) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 5. Find claims with weak foundations (depending on low-confidence claims)
+    # 5. Find claims with weak foundations (depending on low-strength claims)
     try:
         weak_foundations = _find_weak_foundations(belief_graph)
         vulnerabilities["weak_foundations"] = weak_foundations
@@ -89,8 +89,8 @@ def _find_weak_evidence_chains(belief_graph: BeliefGraph) -> List[Dict[str, Any]
     """
     Find claims backed by low-quality or unreplicated evidence.
 
-    Focuses on evidence substance rather than numeric confidence scores.
-    Extracts quality signals from the free-text quality_assessment field.
+    Focuses on evidence substance rather than numeric strength scores.
+    Extracts quality signals from the free-text strength_justification field.
     Low-quality indicators: "weak", "limited", "preliminary", "anecdotal", etc.
     Strong-quality indicators: "strong", "replicated", "robust", "rigorous", etc.
 
@@ -104,7 +104,7 @@ def _find_weak_evidence_chains(belief_graph: BeliefGraph) -> List[Dict[str, Any]
             continue
 
         claim_data = node["data"]
-        evidence_ids = claim_data.get("backing_evidence_ids", [])
+        evidence_ids = [dep_id for dep_id in claim_data.get("depends_on", []) if dep_id.startswith("E")]
 
         if not evidence_ids:
             continue  # No evidence to analyze (handled by orphaned claims check)
@@ -114,9 +114,9 @@ def _find_weak_evidence_chains(belief_graph: BeliefGraph) -> List[Dict[str, Any]
             # get_node() returns the raw data dict directly, not the wrapper
             ev_data = belief_graph.get_node(ev_id)
             if ev_data:
-                qa_text = (ev_data.get("quality_assessment") or "").lower()
+                sj_text = (ev_data.get("strength_justification") or "").lower()
 
-                # Extract quality signals from free-text assessment
+                # Extract quality signals from free-text justification
                 weak_quality_keywords = [
                     "weak", "low", "poor", "limited", "preliminary",
                     "anecdotal", "contested", "unreplicated",
@@ -127,16 +127,16 @@ def _find_weak_evidence_chains(belief_graph: BeliefGraph) -> List[Dict[str, Any]
                     "converging", "meta-analysis", "large sample"
                 ]
 
-                has_weak_signal = any(kw in qa_text for kw in weak_quality_keywords)
-                has_strong_signal = any(kw in qa_text for kw in strong_quality_keywords)
+                has_weak_signal = any(kw in sj_text for kw in weak_quality_keywords)
+                has_strong_signal = any(kw in sj_text for kw in strong_quality_keywords)
 
-                # Flag as weak if explicit weak signals present, or no quality info at all
-                is_weak = has_weak_signal or (not qa_text and not has_strong_signal)
+                # Flag as weak if explicit weak signals present, or no justification at all
+                is_weak = has_weak_signal or (not sj_text and not has_strong_signal)
 
                 if is_weak:
                     weak_evidence.append({
                         "ev_id": ev_id,
-                        "quality_assessment": qa_text or "(none)",
+                        "strength_justification": sj_text or "(none)",
                         "description": ev_data.get("summary", ev_data.get("description", ""))[:80]
                     })
 
@@ -152,7 +152,7 @@ def _find_weak_evidence_chains(belief_graph: BeliefGraph) -> List[Dict[str, Any]
 
 def _find_weak_foundations(belief_graph: BeliefGraph) -> List[Dict[str, Any]]:
     """
-    Find claims that depend on low-confidence (<0.5) dependencies.
+    Find claims that depend on low-strength (<0.5) dependencies.
 
     Returns:
         List of dicts with weak foundation info
@@ -164,7 +164,7 @@ def _find_weak_foundations(belief_graph: BeliefGraph) -> List[Dict[str, Any]]:
             continue
 
         claim_data = node["data"]
-        claim_confidence = claim_data.get("confidence", 0.5)
+        claim_strength = claim_data.get("strength", 0.5)
 
         # Get all dependencies
         depends_on = claim_data.get("depends_on", [])
@@ -174,18 +174,18 @@ def _find_weak_foundations(belief_graph: BeliefGraph) -> List[Dict[str, Any]]:
         for dep_id in all_deps:
             dep_node = belief_graph.get_node(dep_id)
             if dep_node and dep_node.get("type") == "claim":
-                dep_confidence = dep_node.get("confidence", 0.5)
-                if dep_confidence < 0.5:
+                dep_strength = dep_node.get("strength", 0.5)
+                if dep_strength < 0.5:
                     weak_deps.append({
                         "dep_id": dep_id,
-                        "dep_confidence": dep_confidence,
+                        "dep_strength": dep_strength,
                         "dep_statement": dep_node.get("statement", "")[:100]
                     })
 
         if weak_deps:
             weak_foundations.append({
                 "claim_id": node_id,
-                "claim_confidence": claim_confidence,
+                "claim_strength": claim_strength,
                 "weak_dependencies": weak_deps,
                 "statement": claim_data.get("statement", "")[:100]
             })
@@ -234,21 +234,21 @@ def format_attack_suggestions(vulnerabilities: Dict[str, Any], opponent_name: st
             sections.append(f"   {claim_id} relies on {len(weak_ev)} weak evidence source(s):")
             for ev in weak_ev[:2]:  # Show first 2 weak evidence items
                 ev_id = ev["ev_id"]
-                qa = ev.get("quality_assessment", "(none)")
-                sections.append(f"      - {ev_id}: quality={qa}")
+                sj = ev.get("strength_justification", "(none)")
+                sections.append(f"      - {ev_id}: justification={sj}")
         sections.append(f"   💡 ATTACK STRATEGY: Challenge evidence quality, demand stronger studies, replication, or more rigorous methodology.\n")
 
     # 3. Weak foundations
     weak_foundations = vulnerabilities.get("weak_foundations", [])
     if weak_foundations:
-        sections.append("⚠️  WEAK FOUNDATIONS (Built on Low-Confidence Claims):")
-        sections.append(f"   {opponent_name} has {len(weak_foundations)} claim(s) depending on claims with confidence <0.5.\n")
+        sections.append("⚠️  WEAK FOUNDATIONS (Built on Low-Strength Claims):")
+        sections.append(f"   {opponent_name} has {len(weak_foundations)} claim(s) depending on claims with strength <0.5.\n")
         for i, claim_info in enumerate(weak_foundations[:3], 1):
             claim_id = claim_info["claim_id"]
             weak_deps = claim_info["weak_dependencies"]
             sections.append(f"   {claim_id} depends on {len(weak_deps)} weak claim(s):")
             for dep in weak_deps[:2]:
-                sections.append(f"      - {dep['dep_id']} (confidence={dep['dep_confidence']:.2f})")
+                sections.append(f"      - {dep['dep_id']} (strength={dep['dep_strength']:.2f})")
         sections.append(f"   💡 ATTACK STRATEGY: Challenge the foundation—if the base is weak, the structure is unstable.\n")
 
     # 4. Orphaned claims (should be rare due to validation)

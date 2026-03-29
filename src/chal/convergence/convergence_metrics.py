@@ -58,7 +58,7 @@ def calculate_claim_agreement(
                     "agent_id": agent_id,
                     "claim_id": claim.get("id"),
                     "statement": claim.get("statement", ""),
-                    "confidence": claim.get("confidence", 0.5)
+                    "strength": claim.get("strength", 0.5)
                 })
 
     if not all_claims:
@@ -103,7 +103,7 @@ def calculate_claim_agreement(
                 "agent_id": claim["agent_id"],
                 "claim_id": claim["claim_id"],
                 "statement": claim["statement"][:100],  # Truncate for display
-                "confidence": claim["confidence"]
+                "strength": claim["strength"]
             })
 
     # Group shared pairs into claim groups
@@ -148,7 +148,7 @@ def _group_shared_claims(shared_pairs: List[Dict[str, Any]]) -> List[Dict[str, A
             "agent_ids": [claim_1["agent_id"], claim_2["agent_id"]],
             "statements": [claim_1["statement"], claim_2["statement"]],
             "similarity": pair["similarity"],
-            "avg_confidence": round((claim_1["confidence"] + claim_2["confidence"]) / 2, 2)
+            "avg_strength": round((claim_1["strength"] + claim_2["strength"]) / 2, 2)
         })
 
     return groups
@@ -200,7 +200,7 @@ def format_convergence_summary(
             similarity = group["similarity"]
             lines.append(f"  {i}. Agents: {agents} (similarity: {similarity:.2f})")
             lines.append(f"     Statement: {group['statements'][0][:80]}...")
-            lines.append(f"     Avg Confidence: {group['avg_confidence']:.2f}")
+            lines.append(f"     Avg Strength: {group['avg_strength']:.2f}")
 
         if len(shared) > 3:
             lines.append(f"     ... and {len(shared) - 3} more shared claim group(s)")

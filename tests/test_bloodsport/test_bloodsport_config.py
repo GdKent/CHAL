@@ -82,25 +82,110 @@ class TestBloodSportYAMLParsing:
     """Tests for loading bloodsport config from YAML."""
 
     @pytest.mark.unit
-    def test_load_bloodsport_example_config(self):
-        """bloodsport_example.yaml loads with stage3_mode='bloodsport'."""
-        config = load_config("bloodsport_example")
+    def test_load_bloodsport_config(self, tmp_path):
+        """Inline bloodsport YAML loads with stage3_mode='bloodsport'."""
+        yaml_content = textwrap.dedent("""\
+            metadata:
+              name: "Blood Sport Debate"
+              version: "1.0"
+            debate:
+              topic: "Does free will exist?"
+              max_rounds: 1
+              stage3_mode: "bloodsport"
+            agents:
+              - name: "Agent-A"
+                persona: "EMPIRICIST"
+                model: "gpt-4o"
+                temperature: 0.7
+              - name: "Agent-B"
+                persona: "RATIONALIST"
+                model: "gpt-4o"
+                temperature: 0.7
+            adjudication:
+              model: "gpt-4o"
+              logic_weight: 1.0
+              ethics_weight: 0.0
+              logic_system: "Classical logic"
+              ethics_system: "None"
+            bloodsport:
+              intensity: "moderate"
+              max_exchanges: 5
+        """)
+        config_file = tmp_path / "bs_test.yaml"
+        config_file.write_text(yaml_content)
+        config = DebateConfig.from_yaml(config_file)
         assert config.name == "Blood Sport Debate"
         assert config.stage3_mode == "bloodsport"
         assert config.topic == "Does free will exist?"
         assert len(config.agents) == 2
 
     @pytest.mark.unit
-    def test_bloodsport_section_parsed(self):
+    def test_bloodsport_section_parsed(self, tmp_path):
         """Bloodsport settings are correctly parsed from YAML."""
-        config = load_config("bloodsport_example")
+        yaml_content = textwrap.dedent("""\
+            metadata:
+              name: "BS Parsed"
+              version: "1.0"
+            debate:
+              topic: "Test"
+              max_rounds: 1
+              stage3_mode: "bloodsport"
+            agents:
+              - name: "Agent-A"
+                persona: "EMPIRICIST"
+                model: "gpt-4o"
+                temperature: 0.7
+            adjudication:
+              model: "gpt-4o"
+              logic_weight: 1.0
+              ethics_weight: 0.0
+              logic_system: "Classical logic"
+              ethics_system: "None"
+            bloodsport:
+              intensity: "moderate"
+              max_exchanges: 5
+        """)
+        config_file = tmp_path / "bs_parsed.yaml"
+        config_file.write_text(yaml_content)
+        config = DebateConfig.from_yaml(config_file)
         assert config.bloodsport.intensity == "moderate"
         assert config.bloodsport.max_exchanges == 5
 
     @pytest.mark.unit
-    def test_output_config_training_data_fields(self):
-        """OutputConfig new fields are parsed from bloodsport_example.yaml."""
-        config = load_config("bloodsport_example")
+    def test_output_config_training_data_fields(self, tmp_path):
+        """OutputConfig new fields are parsed from inline bloodsport YAML."""
+        yaml_content = textwrap.dedent("""\
+            metadata:
+              name: "BS Output Test"
+              version: "1.0"
+            debate:
+              topic: "Test"
+              max_rounds: 1
+              stage3_mode: "bloodsport"
+            agents:
+              - name: "Agent-A"
+                persona: "EMPIRICIST"
+                model: "gpt-4o"
+                temperature: 0.7
+            adjudication:
+              model: "gpt-4o"
+              logic_weight: 1.0
+              ethics_weight: 0.0
+              logic_system: "Classical logic"
+              ethics_system: "None"
+            bloodsport:
+              intensity: "moderate"
+              max_exchanges: 5
+            outputs:
+              save_analysis_report: true
+              save_training_data: true
+              analysis_report_file: "debate_analysis_report.md"
+              training_data_file: "debate_training_data.jsonl"
+              belief_pairs_file: "debate_belief_pairs.jsonl"
+        """)
+        config_file = tmp_path / "bs_output.yaml"
+        config_file.write_text(yaml_content)
+        config = DebateConfig.from_yaml(config_file)
         assert config.outputs.save_analysis_report is True
         assert config.outputs.save_training_data is True
         assert config.outputs.analysis_report_file == "debate_analysis_report.md"
@@ -178,9 +263,31 @@ class TestBloodSportYAMLParsing:
         assert config.stage3_mode == "rebuttal"
 
     @pytest.mark.unit
-    def test_collaborative_config_still_loads_correctly(self):
-        """collaborative.yaml still loads with stage3_mode='collaborative' (no regression)."""
-        config = load_config("collaborative")
+    def test_collaborative_config_still_loads_correctly(self, tmp_path):
+        """Inline collaborative YAML loads with stage3_mode='collaborative' (no regression)."""
+        yaml_content = textwrap.dedent("""\
+            metadata:
+              name: "Collaborative Test"
+              version: "1.0"
+            debate:
+              topic: "Test"
+              max_rounds: 1
+              stage3_mode: "collaborative"
+            agents:
+              - name: "Agent-A"
+                persona: "EMPIRICIST"
+                model: "gpt-4o"
+                temperature: 0.7
+            adjudication:
+              model: "gpt-4o"
+              logic_weight: 1.0
+              ethics_weight: 0.0
+              logic_system: "Classical logic"
+              ethics_system: "None"
+        """)
+        config_file = tmp_path / "collab.yaml"
+        config_file.write_text(yaml_content)
+        config = DebateConfig.from_yaml(config_file)
         assert config.stage3_mode == "collaborative"
 
 

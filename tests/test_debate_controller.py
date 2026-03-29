@@ -23,9 +23,15 @@ import json
 import tempfile
 from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
-from chal.orchestrator.debate_controller import DebateController
-from chal.config import DebateConfig, AgentConfig, AdjudicationConfig, OutputConfig
+from chal.orchestrator.debate_controller import (
+    DebateController,
+    summarize_changes,
+    filter_reversal_patches,
+)
+from chal.config import DebateConfig, AgentConfig, AdjudicationConfig, OutputConfig, StageConfig
+from chal.utilities.parallel import WorkResult
 from chal.agents.base import Message
+from chal.beliefs.patches import apply_patches
 from tests.utils import (
     create_mock_agent,
     create_sample_belief,
@@ -743,3 +749,534 @@ class TestCallAgent:
         """_on_error defaults to None in __init__."""
         controller = DebateController(agents=[], max_rounds=1)
         assert controller._on_error is None
+
+
+# ==============================================
+# 15. summarize_changes() Helper Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_summarize_changes_strength_changes():
+    """Patches that weaken C1 and update A1 produce readable descriptions."""
+    patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}},
+        {"op": "update_assumption", "target_id": "A1"},
+    ]
+    before = {"thesis": {"strength": 0.7}, "claims": [{"id": "C1", "strength": 0.8}]}
+    after = {"thesis": {"strength": 0.7}, "claims": [{"id": "C1", "strength": 0.5}]}
+
+    summary = summarize_changes(patches, before, after)
+
+    assert "C1" in summary
+    assert "strength" in summary.lower() or "0.5" in summary
+    assert "A1" in summary
+
+
+@pytest.mark.unit
+def test_summarize_changes_added_nodes():
+    """Added counterpositions and uncertainties appear in summary."""
+    patches = [
+        {"op": "add_counterposition", "item": {"id": "X3", "targets": ["C2"]}},
+        {"op": "add_uncertainty", "item": {"id": "U2", "question": "Is C2 valid?"}},
+    ]
+    before = {"thesis": {"strength": 0.7}}
+    after = {"thesis": {"strength": 0.7}}
+
+    summary = summarize_changes(patches, before, after)
+
+    assert "X3" in summary
+    assert "U2" in summary
+
+
+@pytest.mark.unit
+def test_summarize_changes_empty_patches():
+    """Empty patch list returns minimal summary."""
+    before = {"thesis": {"strength": 0.7}}
+    after = {"thesis": {"strength": 0.7}}
+
+    summary = summarize_changes([], before, after)
+
+    assert summary == "(no changes)" or len(summary) == 0
+
+
+# ==============================================
+# 16. filter_reversal_patches() Helper Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_filter_reversal_blocks_strengthening():
+    """Phase 1 weakened C1 from 0.7→0.5. Phase 2 tries to strengthen to 0.6: filtered out."""
+    phase1_patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}}
+    ]
+    intermediate = {
+        "thesis": {"strength": 0.7},
+        "claims": [{"id": "C1", "strength": 0.5}]
+    }
+    phase2_patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.6}}
+    ]
+
+    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+
+    assert len(filtered) == 0
+
+
+@pytest.mark.unit
+def test_filter_reversal_allows_further_weakening():
+    """Phase 1 weakened C1 to 0.5. Phase 2 weakens to 0.3: allowed."""
+    phase1_patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}}
+    ]
+    intermediate = {
+        "thesis": {"strength": 0.7},
+        "claims": [{"id": "C1", "strength": 0.5}]
+    }
+    phase2_patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.3}}
+    ]
+
+    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+
+    assert len(filtered) == 1
+    assert filtered[0]["changes"]["strength"] == 0.3
+
+
+@pytest.mark.unit
+def test_filter_reversal_allows_unrelated_patches():
+    """Phase 1 weakened C1. Phase 2 adds evidence E4: allowed (unrelated)."""
+    phase1_patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}}
+    ]
+    intermediate = {
+        "thesis": {"strength": 0.7},
+        "claims": [{"id": "C1", "strength": 0.5}]
+    }
+    phase2_patches = [
+        {"op": "add_evidence", "item": {"id": "E4", "type": "empirical", "summary": "New"}},
+    ]
+
+    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+
+    assert len(filtered) == 1
+    assert filtered[0]["op"] == "add_evidence"
+
+
+@pytest.mark.unit
+def test_filter_reversal_blocks_thesis_reversal():
+    """Phase 1 weakened thesis from 0.6→0.4. Phase 2 tries 0.5: filtered out."""
+    phase1_patches = [
+        {"op": "update_thesis", "new_strength": 0.4}
+    ]
+    intermediate = {
+        "thesis": {"strength": 0.4},
+        "claims": []
+    }
+    phase2_patches = [
+        {"op": "update_thesis", "new_strength": 0.5}
+    ]
+
+    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+
+    assert len(filtered) == 0
+
+
+@pytest.mark.unit
+def test_filter_reversal_allows_thesis_further_weakening():
+    """Phase 1 weakened thesis to 0.4. Phase 2 sets 0.35: allowed."""
+    phase1_patches = [
+        {"op": "update_thesis", "new_strength": 0.4}
+    ]
+    intermediate = {
+        "thesis": {"strength": 0.4},
+        "claims": []
+    }
+    phase2_patches = [
+        {"op": "update_thesis", "new_strength": 0.35}
+    ]
+
+    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+
+    assert len(filtered) == 1
+    assert filtered[0]["new_strength"] == 0.35
+
+
+@pytest.mark.unit
+def test_filter_reversal_empty_phase1():
+    """No Phase 1 patches → all Phase 2 patches allowed."""
+    phase1_patches = []
+    intermediate = {
+        "thesis": {"strength": 0.7},
+        "claims": [{"id": "C1", "strength": 0.7}]
+    }
+    phase2_patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.9}},
+        {"op": "update_thesis", "new_strength": 0.8},
+    ]
+
+    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+
+    assert len(filtered) == 2
+
+
+# ==============================================
+# 17. Two-Phase Orchestration Tests
+# ==============================================
+
+def _make_phase1_response():
+    """Return a mock Phase 1 patches JSON response."""
+    return (
+        '<reasoning>C1 was critiqued validly, lowering strength.</reasoning>\n\n'
+        '```json\n'
+        '{"patches": [{"op": "update_claim", "target_id": "C1", '
+        '"changes": {"strength": 0.55}}]}\n'
+        '```'
+    )
+
+
+def _make_phase2_response():
+    """Return a mock Phase 2 patches JSON response."""
+    return (
+        '<reasoning>Rewriting thesis after enforcement.</reasoning>\n\n'
+        '```json\n'
+        '{"patches": [{"op": "update_thesis", "new_strength": 0.5, '
+        '"stance": "Revised stance after debate", '
+        '"summary_bullets": ["Revised bullet 1", "Revised bullet 2"]}]}\n'
+        '```'
+    )
+
+
+def _setup_two_phase_controller():
+    """Create a controller wired up for two-phase Stage 5 testing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config = DebateConfig(
+            name="Two-Phase Test",
+            topic="Test topic",
+            max_rounds=1,
+            agents=[AgentConfig(name="Agent-A", persona="EMPIRICIST")],
+            adjudication=AdjudicationConfig(),
+            outputs=OutputConfig(storage_dir=Path(tmpdir))
+        )
+
+        # Create agent with Phase 1 + Phase 2 responses
+        agent = create_mock_agent("Agent-A", responses=[
+            _make_phase1_response(),
+            _make_phase2_response(),
+        ])
+
+        # Agent returns a valid belief when asked
+        sample_belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        agent.get_internal_belief_obj.return_value = sample_belief
+        agent.get_internal_belief.return_value = "test belief markdown"
+
+        # Wire up controller
+        controller = DebateController([agent], config=config)
+        controller.current_round_key = "round_1"
+        controller.round_histories = {"round_1": []}
+        controller.opening_positions = {"Agent-A": "opening"}
+        controller.current_positions = {}
+        controller.last_rebuttals_patches = {}
+
+        # Set up adjudication outcomes targeting Agent-A
+        controller.challenge_rebuttal_pairs = [{
+            "target": "Agent-A",
+            "challenger": "Agent-B",
+            "challenge": "Your C1 is weak",
+            "rebuttal": "I defended with evidence",
+            "resolution": {
+                "status": "critique_valid",
+                "reasoning": "The critique was valid"
+            }
+        }]
+
+        return controller, agent, tmpdir
+
+
+@pytest.mark.unit
+def test_stage_5_two_phase_both_called():
+    """Verify both Phase 1 and Phase 2 API calls are made per agent."""
+    controller, agent, tmpdir = _setup_two_phase_controller()
+
+    controller.run_stage_5_update_positions()
+
+    # Agent should have been called exactly twice (Phase 1 + Phase 2)
+    assert agent.generate.call_count == 2
+
+
+@pytest.mark.unit
+def test_stage_5_phase2_receives_intermediate_belief():
+    """Phase 2 prompt contains belief state after Phase 1 patches (not original)."""
+    controller, agent, tmpdir = _setup_two_phase_controller()
+
+    controller.run_stage_5_update_positions()
+
+    # Get the Phase 2 call args (second generate call)
+    phase2_call_args = agent.generate.call_args_list[1]
+    phase2_messages = phase2_call_args[0][0]  # First positional arg is messages list
+    phase2_prompt = phase2_messages[0].content
+
+    # Phase 2 should contain the intermediate belief (after Phase 1 lowered C1 to 0.55)
+    assert "0.55" in phase2_prompt
+
+
+@pytest.mark.unit
+def test_stage_5_phase2_receives_phase1_summary():
+    """Phase 2 prompt includes the output of summarize_changes()."""
+    controller, agent, tmpdir = _setup_two_phase_controller()
+
+    controller.run_stage_5_update_positions()
+
+    # Get the Phase 2 call args
+    phase2_call_args = agent.generate.call_args_list[1]
+    phase2_messages = phase2_call_args[0][0]
+    phase2_prompt = phase2_messages[0].content
+
+    # Phase 2 prompt should contain the phase1 changes summary
+    # summarize_changes would produce something with "C1" and "strength"
+    assert "C1" in phase2_prompt
+    assert "phase1_changes" in phase2_prompt.lower() or "phase 1" in phase2_prompt.lower()
+
+
+@pytest.mark.unit
+def test_stage_5_final_belief_persisted():
+    """The persisted belief after Stage 5 reflects both Phase 1 AND Phase 2 patches."""
+    controller, agent, tmpdir = _setup_two_phase_controller()
+
+    controller.run_stage_5_update_positions()
+
+    # set_internal_belief_obj should have been called with the final belief
+    # The final belief should have Phase 2 thesis update applied
+    if agent.set_internal_belief_obj.called:
+        final_belief = agent.set_internal_belief_obj.call_args[0][0]
+        # Phase 2 updated thesis stance
+        assert final_belief["thesis"]["stance"] == "Revised stance after debate"
+        # Phase 1 updated C1 strength to 0.55
+        c1 = next(c for c in final_belief["claims"] if c["id"] == "C1")
+        assert c1["strength"] == pytest.approx(0.55, abs=0.01)
+
+
+@pytest.mark.unit
+def test_stage_5_transcript_logs_both_phases():
+    """Both Phase 1 and Phase 2 patches are recorded in debug log."""
+    controller, agent, tmpdir = _setup_two_phase_controller()
+
+    controller.run_stage_5_update_positions()
+
+    debug_text = "\n".join(controller.debug_log)
+    assert "PHASE 1 PATCHES" in debug_text
+    assert "PHASE 2 PATCHES" in debug_text
+
+
+# ==============================================
+# Parse-Failure Retry Tests
+# ==============================================
+
+def _make_controller_with_retries(parse_retries=2):
+    """Create a minimal DebateController with parse_retries configured."""
+    tmpdir = tempfile.mkdtemp()
+    config = DebateConfig(
+        name="Retry Test",
+        topic="Test topic",
+        max_rounds=1,
+        agents=[
+            AgentConfig(name="Agent-A", persona="TEST"),
+            AgentConfig(name="Agent-B", persona="TEST"),
+        ],
+        adjudication=AdjudicationConfig(),
+        outputs=OutputConfig(storage_dir=Path(tmpdir)),
+        stages=StageConfig(parse_retries=parse_retries),
+    )
+    agents = [create_mock_agent("Agent-A"), create_mock_agent("Agent-B")]
+    controller = DebateController(agents=agents, config=config)
+    return controller, tmpdir
+
+
+@pytest.mark.unit
+def test_retry_returns_immediately_on_valid_initial_result():
+    """If initial_result passes validation, return immediately without retrying."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=3)
+
+    valid_data = {"questions": [{"qid": "Q1", "text": "Test?"}]}
+    initial = WorkResult(key="test", result=valid_data, error=None)
+
+    call_count = 0
+    def generate_fn():
+        nonlocal call_count
+        call_count += 1
+        return valid_data
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=generate_fn,
+        is_valid_fn=lambda r: bool(r.get("questions")),
+        stage_label="Test",
+        agent_name="Agent-A",
+        initial_result=initial,
+    )
+
+    assert result == valid_data
+    assert call_count == 0  # generate_fn should never be called
+
+
+@pytest.mark.unit
+def test_retry_retries_on_invalid_initial_result():
+    """If initial_result fails validation, retry and succeed."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=3)
+
+    bad_data = {"questions": []}  # Empty — fails validation
+    good_data = {"questions": [{"qid": "Q1", "text": "Test?"}]}
+    initial = WorkResult(key="test", result=bad_data, error=None)
+
+    call_count = 0
+    def generate_fn():
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:
+            return good_data
+        return bad_data
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=generate_fn,
+        is_valid_fn=lambda r: bool(r.get("questions")),
+        stage_label="Test",
+        agent_name="Agent-A",
+        initial_result=initial,
+    )
+
+    assert result == good_data
+    assert call_count == 2  # Failed once, succeeded on second retry
+
+
+@pytest.mark.unit
+def test_retry_retries_on_initial_error():
+    """If initial_result has an error, retry from scratch."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=3)
+
+    good_data = {"rebuttals": [{"qid": "Q1", "answer": "OK"}]}
+    initial = WorkResult(key="test", result=None, error=RuntimeError("API down"))
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=lambda: good_data,
+        is_valid_fn=lambda r: bool(r.get("rebuttals")),
+        stage_label="Stage 3",
+        agent_name="Agent-A",
+        initial_result=initial,
+    )
+
+    assert result == good_data
+    log_text = "\n".join(controller.debug_log)
+    assert "Initial call error" in log_text
+
+
+@pytest.mark.unit
+def test_retry_exhaustion_returns_last_result():
+    """When all retries fail, return the last non-exception result."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=2)
+
+    bad_data = {"rebuttals": []}  # Always invalid
+    initial = WorkResult(key="test", result=bad_data, error=None)
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=lambda: bad_data,
+        is_valid_fn=lambda r: bool(r.get("rebuttals")),
+        stage_label="Stage 3",
+        agent_name="Agent-A",
+        initial_result=initial,
+    )
+
+    assert result == bad_data  # Last result, not None
+    log_text = "\n".join(controller.debug_log)
+    assert "All 2 retries exhausted" in log_text
+
+
+@pytest.mark.unit
+def test_retry_exhaustion_returns_none_on_all_exceptions():
+    """When all retries raise exceptions, return None."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=2)
+
+    initial = WorkResult(key="test", result=None, error=RuntimeError("first error"))
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=lambda: (_ for _ in ()).throw(RuntimeError("retry error")),
+        is_valid_fn=lambda r: True,
+        stage_label="Stage 3",
+        agent_name="Agent-A",
+        initial_result=initial,
+    )
+
+    assert result is None
+    log_text = "\n".join(controller.debug_log)
+    assert "All 2 retries exhausted" in log_text
+
+
+@pytest.mark.unit
+def test_retry_no_initial_result():
+    """When no initial_result is provided, call generate_fn directly."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=3)
+
+    good_data = {"questions": [{"qid": "Q1", "text": "Test?"}]}
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=lambda: good_data,
+        is_valid_fn=lambda r: bool(r.get("questions")),
+        stage_label="Test",
+        agent_name="Agent-A",
+        initial_result=None,
+    )
+
+    assert result == good_data
+
+
+@pytest.mark.unit
+def test_retry_logs_warnings_and_success():
+    """Verify retry logging: WARN on failure, INFO on success."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=3)
+
+    bad_data = {"rebuttals": []}
+    good_data = {"rebuttals": [{"qid": "Q1", "answer": "OK"}]}
+    initial = WorkResult(key="test", result=bad_data, error=None)
+
+    calls = [0]
+    def generate_fn():
+        calls[0] += 1
+        return good_data if calls[0] == 1 else bad_data
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=generate_fn,
+        is_valid_fn=lambda r: bool(r.get("rebuttals")),
+        stage_label="Stage 3",
+        agent_name="Agent-X",
+        initial_result=initial,
+    )
+
+    assert result == good_data
+    log_text = "\n".join(controller.debug_log)
+    assert "Output validation failed for Agent-X" in log_text
+    assert "Parse retry 1/3" in log_text
+    assert "Retry 1 succeeded for Agent-X" in log_text
+
+
+@pytest.mark.unit
+def test_retry_respects_config_parse_retries():
+    """Verify the retry count matches config.stages.parse_retries."""
+    controller, tmpdir = _make_controller_with_retries(parse_retries=1)
+
+    bad_data = {"rebuttals": []}
+    initial = WorkResult(key="test", result=bad_data, error=None)
+
+    call_count = 0
+    def generate_fn():
+        nonlocal call_count
+        call_count += 1
+        return bad_data
+
+    result = controller._retry_on_parse_failure(
+        generate_fn=generate_fn,
+        is_valid_fn=lambda r: bool(r.get("rebuttals")),
+        stage_label="Stage 3",
+        agent_name="Agent-A",
+        initial_result=initial,
+    )
+
+    assert call_count == 1  # Only 1 retry allowed
+    log_text = "\n".join(controller.debug_log)
+    assert "All 1 retries exhausted" in log_text

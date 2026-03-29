@@ -27,7 +27,7 @@ def create_sample_belief(
 
     Args:
         belief_id: Unique identifier for the belief
-        confidence: Thesis confidence (0.0-1.0)
+        confidence: Thesis strength (0.0-1.0) — parameter name kept for backward compat
         num_claims: Number of claims to include
         num_assumptions: Number of assumptions to include
         num_evidence: Number of evidence items to include
@@ -47,18 +47,21 @@ def create_sample_belief(
         "thesis": {
             "stance": f"Test stance for {belief_id}",
             "summary_bullets": ["Test bullet 1", "Test bullet 2"],
-            "confidence": confidence
+            "strength": confidence
         }
     }
 
     # Add assumptions
     if num_assumptions > 0:
-        assumption_types = ["empirical", "foundational", "methodological", "normative"]
+        assumption_types = ["empirical", "foundational", "methodological"]
         belief["assumptions"] = [
             {
                 "id": f"A{i+1}",
                 "type": assumption_types[i % len(assumption_types)],
-                "statement": f"Assumption {i+1}"
+                "statement": f"Assumption {i+1}",
+                "strength": 0.8,
+                "status": "active",
+                "strength_justification": f"Test assumption {i+1} justification"
             }
             for i in range(num_assumptions)
         ]
@@ -71,7 +74,10 @@ def create_sample_belief(
                 "type": "empirical",
                 "summary": f"Evidence {i+1}",
                 "source": f"Test et al. (2026)",
-                "relevance_to_claims": [f"C{i+1}"] if num_claims > i else []
+                "relevance_to_claims": [f"C{i+1}"] if num_claims > i else [],
+                "strength": 0.8,
+                "status": "active",
+                "strength_justification": f"Test evidence {i+1} justification"
             }
             for i in range(num_evidence)
         ]
@@ -83,10 +89,21 @@ def create_sample_belief(
                 "id": f"C{i+1}",
                 "type": "deductive",
                 "statement": f"Claim {i+1}",
-                "depends_on": ["A1"] if num_assumptions > 0 else [],
-                "backing_evidence_ids": ["E1"] if num_evidence > 0 else [],
-                "confidence": max(0.0, confidence - 0.1),
-                "status": "active"
+                "depends_on": (["A1"] if num_assumptions > 0 else []) + (["E1"] if num_evidence > 0 else []),
+                "strength": max(0.0, confidence - 0.1),
+                "strength_justification": f"Test claim {i+1} justification",
+                "status": "active",
+                "inference_chain": [
+                    f"Step 1: Assume A1 holds for claim {i+1}",
+                    f"Step 2: Therefore claim {i+1} follows"
+                ],
+                "predictions": [
+                    {
+                        "statement": f"Prediction for claim {i+1}",
+                        "test": f"Test method for claim {i+1}",
+                        "decision_criterion": f"Criterion for claim {i+1}"
+                    }
+                ]
             }
             for i in range(num_claims)
         ]
@@ -128,8 +145,8 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
         del base_belief["metadata"]
     elif error_type == "missing_thesis":
         del base_belief["thesis"]
-    elif error_type == "confidence_out_of_bounds":
-        base_belief["thesis"]["confidence"] = 1.5
+    elif error_type == "strength_out_of_bounds":
+        base_belief["thesis"]["strength"] = 1.5
     elif error_type == "empty_bullets":
         base_belief["thesis"]["summary_bullets"] = []
     elif error_type == "circular_dependency":
@@ -139,18 +156,22 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "type": "deductive",
                 "statement": "Claim 1",
                 "depends_on": ["C2"],
-                "backing_evidence_ids": [],
-                "confidence": 0.7,
-                "status": "active"
+                "strength": 0.7,
+                "strength_justification": "Test justification",
+                "status": "active",
+                "inference_chain": ["Step 1: C2 implies C1"],
+                "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             },
             {
                 "id": "C2",
                 "type": "deductive",
                 "statement": "Claim 2",
                 "depends_on": ["C1"],
-                "backing_evidence_ids": [],
-                "confidence": 0.7,
-                "status": "active"
+                "strength": 0.7,
+                "strength_justification": "Test justification",
+                "status": "active",
+                "inference_chain": ["Step 1: C1 implies C2"],
+                "predictions": [{"statement": "P2", "test": "T2", "decision_criterion": "DC2"}]
             }
         ]
     elif error_type == "orphaned_claim":
@@ -160,9 +181,11 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "type": "deductive",
                 "statement": "Orphaned claim",
                 "depends_on": [],
-                "backing_evidence_ids": [],
-                "confidence": 0.7,
-                "status": "active"
+                "strength": 0.7,
+                "strength_justification": "Test justification",
+                "status": "active",
+                "inference_chain": ["Step 1: Orphaned reasoning"],
+                "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             }
         ]
         base_belief["assumptions"] = []

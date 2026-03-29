@@ -47,7 +47,7 @@ def test_belief_lifecycle():
         {
             "op": "update_claim",
             "target_id": "C1",
-            "changes": {"confidence": 0.6}
+            "changes": {"strength": 0.6}
         }
     ]
     updated_belief = apply_patches(belief, patches)
@@ -57,7 +57,7 @@ def test_belief_lifecycle():
     assert len(errors) == 0, f"Updated belief invalid: {errors}"
 
     # 6. Verify changes applied
-    assert updated_belief["thesis"]["confidence"] < belief["thesis"]["confidence"]
+    assert updated_belief["thesis"]["strength"] < belief["thesis"]["strength"]
     assert updated_belief["version"] > belief["version"]
 
 
@@ -72,37 +72,34 @@ def test_belief_patch_propagation_integration():
     belief = create_sample_belief(num_assumptions=1, num_claims=3, num_evidence=0)
 
     belief["claims"][0]["id"] = "C1"
-    belief["claims"][0]["confidence"] = 0.9
+    belief["claims"][0]["strength"] = 0.9
     belief["claims"][0]["depends_on"] = ["A1"]
-    belief["claims"][0]["backing_evidence_ids"] = []
 
     belief["claims"][1]["id"] = "C2"
-    belief["claims"][1]["confidence"] = 0.9
+    belief["claims"][1]["strength"] = 0.9
     belief["claims"][1]["depends_on"] = ["C1"]
-    belief["claims"][1]["backing_evidence_ids"] = []
 
     belief["claims"][2]["id"] = "C3"
-    belief["claims"][2]["confidence"] = 0.9
+    belief["claims"][2]["strength"] = 0.9
     belief["claims"][2]["depends_on"] = ["C2"]
-    belief["claims"][2]["backing_evidence_ids"] = []
 
     # Weaken C1
     patches = [{
         "op": "update_claim",
         "target_id": "C1",
-        "changes": {"confidence": 0.5}
+        "changes": {"strength": 0.5}
     }]
 
-    updated = apply_patches(belief, patches, propagate_confidence=True)
+    updated = apply_patches(belief, patches, propagate_strength=True)
 
     # Verify propagation
     c1 = next(c for c in updated["claims"] if c["id"] == "C1")
     c2 = next(c for c in updated["claims"] if c["id"] == "C2")
     c3 = next(c for c in updated["claims"] if c["id"] == "C3")
 
-    assert c1["confidence"] == 0.5
-    assert c2["confidence"] < 0.9  # Should be weakened
-    assert c3["confidence"] < 0.9  # Should be weakened transitively
+    assert c1["strength"] == 0.5
+    assert c2["strength"] < 0.9  # Should be weakened
+    assert c3["strength"] < 0.9  # Should be weakened transitively
 
 
 # ==============================================
@@ -206,3 +203,52 @@ def test_multi_belief_comparison():
 
     assert len(proj1) > 0
     assert len(proj2) > 0
+
+
+# ==============================================
+# 7. Thesis Text Update Integration Test
+# ==============================================
+
+@pytest.mark.integration
+def test_thesis_text_update_integration():
+    """End-to-end: create belief, apply update_thesis with stance + bullets + strength, validate, render."""
+    # 1. Create belief
+    belief = create_sample_belief(num_assumptions=2, num_claims=2, num_evidence=1)
+    original_stance = belief["thesis"]["stance"]
+
+    # 2. Validate initial belief
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"Initial belief invalid: {errors}"
+
+    # 3. Apply update_thesis with stance, summary_bullets, and new_strength
+    patches = [{
+        "op": "update_thesis",
+        "new_strength": 0.55,
+        "stance": "Updated thesis stance reflecting debate outcomes",
+        "summary_bullets": [
+            "Key insight from the debate",
+            "Revised understanding of the evidence",
+            "Acknowledged limitations"
+        ]
+    }]
+    updated = apply_patches(belief, patches, propagate_strength=False)
+
+    # 4. Validate updated belief
+    errors = validate_belief(updated)
+    assert len(errors) == 0, f"Updated belief invalid: {errors}"
+
+    # 5. Verify all three fields updated
+    assert updated["thesis"]["stance"] == "Updated thesis stance reflecting debate outcomes"
+    assert updated["thesis"]["stance"] != original_stance
+    assert updated["thesis"]["summary_bullets"] == [
+        "Key insight from the debate",
+        "Revised understanding of the evidence",
+        "Acknowledged limitations"
+    ]
+    assert updated["thesis"]["strength"] == pytest.approx(0.55, abs=0.01)
+
+    # 6. Render to markdown and verify stance/bullets appear
+    md = belief_to_markdown(updated)
+    assert "Updated thesis stance reflecting debate outcomes" in md
+    assert "Key insight from the debate" in md
+    assert "Strength: 0.55" in md

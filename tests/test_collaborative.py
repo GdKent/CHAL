@@ -778,9 +778,40 @@ class TestCollaborativeConfigLoading:
     """Tests for loading collaborative.yaml and CollaborativeConfig."""
 
     @pytest.mark.unit
-    def test_load_collaborative_config(self):
-        """collaborative.yaml loads successfully with stage3_mode='collaborative'."""
-        config = load_config("collaborative")
+    def test_load_collaborative_config(self, tmp_path):
+        """Inline collaborative YAML loads with stage3_mode='collaborative'."""
+        yaml_content = textwrap.dedent("""\
+            metadata:
+              name: "Collaborative Debate"
+              version: "1.0"
+            debate:
+              topic: "Does free will exist?"
+              max_rounds: 1
+              stage3_mode: "collaborative"
+            agents:
+              - name: "Agent-A"
+                persona: "EMPIRICIST"
+                model: "gpt-4o"
+                temperature: 0.7
+              - name: "Agent-B"
+                persona: "RATIONALIST"
+                model: "gpt-4o"
+                temperature: 0.7
+            adjudication:
+              model: "gpt-4o"
+              logic_weight: 1.0
+              ethics_weight: 0.0
+              logic_system: "Classical logic"
+              ethics_system: "None"
+            collaborative:
+              max_turns_per_question: 10
+              min_turns_per_question: 3
+              adjudicator_check_interval: 2
+              early_termination_on_agreement: true
+        """)
+        config_file = tmp_path / "collab.yaml"
+        config_file.write_text(yaml_content)
+        config = DebateConfig.from_yaml(config_file)
 
         assert config.name == "Collaborative Debate"
         assert config.stage3_mode == "collaborative"
@@ -788,9 +819,36 @@ class TestCollaborativeConfigLoading:
         assert len(config.agents) == 2
 
     @pytest.mark.unit
-    def test_collaborative_section_parsed(self):
+    def test_collaborative_section_parsed(self, tmp_path):
         """Collaborative settings are correctly parsed from YAML."""
-        config = load_config("collaborative")
+        yaml_content = textwrap.dedent("""\
+            metadata:
+              name: "Collab Parsed"
+              version: "1.0"
+            debate:
+              topic: "Test"
+              max_rounds: 1
+              stage3_mode: "collaborative"
+            agents:
+              - name: "Agent-A"
+                persona: "EMPIRICIST"
+                model: "gpt-4o"
+                temperature: 0.7
+            adjudication:
+              model: "gpt-4o"
+              logic_weight: 1.0
+              ethics_weight: 0.0
+              logic_system: "Classical logic"
+              ethics_system: "None"
+            collaborative:
+              max_turns_per_question: 10
+              min_turns_per_question: 3
+              adjudicator_check_interval: 2
+              early_termination_on_agreement: true
+        """)
+        config_file = tmp_path / "collab_parsed.yaml"
+        config_file.write_text(yaml_content)
+        config = DebateConfig.from_yaml(config_file)
 
         assert config.collaborative.max_turns_per_question == 10
         assert config.collaborative.min_turns_per_question == 3

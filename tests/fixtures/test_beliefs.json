@@ -14,7 +14,7 @@
         "Neuroscience shows decisions occur before conscious awareness",
         "Physical determinism governs all events"
       ],
-      "confidence": 0.75
+      "strength": 0.75
     }
   },
   "complete_valid": {
@@ -40,18 +40,24 @@
         "Determinism and free will are compatible",
         "Humans have the capacity for rational deliberation"
       ],
-      "confidence": 0.80
+      "strength": 0.80
     },
     "assumptions": [
       {
         "id": "A1",
         "type": "empirical",
-        "statement": "Rational deliberation is a real phenomenon"
+        "statement": "Rational deliberation is a real phenomenon",
+        "strength": 0.9,
+        "status": "active",
+        "strength_justification": "Well-established through cognitive science research"
       },
       {
         "id": "A2",
         "type": "foundational",
-        "statement": "Causation does not eliminate agency"
+        "statement": "Causation does not eliminate agency",
+        "strength": 0.85,
+        "status": "active",
+        "strength_justification": "Standard compatibilist premise with broad philosophical support"
       }
     ],
     "claims": [
@@ -59,8 +65,7 @@
         "id": "C1",
         "type": "deductive",
         "statement": "Humans can make choices based on reasons",
-        "depends_on": ["A1"],
-        "backing_evidence_ids": ["E1"],
+        "depends_on": ["A1", "E1"],
         "inference_chain": [
           {
             "step": "P1: Rational beings deliberate",
@@ -71,23 +76,37 @@
             "justification": "Conceptual analysis"
           }
         ],
-        "confidence": 0.85,
-        "confidence_justification": "Strong empirical support",
+        "strength": 0.85,
+        "strength_justification": "Strong empirical support",
         "status": "active",
-        "known_weaknesses": ["Does not address hard incompatibilism"],
-        "known_rebuttals": []
+        "predictions": [
+          {
+            "statement": "People will report feeling in control when making deliberate choices",
+            "test": "Survey participants after deliberate vs. reflexive choices",
+            "decision_criterion": "If >70% report feeling in control during deliberate choices, prediction is confirmed"
+          }
+        ]
       },
       {
         "id": "C2",
         "type": "inductive",
         "statement": "Free will is compatible with determinism",
-        "depends_on": ["A2", "C1"],
-        "backing_evidence_ids": ["E2"],
-        "confidence": 0.75,
-        "confidence_justification": "Philosophical consensus among compatibilists",
+        "depends_on": ["A2", "C1", "E2"],
+        "inference_chain": [
+          "P1: Determinism describes causal chains",
+          "P2: Agency is about responsiveness to reasons, not causal independence",
+          "C: Free will and determinism are compatible"
+        ],
+        "strength": 0.75,
+        "strength_justification": "Philosophical consensus among compatibilists",
         "status": "active",
-        "known_weaknesses": [],
-        "known_rebuttals": []
+        "predictions": [
+          {
+            "statement": "Compatibilist frameworks will continue to gain acceptance in philosophy",
+            "test": "Survey of academic philosophers on free will positions",
+            "decision_criterion": "If compatibilism remains the plurality position, prediction is confirmed"
+          }
+        ]
       }
     ],
     "evidence": [
@@ -96,29 +115,20 @@
         "type": "empirical",
         "summary": "Studies show humans consider alternatives before deciding",
         "source": "Libet et al. (1983)",
-        "relevance_to_claims": ["C1"]
+        "relevance_to_claims": ["C1"],
+        "strength": 0.8,
+        "status": "active",
+        "strength_justification": "Replicated across labs with converging methods"
       },
       {
         "id": "E2",
         "type": "conceptual",
         "summary": "Compatibilist arguments from Hume and Dennett",
         "source": "Dennett (2003)",
-        "relevance_to_claims": ["C2"]
-      }
-    ],
-    "predictions": [
-      {
-        "id": "P1",
-        "statement": "People will report feeling in control when making deliberate choices",
-        "linked_claims": ["C1"],
-        "test": "Survey participants after deliberate vs. reflexive choices",
-        "decision_criterion": "If >70% report feeling in control during deliberate choices, prediction is confirmed"
-      }
-    ],
-    "normative_implications": [
-      {
-        "id": "N1",
-        "statement": "Moral responsibility requires free will in the compatibilist sense"
+        "relevance_to_claims": ["C2"],
+        "strength": 0.75,
+        "status": "active",
+        "strength_justification": "Broadly accepted in philosophical literature"
       }
     ],
     "counterpositions": [
@@ -127,7 +137,6 @@
         "targets": ["C1"],
         "attack_type": "undercutting",
         "statement": "Libet experiments show neural activity precedes conscious awareness of decision, undermining the inference from deliberation to genuine choice",
-        "strength": 0.6,
         "my_response": "Libet experiments test only trivial decisions; complex rational deliberation may differ fundamentally",
         "response_sufficiency": "partial"
       },
@@ -136,7 +145,6 @@
         "targets": ["A2"],
         "attack_type": "undermining",
         "statement": "If all events are determined by prior causes, agency is epiphenomenal regardless of how we define it",
-        "strength": 0.5,
         "my_response": "This conflates causal determination with coercion; compatibilism distinguishes the two",
         "response_sufficiency": "sufficient"
       }
@@ -154,7 +162,7 @@
     "thesis": {
       "stance": "Test stance",
       "summary_bullets": ["Test bullet"],
-      "confidence": 0.5
+      "strength": 0.5
     },
     "claims": [
       {
@@ -162,18 +170,24 @@
         "type": "deductive",
         "statement": "Claim 1 depends on Claim 2",
         "depends_on": ["C2"],
-        "backing_evidence_ids": [],
-        "confidence": 0.7,
-        "status": "active"
+
+        "strength": 0.7,
+        "strength_justification": "Test justification",
+        "status": "active",
+        "inference_chain": ["Step 1: C2 implies C1"],
+        "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
       },
       {
         "id": "C2",
         "type": "deductive",
         "statement": "Claim 2 depends on Claim 1",
         "depends_on": ["C1"],
-        "backing_evidence_ids": [],
-        "confidence": 0.7,
-        "status": "active"
+
+        "strength": 0.7,
+        "strength_justification": "Test justification",
+        "status": "active",
+        "inference_chain": ["Step 1: C1 implies C2"],
+        "predictions": [{"statement": "P2", "test": "T2", "decision_criterion": "DC2"}]
       }
     ]
   },
@@ -189,7 +203,7 @@
     "thesis": {
       "stance": "Test stance",
       "summary_bullets": ["Test bullet"],
-      "confidence": 0.5
+      "strength": 0.5
     },
     "claims": [
       {
@@ -197,9 +211,12 @@
         "type": "deductive",
         "statement": "Orphaned claim with no support",
         "depends_on": [],
-        "backing_evidence_ids": [],
-        "confidence": 0.7,
-        "status": "active"
+
+        "strength": 0.7,
+        "strength_justification": "Test justification",
+        "status": "active",
+        "inference_chain": ["Step 1: Orphaned reasoning"],
+        "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
       }
     ]
   }

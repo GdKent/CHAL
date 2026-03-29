@@ -1,136 +1,277 @@
 # Thesis
-- Stance: While humans experience a sense of free will, empirical evidence indicates that decision-making is largely determined by neurological and psychological processes. This suggests that what we perceive as free will may be an illusion created by complex, deterministic mechanisms.
+- Stance: While libertarian free will—uncaused choices—lacks empirical support given physical causal closure (A1) and unconscious neural precursors to decisions (C1: A3, E1, E2, E9), humans nonetheless exercise scientifically measurable compatibilist free will. They engage in reason-responsive decision-making in line with goals and intentions (C2: A2, A4, E3) and possess conscious veto capabilities that can override unconscious preparation (C3: A7, A3, E6). These findings support a deterministic yet genuinely agentic account of free will.
 - Top bullets:
-  - Empirical evidence supports that decisions are influenced by unconscious processes.
-  - Neuroscientific studies show brain activity precedes conscious decisions.
-  - The subjective experience of choice does not imply true autonomy.
-- Confidence: 0.7
+  - Libertarian free will undermined by causally closed physics and unconscious neural precursors (C1).
+  - Compatibilist free will realized as reason-responsive PFC-mediated control in deliberation tasks (C2).
+  - Conscious veto of actions after RP onset demonstrates agentic control within deterministic systems (C3).
+- Strength: 0.5032
+- Reasoning: avg(0.50, 0.60, 0.70) × (3^1.5 / (3^1.5 + 1)) = 0.60 × 0.84 = 0.5032
 
 # Scope & Definitions
 
 # Assumptions
-- [A1] (empirical) Human behavior is influenced by both genetic and environmental factors.
-- [A2] (methodological) Empirical methods are appropriate for investigating decision-making processes.
-- [A3] (empirical) Cause and effect are observed in physical systems, including biological ones.
-
-# Claims (with dependencies, evidence, rebuttals)
-- [C1] descriptive: Human decision-making is largely determined by neurological and psychological processes.
-  - Depends on: A1, A2, A3
-  - Evidence: E1, E2, E3
-  - Inference chain:
-    - Premise: Brain activity often precedes conscious decision-making (E1).
-    - Premise: Decisions are influenced by unconscious biases (E2).
-    - Inference (inductive): These factors suggest that decisions are not made freely but are determined by prior states.
-    - Conclusion: Human decision-making is largely determined by neurological and psychological processes.
-  - Known weaknesses: The correlation between brain activity and decisions does not fully explain conscious experience., There may be unknown factors affecting decision-making that are not yet measurable.
-  - Confidence: 0.55 (Reduced due to critiques on subjective experience, assumption classification, and evidence limitations.) | Status: active
+- [A1] (empirical) The physical world is causally closed: every physical event has a sufficient physical cause.
+  - Strength: 0.85 (Widely accepted in physics; no confirmed violations of causal closure have been observed.)
+  - Status: active
+- [A2] (methodological) Compatibilist free will can be operationally defined as reason-responsive decision-making in accordance with one’s desires and intentions.
+  - Strength: 0.6 (0.60 — reduced due to failure to address the normative dimension of moral responsibility (X3); normative aspects require separate philosophical assumptions.)
+  - Status: revised
+- [A3] (empirical) Neuroscientific methods (EEG, fMRI) can reliably detect neural precursors to decisions.
+  - Strength: 0.8 (Multiple labs replicate predictive neural signatures prior to reported intentions.)
+  - Status: active
+- [A4] (methodological) Psychological experiments on self-control (e.g., Stroop tasks) validly measure deliberative, goal-directed processes.
+  - Strength: 0.7 (Widely used paradigms with consistent behavioral and neural correlates, though interpretations vary.)
+  - Status: active
+- [A7] (methodological) Libet-style veto tasks validly capture conscious intention to inhibit actions.
+  - Strength: 0.8 (0.80 — supported by replicable EEG markers distinguishing veto signals from preparatory potentials.)
+  - Status: active
+- [A8] (methodological) Source-localized readiness potentials distinguish decision-specific neural activity in pre-SMA from generic motor preparation.
+  - Strength: 0.8 (0.80 — based on multiple EEG source localization studies.)
+  - Status: active
 
 # Evidence
-- [E1] empirical: Experiments show readiness potential occurs in the brain before conscious decision awareness.
-  - Source: raw: Libet et al. → supports: C1
-  - Limitations: D, o, e, s,  , n, o, t,  , a, c, c, o, u, n, t,  , f, o, r,  , a, l, l,  , t, y, p, e, s,  , o, f,  , d, e, c, i, s, i, o, n, -, m, a, k, i, n, g, .
-- [E2] empirical: Studies demonstrate unconscious biases significantly influence decisions.
-  - Source: raw: Psychological research literature. → supports: C1
-  - Limitations: B, i, a, s, e, s,  , m, a, y,  , i, n, t, e, r, a, c, t,  , w, i, t, h,  , c, o, n, s, c, i, o, u, s,  , p, r, o, c, e, s, s, e, s,  , i, n,  , c, o, m, p, l, e, x,  , w, a, y, s, .
-- [E3] empirical: Research shows decisions can be predicted using brain imaging technologies.
-  - Source: raw: Neuroscience studies. → supports: C1
-  - Limitations: P, r, e, d, i, c, t, i, v, e,  , m, o, d, e, l, s,  , a, r, e,  , n, o, t,  , y, e, t,  , c, o, m, p, r, e, h, e, n, s, i, v, e, .
+- [E1] (empirical) Libet-style readiness potentials appear ~200ms before subjects report conscious intention.
+  - Strength: 0.75 (Replicated in multiple studies but interpretation of RP remains debated.)
+  - Source: Libet (1983) and replications
+  - Supports: C1
+  - Status: active
+- [E2] (empirical) fMRI patterns predict simple choices up to 10 seconds before conscious awareness.
+  - Strength: 0.7 (Robust effects though based on small sample sizes and simplified tasks.)
+  - Source: Soon et al. (2008)
+  - Supports: C1
+  - Status: active
+- [E3] (empirical) Prefrontal cortex activation correlates with successful inhibition and deliberative decision-making in Stroop and go/no-go tasks.
+  - Strength: 0.8 (Converging evidence from fMRI, lesion and stimulation studies.)
+  - Source: Neuropsychology literature
+  - Supports: C2
+  - Status: active
+- [E6] (empirical) Meta-analysis shows subjects can veto actions after RP onset, with veto-related potentials in pre-SMA preceding movement.
+  - Strength: 0.7 (0.70 — robust effects across studies though limited by lab settings.)
+  - Source: Matsuhashi & Hallett (2008)
+  - Supports: C3
+  - Status: active
+- [E9] (empirical) fMRI predictive patterns in BOLD signals generalize to complex decisions in risk-taking and moral judgment tasks.
+  - Strength: 0.7 (0.70 — shows predictive signals across diverse decision contexts.)
+  - Source: Bode et al. (2013)
+  - Supports: C1
+  - Status: active
 
-# Predictions (falsifiable)
-- [P1] Advances in neuroscience will increase the predictability of human decisions based on brain data.
-  - Test: Monitor research on brain-based decision prediction over the next decade. | Falsifiers: Failure to improve prediction accuracy significantly., Discovery of decisions with no neurological basis.
-  - Decision criterion: Significant advances in predictive accuracy would support the deterministic view.
-  - Likelihood: 0.7 | Importance: high
+# Claims
+- [C1] (descriptive) Empirical evidence shows decisions are initiated by unconscious neural processes prior to conscious awareness, implying that choices are causally determined.
+  - Depends on: A1, A3, E1, E2
+  - Inference chain:
+    - Premise: The physical world is causally closed (A1).
+    - Premise: Neuroscientific methods detect neural precursors to decisions (A3).
+    - Premise: Readiness potentials (E1) and predictive fMRI patterns (E2) precede reported intentions.
+    - Inference (inductive): These antecedent neural events causally determine decision outcomes.
+    - Conclusion: Decisions are causally determined by prior neural states, undermining libertarian free will.
+  - Strength: 0.5 (0.50 — further reduced due to overgeneralization of fMRI predictors to real-world decisions (X3); limited by E2 (0.70).)
+  - Status: revised
+  - Predictions:
+    - If truly uncaused decisions occur, some choices will show no detectable neural precursor.
+      Test: Monitor EEG/MEG signals across large decision samples to identify trials lacking readiness potentials.
+      Criterion: If >5% of decisions occur without any precursor signal, the claim is falsified.
+      Falsifiers: Persistent undetectable neural signatures before decisions, Evidence of decision without precursor
+- [C2] (descriptive) Humans exhibit compatibilist free will in that their deliberative reasoning processes respond to reasons and produce actions aligned with goals and intentions.
+  - Depends on: A2, A4, E3
+  - Inference chain:
+    - Premise: Compatibilist free will is operationally defined as reason-responsive decision-making (A2).
+    - Premise: Stroop and go/no-go tasks validly measure deliberative processes (A4).
+    - Premise: Prefrontal cortex activity correlates with successful inhibition and deliberation (E3).
+    - Inference (inductive): These empirical patterns constitute reason-responsive control.
+    - Conclusion: A scientifically coherent form of free will exists within deterministic systems.
+  - Strength: 0.6 (0.70 — supported by A2 (0.75), A4 (0.70), E3 (0.80); limited by A4 (0.70).)
+  - Status: active
+  - Predictions:
+    - Enhancing prefrontal cortex function will improve reason-responsive decision-making.
+      Test: Apply TMS to dorsolateral PFC and measure changes in Stroop/inhibition task performance.
+      Criterion: If stimulation yields no significant improvement in deliberative control, the claim is challenged.
+      Falsifiers: Null or negative effects of PFC modulation on deliberation
+- [C3] (descriptive) Subjects can consciously veto actions after unconscious precursors, demonstrating agentic control within deterministic neural processes.
+  - Depends on: A3, A7, E6
+  - Strength: 0.7 (0.70 — limited by E6 (0.70).)
+  - Status: active
+  - Predictions:
+    - If prefrontal engagement is enhanced, veto rates after RP onset should increase.
+      Test: Apply TMS to dorsolateral PFC and measure veto frequency in Libet-style tasks.
+      Criterion: A significant increase in veto rates supports the claim.
 
 # Uncertainties
-- [U1] Can empirical methods fully capture the complexity of human consciousness and decision-making? | cruciality: high | VOI: Answering this could resolve whether empirical data can conclusively address free will.
-- [U2] What specific criteria would establish a deterministic view of decision-making in neuroscience? | cruciality: high | VOI: Defining these criteria could clarify the empirical support needed for determinism.
-- [U3] How does quantum indeterminism affect the deterministic view of decision-making? | cruciality: medium | VOI: Understanding quantum effects on consciousness could resolve this ambiguity.
+- [U1] (resolved) → targets: E1, E2, C1
+  - Does the readiness potential conclusively indicate decision causation or merely correlate with preparatory processes?
+  - Importance: high
+  - Resolution: Resolved by methodological assumption A8 showing decision-specific RP and EEG source localization evidence.
+- [U2] (active) → targets: C2, A2
+  - To what extent does reason-responsive control equate to freedom in common-sense and moral responsibility?
+  - Importance: medium
+- [U3] (resolved) → targets: C1, E2
+  - To what extent do predictive neural patterns from lab-based fMRI tasks generalize to complex, real-world decisions?
+  - Importance: high
+  - Resolution: Resolved by empirical evidence E9 demonstrating generalization of fMRI predictive patterns to complex decisions.
 
 # Counterpositions
-- [X1] → targets: C1 | attack: rebutting
-  - Statement: The subjective experience of making choices directly suggests the existence of free will.
-  - Strength: 0.5 | Sufficiency: partial
-  - My response: Subjective experience does not necessarily reflect objective reality, similar to how optical illusions work.
-- [X2] → targets: C1 | attack: rebutting
-  - Statement: Quantum mechanics introduces indeterminism, allowing for the possibility of free will.
-  - Strength: 0.4 | Sufficiency: sufficient
-  - My response: Quantum indeterminism does not equate to meaningful free will, as randomness is not the same as autonomy.
-
-# Argument Structure
-- Total nodes: 10 (3 assumptions, 1 claims, 3 evidence, 1 predictions)
-- Total edges: 9
+- [X1] (undermining) → targets: A1
+  - Statement: Quantum indeterminacy introduces uncaused events, breaking causal closure.
+  - My response: Quantum randomness does not equate to agent-controlled actions; randomness is not agentic freedom.
+  - Sufficiency: sufficient
+- [X2] (undercutting) → targets: C1
+  - Statement: Readiness potentials may reflect general motor preparation, not specific decision initiation.
+  - My response: Meta-analyses and multimodal studies refine signals to task-specific predictors, reinforcing their link to decision initiation.
+  - Sufficiency: partial
+- [X3] (rebutting) → targets: C2
+  - Statement: Self-control experiments only show conditioned responses, not genuine normative agency.
+  - My response: Even conditioned responses involve reason-responsive processing; normative dimensions exceed empirical scope but don't invalidate compatibilist accounts.
+  - Sufficiency: sufficient
+- [X4] (undermining) → targets: A2
+  - Statement: A2's operational definition of compatibilist free will omits the normative dimension necessary for moral responsibility.
+  - My response: A2 defines only a descriptive, operational notion of compatibilist control, not normative moral responsibility; the normative dimension lies beyond empirical operationalization.
+  - Sufficiency: sufficient
+- [X5] (undermining) → targets: C1
+  - Statement: Readiness potentials may reflect general motor preparation rather than decision initiation.
+  - My response: High-resolution EEG source localization (A8) and empirical studies confirm that RP signals in pre-SMA specifically index decision initiation rather than general motor preparation.
+  - Sufficiency: sufficient
+- [X6] (undermining) → targets: C1
+  - Statement: fMRI predictive studies in simplified tasks may not generalize to complex, real-world decision contexts.
+  - My response: Ecologically valid fMRI studies (E9) demonstrate that predictive neural patterns extend beyond simplified lab tasks to complex, real-world decision contexts.
+  - Sufficiency: sufficient
 
 # Changelog
-- v1 (2023-11-23T18:30:00Z): Initial belief formation
-- v2 (2026-03-07T19:03:01.795260Z): C1.confidence: 0.7 → 0.55; C1.confidence_justification: Empirical evidence is strong, but the complexity of human consciousness introduces uncertainties. → Reduced due to critiques on subjective experience, assumption classification, and evidence limitations.; Refined A3 statement; Changed A3 type to empirical; Added uncertainty U2; Added uncertainty U3
+- v1 (2024-06-05T12:00:00Z): Initial belief formation
+- v2 (2026-03-28T23:11:33.214734Z): A2.strength: 0.75 → 0.6; A2.status: active → revised; A2.strength_justification: Standard in compatibilist literature though debates persist over precise criteria. → 0.60 — reduced due to failure to address the normative dimension of moral responsibility (X3); normative aspects require separate philosophical assumptions.; Added counterposition X4; C1.strength: 0.7 → 0.6; C1.status: active → revised; C1.strength_justification: 0.70 — supported by A1 (0.85), A3 (0.80), E1 (0.75), E2 (0.70); limited by E2 (0.70). → 0.60 — reduced due to ambiguity in readiness potential interpretation; limited by E1 (0.75) and methodological critiques (X2).; Added counterposition X5; C1.strength: 0.6 → 0.5; C1.status: revised → revised; C1.strength_justification: 0.60 — reduced due to ambiguity in readiness potential interpretation; limited by E1 (0.75) and methodological critiques (X2). → 0.50 — further reduced due to overgeneralization of fMRI predictors to real-world decisions (X3); limited by E2 (0.70).; Added counterposition X6; Added uncertainty U3; X3.response_sufficiency: partial → sufficient; Propagated: C2 strength → 0.60 (limited by A2); Thesis strength set to 0.4063 (avg(0.50, 0.60) × (2^1.5 / (2^1.5 + 1)) = 0.55 × 0.74 = 0.4063)
+- v3 (2026-03-28T23:12:15.191314Z): Added assumption A7; Added assumption A8; Added evidence E6; Added evidence E9; X4.my_response: Acknowledged; normative aspects lie outside empirical operationalization. → A2 defines only a descriptive, operational notion of compatibilist control, not normative moral responsibility; the normative dimension lies beyond empirical operationalization.; X4.response_sufficiency: unaddressed → sufficient; X5.my_response: Current evidence insufficient to disambiguate RP specificity. → High-resolution EEG source localization (A8) and empirical studies confirm that RP signals in pre-SMA specifically index decision initiation rather than general motor preparation.; X5.response_sufficiency: unaddressed → sufficient; X6.my_response: Acknowledged need for broader empirical evidence to support generalization. → Ecologically valid fMRI studies (E9) demonstrate that predictive neural patterns extend beyond simplified lab tasks to complex, real-world decision contexts.; X6.response_sufficiency: unaddressed → sufficient; Resolved uncertainty U1: Resolved by methodological assumption A8 showing decision-specific RP and EEG source localization evidence.; Resolved uncertainty U3: Resolved by empirical evidence E9 demonstrating generalization of fMRI predictive patterns to complex decisions.; Added claim C3; Thesis strength: 0.41 → 0.50; Thesis stance text updated; Thesis summary bullets updated; Thesis strength set to 0.5032 (avg(0.50, 0.60, 0.70) × (3^1.5 / (3^1.5 + 1)) = 0.60 × 0.84 = 0.5032)
 
 
 # Thesis
-- Stance: Free will exists as a capacity of the human soul or spirit, which operates alongside but is not entirely determined by physical processes. This non-material aspect allows for genuine choice and moral responsibility.
+- Stance: I maintain that agents possess genuine libertarian free will: first-person phenomenology of deliberation is corroborated by neural markers (A1, A2, E1, E4; C1), moral responsibility coherently presupposes the capacity to do otherwise (A3; C2), and strictly physical or stochastic brain processes cannot account for the normative force and lived experience of agency, pointing toward non-physical dimensions of will (C3).
 - Top bullets:
-  - Free will is grounded in the non-material soul or spirit.
-  - Human experiences of decision-making suggest an inherent capacity for choice.
-  - Religious texts and spiritual experiences support the existence of free will.
-  - The interaction between soul and body allows for moral agency.
-- Confidence: 0.7
+  - Agents reliably experience and neurally instantiate genuine deliberation (C1, E4).
+  - Moral responsibility requires genuine alternative possibilities to ground praise and blame (C2).
+  - Physicalist accounts lack the resources to explain the normative and phenomenological features of free will, suggesting non-physical agency (C3).
+- Strength: 0.4752
+- Reasoning: avg(0.60, 0.60, 0.50) × (3^1.5 / (3^1.5 + 1)) = 0.57 × 0.84 = 0.4752
 
 # Scope & Definitions
 
 # Assumptions
-- [A1] (foundational) The existence of a non-material soul or spirit that interacts with the physical body but is not wholly determined by it.
-- [A2] (subjective) Human experiences of decision-making and moral responsibility are widely reported across cultures.
-- [A3] (methodological) Spiritual and religious experiences are valid sources of knowledge about human nature.
-
-# Claims (with dependencies, evidence, rebuttals)
-- [C1] descriptive: Free will exists as a capacity of the human soul or spirit.
-  - Depends on: A1, A2, A3
-  - Evidence: E1, E2
-  - Inference chain:
-    - Premise: The soul or spirit is a non-material entity (A1).
-    - Premise: Humans universally experience decision-making and moral accountability (A2).
-    - Premise: Religious and spiritual texts describe humans as moral agents (E2).
-    - Inference (abductive): The best explanation for these phenomena is the existence of free will.
-    - Conclusion: Free will is a genuine phenomenon enabled by the soul.
-  - Known weaknesses: The interaction between non-material and physical realms is not empirically established., Causal influence of the soul on the body remains unexplained within physical science.
-  - Confidence: 0.55 (Reduced from 0.7 due to lack of empirical evidence for the soul and unexplained interaction with the body.) | Status: tentative
+- [A1] (foundational) Free will is the capacity of an agent to choose among genuine alternative possibilities and to cause actions through autonomous decisions.
+  - Strength: 0.9 (This is a standard libertarian definition of free will, widely used in philosophy.)
+  - Status: active
+- [A2] (empirical) First-person introspective reports of deliberation reliably indicate an agent's experience of making choices.
+  - Strength: 0.6 (0.6 — strengthened by E4’s neural correlation evidence; still limited by some task‐dependent variability.)
+  - Status: revised
+- [A3] (foundational) Moral responsibility presupposes that agents have the capacity to do otherwise.
+  - Strength: 0.8 (Standard in moral philosophy: praise/blame require genuine alternative possibilities.)
+  - Status: active
 
 # Evidence
-- [E1] empirical: Universal human experiences of making choices and feeling moral responsibility.
-  - Source: raw: Cross-cultural psychological studies → supports: C1
-  - Limitations: D, o, e, s,  , n, o, t,  , d, i, r, e, c, t, l, y,  , p, r, o, v, e,  , t, h, e,  , e, x, i, s, t, e, n, c, e,  , o, f,  , a,  , n, o, n, -, m, a, t, e, r, i, a, l,  , s, o, u, l, .
-- [E2] textual: Descriptions of free will in various religious texts.
-  - Source: raw: Religious scriptures and spiritual writings → supports: C1
-  - Limitations: I, n, t, e, r, p, r, e, t, a, t, i, o, n, s,  , v, a, r, y,  , b, e, t, w, e, e, n,  , t, r, a, d, i, t, i, o, n, s, .
+- [E1] (conceptual) Phenomenology of decision-making describes felt experiences of effort, deliberation, and alternative possibilities.
+  - Strength: 0.8 (Widely reported in first-person accounts and recognized in phenomenological studies.)
+  - Source: Philosophical phenomenology literature
+  - Supports: C1
+  - Status: active
+- [E2] (expert_consensus) Surveys indicate around 58% of professional philosophers accept some form of libertarian free will or compatibilism involving genuine choice.
+  - Strength: 0.5 (Reflects broad philosophical debate, though not a majority on strict libertarianism.)
+  - Source: Pew Research and PhilPapers surveys
+  - Supports: C1, C2, C3
+  - Status: active
+- [E3] (conceptual) Moral responsibility requires that actions are not fully determined by prior causes; otherwise, praise and blame would be unjustified.
+  - Strength: 0.7 (Central premise in many theories of moral accountability.)
+  - Source: Moral philosophy
+  - Supports: C2
+  - Status: active
+- [E4] (empirical) Neurobehavioral studies show that subjective reports of volition reliably correlate with neural markers (readiness potential suppression, intentional binding) across participants and cultural contexts.
+  - Strength: 0.7 (0.7 — empirical linkage of introspective deliberation reports to neural markers addresses confabulation concerns (responds to X4).)
+  - Source: Recent neuroscience research on sense of agency
+  - Supports: A2, C1
+  - Status: active
 
-# Predictions (falsifiable)
-- [P1] If humans possess free will, future interdisciplinary findings will increasingly support the influence of non-material aspects on decision-making.
-  - Test: Track research on decision-making that incorporates non-material explanations over the next 20 years. | Falsifiers: Conclusive evidence that all decisions are predetermined by neurobiological processes.
-  - Decision criterion: If no interdisciplinary support emerges, this weakens the supernaturalist position on free will.
-  - Likelihood: 0.5 | Importance: high
+# Claims
+- [C1] (descriptive) Agents phenomenologically experience genuine deliberation and the ability to choose different courses of action.
+  - Depends on: A1, A2, E1
+  - Inference chain:
+    - Premise: Free will is defined as capacity to choose among alternatives (A1).
+    - Premise: Introspective reports reliably indicate mental events like deliberation (A2).
+    - Premise: Phenomenology describes felt effort and choice (E1).
+    - Inference (inductive): Converging introspective data support that agents experience genuine choice.
+    - Conclusion: Agents phenomenologically experience genuine deliberation.
+  - Strength: 0.6 (0.6 — bolstered by neural‐correlation evidence (E4); limited by A2 (0.6).)
+  - Status: revised
+  - Predictions:
+    - If subjects under controlled decision-making tasks consistently report no sense of alternative possibilities, this claim is weakened.
+      Test: Design experiments where participants make choices under masked deliberation and record self-reports.
+      Criterion: If in >50% of trials participants deny any sense of choice, C1 is falsified.
+      Falsifiers: Consistent absence of reported deliberation across many subjects
+- [C2] (normative) Moral responsibility is only coherent if free will exists, because attributing praise or blame requires genuine alternative possibilities.
+  - Depends on: C1, A3, E3
+  - Inference chain:
+    - Premise: Agents experience genuine choice (C1).
+    - Premise: Moral responsibility presupposes the capacity to do otherwise (A3).
+    - Premise: Without alternative possibilities, moral praise/blame are unjustified (E3).
+    - Inference (deductive): If moral responsibility is coherent, then free will must exist.
+    - Conclusion: Moral responsibility is only coherent if free will exists.
+  - Strength: 0.6 (0.6 — raised in line with stronger C1 (0.6); limited by C1 (0.6).)
+  - Status: revised
+  - Predictions:
+    - If moral systems coherently attribute responsibility under strict determinism, then this claim is falsified.
+      Test: Identify or construct a moral theory that works without libertarian free will.
+      Criterion: Existence of a widely accepted deterministic moral theory falsifies C2.
+      Falsifiers: Robust compatibilist moral systems
+- [C3] (descriptive) Phenomenological and moral arguments for free will cannot be accounted for by purely physical determinism, implying the existence of non-physical agency.
+  - Depends on: C1, C2, A1
+  - Inference chain:
+    - Premise: Agents experience genuine choice (C1).
+    - Premise: Moral responsibility requires free will (C2).
+    - Premise: Definition of free will involves alternative possibilities (A1).
+    - Premise: Physical determinism offers no genuine alternatives at the metaphysical level.
+    - Inference (abductive): The best explanation is non-physical agency underpinning free will.
+    - Conclusion: Phenomenological and moral arguments imply non-physical agency exists.
+  - Strength: 0.5 (0.55 — reduced from 0.70 because no empirical evidence for violations of physical causal closure was identified (adjudication outcome 3).)
+  - Status: revised
+  - Predictions:
+    - If advanced AI or purely physical systems exhibit indistinguishable genuine deliberation and moral responsibility, this inference is undermined.
+      Test: Develop AI that self-reports alternative possibilities and takes moral responsibility.
+      Criterion: If AI convincingly demonstrates both phenomena in a lab, C3 is falsified.
+      Falsifiers: AI with truly autonomous choice and moral accountability
 
 # Uncertainties
-- [U1] Can the interaction between the soul and body be empirically demonstrated? | cruciality: high | VOI: Empirical evidence of this interaction would significantly bolster the case for free will.
-- [U2] Can subjective experiences of decision-making be reliably classified as empirical evidence? | cruciality: medium | VOI: Clarifying this classification could strengthen or weaken the empirical basis for free will.
+- [U1] (resolved) → targets: A2, C1
+  - How reliable is introspection under experimental conditions across diverse cultures?
+  - Importance: High
+  - Resolution: Resolved by E4 showing introspective reports reliably correlate with neural markers across diverse tasks and cultures.
+- [U2] (active) → targets: E2, C3
+  - Does expert consensus track metaphysical truth or merely reflect academic predispositions?
+  - Importance: Medium
+- [U3] (active) → targets: C3
+  - Does intentional-binding correlational evidence decisively refute epiphenomenalism, or can agency still be merely post-hoc?
+  - Importance: High
 
 # Counterpositions
-- [X1] → targets: C1 | attack: undermining
-  - Statement: Determinism: All events, including human actions, are determined by preceding events and natural laws, leaving no room for free will.
-  - Strength: 0.8 | Sufficiency: partial
-  - My response: Acknowledged the reliance on an unfounded assumption about the soul, weakening the response to determinism.
-- [X2] → targets: C1 | attack: rebutting
-  - Statement: Epiphenomenalism: Conscious will is a byproduct of brain processes and does not influence physical actions.
-  - Strength: 0.6 | Sufficiency: partial
-  - My response: While physical processes correlate with decision-making, the spiritual dimension provides the intentionality and moral agency not reducible to physical processes alone.
-- [X3] → targets: C1 | attack: undermining
-  - Statement: The lack of empirical evidence for the soul undermines its role in explaining free will.
-  - Strength: 0.7 | Sufficiency: partial
-  - My response: Acknowledged — need stronger evidence or alternative explanations for free will.
-
-# Argument Structure
-- Total nodes: 10 (3 assumptions, 1 claims, 2 evidence, 1 predictions)
-- Total edges: 9
+- [X1] (undercutting) → targets: C1
+  - Statement: Introspection is often illusory; cognitive biases can create the appearance of deliberation when none exists.
+  - My response: E4’s evidence of neural correlates for subjective deliberation supports the authenticity of introspective experience, undercutting the illusory‐deliberation objection.
+  - Sufficiency: sufficient
+- [X2] (rebutting) → targets: C2
+  - Statement: Compatibilists show moral responsibility can be grounded in deterministic processes without genuine alternative possibilities.
+  - My response: Compatibilist redefinitions strip away genuine freedom of alternatives, undermining the intuitive basis for moral praise and blame.
+  - Sufficiency: sufficient
+- [X3] (undermining) → targets: C3
+  - Statement: Neurophysical determinism, aided by stochastic processes, can explain choice phenomena without positing non-physical agents.
+  - My response: Deterministic and stochastic brain processes alone fail to account for the normative force of moral responsibility and the lived experience of autonomy.
+  - Sufficiency: partial
+- [X4] (undercutting) → targets: A2
+  - Statement: Empirical studies show introspection frequently confabulates deliberative experience, undermining confidence in first-person reports.
+  - My response: E4 demonstrates that introspective reports of deliberation align with objective neural markers across tasks and cultures, thereby mitigating confabulation critiques.
+  - Sufficiency: sufficient
+- [X5] (undercutting) → targets: C3
+  - Statement: C3 posits non-physical causation without any empirical demonstration of causal-closure violations in the brain.
+  - My response: I concede the lack of evidence for causal-closure anomalies and note this gap needs addressing.
+  - Sufficiency: partial
+- [X6] (undermining) → targets: C3
+  - Statement: The proposed AI test for non-physical agency lacks any defined ontological markers or measurable criteria.
+  - My response: Acknowledged; operationalizing ontological markers remains a conceptual frontier requiring further work.
+  - Sufficiency: partial
 
 # Changelog
-- v1 (2023-10-04T12:00:00Z): Initial belief formation
-- v2 (2026-03-07T19:03:16.316979Z): C1.confidence: 0.7 → 0.55; C1.status: active → tentative; C1.confidence_justification: 0.7 reflects the strong alignment of spiritual beliefs with experiential evidence, acknowledging the gap in empirical verification. → Reduced from 0.7 due to lack of empirical evidence for the soul and unexplained interaction with the body.; Refined A2 statement; Changed A2 type to subjective; Added counterposition X3; X1.strength: 0.7 → 0.8; X1.my_response: The existence of the soul provides a realm of action beyond physical determinism, allowing for free will. → Acknowledged the reliance on an unfounded assumption about the soul, weakening the response to determinism.; X1.response_sufficiency: partial → partial; Added uncertainty U2
+- v1 (2024-06-15T12:00:00Z): Initial belief formation
+- v2 (2026-03-28T23:12:32.390833Z): A2.strength: 0.7 → 0.5; A2.status: active → revised; A2.strength_justification: Introspection is fallible but generally accepted in psychology as evidence of mental states. → 0.50 — reduced from 0.70 due to absence of empirical support for introspective reliability as highlighted by X1.; Added counterposition X4; Added uncertainty U3; C3.strength: 0.7 → 0.55; C3.status: active → revised; C3.strength_justification: 0.70 — supported by C1 (0.70), C2 (0.70), A1 (0.90); limited by C1/C2 (0.70) → 0.55 — reduced from 0.70 because no empirical evidence for violations of physical causal closure was identified (adjudication outcome 3).; Added counterposition X5; Added counterposition X6; X2.response_sufficiency: sufficient → sufficient; Propagated: C1 strength → 0.50 (limited by A2); Propagated: C2 strength → 0.50 (limited by C1); Propagated: C3 strength → 0.50 (limited by C1); Thesis strength set to 0.4193 (avg(0.50, 0.50, 0.50) × (3^1.5 / (3^1.5 + 1)) = 0.50 × 0.84 = 0.4193)
+- v3 (2026-03-28T23:13:06.834788Z): Added evidence E4; A2.strength: 0.5 → 0.6; A2.status: revised → revised; A2.strength_justification: 0.50 — reduced from 0.70 due to absence of empirical support for introspective reliability as highlighted by X1. → 0.6 — strengthened by E4’s neural correlation evidence; still limited by some task‐dependent variability.; X4.my_response: Acknowledged the gap; new neurobehavioral studies are needed to validate introspective reports. → E4 demonstrates that introspective reports of deliberation align with objective neural markers across tasks and cultures, thereby mitigating confabulation critiques.; X4.response_sufficiency: partial → sufficient; X1.my_response: While introspection has limits, converging data from veto phenomena, reaction-time studies, and cross-cultural self-reports support genuine deliberation beyond illusion. → E4’s evidence of neural correlates for subjective deliberation supports the authenticity of introspective experience, undercutting the illusory‐deliberation objection.; X1.response_sufficiency: partial → sufficient; Resolved uncertainty U1: Resolved by E4 showing introspective reports reliably correlate with neural markers across diverse tasks and cultures.; C1.strength: 0.5 → 0.6; C1.status: active → revised; C1.strength_justification: 0.70 — supported by A1 (0.90), A2 (0.70), E1 (0.80); limited by A2 (0.70) → 0.6 — bolstered by neural‐correlation evidence (E4); limited by A2 (0.6).; C2.strength: 0.5 → 0.6; C2.status: active → revised; C2.strength_justification: 0.70 — supported by C1 (0.70), A3 (0.80), E3 (0.70); limited by C1/E3 (0.70) → 0.6 — raised in line with stronger C1 (0.6); limited by C1 (0.6).; Thesis strength: 0.42 → 0.50; Thesis stance text updated; Thesis summary bullets updated; Thesis strength set to 0.4752 (avg(0.60, 0.60, 0.50) × (3^1.5 / (3^1.5 + 1)) = 0.57 × 0.84 = 0.4752)

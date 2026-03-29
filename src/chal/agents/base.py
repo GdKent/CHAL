@@ -33,7 +33,7 @@ class Message:
             - token count
             - model version
             - timestamp
-            - confidence scores
+            - strength scores
             Defaults to None.
     """
     role: str

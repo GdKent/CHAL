@@ -16,7 +16,7 @@ from chal.agents.factory import create_agent_from_config
 from chal.agents.epistemic_personas import get_persona
 from chal.orchestrator.debate_controller import DebateController
 from chal.cli.display import DebateDisplay
-from chal.cli.api_keys import validate_api_keys
+from chal.cli.api_keys import validate_api_keys, create_key_pool
 
 
 def run_debate(
@@ -50,6 +50,9 @@ def run_debate(
     # Validate API keys before creating agents
     validate_api_keys(config, console, interactive=interactive)
 
+    # Create key pool for multi-key rotation (supports comma-separated keys in .env)
+    key_pool = create_key_pool(config)
+
     # Create agents from config
     agents = []
     personas = {}
@@ -62,7 +65,7 @@ def run_debate(
             console.print(f"[red]Error: Unknown persona '{agent_cfg.persona}'[/red]")
             return 1
 
-        agent = create_agent_from_config(agent_cfg)
+        agent = create_agent_from_config(agent_cfg, key_pool=key_pool)
         agents.append(agent)
         personas[agent_cfg.name] = persona_obj
         console.print(
@@ -75,6 +78,7 @@ def run_debate(
         agents=agents,
         max_rounds=config.max_rounds,
         config=config,
+        key_pool=key_pool,
     )
 
     # Interactive roadmap review (moderated mode only)

@@ -64,7 +64,9 @@ def check_api_keys(config: DebateConfig) -> Dict[str, bool]:
 def prompt_missing_keys(config: DebateConfig, console: Console) -> None:
     """Interactively prompt for missing API keys and set them in os.environ.
 
-    Keys are set for the current process only (not persisted).
+    Supports entering multiple keys per provider for rate-limit rotation.
+    Keys are joined with commas and set for the current process only (not
+    persisted).
     """
     key_status = check_api_keys(config)
     for provider, present in key_status.items():
@@ -76,15 +78,35 @@ def prompt_missing_keys(config: DebateConfig, console: Console) -> None:
         console.print(
             f"[yellow]![/yellow] {env_var} is not set."
         )
-        answer = questionary.text(
-            f"Enter your {provider.capitalize()} API key (or press Enter to skip):",
-        ).ask()
-        if answer is None:
-            # Ctrl+C
-            raise KeyboardInterrupt
-        if answer.strip():
-            os.environ[env_var] = answer.strip()
-            console.print(f"  [green]>[/green] {env_var} set for this session.")
+        keys: list[str] = []
+        key_num = 1
+        while True:
+            prompt = (
+                f"Enter your {provider.capitalize()} API key (or press Enter to skip):"
+                if key_num == 1
+                else f"Enter your {provider.capitalize()} API key #{key_num} (or press Enter to finish):"
+            )
+            answer = questionary.text(prompt).ask()
+            if answer is None:
+                raise KeyboardInterrupt
+            if not answer.strip():
+                break
+            keys.append(answer.strip())
+            console.print(f"  [green]>[/green] Key set.")
+            add_more = questionary.confirm(
+                f"Add another {provider.capitalize()} key for rate-limit rotation?",
+                default=False,
+            ).ask()
+            if add_more is None:
+                raise KeyboardInterrupt
+            if not add_more:
+                break
+            key_num += 1
+
+        if keys:
+            os.environ[env_var] = ",".join(keys)
+            count_note = f" ({len(keys)} keys for rotation)" if len(keys) > 1 else ""
+            console.print(f"  [green]>[/green] {env_var} set for this session{count_note}.")
         else:
             console.print(
                 f"  [dim]Skipped. The debate may fail if {provider} calls are needed.[/dim]"
@@ -104,6 +126,25 @@ def warn_missing_keys(config: DebateConfig, console: Console) -> None:
             f"[yellow]Warning:[/yellow] {env_var} is not set. "
             f"API calls to {provider} may fail."
         )
+
+
+def create_key_pool(config: DebateConfig):
+    """Create and populate a KeyPool from the environment.
+
+    Loads .env first, then reads all provider keys (supports comma-separated
+    lists for multi-key rotation under parallel mode).
+
+    Args:
+        config: Debate configuration (used to identify required providers).
+
+    Returns:
+        A populated KeyPool instance.
+    """
+    from chal.utilities.key_pool import KeyPool
+    load_dotenv()
+    pool = KeyPool()
+    pool.load_from_env()
+    return pool
 
 
 def validate_api_keys(

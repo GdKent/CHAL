@@ -55,6 +55,9 @@ class StageConfig:
     # Text length limits
     short_note_max_chars: int = 140
 
+    # Retry settings
+    parse_retries: int = 3  # Max retries when LLM output fails to parse
+
 
 @dataclass
 class OutputConfig:
@@ -132,6 +135,13 @@ class BloodSportConfig:
 
 
 @dataclass
+class ParallelConfig:
+    """Configuration for parallel API call dispatch."""
+    enabled: bool = False               # Master switch — off by default
+    max_workers: int = 5                # ThreadPoolExecutor max_workers
+
+
+@dataclass
 class ModeratorConfig:
     """Configuration for the debate moderator/roadmap agent."""
     model: str = "o4-mini"
@@ -171,6 +181,7 @@ class DebateConfig:
     collaborative: CollaborativeConfig = field(default_factory=CollaborativeConfig)
     bloodsport: BloodSportConfig = field(default_factory=BloodSportConfig)
     moderator: ModeratorConfig = field(default_factory=ModeratorConfig)
+    parallel: ParallelConfig = field(default_factory=ParallelConfig)
 
     @classmethod
     def from_yaml(cls, config_path: Path) -> 'DebateConfig':
@@ -212,7 +223,8 @@ class DebateConfig:
             max_rebuttals_per_response=stage_data.get('max_rebuttals_per_response', 5),
             max_rebuttal_length_chars=stage_data.get('max_rebuttal_length_chars', 500),
             generation_temperature=stage_data.get('generation_temperature', 0.2),
-            short_note_max_chars=stage_data.get('short_note_max_chars', 140)
+            short_note_max_chars=stage_data.get('short_note_max_chars', 140),
+            parse_retries=stage_data.get('parse_retries', 3),
         )
 
         # Parse outputs
@@ -287,6 +299,13 @@ class DebateConfig:
             max_revisions=mod_data.get('max_revisions', -1),
         )
 
+        # Parse parallel config
+        par_data = data.get('parallel', {})
+        parallel = ParallelConfig(
+            enabled=par_data.get('enabled', False),
+            max_workers=par_data.get('max_workers', 5),
+        )
+
         # Parse debate settings
         debate_data = data.get('debate', {})
 
@@ -306,6 +325,7 @@ class DebateConfig:
             collaborative=collaborative,
             bloodsport=bloodsport,
             moderator=moderator,
+            parallel=parallel,
         )
 
     @classmethod
@@ -362,6 +382,7 @@ class DebateConfig:
                 "max_rebuttal_length_chars": self.stages.max_rebuttal_length_chars,
                 "generation_temperature": self.stages.generation_temperature,
                 "short_note_max_chars": self.stages.short_note_max_chars,
+                "parse_retries": self.stages.parse_retries,
             },
             "outputs": {
                 "storage_dir": storage_str,
@@ -418,6 +439,10 @@ class DebateConfig:
                 "allow_add_topics": self.moderator.allow_add_topics,
                 "allow_remove_topics": self.moderator.allow_remove_topics,
                 "max_revisions": self.moderator.max_revisions,
+            },
+            "parallel": {
+                "enabled": self.parallel.enabled,
+                "max_workers": self.parallel.max_workers,
             },
         }
 
