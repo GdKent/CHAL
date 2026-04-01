@@ -14,6 +14,7 @@ Usage:
 import sys
 import textwrap
 from pathlib import Path
+import pytest
 from chal.config import load_config
 
 def test_default_config():
@@ -452,6 +453,62 @@ def test_to_dict_includes_parallel():
     assert "parallel" in d
     assert "enabled" in d["parallel"]
     assert "max_workers" in d["parallel"]
+
+
+# ==============================================
+# AdjudicationConfig Weight Validation Tests
+# ==============================================
+
+def test_adjudication_config_accepts_pure_logic():
+    """Pure logic weights (1.0, 0.0) are accepted."""
+    from chal.config import AdjudicationConfig
+    cfg = AdjudicationConfig(logic_weight=1.0, ethics_weight=0.0)
+    assert cfg.logic_weight == 1.0
+    assert cfg.ethics_weight == 0.0
+
+
+def test_adjudication_config_accepts_balanced():
+    """Balanced weights (0.5, 0.5) are accepted."""
+    from chal.config import AdjudicationConfig
+    cfg = AdjudicationConfig(logic_weight=0.5, ethics_weight=0.5)
+    assert cfg.logic_weight == 0.5
+    assert cfg.ethics_weight == 0.5
+
+
+def test_adjudication_config_accepts_pure_ethics():
+    """Pure ethics weights (0.0, 1.0) are accepted."""
+    from chal.config import AdjudicationConfig
+    cfg = AdjudicationConfig(logic_weight=0.0, ethics_weight=1.0)
+    assert cfg.logic_weight == 0.0
+    assert cfg.ethics_weight == 1.0
+
+
+def test_adjudication_config_rejects_custom_weights():
+    """Custom weight combinations raise ValueError."""
+    from chal.config import AdjudicationConfig
+    with pytest.raises(ValueError, match="Invalid weight combination"):
+        AdjudicationConfig(logic_weight=0.7, ethics_weight=0.3)
+
+
+def test_adjudication_config_rejects_equal_nonstandard():
+    """Non-standard equal weights raise ValueError."""
+    from chal.config import AdjudicationConfig
+    with pytest.raises(ValueError, match="Invalid weight combination"):
+        AdjudicationConfig(logic_weight=0.3, ethics_weight=0.3)
+
+
+def test_adjudication_config_rejects_both_zero():
+    """Both weights zero raises ValueError."""
+    from chal.config import AdjudicationConfig
+    with pytest.raises(ValueError, match="Invalid weight combination"):
+        AdjudicationConfig(logic_weight=0.0, ethics_weight=0.0)
+
+
+def test_adjudication_config_default_logic_system():
+    """Default logic system is CLASSICAL_INFORMAL_BAYESIAN."""
+    from chal.config import AdjudicationConfig
+    cfg = AdjudicationConfig()
+    assert cfg.logic_system == "CLASSICAL_INFORMAL_BAYESIAN"
 
 
 if __name__ == "__main__":

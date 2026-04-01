@@ -154,8 +154,13 @@ def generate_analysis_report(
         status = resolution.get("status", "unknown") if isinstance(resolution, dict) else "unknown"
         reasoning = resolution.get("reasoning", "N/A") if isinstance(resolution, dict) else "N/A"
 
+        attack_type = entry.get("attack_type", "")
+        attack_strategy = entry.get("attack_strategy", "")
+
         sections.append(f"### {qid}: {challenger} → {target}")
         sections.append(f"- **Verdict**: {status.upper()}")
+        if attack_type:
+            sections.append(f"- **Attack**: {attack_type} / {attack_strategy}")
         sections.append(f"- **Challenge**: {entry.get('challenge', 'N/A')[:500]}")
         sections.append(f"- **Rebuttal**: {str(entry.get('rebuttal', 'N/A'))[:500]}")
         sections.append(f"- **Reasoning**: {reasoning}")
@@ -323,6 +328,8 @@ def generate_analysis_json(
             "challenger": entry.get("challenger"),
             "target": entry.get("target"),
             "qid": entry.get("qid"),
+            "attack_type": entry.get("attack_type", ""),
+            "attack_strategy": entry.get("attack_strategy", ""),
             "verdict": resolution.get("status") if isinstance(resolution, dict) else None,
             "reasoning": resolution.get("reasoning") if isinstance(resolution, dict) else None,
         }

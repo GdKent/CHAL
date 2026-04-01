@@ -41,8 +41,7 @@ def create_sample_belief(
         "version": 1,
         "metadata": {
             "topic_query": "Test topic",
-            "agent_persona": "Test Persona",
-            "created_at": "2026-02-15T12:00:00Z"
+            "agent_persona": "Test Persona"
         },
         "thesis": {
             "stance": f"Test stance for {belief_id}",
@@ -288,6 +287,53 @@ def create_mock_rebuttal_response(num_rebuttals: int = 3) -> str:
     for i in range(num_rebuttals):
         pairs.append(f"Critique {i+1}:\nTest critique {i+1}\n\nResponse {i+1}:\nTest rebuttal {i+1}")
     return "\n\n".join(pairs)
+
+
+def create_mock_structured_rebuttal_response(
+    num_rebuttals: int = 3,
+    include_patches: bool = True
+) -> str:
+    """
+    Create a mock structured rebuttal response in the new single-block JSON format.
+
+    Args:
+        num_rebuttals: Number of rebuttals to generate
+        include_patches: Whether to include matching patches
+
+    Returns:
+        Formatted response string with reasoning tags and a single fenced JSON block
+    """
+    rebuttals = []
+    patches = []
+    actions = ["refute", "concede", "defer"]
+
+    for i in range(num_rebuttals):
+        action = actions[i % len(actions)]
+        rebuttals.append({
+            "qid": f"Q{i+1}",
+            "answer": f"Test rebuttal {i+1} for action {action}",
+            "action": action,
+            "linked_ids": [f"C{i+1}"]
+        })
+        if action == "concede":
+            patches.append({
+                "op": "update_claim",
+                "target_id": f"C{i+1}",
+                "changes": {"strength": 0.5, "strength_justification": "Conceded weakness"}
+            })
+        elif action == "defer":
+            patches.append({
+                "op": "add_uncertainty",
+                "item": {
+                    "id": f"U{i+1}",
+                    "targets": [f"C{i+1}"],
+                    "question": f"Open question about C{i+1}",
+                    "status": "active"
+                }
+            })
+
+    block = {"rebuttals": rebuttals, "patches": patches if include_patches else []}
+    return f"<reasoning>Test reasoning</reasoning>\n\n```json\n{json.dumps(block, indent=2)}\n```"
 
 
 def create_mock_adjudication_response(outcome: str = "rebuttal_valid") -> str:

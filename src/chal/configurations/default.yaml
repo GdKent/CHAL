@@ -97,7 +97,7 @@ adjudication:
   ethics_weight: 0.0                   # Weight for ethical considerations (0.0-1.0)
 
   # Framework keys (see logic_systems.py and ethics_systems.py for options)
-  logic_system: "CLASSICAL_BAYESIAN"
+  logic_system: "CLASSICAL_INFORMAL_BAYESIAN"
   ethics_system: "NONE"
 
 # ============================================================================
@@ -107,7 +107,6 @@ adjudication:
 stages:
   # Stage 2: Cross-Examination
   max_questions_per_cross_exam: 5      # Max questions each agent asks per opponent
-  max_question_length_chars: 1000       # Character limit per question
 
   # Stage 3: Rebuttals
   max_rebuttals_per_response: 5        # Max rebuttals per agent per round

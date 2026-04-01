@@ -220,11 +220,10 @@ def test_validate_id_p_and_n_prefixes_rejected():
 
 @pytest.mark.unit
 def test_validate_metadata_required_fields():
-    """Test that metadata contains required fields: topic_query, agent_persona, created_at."""
+    """Test that metadata contains required fields: topic_query, agent_persona."""
     belief = create_sample_belief()
     assert "topic_query" in belief["metadata"]
     assert "agent_persona" in belief["metadata"]
-    assert "created_at" in belief["metadata"]
     errors = validate_belief(belief)
     assert len(errors) == 0
 

@@ -5,8 +5,7 @@
     "version": 1,
     "metadata": {
       "topic_query": "Does free will exist?",
-      "agent_persona": "Empiricist",
-      "created_at": "2026-02-15T12:00:00Z"
+      "agent_persona": "Empiricist"
     },
     "thesis": {
       "stance": "Free will is an illusion created by deterministic processes.",
@@ -24,7 +23,6 @@
     "metadata": {
       "topic_query": "Does free will exist?",
       "agent_persona": "Rationalist",
-      "created_at": "2026-02-15T12:00:00Z",
       "last_updated": "2026-02-15T12:30:00Z",
       "scope_conditions": "Discussion limited to compatibilist framework",
       "definitions": [
@@ -156,8 +154,7 @@
     "version": 1,
     "metadata": {
       "topic_query": "Test topic",
-      "agent_persona": "Test",
-      "created_at": "2026-02-15T12:00:00Z"
+      "agent_persona": "Test"
     },
     "thesis": {
       "stance": "Test stance",
@@ -197,8 +194,7 @@
     "version": 1,
     "metadata": {
       "topic_query": "Test topic",
-      "agent_persona": "Test",
-      "created_at": "2026-02-15T12:00:00Z"
+      "agent_persona": "Test"
     },
     "thesis": {
       "stance": "Test stance",

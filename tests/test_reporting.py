@@ -66,6 +66,9 @@ def _make_challenge_rebuttal_pairs(n=3, status="rebuttal_valid"):
             "challenge": f"Challenge {i+1}",
             "rebuttal": f"Rebuttal {i+1}",
             "qid": f"Q{i+1}",
+            "target_ids": ["C1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
             "resolution": {
                 "status": status if i < n - 1 else "critique_valid",
                 "reasoning": f"Reasoning for Q{i+1}",

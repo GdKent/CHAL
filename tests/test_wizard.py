@@ -262,25 +262,23 @@ class TestAskNumRounds:
 class TestAskAdjudicatorConfig:
 
     @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.text")
     @patch("chal.cli.wizard.questionary.autocomplete")
     @patch("chal.cli.wizard.questionary.select")
-    def test_returns_adjudication_config(self, mock_select, mock_auto, mock_text):
+    def test_returns_adjudication_config(self, mock_select, mock_auto):
         mock_select.return_value.ask.side_effect = [
-            "openai",              # provider
-            "CLASSICAL_BAYESIAN",  # logic system
-            "NONE",                # ethics system
-            "custom",              # balance preset (custom → text inputs)
+            "openai",                        # provider
+            "CLASSICAL_INFORMAL_BAYESIAN",   # logic system
+            "NONE",                          # ethics system
+            "pure_logic",                    # balance preset
         ]
         mock_auto.return_value.ask.return_value = "o1-mini"
-        mock_text.return_value.ask.side_effect = ["1.0", "0.0"]
 
         result = ask_adjudicator_config()
 
         assert isinstance(result, AdjudicationConfig)
         assert result.model == "o1-mini"
         assert result.provider == "openai"
-        assert result.logic_system == "CLASSICAL_BAYESIAN"
+        assert result.logic_system == "CLASSICAL_INFORMAL_BAYESIAN"
         assert result.ethics_system == "NONE"
         assert result.logic_weight == 1.0
         assert result.ethics_weight == 0.0
@@ -629,22 +627,20 @@ class TestRunWizard:
                 "0.7",         # agent 1 temp
                 "0.7",         # agent 2 temp
                 "3",           # num_rounds
-                "1.0",         # adj logic weight
-                "0.0",         # adj ethics weight
                 "5",           # max_workers
             ]
             m_select.return_value.ask.side_effect = [
-                "debate",                     # main menu
-                "__custom__",                 # ask_preset
-                "EMPIRICIST", "openai",      # agent 1
-                "RATIONALIST", "openai",     # agent 2
-                "open",                       # stage 2
-                "rebuttal",                   # stage 3
-                "openai",                     # adjudicator provider
-                "CLASSICAL_BAYESIAN",         # adjudicator logic system
-                "NONE",                       # adjudicator ethics system
-                "custom",                     # balance preset (custom → text inputs)
-                "cancel",                     # review action
+                "debate",                           # main menu
+                "__custom__",                       # ask_preset
+                "EMPIRICIST", "openai",            # agent 1
+                "RATIONALIST", "openai",           # agent 2
+                "open",                             # stage 2
+                "rebuttal",                         # stage 3
+                "openai",                           # adjudicator provider
+                "CLASSICAL_INFORMAL_BAYESIAN",     # adjudicator logic system
+                "NONE",                             # adjudicator ethics system
+                "pure_logic",                       # balance preset
+                "cancel",                           # review action
             ]
             m_auto.return_value.ask.side_effect = [
                 "gpt-4o",  # agent 1 model
@@ -675,22 +671,20 @@ class TestRunWizard:
                 "0.7",                     # agent 1 temp
                 "0.5",                     # agent 2 temp
                 "3",                       # num_rounds
-                "1.0",                     # adj logic weight
-                "0.0",                     # adj ethics weight
                 "5",                       # max_workers
             ]
             m_select.return_value.ask.side_effect = [
-                "debate",                # main menu
-                "__custom__",            # ask_preset
+                "debate",                        # main menu
+                "__custom__",                    # ask_preset
                 "EMPIRICIST", "openai",
                 "SKEPTIC", "anthropic",
                 "open",
                 "rebuttal",
-                "openai",                # adjudicator provider
-                "CLASSICAL_BAYESIAN",    # adjudicator logic system
-                "NONE",                  # adjudicator ethics system
-                "custom",                # balance preset (custom → text inputs)
-                "launch",                # review action
+                "openai",                        # adjudicator provider
+                "CLASSICAL_INFORMAL_BAYESIAN",   # adjudicator logic system
+                "NONE",                          # adjudicator ethics system
+                "pure_logic",                    # balance preset
+                "launch",                        # review action
             ]
             m_auto.return_value.ask.side_effect = [
                 "gpt-4o",
@@ -736,22 +730,20 @@ class TestRunWizard:
                 "0.7",              # agent 1 temp
                 "0.7",              # agent 2 temp
                 "1",                # num_rounds
-                "1.0",              # adj logic weight
-                "0.0",              # adj ethics weight
                 "5",                # max_workers
                 str(yaml_path),     # save path
             ]
             m_select.return_value.ask.side_effect = [
-                "debate",                # main menu
-                "__custom__",            # ask_preset
+                "debate",                        # main menu
+                "__custom__",                    # ask_preset
                 "EMPIRICIST", "openai",
                 "RATIONALIST", "openai",
                 "open",
                 "rebuttal",
-                "openai",                # adjudicator provider
-                "CLASSICAL_BAYESIAN",    # adjudicator logic system
-                "NONE",                  # adjudicator ethics system
-                "custom",                # balance preset (custom → text inputs)
+                "openai",                        # adjudicator provider
+                "CLASSICAL_INFORMAL_BAYESIAN",   # adjudicator logic system
+                "NONE",                          # adjudicator ethics system
+                "pure_logic",                    # balance preset
                 "save",    # review action: save (loops back to review)
                 "launch",  # review action: launch
             ]

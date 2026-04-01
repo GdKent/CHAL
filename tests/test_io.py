@@ -116,7 +116,7 @@ def test_parse_model_output_normalizes_aceux_ids():
   "schema_version": "CBS",
   "belief_id": "BELIEF-TEST",
   "version": 1,
-  "metadata": {"topic_query": "Test", "agent_persona": "Test", "created_at": "2026-01-01T00:00:00Z"},
+  "metadata": {"topic_query": "Test", "agent_persona": "Test"},
   "thesis": {"stance": "Test", "summary_bullets": ["B1"], "strength": 0.5},
   "claims": [
     {
@@ -152,7 +152,7 @@ def test_parse_model_output_does_not_normalize_pn_ids():
   "schema_version": "CBS",
   "belief_id": "BELIEF-TEST",
   "version": 1,
-  "metadata": {"topic_query": "Test", "agent_persona": "Test", "created_at": "2026-01-01T00:00:00Z"},
+  "metadata": {"topic_query": "Test", "agent_persona": "Test"},
   "thesis": {"stance": "Test", "summary_bullets": ["B1"], "strength": 0.5},
   "extra_field_with_P#1": "should stay as P#1",
   "extra_field_with_N#1": "should stay as N#1"

@@ -40,8 +40,8 @@ from chal.config import (
     DEFAULT_STORAGE_DIR,
 )
 from chal.agents.epistemic_personas import PERSONAS, PERSONA_DESCRIPTIONS
-from chal.agents.logic_systems import LOGIC_LABELS, LOGIC_DESCRIPTIONS
-from chal.agents.ethics_systems import ETHICS_LABELS, ETHICS_DESCRIPTIONS
+from chal.agents.logic_systems import LOGIC_SYSTEMS, get_logic_system_label, get_logic_system_description
+from chal.agents.ethics_systems import ETHICS_SYSTEMS, get_ethics_system_label, get_ethics_system_description
 from chal.cli.api_keys import PROVIDER_ENV_VARS
 
 
@@ -936,7 +936,7 @@ def _detect_balance_preset(logic: float, ethics: float) -> str:
         return "pure_ethics"
     if (logic, ethics) == (0.5, 0.5):
         return "balanced"
-    return "custom"
+    return "pure_logic"  # fallback to pure_logic for any legacy custom values
 
 
 def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> AdjudicationConfig:
@@ -955,17 +955,21 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
     d_balance = _detect_balance_preset(d_logic, d_ethics)
 
     # Build Choice lists for logic and ethics system selectors
+    # CLASSICAL_INFORMAL_BAYESIAN appears first (recommended default)
+    _LOGIC_KEY_ORDER = ["CLASSICAL_INFORMAL_BAYESIAN"] + [
+        k for k in LOGIC_SYSTEMS if k != "CLASSICAL_INFORMAL_BAYESIAN"
+    ]
     logic_sys_choices = [
-        Choice(f"{LOGIC_LABELS[k]} — {LOGIC_DESCRIPTIONS[k]}", value=k)
-        for k in LOGIC_LABELS
+        Choice(f"{get_logic_system_label(k)} — {get_logic_system_description(k)}", value=k)
+        for k in _LOGIC_KEY_ORDER
     ]
     ethics_sys_choices = [
-        Choice(f"{ETHICS_LABELS[k]} — {ETHICS_DESCRIPTIONS[k]}", value=k)
-        for k in ETHICS_LABELS
+        Choice(f"{get_ethics_system_label(k)} — {get_ethics_system_description(k)}", value=k)
+        for k in ETHICS_SYSTEMS
     ]
 
     sub = 0
-    while sub < 7:
+    while sub < 5:
         try:
             if sub == 0:
                 d_provider = _ask(questionary.select(
@@ -997,56 +1001,21 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
                     "How should the adjudicator balance logic and ethics?",
                     choices=[
                         Choice("Pure Logic (logic=1.0, ethics=0.0)", value="pure_logic"),
-                        Choice("Pure Ethics (logic=0.0, ethics=1.0)", value="pure_ethics"),
                         Choice("Balanced (logic=0.5, ethics=0.5)", value="balanced"),
-                        Choice("Custom (choose your own weights)", value="custom"),
+                        Choice("Pure Ethics (logic=0.0, ethics=1.0)", value="pure_ethics"),
                     ],
                     default=d_balance,
                 ), help_text=HELP_ADJ_BALANCE)
                 if d_balance == "pure_logic":
                     d_logic, d_ethics = 1.0, 0.0
-                    sub = 7  # skip custom inputs
-                    continue
                 elif d_balance == "pure_ethics":
                     d_logic, d_ethics = 0.0, 1.0
-                    sub = 7
-                    continue
-                elif d_balance == "balanced":
-                    d_logic, d_ethics = 0.5, 0.5
-                    sub = 7
-                    continue
-            elif sub == 5:
-                temp = _ask(questionary.text(
-                    "Logic weight (0.0-1.0):",
-                    default=str(d_logic),
-                    validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ), help_text=HELP_ADJ_CUSTOM_WEIGHTS)
-                d_logic = float(temp)
-            elif sub == 6:
-                temp = _ask(questionary.text(
-                    "Ethics weight (0.0-1.0):",
-                    default=str(d_ethics),
-                    validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ), help_text=HELP_ADJ_CUSTOM_WEIGHTS)
-                d_ethics = float(temp)
-                # Normalize so weights sum to 1.0
-                total = d_logic + d_ethics
-                if total > 0:
-                    d_logic = round(d_logic / total, 4)
-                    d_ethics = round(d_ethics / total, 4)
                 else:
                     d_logic, d_ethics = 0.5, 0.5
-                console.print(
-                    f"  [dim]Normalized weights: logic={d_logic}, ethics={d_ethics}[/dim]"
-                )
             sub += 1
         except WizardBack:
             if sub > 0:
-                # From custom inputs (5 or 6), go back to balance select (4)
-                if sub in (5, 6):
-                    sub = 4
-                else:
-                    sub -= 1
+                sub -= 1
             else:
                 raise
 

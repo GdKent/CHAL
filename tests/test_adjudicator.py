@@ -464,3 +464,77 @@ def test_run_with_belief_excerpts(mock_adjudicator_agent, test_adjudications):
     prompt_content = str(messages[0].content)
     assert "challenger_belief_excerpt" in prompt_content
     assert "target_belief_excerpt" in prompt_content
+
+
+# ==============================================
+# 9. Reasoning Extraction Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_run_prefers_reasoning_tags_over_json_summary(mock_adjudicator_agent):
+    """Full <reasoning> block is used instead of the short JSON summary."""
+    full_reasoning = (
+        "1. Restatement\n"
+        "The challenger argues X. The defender argues Y.\n\n"
+        "2. Formalization\n"
+        "P1: ...\nP2: ...\nC: ...\n\n"
+        "3. Adjudication\n"
+        "The defender successfully refutes the challenge."
+    )
+    mock_response = Message(
+        role="assistant",
+        content=(
+            f"<reasoning>\n{full_reasoning}\n</reasoning>\n\n"
+            '```json\n'
+            '{"outcome": "rebuttal_valid", "restatement": "Test", '
+            '"formalization_challenger": "", "formalization_target": "", '
+            '"scores": {}, "reasoning": "Short summary."}\n'
+            '```'
+        )
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    result = adjudicator.run("Challenge", "Rebuttal", challenger="A", target="B")
+
+    assert result["reasoning"] == full_reasoning
+    assert "Short summary" not in result["reasoning"]
+
+
+@pytest.mark.unit
+def test_run_falls_back_to_json_reasoning_without_tags(mock_adjudicator_agent):
+    """When no <reasoning> tags are present, fall back to JSON reasoning field."""
+    mock_response = Message(
+        role="assistant",
+        content=(
+            '```json\n'
+            '{"outcome": "unresolved", "reasoning": "JSON-only reasoning."}\n'
+            '```'
+        )
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    result = adjudicator.run("Challenge", "Rebuttal", challenger="A", target="B")
+
+    assert result["reasoning"] == "JSON-only reasoning."
+
+
+@pytest.mark.unit
+def test_run_reasoning_tags_used_in_fallback_path(mock_adjudicator_agent):
+    """<reasoning> tags are preferred even when JSON parsing fails entirely."""
+    full_reasoning = "Detailed analysis of the exchange."
+    mock_response = Message(
+        role="assistant",
+        content=(
+            f"<reasoning>\n{full_reasoning}\n</reasoning>\n\n"
+            "Outcome: critique_valid\n"
+            "Reasoning: Short fallback text."
+        )
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    result = adjudicator.run("Challenge", "Rebuttal", challenger="A", target="B")
+
+    assert result["reasoning"] == full_reasoning

@@ -2,78 +2,231 @@
 Unit tests for the logic_systems module.
 
 Tests cover:
-- All logic system keys exist in the LOGIC_SYSTEMS dict
-- Labels and descriptions dicts match LOGIC_SYSTEMS keys
-- All values are non-empty strings
-- Lookup via get_logic_system() (valid, case-insensitive, unknown key)
+- All 7 logic system keys exist in LOGIC_SYSTEMS
+- Every system dict has required keys (label, description, criteria)
+- Every criteria dict has the three required sub-keys
+- Each criteria list is non-empty
+- get_logic_system() returns a dict (not a string)
+- get_logic_system() raises KeyError for unknown keys
+- get_logic_system_description() returns a non-empty string
+- get_logic_system_label() returns a non-empty string
+- CLASSICAL_INFORMAL_BAYESIAN is a genuine superset of its components
 """
 
 import pytest
 from chal.agents.logic_systems import (
     LOGIC_SYSTEMS,
-    LOGIC_LABELS,
-    LOGIC_DESCRIPTIONS,
     get_logic_system,
+    get_logic_system_description,
+    get_logic_system_label,
 )
 
 EXPECTED_KEYS = [
-    "CLASSICAL_BAYESIAN",
+    "CLASSICAL_INFORMAL_BAYESIAN",
     "FORMAL_DEDUCTIVE",
-    "DIALECTICAL",
+    "BAYESIAN",
     "INFORMAL_CRITICAL",
+    "DIALECTICAL",
     "FUZZY_MULTIVALUED",
     "PARACONSISTENT",
 ]
 
+REQUIRED_DICT_KEYS = {"label", "description", "criteria"}
+REQUIRED_CRITERIA_KEYS = {"critique_valid", "rebuttal_valid", "unresolved"}
+
+# Expected criteria counts per system: (critique_valid, rebuttal_valid, unresolved)
+EXPECTED_COUNTS = {
+    "CLASSICAL_INFORMAL_BAYESIAN": (22, 22, 8),
+    "FORMAL_DEDUCTIVE": (8, 6, 3),
+    "BAYESIAN": (7, 7, 3),
+    "INFORMAL_CRITICAL": (8, 7, 3),
+    "DIALECTICAL": (6, 5, 3),
+    "FUZZY_MULTIVALUED": (6, 6, 3),
+    "PARACONSISTENT": (5, 5, 3),
+}
+
+
+# ==============================================
+# 1. System Registry Tests
+# ==============================================
 
 @pytest.mark.unit
 def test_all_systems_in_dict():
-    """All 6 logic system keys exist in LOGIC_SYSTEMS."""
+    """All 7 logic system keys exist in LOGIC_SYSTEMS."""
     for key in EXPECTED_KEYS:
         assert key in LOGIC_SYSTEMS, f"Missing logic system key: {key}"
-    assert len(LOGIC_SYSTEMS) == 6
+    assert len(LOGIC_SYSTEMS) == 7
 
 
 @pytest.mark.unit
-def test_labels_match_systems():
-    """Every key in LOGIC_SYSTEMS has a corresponding entry in LOGIC_LABELS."""
-    for key in LOGIC_SYSTEMS:
-        assert key in LOGIC_LABELS, f"Missing label for {key}"
+def test_no_classical_bayesian():
+    """CLASSICAL_BAYESIAN has been removed (replaced by CLASSICAL_INFORMAL_BAYESIAN)."""
+    assert "CLASSICAL_BAYESIAN" not in LOGIC_SYSTEMS
+
+
+# ==============================================
+# 2. Dict Structure Tests
+# ==============================================
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_system_has_required_keys(key):
+    """Every system dict has label, description, and criteria keys."""
+    system = LOGIC_SYSTEMS[key]
+    assert isinstance(system, dict), f"{key} is not a dict"
+    missing = REQUIRED_DICT_KEYS - set(system.keys())
+    assert not missing, f"{key} missing keys: {missing}"
 
 
 @pytest.mark.unit
-def test_descriptions_match_systems():
-    """Every key in LOGIC_SYSTEMS has a corresponding entry in LOGIC_DESCRIPTIONS."""
-    for key in LOGIC_SYSTEMS:
-        assert key in LOGIC_DESCRIPTIONS, f"Missing description for {key}"
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_criteria_has_required_keys(key):
+    """Every criteria dict has critique_valid, rebuttal_valid, unresolved."""
+    criteria = LOGIC_SYSTEMS[key]["criteria"]
+    assert isinstance(criteria, dict), f"{key} criteria is not a dict"
+    missing = REQUIRED_CRITERIA_KEYS - set(criteria.keys())
+    assert not missing, f"{key} criteria missing keys: {missing}"
 
 
 @pytest.mark.unit
-def test_system_values_are_strings():
-    """Every value in LOGIC_SYSTEMS is a non-empty string."""
-    for key, value in LOGIC_SYSTEMS.items():
-        assert isinstance(value, str), f"{key} value is not a string"
-        assert len(value) > 0, f"{key} value is empty"
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_criteria_lists_are_non_empty(key):
+    """Each criteria list has at least one item."""
+    criteria = LOGIC_SYSTEMS[key]["criteria"]
+    for outcome in REQUIRED_CRITERIA_KEYS:
+        items = criteria[outcome]
+        assert isinstance(items, list), f"{key}.{outcome} is not a list"
+        assert len(items) > 0, f"{key}.{outcome} is empty"
 
 
 @pytest.mark.unit
-def test_get_logic_system_valid_key():
-    """get_logic_system('CLASSICAL_BAYESIAN') returns correct text."""
-    result = get_logic_system("CLASSICAL_BAYESIAN")
-    assert isinstance(result, str)
-    assert "bayesian" in result.lower()
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_criteria_items_are_non_empty_strings(key):
+    """Every criterion is a non-empty string."""
+    criteria = LOGIC_SYSTEMS[key]["criteria"]
+    for outcome in REQUIRED_CRITERIA_KEYS:
+        for i, item in enumerate(criteria[outcome]):
+            assert isinstance(item, str), (
+                f"{key}.{outcome}[{i}] is not a string"
+            )
+            assert len(item) > 0, f"{key}.{outcome}[{i}] is empty"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_label_is_non_empty_string(key):
+    """Every system has a non-empty label string."""
+    label = LOGIC_SYSTEMS[key]["label"]
+    assert isinstance(label, str) and len(label) > 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_description_is_non_empty_string(key):
+    """Every system has a non-empty description string."""
+    desc = LOGIC_SYSTEMS[key]["description"]
+    assert isinstance(desc, str) and len(desc) > 0
+
+
+# ==============================================
+# 3. Criteria Count Tests
+# ==============================================
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_criteria_counts(key):
+    """Each system has the expected number of criteria."""
+    criteria = LOGIC_SYSTEMS[key]["criteria"]
+    expected = EXPECTED_COUNTS[key]
+    actual = (
+        len(criteria["critique_valid"]),
+        len(criteria["rebuttal_valid"]),
+        len(criteria["unresolved"]),
+    )
+    assert actual == expected, (
+        f"{key}: expected {expected}, got {actual}"
+    )
+
+
+# ==============================================
+# 4. Lookup Function Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_get_logic_system_returns_dict():
+    """get_logic_system() returns a dict, not a string."""
+    result = get_logic_system("CLASSICAL_INFORMAL_BAYESIAN")
+    assert isinstance(result, dict)
+    assert "label" in result
+    assert "description" in result
+    assert "criteria" in result
 
 
 @pytest.mark.unit
 def test_get_logic_system_case_insensitive():
-    """get_logic_system('classical_bayesian') works (uppercased internally)."""
-    lower = get_logic_system("classical_bayesian")
-    upper = get_logic_system("CLASSICAL_BAYESIAN")
-    assert lower == upper
+    """get_logic_system() is case-insensitive."""
+    lower = get_logic_system("formal_deductive")
+    upper = get_logic_system("FORMAL_DEDUCTIVE")
+    assert lower is upper
 
 
 @pytest.mark.unit
 def test_get_logic_system_unknown_key():
-    """get_logic_system('UNKNOWN') raises KeyError."""
+    """get_logic_system() raises KeyError for unknown keys."""
     with pytest.raises(KeyError):
         get_logic_system("UNKNOWN")
+
+
+@pytest.mark.unit
+def test_get_logic_system_description():
+    """get_logic_system_description() returns the description string."""
+    desc = get_logic_system_description("BAYESIAN")
+    assert isinstance(desc, str)
+    assert "Bayesian" in desc
+
+
+@pytest.mark.unit
+def test_get_logic_system_description_case_insensitive():
+    """get_logic_system_description() is case-insensitive."""
+    lower = get_logic_system_description("bayesian")
+    upper = get_logic_system_description("BAYESIAN")
+    assert lower == upper
+
+
+@pytest.mark.unit
+def test_get_logic_system_description_unknown_key():
+    """get_logic_system_description() raises KeyError for unknown keys."""
+    with pytest.raises(KeyError):
+        get_logic_system_description("NONEXISTENT")
+
+
+@pytest.mark.unit
+def test_get_logic_system_label():
+    """get_logic_system_label() returns the label string."""
+    label = get_logic_system_label("DIALECTICAL")
+    assert isinstance(label, str)
+    assert len(label) > 0
+
+
+@pytest.mark.unit
+def test_get_logic_system_label_unknown_key():
+    """get_logic_system_label() raises KeyError for unknown keys."""
+    with pytest.raises(KeyError):
+        get_logic_system_label("NONEXISTENT")
+
+
+# ==============================================
+# 5. Superset Verification
+# ==============================================
+
+@pytest.mark.unit
+def test_hybrid_is_larger_than_components():
+    """CLASSICAL_INFORMAL_BAYESIAN has more criteria than any single component."""
+    hybrid = LOGIC_SYSTEMS["CLASSICAL_INFORMAL_BAYESIAN"]["criteria"]
+    for component_key in ["FORMAL_DEDUCTIVE", "BAYESIAN", "INFORMAL_CRITICAL"]:
+        component = LOGIC_SYSTEMS[component_key]["criteria"]
+        for outcome in REQUIRED_CRITERIA_KEYS:
+            assert len(hybrid[outcome]) > len(component[outcome]), (
+                f"Hybrid {outcome} ({len(hybrid[outcome])}) should be larger "
+                f"than {component_key} {outcome} ({len(component[outcome])})"
+            )

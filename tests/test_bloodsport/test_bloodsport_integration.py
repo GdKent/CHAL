@@ -141,6 +141,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Why do you believe X?",
             "qid": "Q1",
             "target_ids": ["C1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         result = controller.run_stage_3_bloodsport()
@@ -162,6 +164,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Test",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_bloodsport()
@@ -181,6 +185,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_bloodsport()
@@ -200,6 +206,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_bloodsport()
@@ -218,6 +226,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         assert controller.agent_stats["Agent-A"]["total_arguments"] == 0
@@ -240,6 +250,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_bloodsport()
@@ -259,6 +271,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": ["C1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_bloodsport()
@@ -278,6 +292,8 @@ class TestRunStage3Bloodsport:
                 "challenge": "Q1?",
                 "qid": "Q1",
                 "target_ids": [],
+                "attack_type": "undermining",
+                "attack_strategy": "challenge_evidence",
             },
             {
                 "challenger": "Agent-A",
@@ -285,6 +301,8 @@ class TestRunStage3Bloodsport:
                 "challenge": "Q2?",
                 "qid": "Q2",
                 "target_ids": [],
+                "attack_type": "undermining",
+                "attack_strategy": "challenge_evidence",
             },
         ]
 
@@ -304,6 +322,8 @@ class TestRunStage3Bloodsport:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_bloodsport()

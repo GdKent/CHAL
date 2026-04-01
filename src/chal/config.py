@@ -27,15 +27,27 @@ class AgentConfig:
     provider: str = "openai"  # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
 
 
+_VALID_WEIGHT_COMBOS = {(1.0, 0.0), (0.5, 0.5), (0.0, 1.0)}
+
+
 @dataclass
 class AdjudicationConfig:
     """Configuration for the adjudicator agent."""
     model: str = "gpt-4o"
     logic_weight: float = 1.0
     ethics_weight: float = 0.0
-    logic_system: str = "CLASSICAL_BAYESIAN"
+    logic_system: str = "CLASSICAL_INFORMAL_BAYESIAN"
     ethics_system: str = "NONE"
     provider: str = "openai"  # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
+
+    def __post_init__(self):
+        combo = (self.logic_weight, self.ethics_weight)
+        if combo not in _VALID_WEIGHT_COMBOS:
+            raise ValueError(
+                f"Invalid weight combination (logic={self.logic_weight}, "
+                f"ethics={self.ethics_weight}). Must be one of: "
+                f"(1.0, 0.0), (0.5, 0.5), or (0.0, 1.0)."
+            )
 
 
 @dataclass
@@ -43,7 +55,6 @@ class StageConfig:
     """Configuration for debate stage parameters."""
     # Stage 2: Cross-Examination
     max_questions_per_cross_exam: int = 5
-    max_question_length_chars: int = 500
 
     # Stage 3: Rebuttals
     max_rebuttals_per_response: int = 5
@@ -210,7 +221,7 @@ class DebateConfig:
             model=adj_data.get('model', 'gpt-4o'),
             logic_weight=adj_data.get('logic_weight', 1.0),
             ethics_weight=adj_data.get('ethics_weight', 0.0),
-            logic_system=adj_data.get('logic_system', 'CLASSICAL_BAYESIAN'),
+            logic_system=adj_data.get('logic_system', 'CLASSICAL_INFORMAL_BAYESIAN'),
             ethics_system=adj_data.get('ethics_system', 'NONE'),
             provider=adj_data.get('provider', 'openai')
         )
@@ -219,7 +230,6 @@ class DebateConfig:
         stage_data = data.get('stages', {})
         stages = StageConfig(
             max_questions_per_cross_exam=stage_data.get('max_questions_per_cross_exam', 5),
-            max_question_length_chars=stage_data.get('max_question_length_chars', 500),
             max_rebuttals_per_response=stage_data.get('max_rebuttals_per_response', 5),
             max_rebuttal_length_chars=stage_data.get('max_rebuttal_length_chars', 500),
             generation_temperature=stage_data.get('generation_temperature', 0.2),
@@ -377,7 +387,6 @@ class DebateConfig:
             },
             "stages": {
                 "max_questions_per_cross_exam": self.stages.max_questions_per_cross_exam,
-                "max_question_length_chars": self.stages.max_question_length_chars,
                 "max_rebuttals_per_response": self.stages.max_rebuttals_per_response,
                 "max_rebuttal_length_chars": self.stages.max_rebuttal_length_chars,
                 "generation_temperature": self.stages.generation_temperature,

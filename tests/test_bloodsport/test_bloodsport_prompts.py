@@ -357,6 +357,10 @@ class TestStage5BloodSportPrompt:
             challenge_rebuttal_pairs=[{
                 "challenger": "Agent-B",
                 "challenge": "Test challenge",
+                "qid": "Q1",
+                "target_ids": ["C1"],
+                "attack_type": "undermining",
+                "attack_strategy": "challenge_evidence",
                 "resolution": {"status": "critique_valid", "reasoning": "Valid point"},
             }],
             prior_belief_json=SAMPLE_BELIEF_JSON,
@@ -409,6 +413,10 @@ class TestStage5BloodSportPrompt:
             {
                 "challenger": "Agent-B",
                 "challenge": "Your claim C1 is unsupported",
+                "qid": "Q1",
+                "target_ids": ["C1"],
+                "attack_type": "undermining",
+                "attack_strategy": "challenge_evidence",
                 "resolution": {"status": "critique_valid", "reasoning": "Evidence was weak"},
             },
         ]

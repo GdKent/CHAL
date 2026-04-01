@@ -55,7 +55,6 @@ def sample_minimal_belief() -> Dict[str, Any]:
         "metadata": {
             "topic_query": "Does free will exist?",
             "agent_persona": "Empiricist",
-            "created_at": "2026-02-15T12:00:00Z"
         },
         "thesis": {
             "stance": "Free will is an illusion created by deterministic processes.",
@@ -80,7 +79,6 @@ def sample_complete_belief() -> Dict[str, Any]:
         "metadata": {
             "topic_query": "Does free will exist?",
             "agent_persona": "Rationalist",
-            "created_at": "2026-02-15T12:00:00Z",
             "last_updated": "2026-02-15T12:30:00Z",
             "scope_conditions": "Discussion limited to compatibilist framework",
             "definitions": [
@@ -146,7 +144,6 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
         "metadata": {
             "topic_query": "Test topic",
             "agent_persona": "Test",
-            "created_at": "2026-02-15T12:00:00Z"
         },
         "thesis": {
             "stance": "Test stance",
@@ -192,7 +189,6 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
         "metadata": {
             "topic_query": "Test topic",
             "agent_persona": "Test",
-            "created_at": "2026-02-15T12:00:00Z"
         },
         "thesis": {
             "stance": "Test stance",

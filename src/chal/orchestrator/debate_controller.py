@@ -30,17 +30,17 @@ from datetime import datetime
 from chal.agents.base import Agent, Message
 from chal.agents import prompts
 from chal.agents.factory import create_agent
-from chal.agents.logic_systems import get_logic_system
-from chal.agents.ethics_systems import get_ethics_system
+from chal.agents.logic_systems import get_logic_system, get_logic_system_description
+from chal.agents.ethics_systems import get_ethics_system, get_ethics_system_description
 from chal.orchestrator.adjudicator import Adjudicator
 from chal.orchestrator.moderator import Moderator
-from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary
+from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary, validate_stage2_questions
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
 from chal.convergence import calculate_claim_agreement, format_convergence_summary, get_convergence_trajectory_summary
 from chal.beliefs.io import parse_model_output_to_belief, belief_to_markdown
 from chal.beliefs.io import project_for_embedding
 from chal.beliefs.graph_visualizer import export_debate_graph
-from chal.config import DebateConfig
+from chal.config import DebateConfig, AdjudicationConfig
 from chal.utilities.training_data import DebateRecorder
 from chal.utilities.reporting import generate_analysis_report, generate_analysis_json
 from chal.utilities.parallel import ParallelDispatcher, WorkItem
@@ -86,6 +86,7 @@ class DebateController:
         self.agents = agents
         self.max_rounds = config.max_rounds if config and hasattr(config, 'max_rounds') else max_rounds
         self.config = config  # Store config for accessing stage and scribe parameters
+        self.topic = config.topic if config else ""
         self.key_pool = key_pool
 
         # Parallel dispatcher — uses config when available, else sequential
@@ -109,26 +110,29 @@ class DebateController:
         self.resolution_outcomes: dict[str, dict[str, str]] = {} # A dictionary of adjudicated outcomes per agent (Stage 4): {agent_name: {challenge_text: resolution_result}}
 
         # Instantiate the adjudicator agent
-        if config:
-            adjudicator_prompt = prompts.build_adjudicator_prompt(
-                logic_weight=config.adjudication.logic_weight,
-                ethics_weight=config.adjudication.ethics_weight,
-                logic_sys=get_logic_system(config.adjudication.logic_system),
-                ethics_sys=get_ethics_system(config.adjudication.ethics_system),
-            )
-        else:
-            adjudicator_prompt = prompts.build_adjudicator_prompt()
-        adj_model = config.adjudication.model if config else "gpt-4o"
-        adj_provider = config.adjudication.provider if config else "openai"
+        adj_cfg = config.adjudication if config else AdjudicationConfig()
+        logic_sys_dict = get_logic_system(adj_cfg.logic_system)
+        ethics_sys_dict = get_ethics_system(adj_cfg.ethics_system)
+        adjudicator_prompt = prompts.build_adjudicator_prompt(
+            logic_weight=adj_cfg.logic_weight,
+            ethics_weight=adj_cfg.ethics_weight,
+            logic_sys=logic_sys_dict,
+            ethics_sys=ethics_sys_dict,
+        )
         adjudicator_agent = create_agent(
             name="Adjudicator",
-            model=adj_model,
-            provider=adj_provider,
+            model=adj_cfg.model,
+            provider=adj_cfg.provider,
             system_prompt=adjudicator_prompt,
             key_pool=self.key_pool,
         )
-        # Build the adjudicator agent
-        self.adjudicator = Adjudicator(adjudicator_agent)
+        self.adjudicator = Adjudicator(
+            adjudicator_agent,
+            logic_weight=adj_cfg.logic_weight,
+            ethics_weight=adj_cfg.ethics_weight,
+            logic_sys=get_logic_system_description(adj_cfg.logic_system),
+            ethics_sys=get_ethics_system_description(adj_cfg.ethics_system),
+        )
 
         # Instantiate the scribe agent
         scribe_model = config.scribe.model if config else "gpt-4o"
@@ -661,7 +665,7 @@ class DebateController:
                     previous_challenges=self.previous_rounds_challenges.get(f"{c.name}→{t.name}", []),
                     focus_subtopic=focus_subtopic,
                 ),
-                is_valid_fn=lambda r: bool(r.get("questions")) or bool(r.get("parsed_challenges")),
+                is_valid_fn=_validate_cross_exam_result,
                 stage_label="Stage 2",
                 agent_name=pair_key,
                 initial_result=work_result,
@@ -709,6 +713,8 @@ class DebateController:
                         "challenge": q.get("text", "").strip(),       # human-readable question
                         "qid": q.get("qid"),                           # Q1, Q2, ...
                         "target_ids": q.get("target_ids", []),         # ["C3","A1"]
+                        "attack_type": q.get("attack_type", ""),       # undermining|rebutting|undercutting
+                        "attack_strategy": q.get("attack_strategy", ""),  # specific strategy
                         "rebuttal": None,
                         "resolution": None
                     })
@@ -737,6 +743,10 @@ class DebateController:
                     markdown_section += f"**{q.get('qid', 'Q?')}**: {q.get('text', '').strip()}\n\n"
                     if q.get('target_ids'):
                         markdown_section += f"  *Targets: {', '.join(q.get('target_ids', []))}*\n\n"
+                    attack_type = q.get('attack_type', '')
+                    attack_strategy = q.get('attack_strategy', '')
+                    if attack_type:
+                        markdown_section += f"  *Attack: {attack_type} / {attack_strategy}*\n\n"
             else:
                 markdown_section += response.content + "\n\n"
 
@@ -964,6 +974,10 @@ class DebateController:
             # Markdown for this exchange
             markdown_section = f"\n## {challenger_name} ↔ {defender_name} — {qid}\n\n"
             markdown_section += f"**Original question**: {question_text}\n\n"
+            entry_attack_type = entry.get("attack_type", "")
+            entry_attack_strategy = entry.get("attack_strategy", "")
+            if entry_attack_type:
+                markdown_section += f"*Attack: {entry_attack_type} / {entry_attack_strategy}*\n\n"
 
             max_rebuttal_length = self.config.stages.max_rebuttal_length_chars if self.config else 500
             topic = self.topic if hasattr(self, "topic") else "<topic>"
@@ -1146,6 +1160,8 @@ class DebateController:
             self.previous_rounds_challenges.setdefault(prev_key, []).append({
                 "qid": entry.get("qid"),
                 "target_ids": entry.get("target_ids", []),
+                "attack_type": entry.get("attack_type", ""),
+                "attack_strategy": entry.get("attack_strategy", ""),
                 "outcome": entry.get("resolution", {}).get("status", "unknown")
             })
 
@@ -1351,6 +1367,17 @@ class DebateController:
                     target=defender_name
                 )
 
+                # Log the per-pair prompt and raw response for debugging
+                bs_label = f"Stage 3C - Blood Sport Adjudication ({qid}: {challenger_name} → {defender_name})"
+                if resolution.get("_debug_prompt"):
+                    self._log_prompt("Adjudicator", resolution["_debug_prompt"], bs_label)
+                if resolution.get("_debug_raw_response"):
+                    self._log_response("Adjudicator", resolution["_debug_raw_response"], bs_label)
+
+                # Strip debug keys before storing
+                resolution.pop("_debug_prompt", None)
+                resolution.pop("_debug_raw_response", None)
+
                 entry["resolution"] = resolution
                 entry["rebuttal"] = combined_rebuttal
                 entry["bloodsport_transcript"] = dialogue_history
@@ -1395,6 +1422,8 @@ class DebateController:
             self.previous_rounds_challenges.setdefault(prev_key, []).append({
                 "qid": entry.get("qid"),
                 "target_ids": entry.get("target_ids", []),
+                "attack_type": entry.get("attack_type", ""),
+                "attack_strategy": entry.get("attack_strategy", ""),
                 "outcome": entry.get("resolution", {}).get("status", "unknown")
             })
 
@@ -1419,6 +1448,7 @@ class DebateController:
         # === DEBUG LOG ===
         self._log_header("STAGE 4: ADJUDICATION")
         self._log(f"Starting adjudication of {len(self.challenge_rebuttal_pairs)} challenge-rebuttal pair(s)", "INFO")
+        self._log_prompt("Adjudicator", self.adjudicator.agent.system_prompt, "Stage 4 - System Prompt")
 
         # === MARKDOWN TRANSCRIPT ===
         markdown_header = "\n# ⚖️ Stage 4: Adjudication\n"
@@ -1480,6 +1510,17 @@ class DebateController:
 
             resolution = r["resolution"]
 
+            # Log the per-pair prompt and raw response for debugging
+            pair_label = f"Stage 4 - Adjudication ({entry['challenger']} → {entry['target']})"
+            if resolution.get("_debug_prompt"):
+                self._log_prompt("Adjudicator", resolution["_debug_prompt"], pair_label)
+            if resolution.get("_debug_raw_response"):
+                self._log_response("Adjudicator", resolution["_debug_raw_response"], pair_label)
+
+            # Strip debug keys before storing
+            resolution.pop("_debug_prompt", None)
+            resolution.pop("_debug_raw_response", None)
+
             self._log(f"Adjudication outcome: {resolution.get('status', 'unknown').upper()}", "INFO")
             self.debug_log.append(f"\n--- ADJUDICATION RESULT ({entry['challenger']} → {entry['target']}) ---\n{json.dumps(resolution, ensure_ascii=False, indent=2)}\n--- END ADJUDICATION ---\n")
 
@@ -1506,10 +1547,14 @@ class DebateController:
 
             # Add to markdown transcript
             markdown_section = f"\n### {entry['challenger']} → {entry['target']}\n\n"
-            markdown_section += f"**Outcome**: {resolution['status'].upper()}\n\n"
-            markdown_section += f"**Reasoning**: {resolution.get('reasoning', 'N/A')}\n\n"
+            adj_attack_type = entry.get("attack_type", "")
+            adj_attack_strategy = entry.get("attack_strategy", "")
+            if adj_attack_type:
+                markdown_section += f"*Attack: {adj_attack_type} / {adj_attack_strategy}*\n\n"
             if resolution.get('restatement'):
                 markdown_section += f"**Disagreement**: {resolution['restatement']}\n\n"
+            markdown_section += f"**Outcome**: {resolution['status'].upper()}\n\n"
+            markdown_section += f"**Reasoning**: {resolution.get('reasoning', 'N/A')}\n\n"
 
             self._add_to_markdown(markdown_section)
             self._notify("adjudication_result", {
@@ -1534,102 +1579,12 @@ class DebateController:
             self.previous_rounds_challenges[prev_challenges_key].append({
                 "qid": qid,
                 "target_ids": target_ids,
+                "attack_type": entry.get("attack_type", ""),
+                "attack_strategy": entry.get("attack_strategy", ""),
                 "outcome": outcome
             })
 
         return self.challenge_rebuttal_pairs
-
-    def _apply_stage5_patches(self, agent, name: str, response_content: str,
-                              relevant_entries: list, prior_json: dict) -> tuple:
-        """Shared single-phase patch application logic for bloodsport and legacy paths.
-
-        Returns (patches_list, md_view_str).
-        """
-        patches = []
-        blocks = _extract_all_json_blocks(response_content)
-
-        if not blocks:
-            self._log_parse_result(False, f"No JSON blocks found in {name} response")
-            self._log("Keeping prior belief unchanged", "WARN")
-            return patches, agent.get_internal_belief()
-
-        patches_block = json.loads(blocks[0])
-        patches = patches_block.get("patches", [])
-
-        if not patches:
-            critique_valid_count = sum(
-                1 for entry in relevant_entries
-                if (entry.get("resolution") or {}).get("status") == "critique_valid"
-            )
-            if critique_valid_count > 0:
-                self._log_parse_result(False,
-                    f"WARNING: {name} received {critique_valid_count} CRITIQUE_VALID outcome(s) "
-                    f"but returned no patches."
-                )
-                self._log(f"ENFORCEMENT FAILURE: Agent {name} ignored mandatory patch requirement", "ERROR")
-            else:
-                self._log_parse_result(False, f"No patches returned for {name}, keeping prior belief")
-            return patches, agent.get_internal_belief()
-
-        self._log_parse_result(True, f"Successfully parsed {len(patches)} patch(es) for {name}")
-        self.debug_log.append(f"\n--- PATCHES FOR {name} ---\n{json.dumps(patches, ensure_ascii=False, indent=2)}\n--- END PATCHES ---\n")
-
-        prior_belief = agent.get_internal_belief_obj()
-        if not prior_belief:
-            self._log(f"No prior belief object for {name}, cannot apply patches", "WARN")
-            return patches, agent.get_internal_belief()
-
-        from chal.beliefs.patches import apply_patches, validate_patches
-
-        patch_errors = validate_patches(patches, prior_belief)
-        if patch_errors:
-            self._log(f"Patch validation warnings for {name}:", "WARN")
-            for err in patch_errors:
-                self._log(f"  - {err}", "WARN")
-
-        md_view = agent.get_internal_belief()  # Default fallback
-        try:
-            updated_belief = apply_patches(prior_belief, patches, propagate_strength=True)
-            self.debug_log.append(f"\n--- UPDATED BELIEF FOR {name} ---\n{json.dumps(updated_belief, ensure_ascii=False, indent=2)}\n--- END UPDATED BELIEF ---\n")
-
-            from chal.beliefs.belief_graph import BeliefGraph
-            try:
-                validation_graph = BeliefGraph(updated_belief)
-                validation_errors = validation_graph.validate_links()
-                blocking_errors = [err for err in validation_errors if "BLOCKING ERROR" in err]
-                warnings = [err for err in validation_errors if "BLOCKING ERROR" not in err]
-
-                if blocking_errors:
-                    self._log(f"BLOCKING validation errors for {name}:", "ERROR")
-                    for err in blocking_errors:
-                        self._log(f"  - {err}", "ERROR")
-                    self._log(f"Reverting to prior belief for {name}", "ERROR")
-                    raise Exception(f"Updated belief contains blocking validation errors: {blocking_errors}")
-
-                if warnings:
-                    self._log(f"Graph validation warnings for {name}:", "WARN")
-                    for warn in warnings:
-                        self._log(f"  - {warn}", "WARN")
-                else:
-                    self._log(f"Graph validation passed for {name}", "INFO")
-
-            except Exception as e:
-                if "blocking validation errors" in str(e).lower():
-                    raise
-                self._log(f"Graph validation error for {name}: {e}", "ERROR")
-
-            agent.set_internal_belief_obj(updated_belief)
-            md_view = belief_to_markdown(updated_belief)
-            agent.set_internal_belief(md_view)
-            agent.all_beliefs_held.append(json.dumps(updated_belief, ensure_ascii=False, indent=2))
-            self._log(f"Applied {len(patches)} patches for {name}", "INFO")
-
-        except Exception as e:
-            self._log(f"Error applying patches for {name}: {e}", "ERROR")
-            self._log("Keeping prior belief unchanged", "WARN")
-            md_view = agent.get_internal_belief()
-
-        return patches, md_view
 
     def run_stage_5_update_positions(self) -> None:
         """
@@ -1637,6 +1592,11 @@ class DebateController:
 
         For each agent, gathers all resolution outcomes where they were the target.
         Uses this to synthesize an updated version of their beliefs and claims.
+
+        Uses the gather-then-apply pattern: each agent's full Stage 5 pipeline
+        (Phase 1 → Phase 2 for CBS, single-phase for bloodsport/legacy) runs
+        concurrently via ParallelDispatcher.  Shared-state mutations happen in
+        the sequential APPLY phase.
 
         Updates:
             dict[str, str]: Updated current_positions keyed by agent name.
@@ -1661,321 +1621,105 @@ class DebateController:
 
         self._log(f"Grouped adjudication results for {len(grouped_by_target)} agent(s)", "INFO")
 
-        # Ask each agent to revise their view
+        # Extract config values for the gather function (avoid self.* in threads)
+        stage3_mode = self.config.stage3_mode if self.config else "rebuttal"
+        generation_temp = self.config.stages.generation_temperature if self.config else 0.2
+        max_retries = self.config.stages.parse_retries if self.config else 3
+
+        # --- GATHER: Build work items for agents with adjudication results ---
+        items = [
+            WorkItem(
+                key=agent.name,
+                callable=lambda a=agent, re=grouped_by_target[agent.name]: _run_stage5_for_agent(
+                    agent=a,
+                    relevant_entries=re,
+                    stage3_mode=stage3_mode,
+                    last_rebuttals_patches=self.last_rebuttals_patches.get(a.name, []),
+                    generation_temp=generation_temp,
+                    max_retries=max_retries,
+                ),
+                context={"agent": agent},
+            )
+            for agent in self.agents
+            if agent.name in grouped_by_target
+        ]
+
+        results = self.dispatcher.run(items)
+
+        # --- APPLY: Process results sequentially in deterministic agent order ---
         for agent in self.agents:
             name = agent.name
             relevant_entries = grouped_by_target.get(name, [])
 
+            # Agents with no adjudication results — not dispatched, handle here
             if not relevant_entries:
                 self._log(f"No adjudication results for {name}, keeping current belief", "INFO")
                 self.current_positions[name] = self.opening_positions.get(name, "[No change]")
                 continue
 
-            self._log(f"\n--- Updating belief for: {name} ---", "INFO")
-            self._log(f"Agent received {len(relevant_entries)} adjudication result(s)", "INFO")
+            work_result = results[name]
 
-            # Build prompt
-            prior_json = agent.get_internal_belief_obj()
-            stage3_mode = self.config.stage3_mode if self.config else "rebuttal"
+            # Handle dispatcher-level error (unhandled exception in gather function)
+            if work_result.error is not None:
+                self._log(f"Stage 5 error for {name}: {work_result.error}", "ERROR")
+                md_view = agent.get_internal_belief()
+                markdown_section = f"\n## {name} - Updated Position\n\n{md_view}\n"
+                self._add_to_markdown(markdown_section)
+                self._notify("agent_complete", {"agent_name": name, "stage": 5, "action": "Belief update failed"})
+                continue
 
-            if prior_json is not None and stage3_mode == "bloodsport":
-                self._log(f"Using bloodsport belief update prompt for {name}", "DEBUG")
-                # Gather bloodsport exchange context for this agent
-                bloodsport_exchanges = []
-                for e in relevant_entries:
-                    if "bloodsport_transcript" in e:
-                        bloodsport_exchanges.extend(e["bloodsport_transcript"])
+            r = work_result.result
 
-                stage_3_patches = self.last_rebuttals_patches.get(name, [])
-                stage_3_patches_json = json.dumps(stage_3_patches, ensure_ascii=False, indent=2) if stage_3_patches else ""
+            # 1. Replay prompt/response logging
+            for api_call in r["api_calls"]:
+                if not api_call.get("is_retry"):
+                    self._log_prompt(name, api_call["prompt"], api_call["label"])
+                self._log(f"Received response ({len(api_call['response'].content)} chars)", "INFO")
+                self._log_response(name, api_call["response"].content, api_call["label"])
+                self.round_histories[self.current_round_key].append(api_call["response"])
 
-                prompt = prompts.build_stage_5_bloodsport_prompt(
-                    agent_name=agent.name,
-                    challenge_rebuttal_pairs=relevant_entries,
-                    prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2),
-                    bloodsport_exchanges=bloodsport_exchanges if bloodsport_exchanges else None,
-                    stage_3_patches_json=stage_3_patches_json
-                )
+            # 2. Replay deferred log entries
+            for msg, level in r["log_entries"]:
+                self._log(msg, level)
 
-                # Single-phase bloodsport flow with retry
-                self._log_prompt(name, prompt, "Stage 5 - Belief Update (Bloodsport)")
-                stage_request = [Message(role="user", content=prompt)]
-                generation_temp = self.config.stages.generation_temperature if self.config else 0.2
-                max_retries = self.config.stages.parse_retries if self.config else 3
-                self._log(f"Calling model for {name} belief update (bloodsport)...", "INFO")
-                response = agent.generate(stage_request, temperature=generation_temp)
-                self._log(f"Received response ({len(response.content)} chars)", "INFO")
-                self._log_response(name, response.content, "Stage 5 - Belief Update (Bloodsport)")
-                self.round_histories[self.current_round_key].append(response)
+            # 3. Append deferred debug entries
+            for entry in r["debug_entries"]:
+                self.debug_log.append(entry)
 
-                # Retry if no JSON blocks found
-                if not _extract_all_json_blocks(response.content):
-                    for bs_attempt in range(1, max_retries + 1):
-                        self._log(f"[Stage 5 Bloodsport] Parse retry {bs_attempt}/{max_retries} for {name}: no JSON blocks", "WARN")
-                        response = agent.generate(stage_request, temperature=generation_temp)
-                        self._log(f"Retry response ({len(response.content)} chars)", "INFO")
-                        self._log_response(name, response.content, f"Stage 5 - Bloodsport retry {bs_attempt}")
-                        self.round_histories[self.current_round_key].append(response)
-                        if _extract_all_json_blocks(response.content):
-                            self._log(f"[Stage 5 Bloodsport] Retry {bs_attempt} succeeded for {name}", "INFO")
-                            break
+            # 4. Commit agent belief state
+            final_belief = r["final_belief"]
+            md_view = r["md_view"]
+            if final_belief is not None and not r["reverted"]:
+                agent.set_internal_belief_obj(final_belief)
+                md_view = belief_to_markdown(final_belief)
+                agent.set_internal_belief(md_view)
+                agent.all_beliefs_held.append(json.dumps(final_belief, ensure_ascii=False, indent=2))
 
-                patches, md_view = self._apply_stage5_patches(
-                    agent, name, response.content, relevant_entries, prior_json
-                )
-
-            elif prior_json is not None:
-                # === TWO-PHASE CBS FLOW ===
-                self._log(f"Using two-phase CBS belief update for {name}", "DEBUG")
-                from chal.beliefs.patches import apply_patches, validate_patches
-                from chal.beliefs.belief_graph import BeliefGraph
-
-                stage_3_patches = self.last_rebuttals_patches.get(name, [])
-                stage_3_patches_json = json.dumps(stage_3_patches, ensure_ascii=False, indent=2) if stage_3_patches else ""
-                generation_temp = self.config.stages.generation_temperature if self.config else 0.2
-                prior_belief_json_str = json.dumps(prior_json, ensure_ascii=False, indent=2)
-
-                # --- PHASE 1: Adjudication Enforcement ---
-                self._log(f"Phase 1: Adjudication enforcement for {name}", "INFO")
-
-                phase1_prompt = prompts.build_stage_5_phase1_enforcement_prompt(
-                    agent_name=name,
-                    challenge_rebuttal_pairs=relevant_entries,
-                    prior_belief_json=prior_belief_json_str,
-                    stage_3_patches_json=stage_3_patches_json
-                )
-                self._log_prompt(name, phase1_prompt, "Stage 5 Phase 1 - Enforcement")
-
-                max_retries = self.config.stages.parse_retries if self.config else 3
-                phase1_response = agent.generate(
-                    [Message(role="user", content=phase1_prompt)],
-                    temperature=generation_temp
-                )
-                self._log(f"Phase 1 response ({len(phase1_response.content)} chars)", "INFO")
-                self._log_response(name, phase1_response.content, "Stage 5 Phase 1 - Enforcement")
-                self.round_histories[self.current_round_key].append(phase1_response)
-
-                # Parse Phase 1 patches (with retry if no JSON blocks)
-                phase1_patches = []
-                phase1_blocks = _extract_all_json_blocks(phase1_response.content)
-                if not phase1_blocks:
-                    for p1_attempt in range(1, max_retries + 1):
-                        self._log(f"[Stage 5 Phase 1] Parse retry {p1_attempt}/{max_retries} for {name}: no JSON blocks", "WARN")
-                        phase1_response = agent.generate(
-                            [Message(role="user", content=phase1_prompt)],
-                            temperature=generation_temp
-                        )
-                        self._log(f"Phase 1 retry response ({len(phase1_response.content)} chars)", "INFO")
-                        self._log_response(name, phase1_response.content, f"Stage 5 Phase 1 - Enforcement retry {p1_attempt}")
-                        self.round_histories[self.current_round_key].append(phase1_response)
-                        phase1_blocks = _extract_all_json_blocks(phase1_response.content)
-                        if phase1_blocks:
-                            self._log(f"[Stage 5 Phase 1] Retry {p1_attempt} succeeded for {name}", "INFO")
-                            break
-                intermediate_belief = prior_json  # Default: unchanged
-
-                if phase1_blocks:
-                    phase1_patches_block = json.loads(phase1_blocks[0])
-                    phase1_patches = phase1_patches_block.get("patches", [])
-
-                if phase1_patches:
-                    self._log(f"Phase 1: parsed {len(phase1_patches)} patch(es) for {name}", "INFO")
-                    self.debug_log.append(f"\n--- PHASE 1 PATCHES FOR {name} ---\n{json.dumps(phase1_patches, ensure_ascii=False, indent=2)}\n--- END PHASE 1 PATCHES ---\n")
-
-                    patch_errors = validate_patches(phase1_patches, prior_json)
-                    if patch_errors:
-                        self._log(f"Phase 1 patch validation warnings for {name}:", "WARN")
-                        for err in patch_errors:
-                            self._log(f"  - {err}", "WARN")
-
-                    try:
-                        intermediate_belief = apply_patches(prior_json, phase1_patches, propagate_strength=True)
-                        self._log(f"Phase 1: applied {len(phase1_patches)} patches for {name}", "INFO")
-                    except Exception as e:
-                        self._log(f"Phase 1: error applying patches for {name}: {e}", "ERROR")
-                        intermediate_belief = prior_json
-                else:
-                    # Check enforcement compliance
-                    critique_valid_count = sum(
-                        1 for entry in relevant_entries
-                        if (entry.get("resolution") or {}).get("status") == "critique_valid"
-                    )
-                    if critique_valid_count > 0:
-                        self._log(
-                            f"ENFORCEMENT FAILURE: {name} received {critique_valid_count} CRITIQUE_VALID "
-                            f"outcome(s) but Phase 1 returned no patches",
-                            "ERROR"
-                        )
-                    else:
-                        self._log(f"Phase 1: no patches for {name} (no enforcement needed)", "INFO")
-
-                # Summarize Phase 1 changes for Phase 2 context
-                phase1_summary = summarize_changes(phase1_patches, prior_json, intermediate_belief)
-                self._log(f"Phase 1 summary for {name}:\n{phase1_summary}", "DEBUG")
-
-                # --- PHASE 2: Introspective Evaluation ---
-                self._log(f"Phase 2: Introspective evaluation for {name}", "INFO")
-
-                phase2_prompt = prompts.build_stage_5_phase2_introspection_prompt(
-                    agent_name=name,
-                    intermediate_belief_json=json.dumps(intermediate_belief, ensure_ascii=False, indent=2),
-                    phase1_changes_summary=phase1_summary
-                )
-                self._log_prompt(name, phase2_prompt, "Stage 5 Phase 2 - Introspection")
-
-                phase2_response = agent.generate(
-                    [Message(role="user", content=phase2_prompt)],
-                    temperature=generation_temp
-                )
-                self._log(f"Phase 2 response ({len(phase2_response.content)} chars)", "INFO")
-                self._log_response(name, phase2_response.content, "Stage 5 Phase 2 - Introspection")
-                self.round_histories[self.current_round_key].append(phase2_response)
-
-                # Parse Phase 2 patches (with retry if no JSON blocks)
-                phase2_patches = []
-                phase2_blocks = _extract_all_json_blocks(phase2_response.content)
-                if not phase2_blocks:
-                    for p2_attempt in range(1, max_retries + 1):
-                        self._log(f"[Stage 5 Phase 2] Parse retry {p2_attempt}/{max_retries} for {name}: no JSON blocks", "WARN")
-                        phase2_response = agent.generate(
-                            [Message(role="user", content=phase2_prompt)],
-                            temperature=generation_temp
-                        )
-                        self._log(f"Phase 2 retry response ({len(phase2_response.content)} chars)", "INFO")
-                        self._log_response(name, phase2_response.content, f"Stage 5 Phase 2 - Introspection retry {p2_attempt}")
-                        self.round_histories[self.current_round_key].append(phase2_response)
-                        phase2_blocks = _extract_all_json_blocks(phase2_response.content)
-                        if phase2_blocks:
-                            self._log(f"[Stage 5 Phase 2] Retry {p2_attempt} succeeded for {name}", "INFO")
-                            break
-                final_belief = intermediate_belief  # Default: Phase 1 result
-
-                if phase2_blocks:
-                    phase2_patches_block = json.loads(phase2_blocks[0])
-                    phase2_patches = phase2_patches_block.get("patches", [])
-
-                if phase2_patches:
-                    # GUARDRAIL: Filter reversals
-                    original_count = len(phase2_patches)
-                    phase2_patches = filter_reversal_patches(phase2_patches, phase1_patches, intermediate_belief)
-                    filtered_count = original_count - len(phase2_patches)
-                    if filtered_count > 0:
-                        self._log(f"Phase 2: filtered {filtered_count} reversal patch(es) for {name}", "WARN")
-
-                    self._log(f"Phase 2: parsed {len(phase2_patches)} patch(es) for {name}", "INFO")
-                    self.debug_log.append(f"\n--- PHASE 2 PATCHES FOR {name} ---\n{json.dumps(phase2_patches, ensure_ascii=False, indent=2)}\n--- END PHASE 2 PATCHES ---\n")
-
-                    if phase2_patches:
-                        patch_errors = validate_patches(phase2_patches, intermediate_belief)
-                        if patch_errors:
-                            self._log(f"Phase 2 patch validation warnings for {name}:", "WARN")
-                            for err in patch_errors:
-                                self._log(f"  - {err}", "WARN")
-
-                        try:
-                            final_belief = apply_patches(intermediate_belief, phase2_patches, propagate_strength=True)
-                            self._log(f"Phase 2: applied {len(phase2_patches)} patches for {name}", "INFO")
-                        except Exception as e:
-                            self._log(f"Phase 2: error applying patches for {name}: {e}", "ERROR")
-                            final_belief = intermediate_belief
-                else:
-                    self._log(f"Phase 2: no patches for {name}", "INFO")
-
-                # Validate final belief structure
-                md_view = agent.get_internal_belief()  # Default fallback
-                try:
-                    validation_graph = BeliefGraph(final_belief)
-                    validation_errors = validation_graph.validate_links()
-
-                    blocking_errors = [err for err in validation_errors if "BLOCKING ERROR" in err]
-                    warnings = [err for err in validation_errors if "BLOCKING ERROR" not in err]
-
-                    if blocking_errors:
-                        self._log(f"BLOCKING validation errors in final belief for {name}:", "ERROR")
-                        for err in blocking_errors:
-                            self._log(f"  - {err}", "ERROR")
-                        self._log(f"Reverting to prior belief for {name}", "ERROR")
-                    else:
-                        if warnings:
-                            self._log(f"Graph validation warnings for {name}:", "WARN")
-                            for warn in warnings:
-                                self._log(f"  - {warn}", "WARN")
-                        else:
-                            self._log(f"Graph validation passed for {name}", "INFO")
-
-                        # Set final belief
-                        agent.set_internal_belief_obj(final_belief)
-                        md_view = belief_to_markdown(final_belief)
-                        agent.set_internal_belief(md_view)
-                        agent.all_beliefs_held.append(json.dumps(final_belief, ensure_ascii=False, indent=2))
-
-                        self.debug_log.append(f"\n--- FINAL BELIEF FOR {name} ---\n{json.dumps(final_belief, ensure_ascii=False, indent=2)}\n--- END FINAL BELIEF ---\n")
-                        self._log(f"Two-phase update complete for {name}: {len(phase1_patches)} P1 + {len(phase2_patches)} P2 patches", "INFO")
-
-                except Exception as e:
-                    self._log(f"Graph validation error for {name}: {e}", "ERROR")
-
-                # Combine all patches for recorder
-                patches = phase1_patches + phase2_patches
-                response = phase2_response  # Use last response for recorder
-
-            else:
-                self._log(f"Using legacy belief update prompt for {name}", "DEBUG")
-                prior_json = agent.get_internal_belief_obj()
-                prompt = prompts.build_stage_5_belief_update_prompt_cbs(
-                    agent_name=agent.name,
-                    challenge_rebuttal_pairs=relevant_entries,
-                    prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2) if prior_json else "{}"
-                )
-
-                self._log_prompt(name, prompt, "Stage 5 - Belief Update (Legacy)")
-                stage_request = [Message(role="user", content=prompt)]
-                generation_temp = self.config.stages.generation_temperature if self.config else 0.2
-                max_retries = self.config.stages.parse_retries if self.config else 3
-                self._log(f"Calling model for {name} belief update (legacy)...", "INFO")
-                response = agent.generate(stage_request, temperature=generation_temp)
-                self._log(f"Received response ({len(response.content)} chars)", "INFO")
-                self._log_response(name, response.content, "Stage 5 - Belief Update (Legacy)")
-                self.round_histories[self.current_round_key].append(response)
-
-                # Retry if no JSON blocks found
-                if not _extract_all_json_blocks(response.content):
-                    for leg_attempt in range(1, max_retries + 1):
-                        self._log(f"[Stage 5 Legacy] Parse retry {leg_attempt}/{max_retries} for {name}: no JSON blocks", "WARN")
-                        response = agent.generate(stage_request, temperature=generation_temp)
-                        self._log(f"Retry response ({len(response.content)} chars)", "INFO")
-                        self._log_response(name, response.content, f"Stage 5 - Legacy retry {leg_attempt}")
-                        self.round_histories[self.current_round_key].append(response)
-                        if _extract_all_json_blocks(response.content):
-                            self._log(f"[Stage 5 Legacy] Retry {leg_attempt} succeeded for {name}", "INFO")
-                            break
-
-                patches, md_view = self._apply_stage5_patches(
-                    agent, name, response.content, relevant_entries, prior_json
-                )
-
-            # Record training data
+            # 5. Record training data
             if self.recorder:
                 belief_after = agent.get_internal_belief_obj()
                 adjudication_results = [
                     {
                         "role": "target",
                         "opponent": e.get("challenger", "?"),
-                        "verdict": e.get("resolution", {}).get("status", "unknown") if isinstance(e.get("resolution"), dict) else "unknown",
-                        "reasoning": e.get("resolution", {}).get("reasoning", "") if isinstance(e.get("resolution"), dict) else "",
+                        "verdict": (e.get("resolution") or {}).get("status", "unknown")
+                                   if isinstance(e.get("resolution"), dict) else "unknown",
+                        "reasoning": (e.get("resolution") or {}).get("reasoning", "")
+                                     if isinstance(e.get("resolution"), dict) else "",
                     }
                     for e in relevant_entries
                 ]
+                last_response_content = r["api_calls"][-1]["response"].content if r["api_calls"] else ""
                 self.recorder.record_belief_update(
                     agent_id=name,
-                    belief_before=prior_json,
+                    belief_before=r["prior_json"],
                     belief_after=belief_after,
                     adjudication_results=adjudication_results,
-                    patches=patches,
-                    raw_response=response.content,
+                    patches=r["patches"],
+                    raw_response=last_response_content,
                 )
 
-            # Add to markdown transcript
+            # 6. Add to markdown transcript
             markdown_section = f"\n## {name} - Updated Position\n\n{md_view}\n"
             self._add_to_markdown(markdown_section)
             self._notify("agent_complete", {"agent_name": name, "stage": 5, "action": "Belief updated"})
@@ -2811,10 +2555,7 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
     ch_belief_json = json.dumps(ch_belief_obj, ensure_ascii=False, indent=2) if ch_belief_obj else ""
     tg_belief_json = json.dumps(tg_belief_obj, ensure_ascii=False, indent=2) if tg_belief_obj else ""
 
-    opponent_belief_graph = target.get_belief_graph() if hasattr(target, 'get_belief_graph') else None
-
     max_questions = config.stages.max_questions_per_cross_exam if config else 5
-    max_question_length = config.stages.max_question_length_chars if config else 500
     stage3_mode = config.stage3_mode if config else "rebuttal"
 
     if stage3_mode == "bloodsport":
@@ -2827,9 +2568,7 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
             opponent_belief_json=tg_belief_json,
             intensity=intensity,
             max_questions=max_questions,
-            max_question_length_chars=max_question_length,
             previous_challenges=previous_challenges if previous_challenges else None,
-            opponent_belief_graph=opponent_belief_graph,
             focus_subtopic=focus_subtopic,
         )
     else:
@@ -2840,9 +2579,7 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
             agent_belief_json=ch_belief_json,
             opponent_belief_json=tg_belief_json,
             max_questions=max_questions,
-            max_question_length_chars=max_question_length,
             previous_challenges=previous_challenges if previous_challenges else None,
-            opponent_belief_graph=opponent_belief_graph,
             focus_subtopic=focus_subtopic,
         )
 
@@ -2882,9 +2619,6 @@ def _generate_rebuttal(target_agent, relevant_entries, topic, config) -> dict:
                 "qid": e.get("qid") or f"Q{idx+1}",
                 "text": e["challenge"],
                 "target_ids": e.get("target_ids", []),
-                "intent": e.get("intent"),
-                "why_high_value": e.get("why_high_value"),
-                "proposed_test": e.get("proposed_test"),
                 "from": e["challenger"]
             }
             for idx, e in enumerate(relevant_entries)
@@ -2913,13 +2647,26 @@ def _generate_rebuttal(target_agent, relevant_entries, topic, config) -> dict:
     generation_temp = config.stages.generation_temperature if config else 0.2
     response = target_agent.generate(stage_request, temperature=generation_temp)
 
-    # Parse JSON blocks: 1) rebuttals, 2) optional patches
+    # Parse JSON: prompt requests a single block with both "rebuttals" and "patches" keys.
+    # Fallback: if two separate blocks exist, treat block[0] as rebuttals, block[1] as patches.
     blocks = _extract_all_json_blocks(response.content)
-    rebuttals_block = json.loads(blocks[0]) if blocks else {"rebuttals": []}
-    patches_block = json.loads(blocks[1]) if len(blocks) > 1 else {"patches": []}
-
-    rebuttals = rebuttals_block.get("rebuttals", [])
-    patches = patches_block.get("patches", [])
+    if blocks:
+        first_block = json.loads(blocks[0])
+        if "rebuttals" in first_block and ("patches" in first_block or len(blocks) == 1):
+            # Single unified block (expected path)
+            rebuttals = first_block.get("rebuttals", [])
+            patches = first_block.get("patches", [])
+        elif len(blocks) > 1:
+            # Legacy two-block format (backward compat)
+            rebuttals = first_block.get("rebuttals", [])
+            patches_block = json.loads(blocks[1])
+            patches = patches_block.get("patches", [])
+        else:
+            rebuttals = first_block.get("rebuttals", [])
+            patches = first_block.get("patches", [])
+    else:
+        rebuttals = []
+        patches = []
 
     return {
         "response": response,
@@ -3009,6 +2756,593 @@ def _generate_conclusion(agent, topic, config, cr_pairs_json, current_round) -> 
     }
 
 
+def _apply_patches_and_validate(
+    name: str,
+    response_content: str,
+    prior_json: dict,
+    relevant_entries: list,
+    md_view_fallback: str,
+) -> dict:
+    """Parse patches from response, apply to belief, validate graph.
+
+    Pure function — no agent or controller mutations.
+    Used by the bloodsport and legacy flows within _run_stage5_for_agent.
+
+    Returns:
+        dict with keys: patches, final_belief, md_view, reverted,
+        log_entries, debug_entries.
+    """
+    from chal.beliefs.patches import apply_patches, validate_patches
+    from chal.beliefs.belief_graph import BeliefGraph
+
+    log_entries = []
+    debug_entries = []
+    patches = []
+
+    blocks = _extract_all_json_blocks(response_content)
+
+    if not blocks:
+        log_entries.append((f"PARSE FAILURE: No JSON blocks found in {name} response", "PARSE"))
+        log_entries.append(("Keeping prior belief unchanged", "WARN"))
+        return {
+            "patches": patches,
+            "final_belief": prior_json,
+            "md_view": md_view_fallback,
+            "reverted": True,
+            "log_entries": log_entries,
+            "debug_entries": debug_entries,
+        }
+
+    patches_block = json.loads(blocks[0])
+    patches = patches_block.get("patches", [])
+
+    if not patches:
+        critique_valid_count = sum(
+            1 for entry in relevant_entries
+            if (entry.get("resolution") or {}).get("status") == "critique_valid"
+        )
+        if critique_valid_count > 0:
+            log_entries.append((
+                f"PARSE FAILURE: WARNING: {name} received {critique_valid_count} CRITIQUE_VALID "
+                f"outcome(s) but returned no patches.",
+                "PARSE",
+            ))
+            log_entries.append((
+                f"ENFORCEMENT FAILURE: Agent {name} ignored mandatory patch requirement",
+                "ERROR",
+            ))
+        else:
+            log_entries.append((
+                f"PARSE FAILURE: No patches returned for {name}, keeping prior belief",
+                "PARSE",
+            ))
+        return {
+            "patches": patches,
+            "final_belief": prior_json,
+            "md_view": md_view_fallback,
+            "reverted": True,
+            "log_entries": log_entries,
+            "debug_entries": debug_entries,
+        }
+
+    log_entries.append((
+        f"PARSE SUCCESS: Successfully parsed {len(patches)} patch(es) for {name}",
+        "PARSE",
+    ))
+    debug_entries.append(
+        f"\n--- PATCHES FOR {name} ---\n"
+        f"{json.dumps(patches, ensure_ascii=False, indent=2)}\n"
+        f"--- END PATCHES ---\n"
+    )
+
+    if not prior_json:
+        log_entries.append((f"No prior belief object for {name}, cannot apply patches", "WARN"))
+        return {
+            "patches": patches,
+            "final_belief": None,
+            "md_view": md_view_fallback,
+            "reverted": True,
+            "log_entries": log_entries,
+            "debug_entries": debug_entries,
+        }
+
+    patch_errors = validate_patches(patches, prior_json)
+    if patch_errors:
+        log_entries.append((f"Patch validation warnings for {name}:", "WARN"))
+        for err in patch_errors:
+            log_entries.append((f"  - {err}", "WARN"))
+
+    try:
+        updated_belief = apply_patches(prior_json, patches, propagate_strength=True)
+        debug_entries.append(
+            f"\n--- UPDATED BELIEF FOR {name} ---\n"
+            f"{json.dumps(updated_belief, ensure_ascii=False, indent=2)}\n"
+            f"--- END UPDATED BELIEF ---\n"
+        )
+
+        try:
+            validation_graph = BeliefGraph(updated_belief)
+            validation_errors = validation_graph.validate_links()
+            blocking_errors = [err for err in validation_errors if "BLOCKING ERROR" in err]
+            warnings = [err for err in validation_errors if "BLOCKING ERROR" not in err]
+
+            if blocking_errors:
+                log_entries.append((f"BLOCKING validation errors for {name}:", "ERROR"))
+                for err in blocking_errors:
+                    log_entries.append((f"  - {err}", "ERROR"))
+                log_entries.append((f"Reverting to prior belief for {name}", "ERROR"))
+                raise Exception(f"Updated belief contains blocking validation errors: {blocking_errors}")
+
+            if warnings:
+                log_entries.append((f"Graph validation warnings for {name}:", "WARN"))
+                for warn in warnings:
+                    log_entries.append((f"  - {warn}", "WARN"))
+            else:
+                log_entries.append((f"Graph validation passed for {name}", "INFO"))
+
+        except Exception as e:
+            if "blocking validation errors" in str(e).lower():
+                raise
+            log_entries.append((f"Graph validation error for {name}: {e}", "ERROR"))
+
+        # Success: patches applied, no blocking errors
+        log_entries.append((f"Applied {len(patches)} patches for {name}", "INFO"))
+        return {
+            "patches": patches,
+            "final_belief": updated_belief,
+            "md_view": belief_to_markdown(updated_belief),
+            "reverted": False,
+            "log_entries": log_entries,
+            "debug_entries": debug_entries,
+        }
+
+    except Exception as e:
+        log_entries.append((f"Error applying patches for {name}: {e}", "ERROR"))
+        log_entries.append(("Keeping prior belief unchanged", "WARN"))
+        return {
+            "patches": patches,
+            "final_belief": prior_json,
+            "md_view": md_view_fallback,
+            "reverted": True,
+            "log_entries": log_entries,
+            "debug_entries": debug_entries,
+        }
+
+
+def _run_stage5_for_agent(
+    agent,
+    relevant_entries: list,
+    stage3_mode: str,
+    last_rebuttals_patches: list,
+    generation_temp: float,
+    max_retries: int,
+) -> dict:
+    """Pure function: run full Stage 5 belief update for one agent.
+
+    Handles all three flow types (bloodsport, CBS two-phase, legacy).
+    Returns a dict of results for the sequential apply step.
+
+    This function is safe to call from a worker thread because it only
+    reads agent state (get_internal_belief_obj), makes API calls via
+    agent.generate(), and performs local computation. It does NOT mutate
+    agent belief state or any shared controller state.
+    """
+    name = agent.name
+    prior_json = agent.get_internal_belief_obj()
+    md_view_fallback = agent.get_internal_belief()
+    api_calls = []
+    log_entries = []
+    debug_entries = []
+
+    log_entries.append((f"\n--- Updating belief for: {name} ---", "INFO"))
+    log_entries.append((f"Agent received {len(relevant_entries)} adjudication result(s)", "INFO"))
+
+    if prior_json is not None and stage3_mode == "bloodsport":
+        return _run_stage5_bloodsport(
+            agent, name, prior_json, md_view_fallback,
+            relevant_entries, last_rebuttals_patches,
+            generation_temp, max_retries,
+            api_calls, log_entries, debug_entries,
+        )
+
+    elif prior_json is not None:
+        return _run_stage5_cbs_two_phase(
+            agent, name, prior_json, md_view_fallback,
+            relevant_entries, last_rebuttals_patches,
+            generation_temp, max_retries,
+            api_calls, log_entries, debug_entries,
+        )
+
+    else:
+        return _run_stage5_legacy(
+            agent, name, prior_json, md_view_fallback,
+            relevant_entries,
+            generation_temp, max_retries,
+            api_calls, log_entries, debug_entries,
+        )
+
+
+def _run_stage5_bloodsport(
+    agent, name, prior_json, md_view_fallback,
+    relevant_entries, last_rebuttals_patches,
+    generation_temp, max_retries,
+    api_calls, log_entries, debug_entries,
+) -> dict:
+    """Bloodsport single-phase flow for _run_stage5_for_agent."""
+    log_entries.append((f"Using bloodsport belief update prompt for {name}", "DEBUG"))
+
+    bloodsport_exchanges = []
+    for e in relevant_entries:
+        if "bloodsport_transcript" in e:
+            bloodsport_exchanges.extend(e["bloodsport_transcript"])
+
+    stage_3_patches_json = (
+        json.dumps(last_rebuttals_patches, ensure_ascii=False, indent=2)
+        if last_rebuttals_patches else ""
+    )
+
+    prompt = prompts.build_stage_5_bloodsport_prompt(
+        agent_name=agent.name,
+        challenge_rebuttal_pairs=relevant_entries,
+        prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2),
+        bloodsport_exchanges=bloodsport_exchanges if bloodsport_exchanges else None,
+        stage_3_patches_json=stage_3_patches_json,
+    )
+
+    label = "Stage 5 - Belief Update (Bloodsport)"
+    stage_request = [Message(role="user", content=prompt)]
+    log_entries.append((f"Calling model for {name} belief update (bloodsport)...", "INFO"))
+    response = agent.generate(stage_request, temperature=generation_temp)
+    api_calls.append({"prompt": prompt, "response": response, "label": label, "is_retry": False})
+
+    # Retry if no JSON blocks found
+    if not _extract_all_json_blocks(response.content):
+        for bs_attempt in range(1, max_retries + 1):
+            log_entries.append((
+                f"[Stage 5 Bloodsport] Parse retry {bs_attempt}/{max_retries} for {name}: no JSON blocks",
+                "WARN",
+            ))
+            response = agent.generate(stage_request, temperature=generation_temp)
+            api_calls.append({
+                "prompt": prompt, "response": response,
+                "label": f"Stage 5 - Bloodsport retry {bs_attempt}",
+                "is_retry": True,
+            })
+            if _extract_all_json_blocks(response.content):
+                log_entries.append((
+                    f"[Stage 5 Bloodsport] Retry {bs_attempt} succeeded for {name}",
+                    "INFO",
+                ))
+                break
+
+    patch_result = _apply_patches_and_validate(
+        name, response.content, prior_json, relevant_entries, md_view_fallback
+    )
+
+    return {
+        "flow": "bloodsport",
+        "api_calls": api_calls,
+        "prior_json": prior_json,
+        "final_belief": patch_result["final_belief"],
+        "md_view": patch_result["md_view"],
+        "patches": patch_result["patches"],
+        "phase1_patches": None,
+        "phase2_patches": None,
+        "reverted": patch_result["reverted"],
+        "log_entries": log_entries + patch_result["log_entries"],
+        "debug_entries": debug_entries + patch_result["debug_entries"],
+    }
+
+
+def _run_stage5_cbs_two_phase(
+    agent, name, prior_json, md_view_fallback,
+    relevant_entries, last_rebuttals_patches,
+    generation_temp, max_retries,
+    api_calls, log_entries, debug_entries,
+) -> dict:
+    """CBS two-phase flow (Phase 1: enforcement, Phase 2: introspection)."""
+    log_entries.append((f"Using two-phase CBS belief update for {name}", "DEBUG"))
+
+    from chal.beliefs.patches import apply_patches, validate_patches
+    from chal.beliefs.belief_graph import BeliefGraph
+
+    stage_3_patches_json = (
+        json.dumps(last_rebuttals_patches, ensure_ascii=False, indent=2)
+        if last_rebuttals_patches else ""
+    )
+    prior_belief_json_str = json.dumps(prior_json, ensure_ascii=False, indent=2)
+
+    # --- PHASE 1: Adjudication Enforcement ---
+    log_entries.append((f"Phase 1: Adjudication enforcement for {name}", "INFO"))
+
+    phase1_prompt = prompts.build_stage_5_phase1_enforcement_prompt(
+        agent_name=name,
+        challenge_rebuttal_pairs=relevant_entries,
+        prior_belief_json=prior_belief_json_str,
+        stage_3_patches_json=stage_3_patches_json,
+    )
+
+    phase1_response = agent.generate(
+        [Message(role="user", content=phase1_prompt)],
+        temperature=generation_temp,
+    )
+    api_calls.append({
+        "prompt": phase1_prompt, "response": phase1_response,
+        "label": "Stage 5 Phase 1 - Enforcement", "is_retry": False,
+    })
+
+    # Parse Phase 1 patches (with retry if no JSON blocks)
+    phase1_patches = []
+    phase1_blocks = _extract_all_json_blocks(phase1_response.content)
+    if not phase1_blocks:
+        for p1_attempt in range(1, max_retries + 1):
+            log_entries.append((
+                f"[Stage 5 Phase 1] Parse retry {p1_attempt}/{max_retries} for {name}: no JSON blocks",
+                "WARN",
+            ))
+            phase1_response = agent.generate(
+                [Message(role="user", content=phase1_prompt)],
+                temperature=generation_temp,
+            )
+            api_calls.append({
+                "prompt": phase1_prompt, "response": phase1_response,
+                "label": f"Stage 5 Phase 1 - Enforcement retry {p1_attempt}",
+                "is_retry": True,
+            })
+            phase1_blocks = _extract_all_json_blocks(phase1_response.content)
+            if phase1_blocks:
+                log_entries.append((
+                    f"[Stage 5 Phase 1] Retry {p1_attempt} succeeded for {name}",
+                    "INFO",
+                ))
+                break
+
+    intermediate_belief = prior_json  # Default: unchanged
+
+    if phase1_blocks:
+        phase1_patches_block = json.loads(phase1_blocks[0])
+        phase1_patches = phase1_patches_block.get("patches", [])
+
+    if phase1_patches:
+        log_entries.append((f"Phase 1: parsed {len(phase1_patches)} patch(es) for {name}", "INFO"))
+        debug_entries.append(
+            f"\n--- PHASE 1 PATCHES FOR {name} ---\n"
+            f"{json.dumps(phase1_patches, ensure_ascii=False, indent=2)}\n"
+            f"--- END PHASE 1 PATCHES ---\n"
+        )
+
+        patch_errors = validate_patches(phase1_patches, prior_json)
+        if patch_errors:
+            log_entries.append((f"Phase 1 patch validation warnings for {name}:", "WARN"))
+            for err in patch_errors:
+                log_entries.append((f"  - {err}", "WARN"))
+
+        try:
+            intermediate_belief = apply_patches(prior_json, phase1_patches, propagate_strength=True)
+            log_entries.append((f"Phase 1: applied {len(phase1_patches)} patches for {name}", "INFO"))
+        except Exception as e:
+            log_entries.append((f"Phase 1: error applying patches for {name}: {e}", "ERROR"))
+            intermediate_belief = prior_json
+    else:
+        # Check enforcement compliance
+        critique_valid_count = sum(
+            1 for entry in relevant_entries
+            if (entry.get("resolution") or {}).get("status") == "critique_valid"
+        )
+        if critique_valid_count > 0:
+            log_entries.append((
+                f"ENFORCEMENT FAILURE: {name} received {critique_valid_count} CRITIQUE_VALID "
+                f"outcome(s) but Phase 1 returned no patches",
+                "ERROR",
+            ))
+        else:
+            log_entries.append((f"Phase 1: no patches for {name} (no enforcement needed)", "INFO"))
+
+    # Summarize Phase 1 changes for Phase 2 context
+    phase1_summary = summarize_changes(phase1_patches, prior_json, intermediate_belief)
+    log_entries.append((f"Phase 1 summary for {name}:\n{phase1_summary}", "DEBUG"))
+
+    # --- PHASE 2: Introspective Evaluation ---
+    log_entries.append((f"Phase 2: Introspective evaluation for {name}", "INFO"))
+
+    phase2_prompt = prompts.build_stage_5_phase2_introspection_prompt(
+        agent_name=name,
+        intermediate_belief_json=json.dumps(intermediate_belief, ensure_ascii=False, indent=2),
+        phase1_changes_summary=phase1_summary,
+    )
+
+    phase2_response = agent.generate(
+        [Message(role="user", content=phase2_prompt)],
+        temperature=generation_temp,
+    )
+    api_calls.append({
+        "prompt": phase2_prompt, "response": phase2_response,
+        "label": "Stage 5 Phase 2 - Introspection", "is_retry": False,
+    })
+
+    # Parse Phase 2 patches (with retry if no JSON blocks)
+    phase2_patches = []
+    phase2_blocks = _extract_all_json_blocks(phase2_response.content)
+    if not phase2_blocks:
+        for p2_attempt in range(1, max_retries + 1):
+            log_entries.append((
+                f"[Stage 5 Phase 2] Parse retry {p2_attempt}/{max_retries} for {name}: no JSON blocks",
+                "WARN",
+            ))
+            phase2_response = agent.generate(
+                [Message(role="user", content=phase2_prompt)],
+                temperature=generation_temp,
+            )
+            api_calls.append({
+                "prompt": phase2_prompt, "response": phase2_response,
+                "label": f"Stage 5 Phase 2 - Introspection retry {p2_attempt}",
+                "is_retry": True,
+            })
+            phase2_blocks = _extract_all_json_blocks(phase2_response.content)
+            if phase2_blocks:
+                log_entries.append((
+                    f"[Stage 5 Phase 2] Retry {p2_attempt} succeeded for {name}",
+                    "INFO",
+                ))
+                break
+
+    final_belief = intermediate_belief  # Default: Phase 1 result
+
+    if phase2_blocks:
+        phase2_patches_block = json.loads(phase2_blocks[0])
+        phase2_patches = phase2_patches_block.get("patches", [])
+
+    if phase2_patches:
+        # GUARDRAIL: Filter reversals
+        original_count = len(phase2_patches)
+        phase2_patches = filter_reversal_patches(phase2_patches, phase1_patches, intermediate_belief)
+        filtered_count = original_count - len(phase2_patches)
+        if filtered_count > 0:
+            log_entries.append((
+                f"Phase 2: filtered {filtered_count} reversal patch(es) for {name}",
+                "WARN",
+            ))
+
+        log_entries.append((f"Phase 2: parsed {len(phase2_patches)} patch(es) for {name}", "INFO"))
+        debug_entries.append(
+            f"\n--- PHASE 2 PATCHES FOR {name} ---\n"
+            f"{json.dumps(phase2_patches, ensure_ascii=False, indent=2)}\n"
+            f"--- END PHASE 2 PATCHES ---\n"
+        )
+
+        if phase2_patches:
+            patch_errors = validate_patches(phase2_patches, intermediate_belief)
+            if patch_errors:
+                log_entries.append((f"Phase 2 patch validation warnings for {name}:", "WARN"))
+                for err in patch_errors:
+                    log_entries.append((f"  - {err}", "WARN"))
+
+            try:
+                final_belief = apply_patches(intermediate_belief, phase2_patches, propagate_strength=True)
+                log_entries.append((f"Phase 2: applied {len(phase2_patches)} patches for {name}", "INFO"))
+            except Exception as e:
+                log_entries.append((f"Phase 2: error applying patches for {name}: {e}", "ERROR"))
+                final_belief = intermediate_belief
+    else:
+        log_entries.append((f"Phase 2: no patches for {name}", "INFO"))
+
+    # Validate final belief structure
+    md_view = md_view_fallback
+    reverted = True  # Pessimistic default
+
+    try:
+        validation_graph = BeliefGraph(final_belief)
+        validation_errors = validation_graph.validate_links()
+        blocking_errors = [err for err in validation_errors if "BLOCKING ERROR" in err]
+        warnings = [err for err in validation_errors if "BLOCKING ERROR" not in err]
+
+        if blocking_errors:
+            log_entries.append((f"BLOCKING validation errors in final belief for {name}:", "ERROR"))
+            for err in blocking_errors:
+                log_entries.append((f"  - {err}", "ERROR"))
+            log_entries.append((f"Reverting to prior belief for {name}", "ERROR"))
+        else:
+            if warnings:
+                log_entries.append((f"Graph validation warnings for {name}:", "WARN"))
+                for warn in warnings:
+                    log_entries.append((f"  - {warn}", "WARN"))
+            else:
+                log_entries.append((f"Graph validation passed for {name}", "INFO"))
+
+            md_view = belief_to_markdown(final_belief)
+            debug_entries.append(
+                f"\n--- FINAL BELIEF FOR {name} ---\n"
+                f"{json.dumps(final_belief, ensure_ascii=False, indent=2)}\n"
+                f"--- END FINAL BELIEF ---\n"
+            )
+            log_entries.append((
+                f"Two-phase update complete for {name}: "
+                f"{len(phase1_patches)} P1 + {len(phase2_patches)} P2 patches",
+                "INFO",
+            ))
+            reverted = False
+
+    except Exception as e:
+        log_entries.append((f"Graph validation error for {name}: {e}", "ERROR"))
+
+    return {
+        "flow": "cbs_two_phase",
+        "api_calls": api_calls,
+        "prior_json": prior_json,
+        "final_belief": final_belief if not reverted else prior_json,
+        "md_view": md_view,
+        "patches": phase1_patches + phase2_patches,
+        "phase1_patches": phase1_patches,
+        "phase2_patches": phase2_patches,
+        "reverted": reverted,
+        "log_entries": log_entries,
+        "debug_entries": debug_entries,
+    }
+
+
+def _run_stage5_legacy(
+    agent, name, prior_json, md_view_fallback,
+    relevant_entries,
+    generation_temp, max_retries,
+    api_calls, log_entries, debug_entries,
+) -> dict:
+    """Legacy single-phase flow for _run_stage5_for_agent."""
+    log_entries.append((f"Using legacy belief update prompt for {name}", "DEBUG"))
+
+    prompt = prompts.build_stage_5_belief_update_prompt_cbs(
+        agent_name=agent.name,
+        challenge_rebuttal_pairs=relevant_entries,
+        prior_belief_json=(
+            json.dumps(prior_json, ensure_ascii=False, indent=2)
+            if prior_json else "{}"
+        ),
+    )
+
+    label = "Stage 5 - Belief Update (Legacy)"
+    stage_request = [Message(role="user", content=prompt)]
+    log_entries.append((f"Calling model for {name} belief update (legacy)...", "INFO"))
+    response = agent.generate(stage_request, temperature=generation_temp)
+    api_calls.append({"prompt": prompt, "response": response, "label": label, "is_retry": False})
+
+    # Retry if no JSON blocks found
+    if not _extract_all_json_blocks(response.content):
+        for leg_attempt in range(1, max_retries + 1):
+            log_entries.append((
+                f"[Stage 5 Legacy] Parse retry {leg_attempt}/{max_retries} for {name}: no JSON blocks",
+                "WARN",
+            ))
+            response = agent.generate(stage_request, temperature=generation_temp)
+            api_calls.append({
+                "prompt": prompt, "response": response,
+                "label": f"Stage 5 - Legacy retry {leg_attempt}",
+                "is_retry": True,
+            })
+            if _extract_all_json_blocks(response.content):
+                log_entries.append((
+                    f"[Stage 5 Legacy] Retry {leg_attempt} succeeded for {name}",
+                    "INFO",
+                ))
+                break
+
+    patch_result = _apply_patches_and_validate(
+        name, response.content, prior_json, relevant_entries, md_view_fallback
+    )
+
+    return {
+        "flow": "legacy",
+        "api_calls": api_calls,
+        "prior_json": prior_json,
+        "final_belief": patch_result["final_belief"],
+        "md_view": patch_result["md_view"],
+        "patches": patch_result["patches"],
+        "phase1_patches": None,
+        "phase2_patches": None,
+        "reverted": patch_result["reverted"],
+        "log_entries": log_entries + patch_result["log_entries"],
+        "debug_entries": debug_entries + patch_result["debug_entries"],
+    }
+
+
 # --- Helper Functions ---
 def _extract_belief_excerpt(belief: dict, target_ids: list) -> dict:
     """Extract claims, assumptions, evidence, and counterpositions referenced by target_ids."""
@@ -3045,6 +3379,24 @@ def _extract_first_json_block(text: str) -> Optional[Dict[str, Any]]:
         except Exception:
             return None
     return None
+
+
+def _validate_cross_exam_result(r: dict) -> bool:
+    """Check whether a parsed Stage 2 result dict is valid enough to accept.
+
+    - If it contains a ``questions`` list, every question must pass
+      ``validate_stage2_questions`` (field presence, attack_type/strategy match, etc.).
+    - If it only contains ``parsed_challenges`` (legacy fallback), accept as-is.
+    - Otherwise reject.
+    """
+    questions = r.get("questions")
+    if questions:
+        is_valid, _errors = validate_stage2_questions(questions)
+        return is_valid
+    if r.get("parsed_challenges"):
+        return True
+    return False
+
 
 def _extract_all_json_blocks(text: str) -> List[str]:
     # Try fenced blocks first

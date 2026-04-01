@@ -690,8 +690,12 @@ class TestBuildRoundSummary:
         controller = DebateController(agents=[], max_rounds=3)
         controller.challenge_rebuttal_pairs = [
             {"challenger": "A", "target": "B", "challenge": "Is X true?",
+             "qid": "Q1", "target_ids": ["C1"],
+             "attack_type": "undermining", "attack_strategy": "challenge_evidence",
              "resolution": {"status": "critique_valid"}},
             {"challenger": "B", "target": "A", "challenge": "What about Y?",
+             "qid": "Q2", "target_ids": ["C2"],
+             "attack_type": "rebutting", "attack_strategy": "present_counter_evidence",
              "resolution": {"status": "rebuttal_valid"}},
         ]
 

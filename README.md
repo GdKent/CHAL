@@ -462,7 +462,6 @@ bloodsport:                  # Only used when stage3_mode == "bloodsport"
 
 stages:
   max_questions_per_cross_exam: 5
-  max_question_length_chars: 500
   max_rebuttals_per_response: 5
   max_rebuttal_length_chars: 500
   generation_temperature: 0.2

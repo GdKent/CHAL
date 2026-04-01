@@ -96,6 +96,7 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
 
     def assumption_fmt(a):
         lines = [f"- [{a.get('id','')}] ({a.get('type','')}) {a.get('statement','')}"]
+        lines.append(f"  - Supports: {', '.join(a.get('supports_claims') or [])}")
         lines.append(f"  - Strength: {a.get('strength', '')} ({a.get('strength_justification', '')})")
         lines.append(f"  - Status: {a.get('status', 'active')}")
         return "\n".join(lines)
@@ -171,7 +172,11 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     if belief.get("changelog"):
         md.append("\n# Changelog")
         for ch in belief["changelog"]:
-            md.append(f"- v{ch.get('version')} ({ch.get('timestamp')}): " + "; ".join(ch.get("changes") or []))
+            ts = ch.get('timestamp')
+            prefix = f"- v{ch.get('version')}"
+            if ts:
+                prefix += f" ({ts})"
+            md.append(f"{prefix}: " + "; ".join(ch.get("changes") or []))
 
     return "\n".join(md).strip()
 

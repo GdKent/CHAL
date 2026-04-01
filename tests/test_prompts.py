@@ -38,6 +38,7 @@ from chal.agents.prompts import (
     build_stage_2_bloodsport_prompt,
     build_stage_3_bloodsport_prompt,
     build_stage_5_bloodsport_prompt,
+    build_adjudicator_per_pair_prompt,
 )
 
 
@@ -108,73 +109,219 @@ def test_persona_length():
 # 2. Adjudicator Prompt Builder Tests
 # ==============================================
 
+# --- Test fixtures for adjudicator prompt tests ---
+
+_TEST_LOGIC_SYS = {
+    "label": "Test Logic System",
+    "description": "A test logic system for unit tests.",
+    "criteria": {
+        "critique_valid": [
+            "Logic critique alpha",
+            "Logic critique beta",
+        ],
+        "rebuttal_valid": [
+            "Logic rebuttal alpha",
+            "Logic rebuttal beta",
+        ],
+        "unresolved": [
+            "Logic unresolved alpha",
+        ],
+    },
+}
+
+_TEST_ETHICS_SYS = {
+    "label": "Test Ethics System",
+    "description": "A test ethics system for unit tests.",
+    "criteria": {
+        "critique_valid": [
+            "Ethics critique gamma",
+            "Ethics critique delta",
+        ],
+        "rebuttal_valid": [
+            "Ethics rebuttal gamma",
+        ],
+        "unresolved": [
+            "Ethics unresolved gamma",
+        ],
+    },
+}
+
+_TEST_NONE_ETHICS = {
+    "label": "None (Pure Logic)",
+    "description": "No ethical framework applied.",
+    "criteria": {
+        "critique_valid": [],
+        "rebuttal_valid": [],
+        "unresolved": [],
+    },
+}
+
+
 @pytest.mark.unit
-def test_build_adjudicator_prompt_defaults():
-    """Test building adjudicator prompt with default weights."""
-    prompt = build_adjudicator_prompt()
-
-    assert isinstance(prompt, str)
-    assert len(prompt) > 0
-    assert "adjudicat" in prompt.lower()
+def test_adjudicator_prompt_no_defaults():
+    """Calling build_adjudicator_prompt with missing args raises TypeError."""
+    with pytest.raises(TypeError):
+        build_adjudicator_prompt()
 
 
 @pytest.mark.unit
-def test_build_adjudicator_prompt_custom_weights():
-    """Test building prompt with custom logic/ethics weights."""
-    prompt = build_adjudicator_prompt(logic_weight=0.7, ethics_weight=0.3)
-
-    assert isinstance(prompt, str)
-    assert len(prompt) > 0
-
-    # Should mention both logic and ethics if both weights > 0
-    prompt_lower = prompt.lower()
-    assert "logic" in prompt_lower or "logical" in prompt_lower
-    assert "ethic" in prompt_lower or "moral" in prompt_lower
-
-
-@pytest.mark.unit
-def test_build_adjudicator_prompt_custom_systems():
-    """Test building prompt with custom logic/ethics systems."""
-    custom_logic = "Use formal predicate logic only"
-    custom_ethics = "Apply Kantian deontology"
-
+def test_adjudicator_prompt_logic_only_mode_instruction():
+    """Logic-only prompt contains instruction to disregard ethical appeals."""
     prompt = build_adjudicator_prompt(
-        logic_sys=custom_logic,
-        ethics_sys=custom_ethics
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_NONE_ETHICS,
     )
-
-    assert custom_logic in prompt
-    assert custom_ethics in prompt
+    assert "Disregard any ethical arguments" in prompt
 
 
 @pytest.mark.unit
-def test_build_adjudicator_prompt_includes_frameworks():
-    """Test that generated prompt contains framework descriptions."""
-    prompt = build_adjudicator_prompt(logic_weight=1.0, ethics_weight=0.5)
-
-    assert isinstance(prompt, str)
-    # Should describe adjudication process
-    assert len(prompt) > 100
-
-
-@pytest.mark.unit
-def test_build_adjudicator_prompt_logic_only():
-    """Test prompt with logic_weight=1.0, ethics_weight=0.0."""
-    prompt = build_adjudicator_prompt(logic_weight=1.0, ethics_weight=0.0)
-
-    assert isinstance(prompt, str)
-    prompt_lower = prompt.lower()
-    assert "logic" in prompt_lower or "logical" in prompt_lower
+def test_adjudicator_prompt_ethics_only_mode_instruction():
+    """Ethics-only prompt contains instruction that ethical merit overrides logical validity."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.0, ethics_weight=1.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    assert "Logical validity is irrelevant" in prompt
 
 
 @pytest.mark.unit
-def test_build_adjudicator_prompt_ethics_only():
-    """Test prompt with logic_weight=0.0, ethics_weight=1.0."""
-    prompt = build_adjudicator_prompt(logic_weight=0.0, ethics_weight=1.0)
+def test_adjudicator_prompt_balanced_mode_instruction():
+    """Balanced prompt contains instruction about logical baseline with ethical tiebreaker."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.5, ethics_weight=0.5,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    assert "Logical soundness is the baseline" in prompt
 
-    assert isinstance(prompt, str)
-    prompt_lower = prompt.lower()
-    assert "ethic" in prompt_lower or "moral" in prompt_lower
+
+@pytest.mark.unit
+def test_adjudicator_prompt_logic_only_no_ethics_criteria():
+    """Logic-only prompt contains no (ethical) prefixed criteria."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_NONE_ETHICS,
+    )
+    assert "(ethical)" not in prompt
+    assert "Logic critique alpha" in prompt
+    assert "Ethics critique gamma" not in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_ethics_only_no_logic_criteria():
+    """Ethics-only prompt contains no (logical) prefixed criteria."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.0, ethics_weight=1.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    assert "(logical)" not in prompt
+    assert "Ethics critique gamma" in prompt
+    assert "Logic critique alpha" not in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_balanced_has_both_prefixes():
+    """Balanced prompt contains both (logical) and (ethical) prefixed criteria."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.5, ethics_weight=0.5,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    assert "(logical)" in prompt
+    assert "(ethical)" in prompt
+    assert "Logic critique alpha" in prompt
+    assert "Ethics critique gamma" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_logic_only_scoring():
+    """Logic-only scoring section says ethics scores must be 0."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_NONE_ETHICS,
+    )
+    assert "Set ethics scores to 0.0" in prompt
+    assert "combined = logic" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_ethics_only_scoring():
+    """Ethics-only scoring section says logic scores must be 0."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.0, ethics_weight=1.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    assert "Set logic scores to 0.0" in prompt
+    assert "combined = ethics" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_balanced_scoring():
+    """Balanced scoring section references both axes."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.5, ethics_weight=0.5,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    assert "combined = 0.5 * logic + 0.5 * ethics" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_anti_bias_present():
+    """Anti-bias section is present in all three modes."""
+    for lw, ew in [(1.0, 0.0), (0.5, 0.5), (0.0, 1.0)]:
+        prompt = build_adjudicator_prompt(
+            logic_weight=lw, ethics_weight=ew,
+            logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+        )
+        assert "<anti_bias>" in prompt
+        assert "Explicit concession" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_universal_base_present():
+    """Universal base flaws are present in all modes."""
+    for lw, ew in [(1.0, 0.0), (0.5, 0.5), (0.0, 1.0)]:
+        prompt = build_adjudicator_prompt(
+            logic_weight=lw, ethics_weight=ew,
+            logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+        )
+        assert "circular reasoning" in prompt
+        assert "misrepresentation of the opposing position" in prompt
+        assert "self-defeating argument" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_criteria_from_system():
+    """Criteria in the prompt match the criteria lists from the provided system dicts."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_NONE_ETHICS,
+    )
+    # All logic criteria should appear
+    for item in _TEST_LOGIC_SYS["criteria"]["critique_valid"]:
+        assert item in prompt
+    for item in _TEST_LOGIC_SYS["criteria"]["rebuttal_valid"]:
+        assert item in prompt
+    for item in _TEST_LOGIC_SYS["criteria"]["unresolved"]:
+        assert item in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_logic_only_label_in_preamble():
+    """Logic-only prompt includes the logic system label in the criteria preamble."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_NONE_ETHICS,
+    )
+    assert "under Test Logic System:" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_ethics_only_label_in_preamble():
+    """Ethics-only prompt includes the ethics system label in the criteria preamble."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.0, ethics_weight=1.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    assert "under Test Ethics System:" in prompt
 
 
 # ==============================================
@@ -262,7 +409,6 @@ def test_build_stage_2_prompt_with_previous_challenges():
         agent_belief_json='{"thesis": {"statement": "Test"}}',
         opponent_belief_json='{"thesis": {"statement": "Test2"}}',
         previous_challenges=previous_challenges,
-        opponent_belief_graph=None
     )
 
     assert isinstance(prompt, str)
@@ -297,6 +443,10 @@ def test_build_stage_5_belief_update_prompt():
     challenge_rebuttal_pairs = [{
         "challenger": "Agent-B",
         "challenge": "You are wrong",
+        "qid": "Q1",
+        "target_ids": ["C1"],
+        "attack_type": "undermining",
+        "attack_strategy": "challenge_evidence",
         "resolution": {
             "status": "critique_valid",
             "reasoning": "The critique was valid"
@@ -515,6 +665,202 @@ def test_stage_3_uses_strength():
     assert "strength" in prompt
 
 
+# Helper to build a standard Stage 3 prompt for the tests below
+def _build_stage_3():
+    return build_stage_3_structured_rebuttal_prompt(
+        topic="Test", agent_name="A", opponent_name="B",
+        received_questions_json='[]', agent_belief_json='{}'
+    )
+
+
+@pytest.mark.unit
+def test_stage_3_no_update_thesis():
+    """Prompt does NOT contain update_thesis."""
+    prompt = _build_stage_3()
+    assert "update_thesis" not in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_has_all_patch_operations():
+    """Prompt contains all 11 non-thesis patch operations."""
+    prompt = _build_stage_3()
+    expected_ops = [
+        "update_claim", "retire_claim", "add_claim",
+        "add_evidence", "update_evidence",
+        "update_assumption", "add_assumption",
+        "add_counterposition", "update_counterposition",
+        "add_uncertainty", "resolve_uncertainty",
+    ]
+    for op in expected_ops:
+        assert op in prompt, f"Missing operation: {op}"
+
+
+@pytest.mark.unit
+def test_stage_3_no_e_new_ids():
+    """Prompt does NOT contain E_NEW or X_NEW — only numbered IDs."""
+    prompt = _build_stage_3()
+    assert "E_NEW" not in prompt
+    assert "X_NEW" not in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_add_evidence_has_required_fields():
+    """The add_evidence example includes all expected fields."""
+    prompt = _build_stage_3()
+    # Extract the section around add_evidence
+    assert '"id": "E4"' in prompt
+    assert '"type": "empirical"' in prompt
+    assert '"summary"' in prompt
+    assert '"source"' in prompt
+    assert '"relevance_to_claims"' in prompt
+    assert '"strength_justification"' in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_add_claim_has_required_fields():
+    """The add_claim example includes all required fields per validate_patches."""
+    prompt = _build_stage_3()
+    # All required fields for add_claim
+    for field in ["id", "type", "statement", "depends_on", "strength",
+                  "status", "predictions", "inference_chain"]:
+        assert f'"{field}"' in prompt, f"add_claim example missing field: {field}"
+    # Prediction sub-fields
+    for field in ["decision_criterion"]:
+        assert f'"{field}"' in prompt, f"add_claim prediction missing field: {field}"
+
+
+@pytest.mark.unit
+def test_stage_3_add_assumption_has_required_fields():
+    """The add_assumption example includes id, type, statement, strength."""
+    prompt = _build_stage_3()
+    assert '"id": "A3"' in prompt
+    assert '"type": "empirical"' in prompt
+    assert '"statement"' in prompt
+    assert '"strength": 0.75' in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_add_counterposition_has_required_fields():
+    """The add_counterposition example includes all required fields."""
+    prompt = _build_stage_3()
+    assert '"id": "X3"' in prompt
+    assert '"targets"' in prompt
+    assert '"attack_type"' in prompt
+    assert '"my_response"' in prompt
+    assert '"response_sufficiency"' in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_add_uncertainty_has_required_fields():
+    """The add_uncertainty example includes id, targets, question, status."""
+    prompt = _build_stage_3()
+    assert '"id": "U2"' in prompt
+    assert '"targets"' in prompt
+    assert '"question"' in prompt
+    assert '"status": "active"' in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_resolve_uncertainty_has_required_fields():
+    """The resolve_uncertainty example includes target_id and resolution_note."""
+    prompt = _build_stage_3()
+    assert "resolve_uncertainty" in prompt
+    assert '"target_id": "U1"' in prompt
+    assert '"resolution_note"' in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_update_claim_has_strength_justification():
+    """The update_claim example includes strength_justification in changes."""
+    prompt = _build_stage_3()
+    # Find the update_claim line and check it has strength_justification
+    assert "update_claim" in prompt
+    assert "strength_justification" in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_defer_links_to_add_uncertainty():
+    """Prompt mentions that defer SHOULD include add_uncertainty."""
+    prompt = _build_stage_3()
+    assert "defer" in prompt
+    assert "add_uncertainty" in prompt
+    # Check the specific linkage instruction
+    assert "SHOULD" in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_concede_requires_weakening_patch():
+    """Prompt states that concede MUST include a weakening patch."""
+    prompt = _build_stage_3()
+    assert 'concede' in prompt
+    assert 'MUST' in prompt
+    assert 'weakening patch' in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_id_convention_note():
+    """Prompt contains guidance about using next available numbered IDs."""
+    prompt = _build_stage_3()
+    assert "next available number" in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_single_json_block_format():
+    """Prompt specifies one fenced JSON code block containing both rebuttals and patches."""
+    prompt = _build_stage_3()
+    assert "One fenced JSON code block" in prompt
+    assert '"rebuttals"' in prompt
+    assert '"patches"' in prompt
+
+
+@pytest.mark.unit
+def test_stage_3_example_patches_pass_validate_patches():
+    """All example patch operations from the Stage 3 prompt pass validate_patches against a sample belief."""
+    from chal.beliefs.patches import validate_patches
+    from tests.utils import create_sample_belief
+
+    # Build a belief that has the IDs referenced in the prompt examples
+    belief = create_sample_belief(
+        belief_id="B1", confidence=0.75,
+        num_claims=4, num_assumptions=3, num_evidence=4
+    )
+    # Add a counterposition and an uncertainty so update/resolve targets exist
+    belief["counterpositions"] = [
+        {"id": "X1", "targets": ["C1"], "attack_type": "undercutting",
+         "statement": "Test", "my_response": "Test", "response_sufficiency": "partial"}
+    ]
+    belief["uncertainties"] = [
+        {"id": "U1", "targets": ["C1"], "question": "Test?", "status": "active"}
+    ]
+
+    # These mirror the exact examples from the rewritten Stage 3 prompt
+    example_patches = [
+        # Modify existing
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.6, "strength_justification": "Lowered"}},
+        {"op": "retire_claim", "target_id": "C3"},
+        {"op": "update_evidence", "target_id": "E1", "changes": {"strength": 0.5, "strength_justification": "Downgraded"}},
+        {"op": "update_assumption", "target_id": "A2", "changes": {"strength": 0.6, "status": "revised", "strength_justification": "Weakened"}},
+        {"op": "update_counterposition", "target_id": "X1", "changes": {"my_response": "Updated", "response_sufficiency": "sufficient"}},
+        {"op": "resolve_uncertainty", "target_id": "U1", "resolution_note": "Resolved by new evidence E4"},
+        # Add new
+        {"op": "add_claim", "item": {"id": "C5", "type": "deductive", "statement": "New claim",
+         "depends_on": ["A1", "E2"], "strength": 0.7, "status": "active", "strength_justification": "Test",
+         "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}],
+         "inference_chain": ["Step 1"]}},
+        {"op": "add_evidence", "item": {"id": "E5", "type": "empirical", "summary": "New evidence",
+         "source": "Test", "relevance_to_claims": ["C1"], "strength": 0.7, "status": "active",
+         "strength_justification": "Test"}},
+        {"op": "add_assumption", "item": {"id": "A4", "type": "empirical", "statement": "New assumption",
+         "supports_claims": ["C1"], "strength": 0.75, "status": "active", "strength_justification": "Test"}},
+        {"op": "add_counterposition", "item": {"id": "X3", "targets": ["C2"], "attack_type": "undermining",
+         "statement": "Test", "my_response": "Test", "response_sufficiency": "partial"}},
+        {"op": "add_uncertainty", "item": {"id": "U2", "targets": ["C1", "E1"], "question": "Test?", "status": "active"}},
+    ]
+
+    errors = validate_patches(example_patches, belief)
+    assert errors == [], f"Example patches failed validation: {errors}"
+
+
 @pytest.mark.unit
 def test_stage_5_includes_rebuttal_text():
     """Stage 5 prompt should include rebuttal text in outcome formatting."""
@@ -621,11 +967,14 @@ def test_stage_6_uses_strength():
 
 
 @pytest.mark.unit
-def test_adjudicator_prompt_uses_strength():
-    """Adjudicator prompt criteria should reference 'strength' not 'confidence'."""
-    prompt = build_adjudicator_prompt()
-    assert "Strength exceeding" in prompt
-    assert "Confidence exceeding" not in prompt
+def test_adjudicator_prompt_threshold_in_scoring():
+    """Adjudicator prompt scoring section includes the threshold value."""
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_NONE_ETHICS,
+        threshold=0.2,
+    )
+    assert ">= 0.2" in prompt
 
 
 # ==============================================
@@ -980,7 +1329,10 @@ def test_debate_context_in_bloodsport_prompts(builder, kwargs, expected_descript
 @pytest.mark.unit
 def test_adjudicator_prompt_no_debate_context():
     """Adjudicator prompt should NOT contain <debate_context> — it's not a debate participant."""
-    prompt = build_adjudicator_prompt()
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_NONE_ETHICS,
+    )
     assert "<debate_context>" not in prompt
 
 
@@ -1383,3 +1735,335 @@ def test_strength_justification_in_evidence_description():
         topic="test", agent_name="TEST", persona_label="TEST"
     )
     assert "strength_justification" in prompt
+
+
+# ==============================================
+# Stage 2 Attack Taxonomy Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_stage_2_prompt_contains_attack_taxonomy():
+    """New prompt contains <attack_taxonomy> with all three types and all 15 strategies."""
+    prompt = build_stage_2_prompt(
+        topic="Test", agent_name="A", opponent_name="B",
+        agent_belief_json='{}', opponent_belief_json='{}'
+    )
+    assert "<attack_taxonomy>" in prompt
+    assert "</attack_taxonomy>" in prompt
+    # All three attack types present
+    assert "UNDERMINING" in prompt
+    assert "REBUTTING" in prompt
+    assert "UNDERCUTTING" in prompt
+    # Spot-check strategies from each type
+    assert "challenge_evidence" in prompt
+    assert "exploit_counterposition" in prompt
+    assert "identify_circularity" in prompt
+    assert "press_uncertainty" in prompt
+
+
+@pytest.mark.unit
+def test_stage_2_prompt_no_old_attack_framework():
+    """Old <attack_framework> tag and QUESTIONING STRATEGIES header are gone."""
+    prompt = build_stage_2_prompt(
+        topic="Test", agent_name="A", opponent_name="B",
+        agent_belief_json='{}', opponent_belief_json='{}'
+    )
+    assert "<attack_framework>" not in prompt
+    assert "QUESTIONING STRATEGIES" not in prompt
+
+
+@pytest.mark.unit
+def test_stage_2_prompt_output_format_has_attack_fields():
+    """Output format references attack_type and attack_strategy, not old strategy field."""
+    prompt = build_stage_2_prompt(
+        topic="Test", agent_name="A", opponent_name="B",
+        agent_belief_json='{}', opponent_belief_json='{}'
+    )
+    assert "attack_type" in prompt
+    assert "attack_strategy" in prompt
+    # Old field should not appear in output_format section
+    output_section = prompt.split("<output_format>")[1].split("</output_format>")[0]
+    assert '"strategy"' not in output_section
+
+
+@pytest.mark.unit
+def test_stage_2_prompt_no_max_question_length():
+    """Prompt does not contain any character limit instruction."""
+    prompt = build_stage_2_prompt(
+        topic="Test", agent_name="A", opponent_name="B",
+        agent_belief_json='{}', opponent_belief_json='{}'
+    )
+    assert "max_question_length" not in prompt
+
+
+@pytest.mark.unit
+def test_stage_2_bloodsport_prompt_has_attack_fields():
+    """Bloodsport prompt includes attack_type and attack_strategy in its output format."""
+    prompt = build_stage_2_bloodsport_prompt(
+        topic="Test", agent_name="A", opponent_name="B",
+        agent_belief_json='{}', opponent_belief_json='{}'
+    )
+    assert "attack_type" in prompt
+    assert "attack_strategy" in prompt
+
+
+# ==============================================
+# 13. Adjudicator Prompt Mode Differentiation
+#     (Phase 4 smoke test)
+# ==============================================
+
+@pytest.mark.unit
+def test_adjudicator_prompt_mode_differentiation():
+    """Build all three mode prompts with the same systems; verify structural differences.
+
+    - All three prompts must be distinct strings.
+    - Logic-only prompt must NOT contain any ethics criteria text.
+    - Ethics-only prompt must NOT contain any logic criteria text.
+    - Balanced prompt must contain criteria from BOTH systems.
+    """
+    logic_only = build_adjudicator_prompt(
+        logic_weight=1.0, ethics_weight=0.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    ethics_only = build_adjudicator_prompt(
+        logic_weight=0.0, ethics_weight=1.0,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+    balanced = build_adjudicator_prompt(
+        logic_weight=0.5, ethics_weight=0.5,
+        logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
+    )
+
+    # --- All three prompts must be distinct ---
+    assert logic_only != ethics_only, "Logic-only and ethics-only prompts are identical"
+    assert logic_only != balanced, "Logic-only and balanced prompts are identical"
+    assert ethics_only != balanced, "Ethics-only and balanced prompts are identical"
+
+    # --- Logic-only: has logic criteria, no ethics criteria ---
+    assert "Logic critique alpha" in logic_only
+    assert "Logic rebuttal alpha" in logic_only
+    assert "Ethics critique gamma" not in logic_only
+    assert "Ethics rebuttal gamma" not in logic_only
+    assert "(ethical)" not in logic_only
+
+    # --- Ethics-only: has ethics criteria, no logic criteria ---
+    assert "Ethics critique gamma" in ethics_only
+    assert "Ethics rebuttal gamma" in ethics_only
+    assert "Logic critique alpha" not in ethics_only
+    assert "Logic rebuttal alpha" not in ethics_only
+    assert "(logical)" not in ethics_only
+
+    # --- Balanced: has BOTH systems' criteria with prefixes ---
+    assert "Logic critique alpha" in balanced
+    assert "Ethics critique gamma" in balanced
+    assert "Logic rebuttal alpha" in balanced
+    assert "Ethics rebuttal gamma" in balanced
+    assert "(logical)" in balanced
+    assert "(ethical)" in balanced
+
+    # --- Mode-specific instructions differ ---
+    assert "Disregard any ethical arguments" in logic_only
+    assert "Logical validity is irrelevant" in ethics_only
+    assert "Logical soundness is the baseline" in balanced
+
+
+# ==============================================
+# Adjudicator Per-Pair Prompt Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_contains_challenge():
+    """Challenge text appears inside <challenge> tags."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="Your claim lacks evidence",
+        rebuttal="I provided three sources",
+        challenger="Agent-A",
+        target="Agent-B",
+        mode_label="Pure Logic",
+    )
+    assert "<challenge" in prompt
+    assert "Your claim lacks evidence" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_contains_rebuttal():
+    """Rebuttal text appears inside <rebuttal> tags."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="Your claim lacks evidence",
+        rebuttal="I provided three sources",
+        challenger="Agent-A",
+        target="Agent-B",
+        mode_label="Pure Logic",
+    )
+    assert "<rebuttal" in prompt
+    assert "I provided three sources" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_contains_challenger_name():
+    """Challenger name appears in from= attribute."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="Your claim lacks evidence",
+        rebuttal="I provided three sources",
+        challenger="Agent-Empiricist",
+        target="Agent-Rationalist",
+        mode_label="Pure Logic",
+    )
+    assert 'from="Agent-Empiricist"' in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_contains_target_name():
+    """Target name appears in from= attribute on the rebuttal tag."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="Your claim lacks evidence",
+        rebuttal="I provided three sources",
+        challenger="Agent-Empiricist",
+        target="Agent-Rationalist",
+        mode_label="Pure Logic",
+    )
+    assert 'from="Agent-Rationalist"' in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_mode_label():
+    """Mode label appears in the instructions section."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Balanced",
+    )
+    assert "Balanced" in prompt
+    assert "Evaluate this exchange under Balanced mode" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_logic_sys_description():
+    """Logic system description included when provided."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Pure Logic",
+        logic_sys_description="Classical Informal + Bayesian reasoning",
+    )
+    assert "Logic system: Classical Informal + Bayesian reasoning" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_ethics_sys_description():
+    """Ethics system description included when provided."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Balanced",
+        ethics_sys_description="Utilitarian framework",
+    )
+    assert "Ethics system: Utilitarian framework" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_no_sys_when_empty():
+    """No 'Logic system:' or 'Ethics system:' lines when descriptions are empty."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Pure Logic",
+        logic_sys_description="",
+        ethics_sys_description="",
+    )
+    assert "Logic system:" not in prompt
+    assert "Ethics system:" not in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_belief_excerpts_included():
+    """Belief excerpt XML blocks present when provided."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Pure Logic",
+        challenger_belief_excerpt_json='{"belief": "test_challenger"}',
+        target_belief_excerpt_json='{"belief": "test_target"}',
+    )
+    assert "<challenger_belief_excerpt>" in prompt
+    assert "test_challenger" in prompt
+    assert "<target_belief_excerpt>" in prompt
+    assert "test_target" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_no_excerpts_when_empty():
+    """No excerpt XML blocks when not provided."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Pure Logic",
+    )
+    assert "<challenger_belief_excerpt>" not in prompt
+    assert "<target_belief_excerpt>" not in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_output_format():
+    """Output format section includes required JSON fields."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Pure Logic",
+    )
+    assert "<output_format>" in prompt
+    assert '"restatement"' in prompt
+    assert '"formalization_challenger"' in prompt
+    assert '"formalization_target"' in prompt
+    assert '"challenger_logic"' in prompt
+    assert '"challenger_ethics"' in prompt
+    assert '"defender_logic"' in prompt
+    assert '"defender_ethics"' in prompt
+    assert '"challenger_combined"' in prompt
+    assert '"defender_combined"' in prompt
+    assert '"outcome"' in prompt
+    assert '"reasoning"' in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_three_step_protocol():
+    """Instructions reference the three-step protocol."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Pure Logic",
+    )
+    assert "three-step protocol" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_per_pair_prompt_no_debate_context():
+    """Per-pair prompt should NOT contain <debate_context> (it's not a stage prompt)."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="X",
+        rebuttal="Y",
+        challenger="A",
+        target="B",
+        mode_label="Pure Logic",
+        logic_sys_description="Some logic",
+        ethics_sys_description="Some ethics",
+        challenger_belief_excerpt_json='{"b": 1}',
+        target_belief_excerpt_json='{"b": 2}',
+    )
+    assert "<debate_context>" not in prompt

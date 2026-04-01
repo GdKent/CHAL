@@ -9,6 +9,112 @@ import re
 from typing import List
 
 
+# ---------------------------------------------------------------------------
+# Stage 2 attack taxonomy constants
+# ---------------------------------------------------------------------------
+
+VALID_ATTACK_STRATEGIES = {
+    "undermining": {
+        "challenge_evidence",
+        "challenge_assumption",
+        "expose_weak_foundation",
+        "demand_falsifiability",
+        "challenge_strength_calibration",
+        "press_uncertainty",
+    },
+    "rebutting": {
+        "present_counter_evidence",
+        "present_counter_example",
+        "exploit_counterposition",
+        "offer_alternative_explanation",
+    },
+    "undercutting": {
+        "challenge_inference_step",
+        "identify_circularity",
+        "expose_inconsistency",
+        "identify_equivocation",
+        "challenge_scope",
+    },
+}
+
+VALID_TARGET_ID_PREFIXES = ("A", "C", "E", "X", "U")
+
+_TARGET_ID_RE = re.compile(r"^[ACEXU]\d+$")
+
+
+def validate_stage2_questions(questions: list[dict]) -> tuple[bool, list[str]]:
+    """
+    Validate parsed Stage 2 cross-examination questions.
+
+    Checks each question for:
+    - Required fields present and non-empty: qid, text, target_ids, attack_type, attack_strategy
+    - qid matches pattern Q1, Q2, ...
+    - target_ids is a non-empty list of 1-2 valid CBS node IDs (A#, C#, E#, X#, U#)
+    - attack_type is one of: undermining, rebutting, undercutting
+    - attack_strategy is a valid strategy for the chosen attack_type
+
+    Args:
+        questions: List of parsed question dicts from model output.
+
+    Returns:
+        Tuple of (is_valid, errors) where is_valid is True if all questions pass,
+        and errors is a list of human-readable error strings (empty if valid).
+    """
+    errors: list[str] = []
+
+    if not questions:
+        errors.append("questions list is empty")
+        return False, errors
+
+    for i, q in enumerate(questions):
+        label = q.get("qid", f"question[{i}]")
+
+        # --- required fields ---
+        for field in ("qid", "text", "target_ids", "attack_type", "attack_strategy"):
+            val = q.get(field)
+            if not val:
+                errors.append(f"{label}: missing or empty required field '{field}'")
+
+        # --- qid format ---
+        qid = q.get("qid", "")
+        if qid and not re.fullmatch(r"Q\d+", qid):
+            errors.append(f"{label}: qid '{qid}' does not match pattern Q1, Q2, ...")
+
+        # --- target_ids ---
+        target_ids = q.get("target_ids")
+        if isinstance(target_ids, list):
+            if len(target_ids) == 0:
+                errors.append(f"{label}: target_ids is empty")
+            elif len(target_ids) > 2:
+                errors.append(f"{label}: target_ids has {len(target_ids)} entries (max 2)")
+            for tid in target_ids:
+                if not isinstance(tid, str) or not _TARGET_ID_RE.match(tid):
+                    errors.append(
+                        f"{label}: invalid target_ids entry '{tid}' "
+                        f"(must match [ACEXU]<number>)"
+                    )
+
+        # --- attack_type ---
+        attack_type = q.get("attack_type", "")
+        if attack_type and attack_type not in VALID_ATTACK_STRATEGIES:
+            errors.append(
+                f"{label}: invalid attack_type '{attack_type}' "
+                f"(must be one of: {', '.join(sorted(VALID_ATTACK_STRATEGIES))})"
+            )
+
+        # --- attack_strategy ---
+        attack_strategy = q.get("attack_strategy", "")
+        if attack_type in VALID_ATTACK_STRATEGIES and attack_strategy:
+            if attack_strategy not in VALID_ATTACK_STRATEGIES[attack_type]:
+                errors.append(
+                    f"{label}: attack_strategy '{attack_strategy}' is not valid "
+                    f"for attack_type '{attack_type}' "
+                    f"(valid: {', '.join(sorted(VALID_ATTACK_STRATEGIES[attack_type]))})"
+                )
+
+    return (len(errors) == 0), errors
+
+
 def parse_challenges(challenge_text: str) -> list[str]:
     """
     Parses a multi-part critique (e.g., '1. ... 2. ... 3. ...') into a list of individual critiques.

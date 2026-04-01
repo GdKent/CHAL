@@ -27,6 +27,9 @@ from chal.orchestrator.debate_controller import (
     DebateController,
     summarize_changes,
     filter_reversal_patches,
+    _extract_first_json_block,
+    _generate_rebuttal,
+    _extract_all_json_blocks,
 )
 from chal.config import DebateConfig, AgentConfig, AdjudicationConfig, OutputConfig, StageConfig
 from chal.utilities.parallel import WorkResult
@@ -982,6 +985,10 @@ def _setup_two_phase_controller():
             "target": "Agent-A",
             "challenger": "Agent-B",
             "challenge": "Your C1 is weak",
+            "qid": "Q1",
+            "target_ids": ["C1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_strength_calibration",
             "rebuttal": "I defended with evidence",
             "resolution": {
                 "status": "critique_valid",
@@ -1280,3 +1287,161 @@ def test_retry_respects_config_parse_retries():
     assert call_count == 1  # Only 1 retry allowed
     log_text = "\n".join(controller.debug_log)
     assert "All 1 retries exhausted" in log_text
+
+
+# ==============================================
+# _extract_first_json_block Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_extract_first_json_block_fenced():
+    """Extracts JSON from a standard ```json ... ``` fenced block."""
+    text = 'Some text\n```json\n{"questions": [{"qid": "Q1"}]}\n```\nMore text'
+    result = _extract_first_json_block(text)
+    assert result == {"questions": [{"qid": "Q1"}]}
+
+
+@pytest.mark.unit
+def test_extract_first_json_block_raw():
+    """Extracts JSON when no fenced block is present, falling back to raw {...} detection."""
+    text = 'Here is the output: {"questions": [{"qid": "Q1"}]}'
+    result = _extract_first_json_block(text)
+    assert result == {"questions": [{"qid": "Q1"}]}
+
+
+@pytest.mark.unit
+def test_extract_first_json_block_no_json():
+    """Returns None when no JSON is present."""
+    text = "This response has no JSON at all."
+    result = _extract_first_json_block(text)
+    assert result is None
+
+
+@pytest.mark.unit
+def test_extract_first_json_block_malformed():
+    """Returns None for invalid JSON inside a fenced block."""
+    text = '```json\n{not valid json}\n```'
+    result = _extract_first_json_block(text)
+    assert result is None
+
+
+@pytest.mark.unit
+def test_extract_first_json_block_with_reasoning():
+    """Extracts JSON correctly when preceded by <reasoning>...</reasoning> tags."""
+    text = (
+        "<reasoning>The opponent's C2 is vulnerable because...</reasoning>\n\n"
+        '```json\n{"questions": [{"qid": "Q1", "text": "test", '
+        '"target_ids": ["C2"], "attack_type": "undermining", '
+        '"attack_strategy": "challenge_evidence"}]}\n```'
+    )
+    result = _extract_first_json_block(text)
+    assert result is not None
+    assert len(result["questions"]) == 1
+    assert result["questions"][0]["attack_type"] == "undermining"
+
+
+# ==============================================
+# _generate_rebuttal Parser — Single Block Format
+# ==============================================
+
+def _make_rebuttal_agent(response_content: str):
+    """Create a minimal mock agent suitable for _generate_rebuttal."""
+    agent = create_mock_agent("Agent-A", responses=[response_content])
+    agent.get_internal_belief_obj.return_value = {
+        "schema_version": "CBS", "belief_id": "B1", "version": 1,
+        "metadata": {"topic_query": "Test", "agent_persona": "Test"},
+        "thesis": {"stance": "Test", "summary_bullets": ["b"], "strength": 0.7}
+    }
+    return agent
+
+
+def _make_rebuttal_entries():
+    """Create minimal challenge entries for _generate_rebuttal."""
+    return [{"challenge": "Test challenge?", "challenger": "Agent-B",
+             "qid": "Q1", "target_ids": ["C1"]}]
+
+
+def _make_rebuttal_config():
+    """Create a minimal config for _generate_rebuttal."""
+    return DebateConfig(
+        name="Test", topic="Test topic", max_rounds=1,
+        agents=[AgentConfig(name="Agent-A", persona="TEST"),
+                AgentConfig(name="Agent-B", persona="TEST")],
+        adjudication=AdjudicationConfig(),
+        outputs=OutputConfig(storage_dir=Path(".")),
+    )
+
+
+@pytest.mark.unit
+def test_generate_rebuttal_parses_single_block():
+    """A single JSON block with both 'rebuttals' and 'patches' keys is parsed correctly."""
+    content = (
+        '<reasoning>Analysis</reasoning>\n\n'
+        '```json\n'
+        '{"rebuttals": [{"qid": "Q1", "answer": "Rebutted", "action": "refute", "linked_ids": ["C1"]}], '
+        '"patches": [{"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.6}}]}'
+        '\n```'
+    )
+    agent = _make_rebuttal_agent(content)
+    result = _generate_rebuttal(agent, _make_rebuttal_entries(), "Test topic", _make_rebuttal_config())
+    assert len(result["rebuttals"]) == 1
+    assert result["rebuttals"][0]["action"] == "refute"
+    assert len(result["patches"]) == 1
+    assert result["patches"][0]["op"] == "update_claim"
+
+
+@pytest.mark.unit
+def test_generate_rebuttal_parses_two_blocks_legacy():
+    """Two separate JSON blocks (legacy format) are still parsed correctly."""
+    content = (
+        '```json\n'
+        '{"rebuttals": [{"qid": "Q1", "answer": "Rebutted", "action": "refute", "linked_ids": ["C1"]}]}'
+        '\n```\n\n'
+        '```json\n'
+        '{"patches": [{"op": "retire_claim", "target_id": "C2"}]}'
+        '\n```'
+    )
+    agent = _make_rebuttal_agent(content)
+    result = _generate_rebuttal(agent, _make_rebuttal_entries(), "Test topic", _make_rebuttal_config())
+    assert len(result["rebuttals"]) == 1
+    assert len(result["patches"]) == 1
+    assert result["patches"][0]["op"] == "retire_claim"
+
+
+@pytest.mark.unit
+def test_generate_rebuttal_single_block_empty_patches():
+    """A single block with 'patches': [] returns empty patches list."""
+    content = (
+        '```json\n'
+        '{"rebuttals": [{"qid": "Q1", "answer": "Rebutted", "action": "refute", "linked_ids": ["C1"]}], '
+        '"patches": []}'
+        '\n```'
+    )
+    agent = _make_rebuttal_agent(content)
+    result = _generate_rebuttal(agent, _make_rebuttal_entries(), "Test topic", _make_rebuttal_config())
+    assert len(result["rebuttals"]) == 1
+    assert result["patches"] == []
+
+
+@pytest.mark.unit
+def test_generate_rebuttal_single_block_no_patches_key():
+    """A single block with only 'rebuttals' (no 'patches' key) returns empty patches."""
+    content = (
+        '```json\n'
+        '{"rebuttals": [{"qid": "Q1", "answer": "Rebutted", "action": "refute", "linked_ids": ["C1"]}]}'
+        '\n```'
+    )
+    agent = _make_rebuttal_agent(content)
+    result = _generate_rebuttal(agent, _make_rebuttal_entries(), "Test topic", _make_rebuttal_config())
+    assert len(result["rebuttals"]) == 1
+    assert result["patches"] == []
+
+
+@pytest.mark.unit
+def test_generate_rebuttal_no_json_blocks():
+    """No JSON blocks returns empty rebuttals and patches."""
+    content = "I have no JSON to provide, just this plain text response."
+    agent = _make_rebuttal_agent(content)
+    result = _generate_rebuttal(agent, _make_rebuttal_entries(), "Test topic", _make_rebuttal_config())
+    assert result["rebuttals"] == []
+    assert result["patches"] == []

@@ -453,6 +453,8 @@ class TestRunStage3Collaborative:
             "challenge": "Why do you believe X?",
             "qid": "Q1",
             "target_ids": ["C1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         result = controller.run_stage_3_collaborative()
@@ -476,6 +478,8 @@ class TestRunStage3Collaborative:
             "challenge": "Test question",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_collaborative()
@@ -501,6 +505,8 @@ class TestRunStage3Collaborative:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_collaborative()
@@ -528,6 +534,8 @@ class TestRunStage3Collaborative:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_collaborative()
@@ -556,6 +564,8 @@ class TestRunStage3Collaborative:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_collaborative()
@@ -582,6 +592,8 @@ class TestRunStage3Collaborative:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_collaborative()
@@ -619,6 +631,8 @@ class TestRunStage3Collaborative:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_collaborative()
@@ -634,6 +648,8 @@ class TestRunStage3Collaborative:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": [],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         # Stats should start at 0
@@ -658,6 +674,8 @@ class TestRunStage3Collaborative:
             "challenge": "Q?",
             "qid": "Q1",
             "target_ids": ["C1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
         }]
 
         controller.run_stage_3_collaborative()
@@ -678,6 +696,8 @@ class TestRunStage3Collaborative:
                 "challenge": "Q1?",
                 "qid": "Q1",
                 "target_ids": [],
+                "attack_type": "undermining",
+                "attack_strategy": "challenge_evidence",
             },
             {
                 "challenger": "Agent-B",
@@ -685,6 +705,8 @@ class TestRunStage3Collaborative:
                 "challenge": "Q2?",
                 "qid": "Q2",
                 "target_ids": [],
+                "attack_type": "undermining",
+                "attack_strategy": "challenge_evidence",
             },
         ]
 
@@ -887,8 +909,8 @@ class TestCollaborativeConfigLoading:
                 temperature: 0.5
             adjudication:
               model: "gpt-4o"
-              logic_weight: 0.8
-              ethics_weight: 0.2
+              logic_weight: 0.5
+              ethics_weight: 0.5
               logic_system: "Formal logic"
               ethics_system: "Virtue ethics"
             collaborative:

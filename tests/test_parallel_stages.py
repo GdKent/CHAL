@@ -341,3 +341,246 @@ class TestDispatcherIntegration:
 
         assert hasattr(controller, "dispatcher")
         assert controller.dispatcher.enabled is False
+
+
+# ==============================================
+# Stage 5: Belief Updates (Parallel)
+# ==============================================
+
+def _make_stage5_phase1_response():
+    """Mock Phase 1 (enforcement) response with patches."""
+    return (
+        '<reasoning>C1 was critiqued validly, lowering strength.</reasoning>\n\n'
+        '```json\n'
+        '{"patches": [{"op": "update_claim", "target_id": "C1", '
+        '"changes": {"strength": 0.55}}]}\n'
+        '```'
+    )
+
+
+def _make_stage5_phase2_response():
+    """Mock Phase 2 (introspection) response with patches."""
+    return (
+        '<reasoning>Rewriting thesis after enforcement.</reasoning>\n\n'
+        '```json\n'
+        '{"patches": [{"op": "update_thesis", "new_strength": 0.5, '
+        '"stance": "Revised stance after debate", '
+        '"summary_bullets": ["Revised bullet 1", "Revised bullet 2"]}]}\n'
+        '```'
+    )
+
+
+def _make_stage5_bloodsport_response():
+    """Mock single-phase bloodsport response with patches."""
+    return (
+        '```json\n'
+        '{"patches": [{"op": "update_claim", "target_id": "C1", '
+        '"changes": {"strength": 0.60}}]}\n'
+        '```'
+    )
+
+
+def _setup_stage5_controller(
+    agent_names,
+    parallel_enabled,
+    stage3_mode="rebuttal",
+    agents_with_entries=None,
+):
+    """Create a controller wired up for Stage 5 parallel testing.
+
+    Args:
+        agent_names: List of agent name strings.
+        parallel_enabled: Whether to enable parallel dispatch.
+        stage3_mode: "rebuttal" for CBS two-phase, "bloodsport" for single-phase.
+        agents_with_entries: Set of agent names that have adjudication entries.
+            Defaults to all agents.
+
+    Returns:
+        (controller, agents_dict) where agents_dict maps name -> mock agent.
+    """
+    if agents_with_entries is None:
+        agents_with_entries = set(agent_names)
+
+    tmpdir = tempfile.mkdtemp()
+
+    config = DebateConfig(
+        name="Stage 5 Parallel Test",
+        topic="Test topic",
+        max_rounds=1,
+        stage3_mode=stage3_mode,
+        agents=[AgentConfig(name=n, persona="EMPIRICIST") for n in agent_names],
+        adjudication=AdjudicationConfig(),
+        outputs=OutputConfig(storage_dir=Path(tmpdir)),
+        parallel=ParallelConfig(enabled=parallel_enabled, max_workers=5),
+    )
+
+    agents = []
+    agents_dict = {}
+    for name in agent_names:
+        if stage3_mode == "bloodsport":
+            responses = [_make_stage5_bloodsport_response()] * 10
+        else:
+            responses = [
+                _make_stage5_phase1_response(),
+                _make_stage5_phase2_response(),
+            ] * 10
+        agent = create_mock_agent(name, responses=responses)
+        belief = create_sample_belief(
+            belief_id=f"BELIEF-{name}",
+            num_claims=1, num_assumptions=1, num_evidence=1,
+        )
+        agent.get_internal_belief_obj.return_value = belief
+        agent.get_internal_belief.return_value = f"markdown for {name}"
+        agents.append(agent)
+        agents_dict[name] = agent
+
+    controller = DebateController(agents, config=config)
+    controller.current_round_key = "round_1"
+    controller.round_histories = {"round_1": []}
+    controller.opening_positions = {n: f"opening-{n}" for n in agent_names}
+    controller.current_positions = {}
+    controller.last_rebuttals_patches = {}
+
+    # Build challenge_rebuttal_pairs only for agents in agents_with_entries
+    controller.challenge_rebuttal_pairs = []
+    other_names = list(agent_names)
+    for name in agent_names:
+        if name in agents_with_entries:
+            challenger = next((n for n in other_names if n != name), "External")
+            controller.challenge_rebuttal_pairs.append({
+                "target": name,
+                "challenger": challenger,
+                "challenge": f"Your C1 is weak, {name}",
+                "qid": "Q1",
+                "target_ids": ["C1"],
+                "attack_type": "undermining",
+                "attack_strategy": "challenge_strength_calibration",
+                "rebuttal": "I defended with evidence",
+                "resolution": {
+                    "status": "critique_valid",
+                    "reasoning": "The critique was valid",
+                },
+            })
+
+    return controller, agents_dict
+
+
+class TestStage5Parallel:
+    """Stage 5 belief updates — parallel-specific tests."""
+
+    def test_stage_5_parallel_dispatch(self, mock_openai_responses):
+        """Enable parallel, verify dispatcher.run() receives correct WorkItems."""
+        controller, agents = _setup_stage5_controller(
+            ["Agent-A", "Agent-B"], parallel_enabled=True,
+        )
+
+        # Spy on the dispatcher to capture what items are dispatched
+        original_run = controller.dispatcher.run
+        dispatched_items = []
+
+        def spy_run(items):
+            dispatched_items.extend(items)
+            return original_run(items)
+
+        controller.dispatcher.run = spy_run
+        controller.run_stage_5_update_positions()
+
+        # Should dispatch exactly 2 WorkItems (one per agent with entries)
+        assert len(dispatched_items) == 2
+        dispatched_keys = {item.key for item in dispatched_items}
+        assert dispatched_keys == {"Agent-A", "Agent-B"}
+
+    def test_stage_5_parallel_agent_independence(self, mock_openai_responses):
+        """One agent errors in gather; the other still gets its belief updated."""
+        controller, agents = _setup_stage5_controller(
+            ["Agent-A", "Agent-B"], parallel_enabled=True,
+        )
+
+        # Make Agent-B's generate raise an exception
+        agents["Agent-B"].generate.side_effect = RuntimeError("API failure")
+
+        controller.run_stage_5_update_positions()
+
+        # Agent-A should still have its belief committed
+        assert agents["Agent-A"].set_internal_belief_obj.called
+
+        # Agent-B should NOT have its belief committed (error path)
+        assert not agents["Agent-B"].set_internal_belief_obj.called
+
+        # Debug log should mention Agent-B's error
+        debug_text = "\n".join(controller.debug_log)
+        assert "Agent-B" in debug_text
+
+    def test_stage_5_parallel_deterministic_order(self, mock_openai_responses):
+        """Three agents — APPLY phase processes them in self.agents order."""
+        controller, agents = _setup_stage5_controller(
+            ["Agent-A", "Agent-B", "Agent-C"], parallel_enabled=True,
+        )
+
+        controller.run_stage_5_update_positions()
+
+        # All three agents should have beliefs committed
+        for name in ["Agent-A", "Agent-B", "Agent-C"]:
+            assert agents[name].set_internal_belief_obj.called, f"{name} belief not committed"
+
+        # Check debug_log ordering: Agent-A entries appear before Agent-B,
+        # which appear before Agent-C
+        debug_text = "\n".join(controller.debug_log)
+        pos_a = debug_text.index("Updating belief for: Agent-A")
+        pos_b = debug_text.index("Updating belief for: Agent-B")
+        pos_c = debug_text.index("Updating belief for: Agent-C")
+        assert pos_a < pos_b < pos_c, (
+            f"Expected deterministic order A < B < C, got {pos_a}, {pos_b}, {pos_c}"
+        )
+
+    def test_stage_5_parallel_bloodsport_flow(self, mock_openai_responses):
+        """Bloodsport single-phase path works through parallel dispatcher."""
+        controller, agents = _setup_stage5_controller(
+            ["Agent-A", "Agent-B"],
+            parallel_enabled=True,
+            stage3_mode="bloodsport",
+        )
+
+        controller.run_stage_5_update_positions()
+
+        # Both agents should have beliefs committed
+        for name in ["Agent-A", "Agent-B"]:
+            assert agents[name].set_internal_belief_obj.called, f"{name} belief not committed"
+
+        # Each agent should have generate called exactly once (single-phase)
+        for name in ["Agent-A", "Agent-B"]:
+            assert agents[name].generate.call_count == 1, (
+                f"{name} expected 1 generate call, got {agents[name].generate.call_count}"
+            )
+
+    def test_stage_5_parallel_no_entries_skipped(self, mock_openai_responses):
+        """Agents with no adjudication results are not dispatched."""
+        controller, agents = _setup_stage5_controller(
+            ["Agent-A", "Agent-B"],
+            parallel_enabled=True,
+            agents_with_entries={"Agent-A"},  # Only Agent-A has entries
+        )
+
+        # Spy on dispatcher
+        original_run = controller.dispatcher.run
+        dispatched_items = []
+
+        def spy_run(items):
+            dispatched_items.extend(items)
+            return original_run(items)
+
+        controller.dispatcher.run = spy_run
+        controller.run_stage_5_update_positions()
+
+        # Only Agent-A should have been dispatched
+        assert len(dispatched_items) == 1
+        assert dispatched_items[0].key == "Agent-A"
+
+        # Agent-A should have belief committed
+        assert agents["Agent-A"].set_internal_belief_obj.called
+
+        # Agent-B should NOT have been dispatched or have belief committed
+        assert not agents["Agent-B"].set_internal_belief_obj.called
+
+        # Agent-B's current_positions should be set to opening position
+        assert controller.current_positions["Agent-B"] == "opening-Agent-B"

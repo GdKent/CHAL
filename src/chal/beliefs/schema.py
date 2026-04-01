@@ -55,14 +55,12 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
             "type": "object",                   # A nested object containing descriptive metadata
             "required": [                       # Minimum metadata to track provenance and persona
                 "topic_query",                  # The debate question (e.g., "Does free will exist?")
-                "agent_persona",                # Persona label (e.g., "Empiricist", "Skeptic")
-                "created_at"                    # Creation date/time (ISO-8601 preferred)
+                "agent_persona"                 # Persona label (e.g., "Empiricist", "Skeptic")
             ],
             "properties": {
                 "topic_query": { "type": "string" },     # Query or topic string
                 "agent_persona": { "type": "string" },   # Agent persona or role name
-                "created_at": { "type": "string" },      # ISO-8601 timestamp recommended, but not enforced
-                "last_updated": { "type": "string" },    # Optional ISO-8601 timestamp for last modification
+                "last_updated": { "type": "string" },    # Optional ISO-8601 timestamp (set by patch system)
                 "scope_conditions": { "type": "string" },# Optional scoping statement (assumptions about domain/scope)
                 "definitions": {                         # Optional glossary for key terms used in the belief
                     "type": "array",                     # A list of term-definition objects
@@ -107,7 +105,7 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["id", "type", "statement", "strength", "status", "strength_justification"],
+                "required": ["id", "type", "statement", "supports_claims", "strength", "status", "strength_justification"],
                 "properties": {
                     "id": { "type": "string" },
                     "type": {
@@ -115,6 +113,10 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                         "enum": ["foundational", "empirical", "methodological"]
                     },
                     "statement": { "type": "string" },
+                    "supports_claims": {                 # Cross-references to C# IDs this assumption supports
+                        "type": "array",
+                        "items": { "type": "string" }
+                    },
                     "strength": {                        # Calibrated strength (0.0 - 1.0)
                         "type": "number",
                         "minimum": 0.0,
@@ -260,18 +262,18 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
         # --- Governance of updates & audit trail ---
 
         #"update_policy": { "type": "object" },    # Optional rules: revision triggers, confidence update rule, retirement criteria
-        "changelog": {                               # Optional list of versioned change records (who/when/what changed)
+        "changelog": {                               # Optional list of versioned change records (what changed)
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["version", "changes", "timestamp"],
+                "required": ["version", "changes"],
                 "properties": {
                     "version": { "type": "integer", "minimum": 1 },
                     "changes": {
                         "type": "array",
                         "items": { "type": "string" }
                     },
-                    "timestamp": { "type": "string" }
+                    "timestamp": { "type": "string" }    # Optional — added by patch system, not by LLM
                 }
             }
         }

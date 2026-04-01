@@ -2,18 +2,23 @@
 Unit tests for the ethics_systems module.
 
 Tests cover:
-- All ethics system keys exist in the ETHICS_SYSTEMS dict
-- Labels and descriptions dicts match ETHICS_SYSTEMS keys
-- All values are non-empty strings
-- Lookup via get_ethics_system() (valid, case-insensitive, unknown key)
+- All 6 ethics system keys exist in ETHICS_SYSTEMS
+- Every system dict has required keys (label, description, criteria)
+- Every criteria dict has the three required sub-keys
+- Each criteria list is non-empty (except NONE)
+- NONE system has empty criteria lists
+- get_ethics_system() returns a dict (not a string)
+- get_ethics_system() raises KeyError for unknown keys
+- get_ethics_system_description() returns a non-empty string
+- get_ethics_system_label() returns a non-empty string
 """
 
 import pytest
 from chal.agents.ethics_systems import (
     ETHICS_SYSTEMS,
-    ETHICS_LABELS,
-    ETHICS_DESCRIPTIONS,
     get_ethics_system,
+    get_ethics_system_description,
+    get_ethics_system_label,
 )
 
 EXPECTED_KEYS = [
@@ -25,6 +30,26 @@ EXPECTED_KEYS = [
     "BALANCED",
 ]
 
+# Systems that should have non-empty criteria lists
+SYSTEMS_WITH_CRITERIA = [k for k in EXPECTED_KEYS if k != "NONE"]
+
+REQUIRED_DICT_KEYS = {"label", "description", "criteria"}
+REQUIRED_CRITERIA_KEYS = {"critique_valid", "rebuttal_valid", "unresolved"}
+
+# Expected criteria counts: (critique_valid, rebuttal_valid, unresolved)
+EXPECTED_COUNTS = {
+    "NONE": (0, 0, 0),
+    "UTILITARIAN": (6, 6, 3),
+    "DEONTOLOGICAL": (6, 6, 3),
+    "VIRTUE_ETHICS": (6, 6, 3),
+    "CARE_ETHICS": (6, 6, 3),
+    "BALANCED": (6, 6, 3),
+}
+
+
+# ==============================================
+# 1. System Registry Tests
+# ==============================================
 
 @pytest.mark.unit
 def test_all_systems_in_dict():
@@ -34,46 +59,172 @@ def test_all_systems_in_dict():
     assert len(ETHICS_SYSTEMS) == 6
 
 
-@pytest.mark.unit
-def test_labels_match_systems():
-    """Every key in ETHICS_SYSTEMS has a corresponding entry in ETHICS_LABELS."""
-    for key in ETHICS_SYSTEMS:
-        assert key in ETHICS_LABELS, f"Missing label for {key}"
-
+# ==============================================
+# 2. Dict Structure Tests
+# ==============================================
 
 @pytest.mark.unit
-def test_descriptions_match_systems():
-    """Every key in ETHICS_SYSTEMS has a corresponding entry in ETHICS_DESCRIPTIONS."""
-    for key in ETHICS_SYSTEMS:
-        assert key in ETHICS_DESCRIPTIONS, f"Missing description for {key}"
-
-
-@pytest.mark.unit
-def test_system_values_are_strings():
-    """Every value in ETHICS_SYSTEMS is a non-empty string."""
-    for key, value in ETHICS_SYSTEMS.items():
-        assert isinstance(value, str), f"{key} value is not a string"
-        assert len(value) > 0, f"{key} value is empty"
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_system_has_required_keys(key):
+    """Every system dict has label, description, and criteria keys."""
+    system = ETHICS_SYSTEMS[key]
+    assert isinstance(system, dict), f"{key} is not a dict"
+    missing = REQUIRED_DICT_KEYS - set(system.keys())
+    assert not missing, f"{key} missing keys: {missing}"
 
 
 @pytest.mark.unit
-def test_get_ethics_system_valid_key():
-    """get_ethics_system('NONE') returns correct text."""
-    result = get_ethics_system("NONE")
-    assert isinstance(result, str)
-    assert "ethical" in result.lower() or "logic" in result.lower()
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_criteria_has_required_keys(key):
+    """Every criteria dict has critique_valid, rebuttal_valid, unresolved."""
+    criteria = ETHICS_SYSTEMS[key]["criteria"]
+    assert isinstance(criteria, dict), f"{key} criteria is not a dict"
+    missing = REQUIRED_CRITERIA_KEYS - set(criteria.keys())
+    assert not missing, f"{key} criteria missing keys: {missing}"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", SYSTEMS_WITH_CRITERIA)
+def test_criteria_lists_are_non_empty(key):
+    """Each non-NONE system's criteria lists have at least one item."""
+    criteria = ETHICS_SYSTEMS[key]["criteria"]
+    for outcome in REQUIRED_CRITERIA_KEYS:
+        items = criteria[outcome]
+        assert isinstance(items, list), f"{key}.{outcome} is not a list"
+        assert len(items) > 0, f"{key}.{outcome} is empty"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_criteria_items_are_strings(key):
+    """Every criterion is a non-empty string (if any exist)."""
+    criteria = ETHICS_SYSTEMS[key]["criteria"]
+    for outcome in REQUIRED_CRITERIA_KEYS:
+        for i, item in enumerate(criteria[outcome]):
+            assert isinstance(item, str), (
+                f"{key}.{outcome}[{i}] is not a string"
+            )
+            assert len(item) > 0, f"{key}.{outcome}[{i}] is empty"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_label_is_non_empty_string(key):
+    """Every system has a non-empty label string."""
+    label = ETHICS_SYSTEMS[key]["label"]
+    assert isinstance(label, str) and len(label) > 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_description_is_non_empty_string(key):
+    """Every system has a non-empty description string."""
+    desc = ETHICS_SYSTEMS[key]["description"]
+    assert isinstance(desc, str) and len(desc) > 0
+
+
+# ==============================================
+# 3. NONE System Special Cases
+# ==============================================
+
+@pytest.mark.unit
+def test_none_has_empty_criteria():
+    """NONE system has empty criteria lists (no ethical evaluation)."""
+    criteria = ETHICS_SYSTEMS["NONE"]["criteria"]
+    assert criteria["critique_valid"] == []
+    assert criteria["rebuttal_valid"] == []
+    assert criteria["unresolved"] == []
+
+
+@pytest.mark.unit
+def test_none_has_description():
+    """NONE system still has a non-empty description."""
+    desc = ETHICS_SYSTEMS["NONE"]["description"]
+    assert isinstance(desc, str) and len(desc) > 0
+
+
+# ==============================================
+# 4. Criteria Count Tests
+# ==============================================
+
+@pytest.mark.unit
+@pytest.mark.parametrize("key", EXPECTED_KEYS)
+def test_criteria_counts(key):
+    """Each system has the expected number of criteria."""
+    criteria = ETHICS_SYSTEMS[key]["criteria"]
+    expected = EXPECTED_COUNTS[key]
+    actual = (
+        len(criteria["critique_valid"]),
+        len(criteria["rebuttal_valid"]),
+        len(criteria["unresolved"]),
+    )
+    assert actual == expected, (
+        f"{key}: expected {expected}, got {actual}"
+    )
+
+
+# ==============================================
+# 5. Lookup Function Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_get_ethics_system_returns_dict():
+    """get_ethics_system() returns a dict, not a string."""
+    result = get_ethics_system("UTILITARIAN")
+    assert isinstance(result, dict)
+    assert "label" in result
+    assert "description" in result
+    assert "criteria" in result
 
 
 @pytest.mark.unit
 def test_get_ethics_system_case_insensitive():
-    """get_ethics_system('none') works (uppercased internally)."""
+    """get_ethics_system() is case-insensitive."""
     lower = get_ethics_system("none")
     upper = get_ethics_system("NONE")
-    assert lower == upper
+    assert lower is upper
 
 
 @pytest.mark.unit
 def test_get_ethics_system_unknown_key():
-    """get_ethics_system('UNKNOWN') raises KeyError."""
+    """get_ethics_system() raises KeyError for unknown keys."""
     with pytest.raises(KeyError):
         get_ethics_system("UNKNOWN")
+
+
+@pytest.mark.unit
+def test_get_ethics_system_description():
+    """get_ethics_system_description() returns the description string."""
+    desc = get_ethics_system_description("DEONTOLOGICAL")
+    assert isinstance(desc, str)
+    assert "Kantian" in desc
+
+
+@pytest.mark.unit
+def test_get_ethics_system_description_case_insensitive():
+    """get_ethics_system_description() is case-insensitive."""
+    lower = get_ethics_system_description("utilitarian")
+    upper = get_ethics_system_description("UTILITARIAN")
+    assert lower == upper
+
+
+@pytest.mark.unit
+def test_get_ethics_system_description_unknown_key():
+    """get_ethics_system_description() raises KeyError for unknown keys."""
+    with pytest.raises(KeyError):
+        get_ethics_system_description("NONEXISTENT")
+
+
+@pytest.mark.unit
+def test_get_ethics_system_label():
+    """get_ethics_system_label() returns the label string."""
+    label = get_ethics_system_label("VIRTUE_ETHICS")
+    assert isinstance(label, str)
+    assert len(label) > 0
+
+
+@pytest.mark.unit
+def test_get_ethics_system_label_unknown_key():
+    """get_ethics_system_label() raises KeyError for unknown keys."""
+    with pytest.raises(KeyError):
+        get_ethics_system_label("NONEXISTENT")

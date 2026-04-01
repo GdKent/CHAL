@@ -7,6 +7,7 @@ Tests cover:
 - Agent stats initialization and updates
 - Performance score calculation
 - Display functions
+- Stage 2 question validation
 """
 
 import pytest
@@ -18,7 +19,9 @@ from chal.utilities.utils import (
     update_agent_stats,
     calculate_performance_scores,
     get_performance_summary,
-    display_agent_stats
+    display_agent_stats,
+    validate_stage2_questions,
+    VALID_ATTACK_STRATEGIES,
 )
 
 
@@ -419,3 +422,125 @@ def test_display_agent_stats_includes_all_metrics(capsys):
     assert "rebuttal" in display.lower() or "3" in display
     assert "unresolved" in display.lower() or "2" in display
     assert "total" in display.lower() or "10" in display
+
+
+# ==============================================
+# 7. Stage 2 Question Validation Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_stage2_questions_valid():
+    """A well-formed question list passes validation."""
+    questions = [
+        {
+            "qid": "Q1",
+            "text": "How do you justify C2's strength given the weak evidence?",
+            "target_ids": ["C2", "E1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_strength_calibration",
+        },
+        {
+            "qid": "Q2",
+            "text": "Your X1 is only partially addressed — doesn't this undermine C1?",
+            "target_ids": ["X1"],
+            "attack_type": "rebutting",
+            "attack_strategy": "exploit_counterposition",
+        },
+    ]
+    is_valid, errors = validate_stage2_questions(questions)
+    assert is_valid is True
+    assert errors == []
+
+
+@pytest.mark.unit
+def test_validate_stage2_questions_missing_fields():
+    """Questions missing required fields produce errors."""
+    questions = [{"qid": "Q1"}]  # Missing text, target_ids, attack_type, attack_strategy
+    is_valid, errors = validate_stage2_questions(questions)
+    assert is_valid is False
+    assert len(errors) >= 1
+
+
+@pytest.mark.unit
+def test_validate_stage2_questions_invalid_attack_type():
+    """An unrecognized attack_type value produces an error."""
+    questions = [{
+        "qid": "Q1",
+        "text": "Some question",
+        "target_ids": ["C1"],
+        "attack_type": "destroying",
+        "attack_strategy": "challenge_evidence",
+    }]
+    is_valid, errors = validate_stage2_questions(questions)
+    assert is_valid is False
+    assert any("attack_type" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_stage2_questions_mismatched_strategy():
+    """A valid attack_type paired with a strategy from a different type produces an error."""
+    questions = [{
+        "qid": "Q1",
+        "text": "Some question",
+        "target_ids": ["C1"],
+        "attack_type": "undermining",
+        "attack_strategy": "identify_circularity",  # belongs to undercutting
+    }]
+    is_valid, errors = validate_stage2_questions(questions)
+    assert is_valid is False
+    assert any("attack_strategy" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_stage2_questions_invalid_target_ids():
+    """target_ids with invalid prefixes produce errors."""
+    questions = [{
+        "qid": "Q1",
+        "text": "Some question",
+        "target_ids": ["Z1"],
+        "attack_type": "undermining",
+        "attack_strategy": "challenge_evidence",
+    }]
+    is_valid, errors = validate_stage2_questions(questions)
+    assert is_valid is False
+    assert any("target_ids" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_stage2_questions_empty_list():
+    """An empty question list returns invalid."""
+    is_valid, errors = validate_stage2_questions([])
+    assert is_valid is False
+
+
+@pytest.mark.unit
+def test_validate_stage2_questions_too_many_target_ids():
+    """More than 2 target_ids produces an error."""
+    questions = [{
+        "qid": "Q1",
+        "text": "Some question",
+        "target_ids": ["C1", "A1", "E1"],
+        "attack_type": "undermining",
+        "attack_strategy": "challenge_evidence",
+    }]
+    is_valid, errors = validate_stage2_questions(questions)
+    assert is_valid is False
+    assert any("target_ids" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_stage2_questions_all_strategies_accepted():
+    """Every valid (attack_type, attack_strategy) pair passes validation."""
+    for attack_type, strategies in VALID_ATTACK_STRATEGIES.items():
+        for strategy in strategies:
+            questions = [{
+                "qid": "Q1",
+                "text": "Test question",
+                "target_ids": ["C1"],
+                "attack_type": attack_type,
+                "attack_strategy": strategy,
+            }]
+            is_valid, errors = validate_stage2_questions(questions)
+            assert is_valid is True, (
+                f"({attack_type}, {strategy}) should be valid but got errors: {errors}"
+            )

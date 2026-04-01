@@ -14,109 +14,307 @@ import json
 # will continue to work via this star import.
 from chal.agents.epistemic_personas import *  # noqa: F401,F403
 
+# === Adjudicator Prompt Constants ===
+
+_UNIVERSAL_BASE = (
+    "Regardless of the system-specific criteria below, the following flaws are "
+    "disqualifying for whichever side commits them: circular reasoning (conclusion "
+    "presupposed in a premise), misrepresentation of the opposing position (responding "
+    "to a claim never made), and self-defeating argument (conclusion undermines own "
+    "premises)."
+)
+
+_MODE_INSTRUCTIONS = {
+    "logic_only": (
+        "Evaluate using ONLY the logical criteria below. Disregard any ethical "
+        "arguments, appeals to consequences, or normative claims."
+    ),
+    "balanced": (
+        "Evaluate using both logical and ethical criteria. Logical soundness is the "
+        "baseline; ethical concerns can tip the balance when logical arguments are "
+        "close or when adopting a logically valid conclusion would cause significant "
+        "harm under the ethical framework."
+    ),
+    "ethics_only": (
+        "Evaluate using ONLY the ethical criteria below. A logically sound argument "
+        "that leads to ethically harmful conclusions loses to a less rigorous argument "
+        "with better ethical outcomes. Logical validity is irrelevant — only the "
+        "ethical merit matters."
+    ),
+}
+
+_MODE_SCORING = {
+    "logic_only": (
+        "Score each side 0.0–1.0 on logic only (0.0 = fails; 0.5 = mixed; "
+        "1.0 = strong). Set ethics scores to 0.0.\ncombined = logic."
+    ),
+    "balanced": (
+        "Score each side 0.0–1.0 on each axis (0.0 = fails; 0.5 = mixed; "
+        "1.0 = strong).\ncombined = 0.5 * logic + 0.5 * ethics."
+    ),
+    "ethics_only": (
+        "Score each side 0.0–1.0 on ethics only (0.0 = fails; 0.5 = mixed; "
+        "1.0 = strong). Set logic scores to 0.0.\ncombined = ethics."
+    ),
+}
+
+_ANTI_BIAS = """\
+- A response that merely acknowledges a challenge is NOT a successful defense. \
+It must RESOLVE the logical issue.
+- Explicit concession ("you are correct", weakening patches) = CRITIQUE_VALID.
+- Successful reframing only applies if the defender AVOIDS the critique with substance. \
+Accepting and weakening = CRITIQUE_VALID.
+- Evaluate substance over rhetorical polish.
+- An assumption labeled "foundational" that is actually empirical does not shield it \
+from evidential challenge."""
+
+
+def _determine_mode(logic_weight: float, ethics_weight: float) -> str:
+    """Determine evaluation mode from weights."""
+    if ethics_weight < 0.01:
+        return "logic_only"
+    if logic_weight < 0.01:
+        return "ethics_only"
+    return "balanced"
+
+
+def _build_criteria_section(mode: str, logic_sys: dict, ethics_sys: dict) -> str:
+    """Build the criteria text from universal base + system-specific criteria."""
+    parts = [_UNIVERSAL_BASE, ""]
+
+    if mode == "logic_only":
+        label = logic_sys["label"]
+        lc = logic_sys["criteria"]
+        parts.append(
+            f"CRITIQUE_VALID if the challenger demonstrates ANY of the "
+            f"following under {label}:"
+        )
+        for i, item in enumerate(lc["critique_valid"], 1):
+            parts.append(f"{i}. {item}")
+        parts.append("")
+        parts.append(
+            f"REBUTTAL_VALID if the defender demonstrates ANY of the "
+            f"following under {label}:"
+        )
+        for i, item in enumerate(lc["rebuttal_valid"], 1):
+            parts.append(f"{i}. {item}")
+        parts.append("")
+        parts.append("UNRESOLVED if:")
+        for i, item in enumerate(lc["unresolved"], 1):
+            parts.append(f"{i}. {item}")
+
+    elif mode == "ethics_only":
+        label = ethics_sys["label"]
+        ec = ethics_sys["criteria"]
+        parts.append(
+            f"CRITIQUE_VALID if the challenger demonstrates ANY of the "
+            f"following under {label}:"
+        )
+        for i, item in enumerate(ec["critique_valid"], 1):
+            parts.append(f"{i}. {item}")
+        parts.append("")
+        parts.append(
+            f"REBUTTAL_VALID if the defender demonstrates ANY of the "
+            f"following under {label}:"
+        )
+        for i, item in enumerate(ec["rebuttal_valid"], 1):
+            parts.append(f"{i}. {item}")
+        parts.append("")
+        parts.append("UNRESOLVED if:")
+        for i, item in enumerate(ec["unresolved"], 1):
+            parts.append(f"{i}. {item}")
+
+    else:  # balanced
+        lc = logic_sys["criteria"]
+        ec = ethics_sys["criteria"]
+        for outcome, header in [
+            ("critique_valid",
+             "CRITIQUE_VALID if the challenger demonstrates ANY of the following:"),
+            ("rebuttal_valid",
+             "REBUTTAL_VALID if the defender demonstrates ANY of the following:"),
+            ("unresolved", "UNRESOLVED if:"),
+        ]:
+            parts.append(header)
+            n = 1
+            for item in lc[outcome]:
+                parts.append(f"{n}. (logical) {item}")
+                n += 1
+            for item in ec[outcome]:
+                parts.append(f"{n}. (ethical) {item}")
+                n += 1
+            parts.append("")
+
+    return "\n".join(parts)
+
+
 # === Prompt Building Functions ===
 
-def build_adjudicator_prompt(logic_weight: float = 1.0, ethics_weight: float = 0.0, logic_sys: str = "", ethics_sys: str = "", threshold: float = 0.15) -> str:
+def build_adjudicator_prompt(
+    logic_weight: float,
+    ethics_weight: float,
+    logic_sys: dict,
+    ethics_sys: dict,
+    threshold: float = 0.15,
+) -> str:
     """
-    Build the system prompt for the neutral adjudicator with tunable weights and systems.
+    Build the system prompt for the neutral adjudicator.
+
+    Produces genuinely different prompts based on mode:
+    - Logic-only (ethics_weight ~0): only logic criteria, ethics scores = 0
+    - Ethics-only (logic_weight ~0): only ethics criteria, logic scores = 0
+    - Balanced (both > 0): both criteria merged with (logical)/(ethical) prefixes
 
     Args:
         logic_weight: Weight for logical rigor (0.0-1.0).
         ethics_weight: Weight for ethical considerations (0.0-1.0).
-        logic_sys: Logical framework description.
-        ethics_sys: Ethical framework description.
-        threshold: Score difference threshold for decisive outcomes (default 0.15).
+        logic_sys: Logic system dict with label, description, and criteria.
+        ethics_sys: Ethics system dict with label, description, and criteria.
+        threshold: Score difference threshold for decisive outcomes.
     """
+    mode = _determine_mode(logic_weight, ethics_weight)
+    mode_instruction = _MODE_INSTRUCTIONS[mode]
+    criteria_section = _build_criteria_section(mode, logic_sys, ethics_sys)
+    scoring_section = _MODE_SCORING[mode]
 
-    lw = max(0.0, float(logic_weight))
-    ew = max(0.0, float(ethics_weight))
-    if lw == 0.0 and ew == 0.0:
-        lw = 1.0  # default to pure logic if both were zero
-        ew = 0.0
-    total = lw + ew
-    lw /= total
-    ew /= total
-
-    default_logic_sys = (
-        "Logical evaluation = {deductive validity (no contradictions), inductive support (quality/quantity of evidence), "
-        "abductive coherence (best explanation with fewest ad hoc assumptions), and internal consistency across claims/IDs}."
+    return (
+        "You are a neutral, objective adjudicator with expertise in formal logic, "
+        "epistemology, and critical reasoning.\n"
+        "\n"
+        "Your purpose is to determine the most appropriate outcome between two agents"
+        "(one which is attacking a an opponent's belief and the other is attempting to defend itself)"
+        "under the guidance of the criteria below.\n"
+        "\n"
+        "<criteria>\n"
+        f"{criteria_section}\n"
+        "</criteria>\n"
+        "\n"
+        "<anti_bias>\n"
+        f"{_ANTI_BIAS}\n"
+        "</anti_bias>\n"
+        "\n"
+        "<scoring>\n"
+        f"{scoring_section}\n"
+        f"- rebuttal_valid if (rebuttal_combined - critique_combined) >= {threshold}\n"
+        f"- critique_valid if (critique_combined - rebuttal_combined) >= {threshold}\n"
+        "- unresolved otherwise\n"
+        "\n"
+        "Include all six scores in the output JSON. Reference specific IDs in "
+        "reasoning. Treat subjective evidence as insufficient for descriptive "
+        "claims. Flag unfalsifiable claims.\n"
+        "</scoring>\n"
+        "\n"
+        "<protocol>\n"
+        "For each critique-rebuttal pair:\n"
+        "1. RESTATE the core disagreement neutrally. Identify the specific belief "
+        "IDs under dispute.\n"
+        "2. FORMALIZE both sides as explicit inference chains. Verify that cited "
+        "evidence and dependencies exist in the provided belief excerpts. Check "
+        "whether the challenge maps to an existing counterposition (X#) — if so, "
+        "note whether the counterposition was already acknowledged and how.\n"
+        "3. ADJUDICATE using the criteria defined above. You should provide a "
+        "thorough and in-depth <reasoning>...</reasoning> block that provides your analysis.\n"
+        f"{mode_instruction}\n"
+        "</protocol>\n"
     )
-    default_ethics_sys = (
-        "Balanced consequentialist-deontological: weigh both outcomes/welfare and autonomy/rights."
+
+def build_adjudicator_per_pair_prompt(
+    challenge: str,
+    rebuttal: str,
+    challenger: str,
+    target: str,
+    mode_label: str,
+    logic_sys_description: str = "",
+    ethics_sys_description: str = "",
+    challenger_belief_excerpt_json: str = "",
+    target_belief_excerpt_json: str = "",
+) -> str:
+    """
+    Build the user prompt for a single challenge-rebuttal adjudication pair.
+
+    This constructs the XML-structured prompt sent to the adjudicator for each
+    individual challenge-rebuttal exchange. It includes the exchange context,
+    optional belief excerpts, mode/system instructions, and the JSON output
+    format specification.
+
+    Args:
+        challenge: The original critique text.
+        rebuttal: The rebuttal text issued by the target agent.
+        challenger: Name of the agent issuing the critique.
+        target: Name of the agent issuing the rebuttal.
+        mode_label: Human-readable mode (e.g. "Pure Logic", "Balanced", "Pure Ethics").
+        logic_sys_description: Logic system description string (included when non-empty).
+        ethics_sys_description: Ethics system description string (included when non-empty).
+        challenger_belief_excerpt_json: Optional JSON excerpt of challenger's belief.
+        target_belief_excerpt_json: Optional JSON excerpt of target's belief.
+
+    Returns:
+        str: The fully constructed per-pair user prompt.
+    """
+    # Build optional belief excerpt sections
+    challenger_excerpt_section = ""
+    if challenger_belief_excerpt_json:
+        challenger_excerpt_section = (
+            f"<challenger_belief_excerpt>\n"
+            f"```json\n{challenger_belief_excerpt_json}\n```\n"
+            f"</challenger_belief_excerpt>\n\n"
+        )
+
+    target_excerpt_section = ""
+    if target_belief_excerpt_json:
+        target_excerpt_section = (
+            f"<target_belief_excerpt>\n"
+            f"```json\n{target_belief_excerpt_json}\n```\n"
+            f"</target_belief_excerpt>\n"
+        )
+
+    # Build system description lines for the per-pair prompt
+    sys_lines = f"Evaluate this exchange under {mode_label} mode.\n"
+    if logic_sys_description:
+        sys_lines += f"Logic system: {logic_sys_description}\n"
+    if ethics_sys_description:
+        sys_lines += f"Ethics system: {ethics_sys_description}\n"
+
+    return (
+        "<context>\n"
+        f"<challenge from=\"{challenger}\">\n"
+        f"{challenge}\n"
+        "</challenge>\n\n"
+        f"<rebuttal from=\"{target}\">\n"
+        f"{rebuttal}\n"
+        "</rebuttal>\n\n"
+        + challenger_excerpt_section
+        + target_excerpt_section
+        + "</context>\n\n"
+        "<instructions>\n"
+        f"{sys_lines}\n"
+        "Execute your three-step protocol. Verify cited evidence against the belief excerpts above. "
+        "If the challenge targets a counterposition (X#) the defender already rated as \"partial\" or "
+        "\"unaddressed,\" factor this into your assessment. Inside <reasoning> tags, analyze step by "
+        "step before rendering your verdict.\n"
+        "</instructions>\n\n"
+        "<output_format>\n"
+        "1. <reasoning>...</reasoning> block with your thorough and in-depth thought process\n"
+        "2. One fenced JSON code block:\n\n"
+        "```json\n"
+        "{\n"
+        "  \"restatement\": \"\",\n"
+        "  \"formalization_challenger\": \"\",\n"
+        "  \"formalization_target\": \"\",\n"
+        "  \"scores\": {\n"
+        "    \"challenger_logic\": 0.0,\n"
+        "    \"challenger_ethics\": 0.0,\n"
+        "    \"defender_logic\": 0.0,\n"
+        "    \"defender_ethics\": 0.0,\n"
+        "    \"challenger_combined\": 0.0,\n"
+        "    \"defender_combined\": 0.0\n"
+        "  },\n"
+        "  \"outcome\": \"rebuttal_valid|critique_valid|unresolved\",\n"
+        "  \"reasoning\": \"\"\n"
+        "}\n"
+        "```\n"
+        "</output_format>\n"
     )
 
-    logic_sys = logic_sys.strip() or default_logic_sys
-    ethics_sys = ethics_sys.strip() or default_ethics_sys
-
-    return f"""\
-You are a neutral, objective adjudicator with expertise in formal logic, epistemology, \
-and critical reasoning.
-
-<protocol>
-For each critique-rebuttal pair:
-1. RESTATE the core disagreement neutrally. Identify the specific belief IDs under dispute.
-2. FORMALIZE both sides as explicit inference chains. Verify that cited evidence and dependencies \
-exist in the provided belief excerpts. Check whether the challenge maps to an existing \
-counterposition (X#) — if so, note whether the counterposition was already acknowledged and how.
-3. ADJUDICATE using the weighted framework.
-</protocol>
-
-<evaluation_framework>
-WEIGHTS: LOGIC {lw:.3f} | ETHICS {ew:.3f}
-LOGIC SYSTEM: {logic_sys}
-ETHICS SYSTEM: {ethics_sys}
-</evaluation_framework>
-
-<criteria>
-CRITIQUE_VALID if challenger demonstrates ANY of:
-1. Logical contradiction in the rebuttal
-2. Circular reasoning (conclusion used as premise)
-3. Reliance on an unfalsifiable claim
-4. Dependency failure (claim rests on false/unjustified assumption)
-5. Strength exceeding lowest-strength dependency
-6. Evidence misuse (evidence doesn't support claim, or correlation asserted as causation)
-7. Inference chain break (step doesn't follow from previous)
-8. Unresolved acknowledged weakness (counterposition rated "partial"/"unaddressed" and not improved)
-
-REBUTTAL_VALID if defender demonstrates ANY of:
-1. Challenger's critique contains a logical flaw or misrepresentation
-2. Evidence directly refutes the challenger's premise
-3. Critique depends on a hidden false assumption the defender exposes
-4. Successful reframing that avoids the critique without losing substance
-5. Complete inference chain addressing the specific concern
-6. Concrete evidence contradicting the challenger's factual premise
-7. Scope clarification (critique targets a claim never actually made)
-8. Demonstrates the challenged inference step does follow correctly
-
-UNRESOLVED if:
-1. Both sides present coherent but incompatible premises
-2. Disagreement hinges on an empirical question logic cannot resolve
-3. Both arguments have significant logical flaws
-</criteria>
-
-<anti_bias>
-- A response that merely acknowledges a challenge is NOT a successful defense. It must RESOLVE \
-the logical issue.
-- Explicit concession ("you are correct", weakening patches) = CRITIQUE_VALID.
-- Successful reframing (#4) only applies if the defender AVOIDS the critique with substance. \
-Accepting and weakening = CRITIQUE_VALID.
-- Evaluate substance over rhetorical polish.
-- An assumption labeled "foundational" that is actually empirical does not shield it from \
-evidential challenge.
-</anti_bias>
-
-<scoring>
-Score each side 0.0-1.0 on each axis (0.0 = fails; 0.5 = mixed; 1.0 = strong).
-combined = {lw:.3f} * logic + {ew:.3f} * ethics
-- rebuttal_valid if (rebuttal_combined - critique_combined) >= {threshold}
-- critique_valid if (critique_combined - rebuttal_combined) >= {threshold}
-- unresolved otherwise
-
-Include all six scores in the output JSON. Reference specific IDs in reasoning. \
-Treat subjective evidence as insufficient for descriptive claims. Flag unfalsifiable claims. \
-When logic_weight = 1.0, ignore ethics.
-</scoring>
-"""
 
 def build_universal_prompt(topic: str) -> str:
     """
@@ -223,15 +421,16 @@ REQUIRED TOP-LEVEL:
 - "schema_version": "CBS"
 - "belief_id": unique string (e.g., "BELIEF-{agent_name}-001")
 - "version": 1
-- "metadata": {{"topic_query": "{topic}", "agent_persona": "{persona_label}", "created_at": "<ISO-8601>"}}
+- "metadata": {{"topic_query": "{topic}", "agent_persona": "{persona_label}"}}
 """
         + """\
 STRUCTURED SECTIONS (use stable IDs):
-- "assumptions" [A#]: {id, type, statement, strength, status, strength_justification} — all foundational premises your claims rest upon.
+- "assumptions" [A#]: {id, type, statement, supports_claims, strength, status, strength_justification} — all foundational premises your claims rest upon.
     type must be one of:
     - "foundational" — definitional or logical axioms (can only be challenged by showing incoherence)
     - "empirical" — assumed true based on evidence (can be challenged with counter-evidence)
     - "methodological" — adopted for analytical purposes (can be challenged by questioning the method)
+    supports_claims: array of C# IDs that this assumption supports (e.g., ["C1", "C3"])
     strength: 0.0-1.0 — how well-supported this assumption is
     status must be one of: "active", "revised", "retracted"
     strength_justification: required — rationale for the strength number
@@ -343,10 +542,10 @@ Condensed example showing expected quality (your belief should be more comprehen
   "schema_version": "CBS",
   "belief_id": "BELIEF-EXAMPLE-001",
   "version": 1,
-  "metadata": {"topic_query": "Is consciousness reducible to physical processes?", "agent_persona": "EMPIRICIST", "created_at": "2026-01-15T10:00:00Z"},
+  "metadata": {"topic_query": "Is consciousness reducible to physical processes?", "agent_persona": "EMPIRICIST"},
   "assumptions": [
-    {"id": "A1", "type": "empirical", "statement": "Physical causal closure: every physical event has a sufficient physical cause", "strength": 0.85, "status": "active", "strength_justification": "Well-established in physics; no confirmed violations observed"},
-    {"id": "A2", "type": "methodological", "statement": "Third-person empirical methods are the appropriate primary tools for investigating consciousness", "strength": 0.80, "status": "active", "strength_justification": "Standard scientific methodology, though challenged by hard problem of consciousness"}
+    {"id": "A1", "type": "empirical", "statement": "Physical causal closure: every physical event has a sufficient physical cause", "supports_claims": ["C1"], "strength": 0.85, "status": "active", "strength_justification": "Well-established in physics; no confirmed violations observed"},
+    {"id": "A2", "type": "methodological", "statement": "Third-person empirical methods are the appropriate primary tools for investigating consciousness", "supports_claims": ["C1"], "strength": 0.80, "status": "active", "strength_justification": "Standard scientific methodology, though challenged by hard problem of consciousness"}
   ],
   "claims": [
     {
@@ -416,7 +615,7 @@ Condensed example showing expected quality (your belief should be more comprehen
     "strength": 0.35,
     "strength_reasoning": "avg(0.70) × (1^1.5 / (1^1.5 + 1)) = 0.70 × 0.50 = 0.35"
   },
-  "changelog": [{"version": 1, "timestamp": "2026-01-15T10:00:00Z", "changes": ["Initial belief formation"]}]
+  "changelog": [{"version": 1, "changes": ["Initial belief formation"]}]
 }
 ```
 </example>
@@ -430,7 +629,7 @@ Then output exactly one fenced JSON code block (```json ... ```) containing your
 </instructions>"""
     )
 
-def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, max_question_length_chars: int = 500, previous_challenges: list = None, opponent_belief_graph=None, focus_subtopic: dict = None, targeted_claims_json: str = "") -> str:
+def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, previous_challenges: list = None, focus_subtopic: dict = None, targeted_claims_json: str = "") -> str:
     """
     Stage 2: Cross-Examination Prompt.
 
@@ -443,31 +642,13 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
     - ID: Identifier (e.g., A#, C#, E#, U#, X#)
 
     Args:
-        opponent_belief_graph: Optional BeliefGraph object for vulnerability analysis
         targeted_claims_json: Optional JSON string of targeted claims for focused examination
     """
-    # Build graph-based vulnerability analysis if available
-    vulnerability_analysis = ""
-    if opponent_belief_graph:
-        try:
-            from chal.convergence.graph_analysis import analyze_vulnerabilities, format_attack_suggestions
-            vulnerabilities = analyze_vulnerabilities(opponent_belief_graph)
-            vulnerability_analysis = format_attack_suggestions(vulnerabilities, opponent_name)
-            if vulnerability_analysis:
-                vulnerability_analysis = (
-                    "<vulnerability_analysis>\n"
-                    + vulnerability_analysis + "\n"
-                    "</vulnerability_analysis>\n\n"
-                )
-        except Exception:
-            # If vulnerability analysis fails, skip it
-            pass
-
     # Build anti-repetition context if previous challenges exist
     previous_questions_section = ""
     if previous_challenges:
         prev_str = "\n".join([
-            f"  - {ch['qid']}: Targeted {ch['target_ids']} → {ch['outcome']}"
+            f"  - {ch['qid']}: [{ch.get('attack_type', '?')}/{ch.get('attack_strategy', '?')}] Targeted {ch['target_ids']} → {ch['outcome']}"
             for ch in previous_challenges
         ])
         previous_questions_section = (
@@ -505,64 +686,83 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
 ```
 </opponent_belief>
 
-{vulnerability_analysis}{previous_questions_section}{focus_section}</context>
+{previous_questions_section}{focus_section}
+</context>
 
 <instructions>
 You are {agent_name} cross-examining {opponent_name} on: "{topic}"
 
-Inside <reasoning> tags, first briefly state your opponent's position in its strongest form, \
-then identify where that strongest version is genuinely vulnerable. Pay attention to their \
-counterpositions (X#) — where they rate response_sufficiency as "partial" or "unaddressed" \
-they've already flagged their own vulnerabilities. Don't waste questions on counterpositions \
-rated "sufficient" unless you can demonstrate the rating is unjustified. Also check whether \
-their assumption types are correctly classified — an assumption labeled "foundational" that \
-is actually empirical can be challenged with evidence.
+<attack_taxonomy>
+Every question must be classified with an attack_type and a specific attack_strategy. \
+The attack_type determines which strategies are available.
 
-<attack_framework>
-When planning your questions, identify which attack vector applies:
-- UNDERMINING: Challenge a claim premise, assumption, or evidence directly. Target A#, E#, or C# nodes.
-  Example: "Your A2 assumes empirical methods are appropriate here -- but this is a normative question..."
-- REBUTTING: Present counter-evidence or a counter-conclusion that directly opposes a claim, assumption, or evidence.
-  Example: "C3 claims X, but study Y found the opposite..."
-- UNDERCUTTING: Challenge the inference step in a claim -- even if the premises are true, the conclusion doesn't follow.
-  Example: "Even granting E1 and A1, your inference_chain step 3 is a non sequitur because..."
+**UNDERMINING** — Challenge a premise, assumption, or evidence directly. If the foundation \
+falls, everything built on it collapses.
+  - challenge_evidence: Dispute the reliability, relevance, or sufficiency of an E# node.
+  - challenge_assumption: Question whether an A# is correctly typed (e.g., labeled \
+    "foundational" but actually empirical) or well-founded for the domain.
+  - expose_weak_foundation: Show that a high-strength claim depends on low-strength or \
+    unsupported nodes — the dependency chain cannot sustain the confidence.
+  - demand_falsifiability: The targeted claim or assumption makes no testable predictions \
+    and cannot be empirically evaluated.
+  - challenge_strength_calibration: The assigned strength exceeds what the cited evidence \
+    and reasoning actually warrant.
+  - press_uncertainty: Force the opponent to address their own U# nodes — their admitted \
+    unknowns undermine the confidence of claims that depend on resolving them favorably.
 
-The most effective questions often combine vectors. Use this framework in your reasoning, not as rigid categories.
-</attack_framework>
+**REBUTTING** — Present counter-evidence or a counter-conclusion that directly opposes a claim.
+  - present_counter_evidence: Offer specific evidence that directly contradicts a claim \
+    or assumption.
+  - present_counter_example: Provide a concrete case that falsifies a general claim or \
+    undermines an inductive generalization.
+  - exploit_counterposition: Press on X# nodes the opponent rated as "partial" or \
+    "unaddressed" — they have already conceded the weakness.
+  - offer_alternative_explanation: Argue that the opponent's own evidence better supports \
+    a different conclusion than the one they drew.
 
-Then ask up to {max_questions} high-leverage questions. Each should target specific IDs \
-(at most 2 per question), be answerable (not rhetorical), and aim to elicit a concession, \
-measurable test, or scope clarification. Keep each ≤ {max_question_length_chars} characters.
+**UNDERCUTTING** — Accept the premises but attack the inference step — even if the premises \
+are true, the conclusion does not follow.
+  - challenge_inference_step: A specific step in a C#'s inference_chain does not logically \
+    follow from its predecessors.
+  - identify_circularity: The reasoning chain assumes its own conclusion (begging the question).
+  - expose_inconsistency: Expose internal inconsistencies — claims contradict each other, \
+    strength assignments violate dependency constraints, evidence undermines own claims, \
+    or assumptions are incompatible.
+  - identify_equivocation: Key terms shift meaning between premises and conclusion, or \
+    across different parts of the argument.
+  - challenge_scope: The conclusion overgeneralizes from the evidence (hasty generalization, \
+    composition/division fallacies).
 
-QUESTIONING STRATEGIES (prioritize the most applicable):
-1. Exploit partial counterpositions — press on X# where response_sufficiency is "partial" or "unaddressed"
-2. Challenge assumption types — is an "empirical" assumption actually a value judgment? Is a "foundational" claim actually empirical?
-3. Question strength calibration — does strength exceed what the evidence warrants?
-4. Expose dependency vulnerabilities — does a high-strength claim rest on a weak foundation?
-5. Test inference chains — does each step actually follow from the previous? (target undercutting attacks)
-6. Demand falsifiability — are the claim's predictions testable with concrete decision criteria?
-7. Identify circular reasoning — does the inference chain assume its conclusion?
-8. Challenge strength propagation — is a claim stronger than its lowest-strength dependency?
-9. Expose internal inconsistencies — do any of the opponent's claims contradict each other? Does \
-their evidence undermine their own claims? Are their assumptions incompatible? Are strength \
-assignments inconsistent with their dependencies?
+The most effective questions often combine vectors. When a question spans multiple vectors, \
+choose the primary one — the attack_type and attack_strategy that best describes the core \
+thrust of the question.
+</attack_taxonomy>
+
+Then ask up to {max_questions} high-leverage questions. Each should target a specific node \
+ID — use a single target unless two nodes are genuinely interdependent (e.g., a claim and \
+the assumption it rests on). Questions must be answerable (not rhetorical).
+
+Inside any <reasoning> blocks, first briefly state your opponent's position in its strongest form, \
+then identify where that strongest version is genuinely vulnerable.
 </instructions>
 
 <example>
 ```json
 {{
   "qid": "Q1",
-  "text": "Your X2 acknowledges the hard problem challenge with only 'partial' response sufficiency. \
-If you can't fully address the strongest objection to your core claim C2, how do you justify C2's strength at 0.55 rather than something lower?",
-  "target_ids": ["X2", "C2"],
-  "strategy": "exploit_partial_counterposition"
+  "text": "Your X2 acknowledges the hard problem challenge with only 'partial' response \
+sufficiency. If you can't fully address the strongest objection to your core claim C2, how \
+do you justify C2's strength at 0.55 rather than something lower?",
+  "target_ids": ["C2"],
+  "attack_type": "undermining",
+  "attack_strategy": "challenge_strength_calibration"
 }}
 ```
 </example>
 
 <output_format>
 Your response must contain:
-1. <reasoning>...</reasoning> tags
+1. A <reasoning>...</reasoning> block with your thorough and in-depth analysis (originating from your own belief object) and construction of any arguments against your opponent's positions
 2. One fenced JSON code block:
 
 ```json
@@ -570,13 +770,26 @@ Your response must contain:
   "questions": [
     {{
       "qid": "Q1",
-      "text": "",
-      "target_ids": ["C3", "A1"],
-      "strategy": ""
+      "text": "Your question text here",
+      "target_ids": ["C3"],
+      "attack_type": "undermining | rebutting | undercutting",
+      "attack_strategy": "one of the strategies listed under your chosen attack_type"
     }}
   ]
 }}
 ```
+
+**Field requirements:**
+- **qid**: Sequential question identifier (Q1, Q2, ...).
+- **text**: The question itself. Must be answerable (not rhetorical) and target specific \
+  IDs in the opponent's belief structure.
+- **target_ids**: Array of 1-2 CBS node IDs (A#, C#, E#, X#, U#) that this question \
+  targets. Prefer a single target; only use two when the nodes are directly interdependent \
+  (e.g., a claim and the assumption it depends on).
+- **attack_type**: One of "undermining", "rebutting", or "undercutting". This must match \
+  the ASPIC+ attack vector described in the taxonomy above.
+- **attack_strategy**: One of the specific strategies listed under the chosen attack_type. \
+  The strategy must belong to the selected attack_type category.
 </output_format>
 """
 
@@ -615,7 +828,8 @@ def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, oppone
 <instructions>
 You are {agent_name} responding to cross-examination from {opponent_name} on: "{topic}"
 
-Inside <reasoning> tags, think honestly through each question: Does it identify a genuine weakness? \
+Your primary goal is to defend your positions, to the best of your ability. \
+Inside <reasoning> blocks, think honestly through each question: Does it identify a genuine weakness? \
 Can I refute it with evidence or logic, or should I concede? Am I rationalizing a defense of a weak \
 point? If this question targets one of my counterpositions (X#), does their challenge strengthen the \
 counterposition or does my existing response hold?
@@ -631,7 +845,8 @@ Your answer must argue AGAINST the challenge.
 include a weakening patch. If you write "I concede" but then defend your position, you are violating \
 the protocol.
 
-"defer" — The challenge raises an unresolved uncertainty. Explain what would resolve it.
+"defer" — The challenge raises an unresolved uncertainty. Explain what would resolve it. \
+Patches SHOULD include an `add_uncertainty` targeting the disputed nodes.
 </instructions>
 
 <examples>
@@ -644,7 +859,7 @@ well-supported because..." — this is a refute disguised as concede.
 
 <output_format>
 Your response must contain:
-1. <reasoning>...</reasoning> tags
+1. A <reasoning>...</reasoning> block with your thorough and in-depth response from your position in response to each question you received from an opponent
 2. One fenced JSON code block:
 
 ```json
@@ -658,25 +873,29 @@ Your response must contain:
     }}
   ],
   "patches": [
-    {{"op": "update_claim", "target_id": "C3", "changes": {{"strength": 0.6}}}},
-    {{"op": "update_thesis", "new_strength": 0.55}},
-    {{"op": "retire_claim", "target_id": "C5"}},
-    {{"op": "add_evidence", "item": {{"id": "E_NEW", "type": "...", "summary": "...", \
-"source": "...", "relevance_to_claims": ["..."], "strength": 0.7, "status": "active", \
-"strength_justification": "..."}}}},
-    {{"op": "update_assumption", "target_id": "A2", "changes": {{"strength": 0.6, \
-"status": "revised", "strength_justification": "..."}}}},
-    {{"op": "add_counterposition", "item": {{"id": "X_NEW", "targets": ["C#"], \
-"attack_type": "undermining|rebutting|undercutting", "statement": "...", \
-"my_response": "...", "response_sufficiency": "sufficient|partial|unaddressed"}}}},
-    {{"op": "update_counterposition", "target_id": "X1", "changes": \
-{{"response_sufficiency": "partial"}}}}
+    // --- Modify existing nodes ---
+    {{"op": "update_claim", "target_id": "C1", "changes": {{"strength": 0.6, "strength_justification": "Lowered — E1 was shown to be outdated"}}}},
+    {{"op": "retire_claim", "target_id": "C3"}},
+    {{"op": "update_evidence", "target_id": "E1", "changes": {{"strength": 0.5, "strength_justification": "Downgraded — methodology questioned"}}}},
+    {{"op": "update_assumption", "target_id": "A2", "changes": {{"strength": 0.6, "status": "revised", "strength_justification": "Weakened after challenge"}}}},
+    {{"op": "update_counterposition", "target_id": "X1", "changes": {{"my_response": "...", "response_sufficiency": "sufficient"}}}},
+    {{"op": "resolve_uncertainty", "target_id": "U1", "resolution_note": "Resolved by new evidence E4"}},
+
+    // --- Add new nodes (use the next available number, e.g. if highest evidence ID is E3, use E4) ---
+    {{"op": "add_claim", "item": {{"id": "C4", "type": "deductive", "statement": "...", "depends_on": ["A1", "E2"], "strength": 0.7, "status": "active", "strength_justification": "...", "predictions": [{{"statement": "...", "test": "...", "decision_criterion": "..."}}], "inference_chain": ["Step 1: ...", "Step 2: ..."]}}}},
+    {{"op": "add_evidence", "item": {{"id": "E4", "type": "empirical", "summary": "...", "source": "...", "relevance_to_claims": ["C1"], "strength": 0.7, "status": "active", "strength_justification": "..."}}}},
+    {{"op": "add_assumption", "item": {{"id": "A3", "type": "empirical", "statement": "...", "supports_claims": ["C1"], "strength": 0.75, "status": "active", "strength_justification": "..."}}}},
+    {{"op": "add_counterposition", "item": {{"id": "X3", "targets": ["C2"], "attack_type": "undermining", "statement": "...", "my_response": "...", "response_sufficiency": "partial"}}}},
+    {{"op": "add_uncertainty", "item": {{"id": "U2", "targets": ["C1", "E1"], "question": "...", "status": "active"}}}}
   ]
 }}
 ```
 
+Use only the operations shown above. Every new item must include all required fields.
+
 If any action is "concede", patches MUST contain at least one weakening patch for that question. \
-If no patches are warranted: "patches": []
+If any action is "defer", patches SHOULD include an `add_uncertainty` for that question. \
+If any action is "refute", then no patches are warranted: "patches": []
 </output_format>
 """
 
@@ -1434,7 +1653,8 @@ SUPPORTED OPERATIONS:
 - {{"op": "update_evidence", "target_id": "E#", "changes": {{"strength": 0.7, \
 "status": "revised", "strength_justification": "..."}}}}
 - {{"op": "add_assumption", "item": {{"id": "A#", \
-"type": "empirical|foundational|methodological", "statement": "...", "strength": 0.8, \
+"type": "empirical|foundational|methodological", "statement": "...", \
+"supports_claims": ["C#"], "strength": 0.8, \
 "status": "active", "strength_justification": "..."}}}}
 - {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
 "status": "revised", "strength_justification": "..."}}, "new_statement": "...", "new_type": "..."}}
@@ -1931,9 +2151,7 @@ def build_stage_2_bloodsport_prompt(
     opponent_belief_json: str,
     intensity: str = "moderate",
     max_questions: int = 5,
-    max_question_length_chars: int = 500,
     previous_challenges: list = None,
-    opponent_belief_graph=None,
     focus_subtopic: dict = None,
 ) -> str:
     """
@@ -1954,9 +2172,7 @@ def build_stage_2_bloodsport_prompt(
         opponent_belief_json: Opponent's CBS belief as JSON string.
         intensity: Blood sport intensity ("mild", "moderate", or "extreme").
         max_questions: Maximum number of questions to generate.
-        max_question_length_chars: Character limit per question.
         previous_challenges: List of prior challenge dicts for anti-repetition.
-        opponent_belief_graph: Optional BeliefGraph for vulnerability analysis.
     """
     _debate_ctx = build_debate_context("Cross-examination — challenging your opponent")
     return f"""\
@@ -1995,15 +2211,20 @@ Charitable interpretation is suspended. Your objective is to WIN.
 <instructions>
 You are {agent_name} cross-examining {opponent_name} on: "{topic}"
 
-Ask up to {max_questions} devastating questions. Each must target specific IDs, \
-exploit real weaknesses, and be ≤ {max_question_length_chars} characters. \
-Their counterpositions (X#) are a roadmap of their vulnerabilities — use it.
+Ask up to {max_questions} devastating questions. Each must target specific IDs and \
+exploit real weaknesses. Their counterpositions (X#) are a roadmap of their vulnerabilities — use it.
 
 When targeting weaknesses, classify your attack vector:
-- UNDERMINING: Destroy a premise. If A# falls, everything built on it collapses.
-- REBUTTING: Produce counter-evidence that directly contradicts C#.
-- UNDERCUTTING: Show the inference doesn't follow -- the logic is broken even if the premises stand.
-Their counterpositions (X#) already identify their own attack_type -- hit the same vector harder.
+- UNDERMINING: Destroy a premise. If A# falls, everything built on it collapses. \
+  Strategies: challenge_evidence, challenge_assumption, expose_weak_foundation, \
+  demand_falsifiability, challenge_strength_calibration, press_uncertainty.
+- REBUTTING: Produce counter-evidence that directly contradicts C#. \
+  Strategies: present_counter_evidence, present_counter_example, \
+  exploit_counterposition, offer_alternative_explanation.
+- UNDERCUTTING: Show the inference doesn't follow — the logic is broken even if the premises stand. \
+  Strategies: challenge_inference_step, identify_circularity, expose_inconsistency, \
+  identify_equivocation, challenge_scope.
+Their counterpositions (X#) already identify their own attack_type — hit the same vector harder.
 </instructions>
 
 <output_format>
@@ -2012,7 +2233,13 @@ One fenced JSON code block:
 ```json
 {{
   "questions": [
-    {{"qid": "Q1", "text": "", "target_ids": ["C3", "A1"]}}
+    {{
+      "qid": "Q1",
+      "text": "",
+      "target_ids": ["C3"],
+      "attack_type": "undermining | rebutting | undercutting",
+      "attack_strategy": "one of the strategies listed under your chosen attack_type"
+    }}
   ]
 }}
 ```

@@ -142,6 +142,8 @@ def export_debate_graph(
             "qid": qid,
             "question": question,
             "target_ids": target_ids,
+            "attack_type": pair.get("attack_type", ""),
+            "attack_strategy": pair.get("attack_strategy", ""),
             "rebuttal": rebuttal,
             "resolution": resolution
         })
@@ -358,6 +360,9 @@ def export_debate_graph(
                 relevantQA.forEach(qa => {{
                     html += `<div class="qa-item">`;
                     html += `<p><strong>${{qa.qid}}</strong> from <strong>${{qa.challenger}}</strong></p>`;
+                    if (qa.attack_type) {{
+                        html += `<p style="color: #888; font-size: 0.9em;"><em>${{qa.attack_type}} / ${{qa.attack_strategy}}</em></p>`;
+                    }}
                     html += `<p>${{qa.question}}</p>`;
                     if (qa.rebuttal) {{
                         html += `<p style="margin-top: 8px;"><em>Rebuttal:</em> ${{qa.rebuttal}}</p>`;

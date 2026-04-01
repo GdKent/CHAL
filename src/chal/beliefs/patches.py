@@ -234,6 +234,8 @@ def apply_patches(
             # Default status to "active" if not provided
             if "status" not in item:
                 item["status"] = "active"
+            if "supports_claims" not in item:
+                item["supports_claims"] = []
             updated["assumptions"].append(item)
             changes.append(f"Added assumption {item.get('id')}")
 
@@ -601,6 +603,9 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> List[str]:
             else:
                 if item["id"] in assumption_ids:
                     errors.append(f"Patch {i}: add_assumption item ID '{item['id']}' already exists")
+                # Default supports_claims to empty array if missing
+                if "supports_claims" not in item:
+                    item["supports_claims"] = []
                 required_fields = ["id", "type", "statement", "strength"]
                 for field in required_fields:
                     if field not in item:
