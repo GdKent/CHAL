@@ -19,6 +19,11 @@ from chal.beliefs.patches import apply_patches, validate_patches
 from tests.utils import create_sample_belief
 
 
+def _flat(errors_dict):
+    """Flatten per-patch errors dict to a flat list of error messages."""
+    return [msg for msgs in errors_dict.values() for msg in msgs]
+
+
 # ==============================================
 # Test Fixtures
 # ==============================================
@@ -971,7 +976,7 @@ def test_apply_patches_add_uncertainty_no_array():
             "targets": ["C1"],
             "question": "Test question",
             "status": "active",
-            "importance": "Test hint"
+            "importance": "high"
         }
     }]
 
@@ -1129,7 +1134,7 @@ def test_validate_patches_all_valid(test_patches):
     belief = create_sample_belief(num_claims=1)
     patches = test_patches["update_claim_strength"]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1139,7 +1144,7 @@ def test_validate_patches_missing_op(test_patches):
     belief = create_sample_belief()
     patches = test_patches["invalid_missing_op"]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("op" in error.lower() for error in errors)
 
@@ -1150,7 +1155,7 @@ def test_validate_patches_unknown_op(test_patches):
     belief = create_sample_belief()
     patches = test_patches["invalid_unknown_op"]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("unknown" in error.lower() or "invalid" in error.lower() for error in errors)
 
@@ -1165,7 +1170,7 @@ def test_validate_patches_update_claim_bad_id():
         "changes": {"strength": 0.5}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("C99" in error or "not found" in error.lower() for error in errors)
 
@@ -1179,7 +1184,7 @@ def test_validate_patches_retire_claim_bad_id():
         "target_id": "C99"
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
 
 
@@ -1199,7 +1204,7 @@ def test_validate_patches_add_evidence_duplicate_id():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("duplicate" in error.lower() or "exists" in error.lower() for error in errors)
 
@@ -1218,7 +1223,7 @@ def test_validate_patches_invalid_thesis_change():
         "change": "invalid"
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
 
     assert len(errors) == 1
     assert "weaken" in errors[0] or "strengthen" in errors[0]
@@ -1230,7 +1235,7 @@ def test_validate_patches_thesis_new_strength_valid():
     belief = create_sample_belief()
     patches = [{"op": "update_thesis", "new_strength": 0.5}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1240,7 +1245,7 @@ def test_validate_patches_thesis_new_strength_out_of_bounds():
     belief = create_sample_belief()
     patches = [{"op": "update_thesis", "new_strength": 1.5}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 1
     assert "between 0.0 and 1.0" in errors[0]
 
@@ -1259,7 +1264,7 @@ def test_validate_patches_update_evidence_valid():
         "changes": {"strength": 0.9}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1273,7 +1278,7 @@ def test_validate_patches_update_evidence_bad_id():
         "changes": {"strength": 0.9}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("E99" in e or "non-existent" in e.lower() for e in errors)
 
@@ -1287,7 +1292,7 @@ def test_validate_patches_update_evidence_missing_target():
         "changes": {"strength": 0.5}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing target_id" in e.lower() for e in errors)
 
@@ -1302,7 +1307,7 @@ def test_validate_patches_update_evidence_strength_out_of_bounds():
         "changes": {"strength": 1.5}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("between 0.0 and 1.0" in e for e in errors)
 
@@ -1321,7 +1326,7 @@ def test_validate_patches_update_assumption_strength_valid():
         "changes": {"strength": 0.7}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1335,7 +1340,7 @@ def test_validate_patches_update_assumption_strength_out_of_bounds():
         "changes": {"strength": -0.5}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("between 0.0 and 1.0" in e for e in errors)
 
@@ -1351,7 +1356,7 @@ def test_validate_patches_update_assumption_missing_target():
         # Missing target_id
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
 
     assert len(errors) == 1
     assert "missing target_id" in errors[0]
@@ -1371,11 +1376,12 @@ def test_validate_patches_add_assumption_valid():
             "id": "A2",
             "type": "empirical",
             "statement": "New assumption",
-            "strength": 0.7
+            "strength": 0.7,
+            "strength_justification": "0.7 — based on empirical data"
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1385,7 +1391,7 @@ def test_validate_patches_add_assumption_missing_item():
     belief = create_sample_belief()
     patches = [{"op": "add_assumption"}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing item" in e.lower() for e in errors)
 
@@ -1399,7 +1405,7 @@ def test_validate_patches_add_assumption_missing_id():
         "item": {"type": "empirical", "statement": "No ID", "strength": 0.5}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing 'id' field" in e.lower() for e in errors)
 
@@ -1418,7 +1424,7 @@ def test_validate_patches_add_assumption_duplicate_id():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("exists" in e.lower() for e in errors)
 
@@ -1435,8 +1441,8 @@ def test_validate_patches_add_assumption_missing_required_fields():
         }
     }]
 
-    errors = validate_patches(patches, belief)
-    assert len(errors) >= 3  # Missing type, statement, strength
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) >= 4  # Missing type, statement, strength, strength_justification
 
 
 @pytest.mark.unit
@@ -1453,7 +1459,7 @@ def test_validate_patches_add_assumption_invalid_type():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("foundational" in e or "empirical" in e or "methodological" in e for e in errors)
 
@@ -1472,7 +1478,7 @@ def test_validate_patches_add_assumption_strength_out_of_bounds():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("between 0.0 and 1.0" in e for e in errors)
 
@@ -1493,7 +1499,7 @@ def test_validate_patches_resolve_uncertainty_valid():
         "resolution_note": "Resolved by new evidence E3"
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1507,7 +1513,7 @@ def test_validate_patches_resolve_uncertainty_bad_id():
         "resolution_note": "Some note"
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("U99" in e or "non-existent" in e.lower() for e in errors)
 
@@ -1524,7 +1530,7 @@ def test_validate_patches_resolve_uncertainty_empty_note():
         "resolution_note": ""
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("resolution_note" in e for e in errors)
 
@@ -1540,7 +1546,7 @@ def test_validate_patches_resolve_uncertainty_missing_note():
         "target_id": "U1"
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("resolution_note" in e for e in errors)
 
@@ -1565,7 +1571,7 @@ def test_validate_patches_add_counterposition_valid():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1575,7 +1581,7 @@ def test_validate_patches_add_counterposition_missing_item():
     belief = create_sample_belief()
     patches = [{"op": "add_counterposition"}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing item" in e.lower() for e in errors)
 
@@ -1589,7 +1595,7 @@ def test_validate_patches_add_counterposition_missing_id():
         "item": {"statement": "No ID"}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing 'id' field" in e.lower() for e in errors)
 
@@ -1619,7 +1625,7 @@ def test_validate_patches_add_counterposition_duplicate_id():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("exists" in e.lower() for e in errors)
 
@@ -1637,7 +1643,7 @@ def test_validate_patches_add_counterposition_missing_required_fields():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
 
 
@@ -1660,7 +1666,7 @@ def test_validate_patches_update_counterposition_valid():
         "changes": {"response_sufficiency": "sufficient"}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1674,7 +1680,7 @@ def test_validate_patches_update_counterposition_bad_id():
         "changes": {"response_sufficiency": "sufficient"}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("X99" in e or "non-existent" in e.lower() for e in errors)
 
@@ -1688,7 +1694,7 @@ def test_validate_patches_update_counterposition_missing_target():
         "changes": {"response_sufficiency": "partial"}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing target_id" in e.lower() for e in errors)
 
@@ -1708,11 +1714,11 @@ def test_validate_patches_add_uncertainty_valid():
             "targets": ["C1"],
             "question": "Test?",
             "status": "active",
-            "importance": "Hint"
+            "importance": "high"
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1722,7 +1728,7 @@ def test_validate_patches_add_uncertainty_missing_item():
     belief = create_sample_belief()
     patches = [{"op": "add_uncertainty"}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing item" in e.lower() for e in errors)
 
@@ -1736,7 +1742,7 @@ def test_validate_patches_add_uncertainty_missing_id():
         "item": {"question": "No ID"}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing 'id' field" in e.lower() for e in errors)
 
@@ -1762,7 +1768,7 @@ def test_validate_patches_add_uncertainty_duplicate_id():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("exists" in e.lower() for e in errors)
 
@@ -1782,7 +1788,7 @@ def test_validate_patches_update_claim_missing_target():
         # Missing target_id
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
 
     assert len(errors) == 1
     assert "missing target_id" in errors[0]
@@ -1798,7 +1804,7 @@ def test_validate_patches_retire_claim_missing_target():
         # Missing target_id
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
 
     assert len(errors) == 1
     assert "missing target_id" in errors[0]
@@ -1824,11 +1830,12 @@ def test_validate_patches_add_claim_valid():
             "inference_chain": ["Step 1: A1 supports new claim"],
             "predictions": [
                 {"statement": "Pred", "test": "Test", "decision_criterion": "Crit"}
-            ]
+            ],
+            "strength_justification": "0.65 — supported by A1 and E1"
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) == 0
 
 
@@ -1838,7 +1845,7 @@ def test_validate_patches_add_claim_missing_item():
     belief = create_sample_belief()
     patches = [{"op": "add_claim"}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing item" in e.lower() for e in errors)
 
@@ -1852,7 +1859,7 @@ def test_validate_patches_add_claim_missing_id():
         "item": {"type": "deductive", "statement": "No ID"}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("missing 'id' field" in e.lower() for e in errors)
 
@@ -1877,7 +1884,7 @@ def test_validate_patches_add_claim_duplicate_id():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("exists" in e.lower() for e in errors)
 
@@ -1894,8 +1901,8 @@ def test_validate_patches_add_claim_missing_required_fields():
         }
     }]
 
-    errors = validate_patches(patches, belief)
-    assert len(errors) >= 7  # Missing 7 required fields
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) >= 8  # Missing 8 required fields (includes strength_justification)
 
 
 @pytest.mark.unit
@@ -1918,7 +1925,7 @@ def test_validate_patches_add_claim_strength_out_of_bounds():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("between 0.0 and 1.0" in e for e in errors)
 
@@ -1943,7 +1950,7 @@ def test_validate_patches_add_claim_invalid_status():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("active" in e or "revised" in e or "retracted" in e for e in errors)
 
@@ -1968,7 +1975,7 @@ def test_validate_patches_add_claim_bad_depends_on():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("A99" in e for e in errors)
 
@@ -1993,7 +2000,7 @@ def test_validate_patches_add_claim_bad_evidence_ref():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("depends_on references non-existent" in e.lower() or "E99" in e for e in errors)
 
@@ -2016,7 +2023,7 @@ def test_validate_patches_add_claim_empty_predictions():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("predictions" in e.lower() for e in errors)
 
@@ -2041,7 +2048,7 @@ def test_validate_patches_add_claim_prediction_missing_fields():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) >= 2  # Missing test and decision_criterion
 
 
@@ -2055,7 +2062,7 @@ def test_validate_patches_add_evidence_missing_item():
         # Missing item
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
 
     assert len(errors) == 1
     assert "missing item" in errors[0]
@@ -2075,7 +2082,7 @@ def test_validate_patches_add_evidence_missing_id():
         }
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
 
     assert len(errors) == 1
     assert "missing 'id' field" in errors[0]
@@ -2091,7 +2098,7 @@ def test_validate_patches_update_claim_strength_out_of_bounds():
         "changes": {"strength": 1.5}
     }]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("between 0.0 and 1.0" in e for e in errors)
 
@@ -2238,7 +2245,7 @@ def test_update_thesis_stance_empty_rejected():
     belief = create_sample_belief()
     patches = [{"op": "update_thesis", "stance": ""}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("stance" in e for e in errors)
 
@@ -2278,7 +2285,7 @@ def test_update_thesis_bullets_empty_list_rejected():
     belief = create_sample_belief()
     patches = [{"op": "update_thesis", "summary_bullets": []}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("summary_bullets" in e for e in errors)
 
@@ -2289,7 +2296,7 @@ def test_update_thesis_bullets_non_list_rejected():
     belief = create_sample_belief()
     patches = [{"op": "update_thesis", "summary_bullets": "not a list"}]
 
-    errors = validate_patches(patches, belief)
+    errors = _flat(validate_patches(patches, belief))
     assert len(errors) > 0
     assert any("summary_bullets" in e for e in errors)
 
@@ -2517,3 +2524,659 @@ def test_propagate_no_cap_when_claim_already_lower():
     updated = apply_patches(belief, patches, propagate_strength=True)
     # C1 is at 0.3, which is already below A1's 0.5 — should stay at 0.3
     assert updated["claims"][0]["strength"] == 0.3
+
+
+# ==============================================
+# 3B. Blocking Validation Return Type Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_patches_returns_dict():
+    """Return type is Dict[int, List[str]], not List[str]."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "update_claim", "target_id": "C99", "changes": {"strength": 0.5}}]
+
+    result = validate_patches(patches, belief)
+    assert isinstance(result, dict)
+    assert all(isinstance(k, int) for k in result.keys())
+    assert all(isinstance(v, list) for v in result.values())
+
+
+@pytest.mark.unit
+def test_validate_patches_valid_returns_empty_dict():
+    """Valid patches return empty dict {}."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}}]
+
+    result = validate_patches(patches, belief)
+    assert result == {}
+
+
+@pytest.mark.unit
+def test_validate_patches_invalid_patch_index_in_keys():
+    """Error dict keys match the indices of bad patches."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}},  # valid (idx 0)
+        {"op": "update_claim", "target_id": "C99", "changes": {"strength": 0.5}},  # invalid (idx 1)
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.3}},  # valid (idx 2)
+    ]
+
+    result = validate_patches(patches, belief)
+    assert 1 in result
+    assert 0 not in result
+    assert 2 not in result
+
+
+@pytest.mark.unit
+def test_validate_patches_mixed_valid_invalid():
+    """Batch of 3 patches where patch 1 is invalid -> dict has key 1 only."""
+    belief = create_sample_belief(num_claims=1, num_evidence=1)
+    patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.6}},  # valid
+        {"op": "retire_claim", "target_id": "C99"},  # invalid
+        {"op": "update_evidence", "target_id": "E1", "changes": {"strength": 0.9}},  # valid
+    ]
+
+    result = validate_patches(patches, belief)
+    assert set(result.keys()) == {1}
+    assert len(result[1]) > 0
+
+
+# ==============================================
+# 3C. Field Whitelist Tests — update_claim
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_update_claim_rejects_unknown_field():
+    """changes: {"invalid_field": 123} -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "update_claim", "target_id": "C1", "changes": {"invalid_field": 123}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("unknown" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_claim_allows_all_valid_fields():
+    """All 8 whitelist keys accepted without error."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [{
+        "op": "update_claim",
+        "target_id": "C1",
+        "changes": {
+            "strength": 0.6,
+            "strength_justification": "Updated justification",
+            "statement": "Updated statement",
+            "status": "revised",
+            "depends_on": ["A1", "E1"],
+            "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}],
+            "inference_chain": ["Step 1: Updated"],
+            "type": "descriptive",
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_update_claim_empty_changes_rejected():
+    """changes: {} -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "update_claim", "target_id": "C1", "changes": {}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("changes" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_claim_status_enum():
+    """changes: {"status": "invalid"} -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "update_claim", "target_id": "C1", "changes": {"status": "invalid"}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("active" in e or "revised" in e or "retracted" in e for e in errors)
+
+
+# ==============================================
+# 3C. Field Whitelist Tests — update_evidence
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_update_evidence_rejects_unknown_field():
+    """changes: {"bad": 1} -> error."""
+    belief = create_sample_belief(num_evidence=1)
+    patches = [{"op": "update_evidence", "target_id": "E1", "changes": {"bad": 1}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("unknown" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_evidence_allows_all_valid_fields():
+    """All 7 whitelist keys accepted."""
+    belief = create_sample_belief(num_claims=1, num_evidence=1)
+    patches = [{
+        "op": "update_evidence",
+        "target_id": "E1",
+        "changes": {
+            "strength": 0.7,
+            "strength_justification": "Updated",
+            "summary": "Updated summary",
+            "source": "Updated source",
+            "status": "revised",
+            "relevance_to_claims": ["C1"],
+            "type": "conceptual",
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_update_evidence_empty_changes_rejected():
+    """changes: {} -> error."""
+    belief = create_sample_belief(num_evidence=1)
+    patches = [{"op": "update_evidence", "target_id": "E1", "changes": {}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("changes" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_evidence_type_enum():
+    """changes: {"type": "invalid"} -> error."""
+    belief = create_sample_belief(num_evidence=1)
+    patches = [{"op": "update_evidence", "target_id": "E1", "changes": {"type": "invalid"}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("empirical" in e or "conceptual" in e or "expert_consensus" in e for e in errors)
+
+
+# ==============================================
+# 3C. Field Whitelist Tests — update_assumption
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_update_assumption_rejects_unknown_field():
+    """changes: {"bad": 1} -> error."""
+    belief = create_sample_belief(num_assumptions=1)
+    patches = [{"op": "update_assumption", "target_id": "A1", "changes": {"bad": 1}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("unknown" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_assumption_allows_all_valid_fields():
+    """All 6 whitelist keys accepted."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1)
+    patches = [{
+        "op": "update_assumption",
+        "target_id": "A1",
+        "changes": {
+            "strength": 0.6,
+            "strength_justification": "Updated",
+            "statement": "Updated statement",
+            "status": "revised",
+            "type": "methodological",
+            "supports_claims": ["C1"],
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_update_assumption_new_type_enum():
+    """new_type: "invalid" -> error."""
+    belief = create_sample_belief(num_assumptions=1)
+    patches = [{"op": "update_assumption", "target_id": "A1", "new_type": "invalid"}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("foundational" in e or "empirical" in e or "methodological" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_assumption_requires_content():
+    """No new_statement, new_type, or changes -> error."""
+    belief = create_sample_belief(num_assumptions=1)
+    patches = [{"op": "update_assumption", "target_id": "A1"}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("at least one" in e.lower() for e in errors)
+
+
+# ==============================================
+# 3C. Field Whitelist Tests — update_counterposition
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_update_counterposition_rejects_unknown_field():
+    """changes: {"bad": 1} -> error."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1", "targets": ["C1"], "attack_type": "rebutting",
+        "statement": "Test", "my_response": "Response", "response_sufficiency": "partial"
+    }]
+    patches = [{"op": "update_counterposition", "target_id": "X1", "changes": {"bad": 1}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("unknown" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_counterposition_allows_all_valid_fields():
+    """All 5 whitelist keys accepted."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1", "targets": ["C1"], "attack_type": "rebutting",
+        "statement": "Test", "my_response": "Response", "response_sufficiency": "partial"
+    }]
+    patches = [{
+        "op": "update_counterposition",
+        "target_id": "X1",
+        "changes": {
+            "my_response": "Updated response",
+            "response_sufficiency": "sufficient",
+            "statement": "Updated statement",
+            "attack_type": "undermining",
+            "targets": ["C1"],
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_update_counterposition_empty_changes_rejected():
+    """changes: {} -> error."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1", "targets": ["C1"], "attack_type": "rebutting",
+        "statement": "Test", "my_response": "Response", "response_sufficiency": "partial"
+    }]
+    patches = [{"op": "update_counterposition", "target_id": "X1", "changes": {}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("changes" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_counterposition_sufficiency_enum():
+    """changes: {"response_sufficiency": "invalid"} -> error."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1", "targets": ["C1"], "attack_type": "rebutting",
+        "statement": "Test", "my_response": "Response", "response_sufficiency": "partial"
+    }]
+    patches = [{"op": "update_counterposition", "target_id": "X1", "changes": {"response_sufficiency": "invalid"}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("sufficient" in e or "partial" in e or "unaddressed" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_update_counterposition_attack_type_enum():
+    """changes: {"attack_type": "invalid"} -> error."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1", "targets": ["C1"], "attack_type": "rebutting",
+        "statement": "Test", "my_response": "Response", "response_sufficiency": "partial"
+    }]
+    patches = [{"op": "update_counterposition", "target_id": "X1", "changes": {"attack_type": "invalid"}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("undermining" in e or "rebutting" in e or "undercutting" in e for e in errors)
+
+
+# ==============================================
+# 3D. Missing Required Fields — add_evidence
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_add_evidence_missing_required_fields():
+    """Item with only id -> errors for type, summary, source, relevance_to_claims, strength, strength_justification."""
+    belief = create_sample_belief()
+    patches = [{"op": "add_evidence", "item": {"id": "E2"}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) >= 6  # Missing type, summary, source, relevance_to_claims, strength, strength_justification
+
+
+@pytest.mark.unit
+def test_validate_add_evidence_valid_all_fields():
+    """Complete item -> no errors."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_evidence",
+        "item": {
+            "id": "E2",
+            "type": "empirical",
+            "summary": "New evidence",
+            "source": "Test (2026)",
+            "relevance_to_claims": ["C1"],
+            "strength": 0.7,
+            "strength_justification": "0.7 — based on empirical data"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_add_evidence_type_enum():
+    """type: "invalid" -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_evidence",
+        "item": {
+            "id": "E2",
+            "type": "invalid",
+            "summary": "Test",
+            "source": "Test",
+            "relevance_to_claims": ["C1"],
+            "strength": 0.7,
+            "strength_justification": "Test"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("empirical" in e or "conceptual" in e or "expert_consensus" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_add_evidence_strength_range():
+    """strength: 1.5 -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_evidence",
+        "item": {
+            "id": "E2",
+            "type": "empirical",
+            "summary": "Test",
+            "source": "Test",
+            "relevance_to_claims": ["C1"],
+            "strength": 1.5,
+            "strength_justification": "Test"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("between 0.0 and 1.0" in e for e in errors)
+
+
+# ==============================================
+# 3D. Missing Required Fields — add_uncertainty
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_add_uncertainty_missing_required_fields():
+    """Item with only id -> errors for targets, question, status, importance."""
+    belief = create_sample_belief()
+    patches = [{"op": "add_uncertainty", "item": {"id": "U1"}}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) >= 4  # Missing targets, question, status, importance
+
+
+@pytest.mark.unit
+def test_validate_add_uncertainty_valid_all_fields():
+    """Complete item -> no errors."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {
+            "id": "U1",
+            "targets": ["C1"],
+            "question": "Is this testable?",
+            "status": "active",
+            "importance": "high"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0
+
+
+@pytest.mark.unit
+def test_validate_add_uncertainty_status_enum():
+    """status: "invalid" -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {
+            "id": "U1",
+            "targets": ["C1"],
+            "question": "Test?",
+            "status": "invalid",
+            "importance": "high"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("active" in e or "resolved" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_add_uncertainty_importance_enum():
+    """importance: "invalid" -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_uncertainty",
+        "item": {
+            "id": "U1",
+            "targets": ["C1"],
+            "question": "Test?",
+            "status": "active",
+            "importance": "invalid"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("high" in e or "medium" in e or "low" in e for e in errors)
+
+
+# ==============================================
+# 3D. Missing strength_justification
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_add_claim_missing_strength_justification():
+    """Item with all fields except strength_justification -> error."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1)
+    patches = [{
+        "op": "add_claim",
+        "item": {
+            "id": "C2",
+            "type": "deductive",
+            "statement": "New claim",
+            "depends_on": ["A1", "E1"],
+            "strength": 0.6,
+            "status": "active",
+            "inference_chain": ["Step 1: Reasoning"],
+            "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}]
+            # Missing strength_justification
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("strength_justification" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_add_assumption_missing_strength_justification():
+    """Item with all fields except strength_justification -> error."""
+    belief = create_sample_belief()
+    patches = [{
+        "op": "add_assumption",
+        "item": {
+            "id": "A2",
+            "type": "empirical",
+            "statement": "New assumption",
+            "strength": 0.7
+            # Missing strength_justification
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("strength_justification" in e for e in errors)
+
+
+# ==============================================
+# 3E. Enum Validation — add_counterposition
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_add_counterposition_attack_type_enum():
+    """attack_type: "invalid" -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "invalid",
+            "statement": "Test",
+            "my_response": "Response",
+            "response_sufficiency": "partial"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("undermining" in e or "rebutting" in e or "undercutting" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_add_counterposition_sufficiency_enum():
+    """response_sufficiency: "invalid" -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test",
+            "my_response": "Response",
+            "response_sufficiency": "invalid"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("sufficient" in e or "partial" in e or "unaddressed" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_add_counterposition_targets_nonempty():
+    """targets: [] -> error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": [],
+            "attack_type": "rebutting",
+            "statement": "Test",
+            "my_response": "Response",
+            "response_sufficiency": "partial"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("targets" in e.lower() for e in errors)
+
+
+# ==============================================
+# 3F. update_thesis Mutual Exclusivity
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_update_thesis_mutual_exclusivity():
+    """Both new_strength and change present -> error."""
+    belief = create_sample_belief()
+    patches = [{"op": "update_thesis", "new_strength": 0.5, "change": "weaken"}]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("mutually exclusive" in e.lower() or ("new_strength" in e and "change" in e) for e in errors)
+
+
+# ==============================================
+# 3G. Integration Tests — Blocking Behavior
+# ==============================================
+
+@pytest.mark.unit
+def test_invalid_patch_skipped_valid_patches_applied():
+    """Batch of [valid, invalid, valid] -> only 2 patches applied, belief updated correctly."""
+    belief = create_sample_belief(num_claims=2, num_assumptions=1, num_evidence=1)
+    belief["claims"][0]["strength"] = 0.8
+    belief["claims"][1]["strength"] = 0.7
+
+    patches = [
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}},  # valid
+        {"op": "update_claim", "target_id": "C99", "changes": {"strength": 0.3}},  # invalid
+        {"op": "update_claim", "target_id": "C2", "changes": {"strength": 0.4}},  # valid
+    ]
+
+    # Filter out invalid patches (same pattern as debate_controller)
+    patch_errors = validate_patches(patches, belief)
+    invalid_indices = set(patch_errors.keys())
+    valid_patches = [p for i, p in enumerate(patches) if i not in invalid_indices]
+
+    assert len(valid_patches) == 2
+    assert invalid_indices == {1}
+
+    updated = apply_patches(belief, valid_patches, propagate_strength=False)
+    assert updated["claims"][0]["strength"] == 0.5
+    assert updated["claims"][1]["strength"] == 0.4
+
+
+@pytest.mark.unit
+def test_all_patches_invalid_returns_unchanged_belief():
+    """All invalid patches -> belief unchanged (except version/changelog)."""
+    belief = create_sample_belief(num_claims=1)
+    original_strength = belief["claims"][0]["strength"]
+
+    patches = [
+        {"op": "update_claim", "target_id": "C99", "changes": {"strength": 0.3}},
+        {"op": "retire_claim", "target_id": "C99"},
+    ]
+
+    patch_errors = validate_patches(patches, belief)
+    invalid_indices = set(patch_errors.keys())
+    valid_patches = [p for i, p in enumerate(patches) if i not in invalid_indices]
+
+    assert len(valid_patches) == 0
+
+    updated = apply_patches(belief, valid_patches)
+    # Claim strength unchanged since no patches were applied
+    assert updated["claims"][0]["strength"] == original_strength

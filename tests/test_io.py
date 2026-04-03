@@ -312,7 +312,7 @@ def test_belief_to_markdown_uncertainties_targets_status():
             "targets": ["C1", "A1"],
             "question": "Is the mechanism clear?",
             "status": "active",
-            "importance": "High value"
+            "importance": "high"
         }
     ]
 
@@ -320,10 +320,10 @@ def test_belief_to_markdown_uncertainties_targets_status():
 
     assert "# Uncertainties" in markdown
     assert "U1" in markdown
-    assert "(active)" in markdown
-    assert "targets: C1, A1" in markdown
+    assert "Status: active" in markdown
+    assert "Targets: C1, A1" in markdown
     assert "Is the mechanism clear?" in markdown
-    assert "Importance: High value" in markdown
+    assert "Importance: high" in markdown
 
 
 @pytest.mark.unit
@@ -337,13 +337,13 @@ def test_belief_to_markdown_uncertainties_resolved():
             "question": "Was the gap resolved?",
             "status": "resolved",
             "resolution_note": "Resolved by new evidence E3",
-            "importance": ""
+            "importance": "medium"
         }
     ]
 
     markdown = belief_to_markdown(belief)
 
-    assert "(resolved)" in markdown
+    assert "Status: resolved" in markdown
     assert "Resolution: Resolved by new evidence E3" in markdown
 
 
@@ -357,7 +357,7 @@ def test_belief_to_markdown_no_cruciality():
             "targets": ["C1"],
             "question": "Test",
             "status": "active",
-            "importance": ""
+            "importance": "low"
         }
     ]
 
@@ -542,7 +542,7 @@ def test_project_for_embedding_uncertainty_with_targets():
             "targets": ["C1"],
             "question": "Is the mechanism clear?",
             "status": "active",
-            "importance": ""
+            "importance": "high"
         }
     ]
 

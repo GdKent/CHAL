@@ -854,11 +854,11 @@ def test_stage_3_example_patches_pass_validate_patches():
          "supports_claims": ["C1"], "strength": 0.75, "status": "active", "strength_justification": "Test"}},
         {"op": "add_counterposition", "item": {"id": "X3", "targets": ["C2"], "attack_type": "undermining",
          "statement": "Test", "my_response": "Test", "response_sufficiency": "partial"}},
-        {"op": "add_uncertainty", "item": {"id": "U2", "targets": ["C1", "E1"], "question": "Test?", "status": "active"}},
+        {"op": "add_uncertainty", "item": {"id": "U2", "targets": ["C1", "E1"], "question": "Test?", "status": "active", "importance": "high"}},
     ]
 
     errors = validate_patches(example_patches, belief)
-    assert errors == [], f"Example patches failed validation: {errors}"
+    assert errors == {}, f"Example patches failed validation: {errors}"
 
 
 @pytest.mark.unit
@@ -2067,3 +2067,29 @@ def test_adjudicator_per_pair_prompt_no_debate_context():
         target_belief_excerpt_json='{"b": 2}',
     )
     assert "<debate_context>" not in prompt
+
+
+# ==============================================
+# 3A. Phase 1 update_thesis Removal Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_phase1_prompt_no_update_thesis():
+    """Assert update_thesis does NOT appear in Phase 1 enforcement prompt output."""
+    prompt = build_stage_5_phase1_enforcement_prompt(
+        agent_name="Agent-A",
+        challenge_rebuttal_pairs=SAMPLE_PAIRS,
+        prior_belief_json=SAMPLE_BELIEF_JSON
+    )
+    assert "update_thesis" not in prompt
+
+
+@pytest.mark.unit
+def test_phase2_prompt_has_update_thesis():
+    """Assert update_thesis DOES appear in Phase 2 introspection prompt output."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "update_thesis" in prompt

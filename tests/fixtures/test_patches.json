@@ -145,7 +145,7 @@
         "targets": ["C1"],
         "question": "Can the explanatory gap be closed?",
         "status": "active",
-        "importance": "Resolving this directly determines the physicalist program's viability"
+        "importance": "high"
       }
     }
   ],
@@ -156,7 +156,8 @@
         "id": "U1",
         "targets": ["C1"],
         "question": "What is the mechanism?",
-        "status": "active"
+        "status": "active",
+        "importance": "medium"
       }
     }
   ],

@@ -712,31 +712,33 @@ def test_validate_evidence_strength_range():
 
 @pytest.mark.unit
 def test_validate_uncertainty_valid_structure():
-    """Test that a valid uncertainty with targets and status passes validation."""
+    """Test that a valid uncertainty with targets, status, and importance passes validation."""
     belief = create_sample_belief(num_claims=1)
     belief["uncertainties"] = [{
         "id": "U1",
         "targets": ["C1"],
         "question": "Can the explanatory gap be closed?",
         "status": "active",
-        "importance": "Resolving this directly determines viability"
+        "importance": "high"
     }]
     errors = validate_belief(belief)
     assert len(errors) == 0, f"Full uncertainty should pass, got: {errors}"
 
 
 @pytest.mark.unit
-def test_validate_uncertainty_valid_without_optional():
-    """Test that uncertainty without optional fields still passes."""
-    belief = create_sample_belief(num_claims=1)
-    belief["uncertainties"] = [{
-        "id": "U1",
-        "targets": ["C1"],
-        "question": "Is this assumption valid?",
-        "status": "active"
-    }]
-    errors = validate_belief(belief)
-    assert len(errors) == 0, f"Uncertainty without optional fields should pass, got: {errors}"
+def test_validate_uncertainty_valid_all_importance_levels():
+    """Test that all valid importance levels pass validation."""
+    for level in ("high", "medium", "low"):
+        belief = create_sample_belief(num_claims=1)
+        belief["uncertainties"] = [{
+            "id": "U1",
+            "targets": ["C1"],
+            "question": "Is this assumption valid?",
+            "status": "active",
+            "importance": level
+        }]
+        errors = validate_belief(belief)
+        assert len(errors) == 0, f"Importance '{level}' should pass, got: {errors}"
 
 
 @pytest.mark.unit
@@ -748,6 +750,7 @@ def test_validate_uncertainty_resolved_with_note():
         "targets": ["C1"],
         "question": "Can the explanatory gap be closed?",
         "status": "resolved",
+        "importance": "high",
         "resolution_note": "Resolved by new claim C2 with evidence E2"
     }]
     errors = validate_belief(belief)
@@ -762,11 +765,43 @@ def test_validate_uncertainty_invalid_status():
         "id": "U1",
         "targets": ["C1"],
         "question": "Test question",
-        "status": "pending"
+        "status": "pending",
+        "importance": "high"
     }]
     errors = validate_belief(belief)
     assert len(errors) > 0, "Invalid status 'pending' should produce errors"
     assert any("status" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_uncertainty_missing_importance():
+    """Test that uncertainty without importance field is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["uncertainties"] = [{
+        "id": "U1",
+        "targets": ["C1"],
+        "question": "Test question",
+        "status": "active"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Missing importance should produce errors"
+    assert any("importance" in e.lower() for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_uncertainty_invalid_importance():
+    """Test that invalid importance value is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["uncertainties"] = [{
+        "id": "U1",
+        "targets": ["C1"],
+        "question": "Test question",
+        "status": "active",
+        "importance": "critical"
+    }]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "Invalid importance 'critical' should produce errors"
+    assert any("importance" in e.lower() for e in errors)
 
 
 @pytest.mark.unit
@@ -777,7 +812,8 @@ def test_validate_uncertainty_valid_without_cruciality():
         "id": "U1",
         "targets": ["C1"],
         "question": "Test question",
-        "status": "active"
+        "status": "active",
+        "importance": "medium"
     }]
     errors = validate_belief(belief)
     assert len(errors) == 0, f"Uncertainty without cruciality should pass, got: {errors}"

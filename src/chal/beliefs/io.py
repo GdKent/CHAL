@@ -144,8 +144,9 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
 
     def u_fmt(u):
         status = u.get("status", "active")
-        lines = [f"- [{u.get('id','')}] ({status}) → targets: {', '.join(u.get('targets', []))}"]
-        lines.append(f"  - {u.get('question','')}")
+        lines = [f"- [{u.get('id','')}] {u.get('question','')}"]
+        lines.append(f"  - Targets: {', '.join(u.get('targets', []))}")
+        lines.append(f"  - Status: {status}")
         lines.append(f"  - Importance: {u.get('importance','')}")
         if status == "resolved" and u.get("resolution_note"):
             lines.append(f"  - Resolution: {u['resolution_note']}")
@@ -153,8 +154,9 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     list_block("Uncertainties", "uncertainties", u_fmt)
 
     def x_fmt(x):
-        lines = [f"- [{x.get('id','')}] ({x.get('attack_type','')}) → targets: {', '.join(x.get('targets', []))}"]
-        lines.append(f"  - Statement: {x.get('statement','')}")
+        lines = [f"- [{x.get('id','')}] Statement: {x.get('statement','')}"]
+        lines.append(f"  - Attack type: {x.get('attack_type','')}")
+        lines.append(f"  - Targets: {', '.join(x.get('targets', []))}")
         if x.get("my_response"):
             lines.append(f"  - My response: {x['my_response']}")
         lines.append(f"  - Sufficiency: {x.get('response_sufficiency','')}")

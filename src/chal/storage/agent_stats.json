@@ -1,20 +1,20 @@
 {
   "Agent-Empiricist": {
-    "successful_critiques": 5,
-    "failed_critiques": 0,
-    "successful_rebuttals": 2,
-    "failed_rebuttals": 2,
-    "unresolved_arguments": 1,
-    "total_arguments": 10,
-    "performance_score": 14.5
-  },
-  "Agent-Supernaturalist": {
     "successful_critiques": 2,
     "failed_critiques": 2,
-    "successful_rebuttals": 0,
-    "failed_rebuttals": 5,
-    "unresolved_arguments": 1,
+    "successful_rebuttals": 3,
+    "failed_rebuttals": 1,
+    "unresolved_arguments": 2,
     "total_arguments": 10,
-    "performance_score": -4.5
+    "performance_score": 9.0
+  },
+  "Agent-Supernaturalist": {
+    "successful_critiques": 1,
+    "failed_critiques": 3,
+    "successful_rebuttals": 2,
+    "failed_rebuttals": 2,
+    "unresolved_arguments": 2,
+    "total_arguments": 10,
+    "performance_score": 2.0
   }
 }

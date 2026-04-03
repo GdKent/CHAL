@@ -216,7 +216,7 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["id", "targets", "question", "status"],
+                "required": ["id", "targets", "question", "status", "importance"],
                 "properties": {
                     "id": { "type": "string" },
                     "targets": {                               # References to A#/E#/C# IDs this uncertainty questions
@@ -228,8 +228,10 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                         "type": "string",
                         "enum": ["active", "resolved"]
                     },
-                    # --- Optional enrichment fields ---
-                    "importance": { "type": "string" },         # Why resolving this uncertainty matters
+                    "importance": {                              # How critical resolving this uncertainty is
+                        "type": "string",
+                        "enum": ["high", "medium", "low"]
+                    },
                     "resolution_note": { "type": "string" }    # How the uncertainty was resolved (required when resolving)
                 }
             }
@@ -526,14 +528,26 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
                 f"Must be one of: {sorted(VALID_EVIDENCE_STATUSES)}"
             )
 
-    # --- Uncertainty status validation ---
+    # --- Uncertainty status and importance validation ---
     VALID_UNCERTAINTY_STATUS = {"active", "resolved"}
+    VALID_UNCERTAINTY_IMPORTANCE = {"high", "medium", "low"}
     for item in belief.get("uncertainties", []) or []:
+        u_id = item.get("id", "?")
         u_status = item.get("status")
         if u_status is not None and u_status not in VALID_UNCERTAINTY_STATUS:
             errors.append(
                 f"Invalid uncertainty status '{u_status}'. "
                 f"Must be one of: {sorted(VALID_UNCERTAINTY_STATUS)}"
+            )
+        u_importance = item.get("importance")
+        if u_importance is None:
+            errors.append(
+                f"Uncertainty '{u_id}' is missing required 'importance' field"
+            )
+        elif u_importance not in VALID_UNCERTAINTY_IMPORTANCE:
+            errors.append(
+                f"Invalid uncertainty importance '{u_importance}'. "
+                f"Must be one of: {sorted(VALID_UNCERTAINTY_IMPORTANCE)}"
             )
 
     return errors

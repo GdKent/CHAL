@@ -391,7 +391,8 @@ def build_debate_context(stage_description: str) -> str:
     )
 
 
-def build_stage_1_belief_prompt_cbs(topic: str, agent_name: str, persona_label: str) -> str:
+def build_stage_1_belief_prompt_cbs(topic: str, agent_name: str, persona_label: str,
+                                    breadth_sensitivity: float = None) -> str:
     """
     Build a Stage-1 prompt that elicits a JSON-structured belief object.
 
@@ -402,7 +403,25 @@ def build_stage_1_belief_prompt_cbs(topic: str, agent_name: str, persona_label: 
     Notes:
     - Requests only JSON output (Markdown is generated programmatically via belief_to_markdown).
     - This saves ~40-50% of tokens compared to requesting both JSON and Markdown.
+
+    Args:
+        topic: The debate topic.
+        agent_name: Name of the agent.
+        persona_label: Epistemic persona label.
+        breadth_sensitivity: The p exponent for the breadth formula. Defaults
+            to BREADTH_SENSITIVITY from patches.py.
     """
+    from chal.beliefs.patches import BREADTH_SENSITIVITY
+    p = breadth_sensitivity if breadth_sensitivity is not None else BREADTH_SENSITIVITY
+
+    # Pre-compute example values for strength_reasoning illustrations
+    _ex3_np = 3 ** p
+    _ex3_breadth = round(_ex3_np / (_ex3_np + 1), 2)
+    _ex3_result = round(0.63 * _ex3_breadth, 2)
+    _ex1_np = 1 ** p
+    _ex1_breadth = round(_ex1_np / (_ex1_np + 1), 2)
+    _ex1_result = round(0.70 * _ex1_breadth, 2)
+
     _debate_ctx = build_debate_context("Opening — forming your initial belief")
     return (
         f"""\
@@ -470,6 +489,7 @@ conclusion doesn't follow)
 - "uncertainties" [U#]: {id, targets, question, status, importance, resolution_note}
     targets: array of A#, E#, or C# IDs that this uncertainty pertains to
     status: "active" (default for new U#) or "resolved"
+    importance: must be one of "high", "medium", or "low"
     resolution_note: optional — used when resolving a U# to reference new supporting material
 
 SYNTHESIZED LAST:
@@ -502,12 +522,12 @@ All strength values (thesis, claims, assumptions, evidence) share a common scale
 <thesis_strength>
 After building your claims, calculate your thesis strength using this formula:
 thesis_strength = avg(active_claim_strengths) × (n^p / (n^p + 1))
-where n = number of active claims, p = 1.5 (breadth sensitivity).
+where n = number of active claims, p = {p} (breadth sensitivity).
 Your thesis strength must ALWAYS equal the result of this formula. More \
 well-supported claims raise the result. Your goal is to build strong, \
 well-evidenced claims first — your thesis strength is then determined by them.
 Include a "strength_reasoning" field showing the equation with your actual \
-numbers plugged in (e.g., "avg(0.70, 0.55, 0.65) × (3^1.5 / (3^1.5 + 1)) = 0.63 × 0.84 = 0.53").
+numbers plugged in (e.g., "avg(0.70, 0.55, 0.65) × (3^{p} / (3^{p} + 1)) = 0.63 × {_ex3_breadth} = {_ex3_result}").
 </thesis_strength>
 
 DEPENDENCY RULES:
@@ -603,7 +623,7 @@ Condensed example showing expected quality (your belief should be more comprehen
     }
   ],
   "uncertainties": [
-    {"id": "U1", "targets": ["C1"], "question": "Can the explanatory gap be closed in principle, or is it a fundamental limit?", "status": "active", "importance": "Resolving this directly determines whether the physicalist program can succeed"}
+    {"id": "U1", "targets": ["C1"], "question": "Can the explanatory gap be closed in principle, or is it a fundamental limit?", "status": "active", "importance": "high"}
   ],
   "thesis": {
     "stance": "Consciousness, while subjectively experienced as unified and irreducible, is best understood as an emergent property of complex neural computation. The explanatory gap between subjective experience and physical processes is an epistemic limitation, not an ontological one.",
@@ -613,7 +633,7 @@ Condensed example showing expected quality (your belief should be more comprehen
       "Neural correlates provide strong though not conclusive evidence for physicalism"
     ],
     "strength": 0.35,
-    "strength_reasoning": "avg(0.70) × (1^1.5 / (1^1.5 + 1)) = 0.70 × 0.50 = 0.35"
+    "strength_reasoning": "avg(0.70) × (1^{p} / (1^{p} + 1)) = 0.70 × {_ex1_breadth} = {_ex1_result}"
   },
   "changelog": [{"version": 1, "changes": ["Initial belief formation"]}]
 }
@@ -708,7 +728,10 @@ falls, everything built on it collapses.
   - challenge_strength_calibration: The assigned strength exceeds what the cited evidence \
     and reasoning actually warrant.
   - press_uncertainty: Force the opponent to address their own U# nodes — their admitted \
-    unknowns undermine the confidence of claims that depend on resolving them favorably.
+    unknowns undermine the confidence of claims that depend on resolving them favorably - \
+    focus on U# nodes that have been identified as either "high" or "medium" importance, \
+    although you may press "low" importance nodes if you feel that the importance has been \
+    mis-calibrated.
 
 **REBUTTING** — Present counter-evidence or a counter-conclusion that directly opposes a claim.
   - present_counter_evidence: Offer specific evidence that directly contradicts a claim \
@@ -886,7 +909,7 @@ Your response must contain:
     {{"op": "add_evidence", "item": {{"id": "E4", "type": "empirical", "summary": "...", "source": "...", "relevance_to_claims": ["C1"], "strength": 0.7, "status": "active", "strength_justification": "..."}}}},
     {{"op": "add_assumption", "item": {{"id": "A3", "type": "empirical", "statement": "...", "supports_claims": ["C1"], "strength": 0.75, "status": "active", "strength_justification": "..."}}}},
     {{"op": "add_counterposition", "item": {{"id": "X3", "targets": ["C2"], "attack_type": "undermining", "statement": "...", "my_response": "...", "response_sufficiency": "partial"}}}},
-    {{"op": "add_uncertainty", "item": {{"id": "U2", "targets": ["C1", "E1"], "question": "...", "status": "active"}}}}
+    {{"op": "add_uncertainty", "item": {{"id": "U2", "targets": ["C1", "E1"], "question": "...", "status": "active", "importance": "high"}}}}
   ]
 }}
 ```
@@ -902,7 +925,8 @@ If any action is "refute", then no patches are warranted: "patches": []
 def build_stage_5_belief_update_prompt_cbs(agent_name: str,
                                              challenge_rebuttal_pairs: list[dict],
                                              prior_belief_json: str,
-                                             stage_3_patches_json: str = "") -> str:
+                                             stage_3_patches_json: str = "",
+                                             breadth_sensitivity: float = None) -> str:
     """
     Stage 5: Belief update via PATCH operations based on adjudication outcomes.
 
@@ -911,7 +935,11 @@ def build_stage_5_belief_update_prompt_cbs(agent_name: str,
         challenge_rebuttal_pairs: List of adjudication outcome dicts.
         prior_belief_json: Agent's current CBS belief as JSON string.
         stage_3_patches_json: Optional JSON of patches proposed during Stage 3 rebuttals.
+        breadth_sensitivity: The p exponent for the breadth formula. Defaults
+            to BREADTH_SENSITIVITY from patches.py.
     """
+    from chal.beliefs.patches import BREADTH_SENSITIVITY
+    p = breadth_sensitivity if breadth_sensitivity is not None else BREADTH_SENSITIVITY
     lines = []
     for entry in challenge_rebuttal_pairs:
         challenger = entry.get("challenger", "?")
@@ -971,7 +999,7 @@ All strength values (thesis, claims, assumptions, evidence) share a common scale
 
 <thesis_strength>
 When revising beliefs, consider how your changes affect thesis strength.
-Thesis strength = avg(active_claim_strengths) × (n^p / (n^p + 1)) where n = active claims, p = 1.5.
+Thesis strength = avg(active_claim_strengths) × (n^p / (n^p + 1)) where n = active claims, p = {p}.
 If you retract a claim, the breadth multiplier decreases. If you lower a claim's \
 strength, the average decreases. The thesis strength is always determined by this \
 formula — make changes that genuinely improve your position, not just the numbers.
@@ -992,8 +1020,6 @@ update_claim patches.
 Then output a single fenced JSON code block.
 
 SUPPORTED OPERATIONS:
-- {{"op": "update_thesis", "new_strength": 0.55}}
-  (Alternative: {{"op": "update_thesis", "change": "weaken|strengthen"}} for +/-0.1)
 - {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
 "strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ..."}}}}
 - {{"op": "retire_claim", "target_id": "C#"}}
@@ -1005,7 +1031,7 @@ SUPPORTED OPERATIONS:
 - {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
 "status": "revised", "strength_justification": "..."}}, "new_statement": "...", "new_type": "..."}}
 - {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
-"status": "active", "importance": "..."}}}}
+"status": "active", "importance": "high|medium|low"}}}}
 - {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
 - {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
 "statement": "...", "my_response": "...", \
@@ -1025,14 +1051,16 @@ of same claim; cumulative cap +0.2. If you defended against a listed counterposi
 response_sufficiency.
 - UNRESOLVED → required: add uncertainty (U#) with targets referencing the disputed nodes, \
 status: "active"; optional: lower strength ~0.05.
-- Thesis strength is always: avg(active claim strengths) × (n^p / (n^p + 1)) where p = 1.5. \
+- Thesis strength is always: avg(active claim strengths) × (n^p / (n^p + 1)) where p = {p}. \
 If you lowered or retracted a claim, thesis strength will be recalculated automatically.
 - A claim's strength must not exceed the LOWEST strength among its active/revised \
 dependencies (C#, A#, or E#). Retracted dependencies are excluded.
-- Review your existing uncertainties (U#). If you can now resolve any — through new evidence, \
-reasoning, or claims developed during this debate — add the supporting material (new C#, E#, \
-or A#) and use resolve_uncertainty to mark the U# as resolved. The resolution_note must \
-reference the new material. If you cannot resolve a U#, leave it active.
+- Review your existing uncertainties (U#), prioritizing "high" and "medium" importance — \
+these are the most likely to be targeted by opponents via press_uncertainty attacks. If you \
+can now resolve any — through new evidence, reasoning, or claims developed during this \
+debate — add the supporting material (new C#, E#, or A#) and use resolve_uncertainty to \
+mark the U# as resolved. The resolution_note must reference the new material. If you cannot \
+resolve a U#, leave it active.
 - Verify that your belief system is internally consistent — no contradictions between claims, \
 no evidence that undermines your own claims, no incompatible assumptions, and strength \
 assignments consistent with their dependencies.
@@ -1056,8 +1084,7 @@ need stronger evidence for causal claims", "response_sufficiency": "partial"}}}}
 {{"response_sufficiency": "sufficient", "my_response": "Successfully defended bidirectional \
 dependence argument in cross-examination"}}}},
     {{"op": "add_uncertainty", "item": {{"id": "U3", "targets": ["C4"], "question": "Is C4's \
-computational model compatible with opponent's C3?", "status": "active", "importance": "Empirical \
-studies on computational consciousness models could resolve this"}}}}
+computational model compatible with opponent's C3?", "status": "active", "importance": "medium"}}}}
   ]
 }}
 ```
@@ -1070,7 +1097,7 @@ studies on computational consciousness models could resolve this"}}}}
 Self-check:
 - Did I produce ≥N weakening patches for N CRITIQUE_VALID outcomes?
 - Did I record new vulnerabilities as counterpositions?
-- Is thesis strength = avg(active claim strengths) × (n^p / (n^p + 1)) where p = 1.5?
+- Is thesis strength = avg(active claim strengths) × (n^p / (n^p + 1)) where p = {p}?
 - Are there any internal contradictions in my belief system?
 - Have I reviewed my uncertainties (U#) and resolved any that I can now address?
 </output_format>
@@ -1167,8 +1194,6 @@ update_claim patches.
 Then output a single fenced JSON code block.
 
 SUPPORTED OPERATIONS:
-- {{"op": "update_thesis", "new_strength": 0.55}}
-  (Alternative: {{"op": "update_thesis", "change": "weaken|strengthen"}} for +/-0.1)
 - {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
 "strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ..."}}}}
 - {{"op": "retire_claim", "target_id": "C#"}}
@@ -1180,7 +1205,7 @@ SUPPORTED OPERATIONS:
 - {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
 "status": "revised", "strength_justification": "..."}}, "new_statement": "...", "new_type": "..."}}
 - {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
-"status": "active", "importance": "..."}}}}
+"status": "active", "importance": "high|medium|low"}}}}
 - {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
 - {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
 "statement": "...", "my_response": "...", \
@@ -1208,10 +1233,12 @@ response_sufficiency.
 status: "active"; optional: lower strength ~0.05.
 - A claim's strength must not exceed the LOWEST strength among its active/revised \
 dependencies (C#, A#, or E#). Retracted dependencies are excluded.
-- Review your existing uncertainties (U#). If you can now resolve any — through new evidence, \
-reasoning, or claims developed during this debate — add the supporting material (new C#, E#, \
-or A#) and use resolve_uncertainty to mark the U# as resolved. The resolution_note must \
-reference the new material. If you cannot resolve a U#, leave it active.
+- Review your existing uncertainties (U#), prioritizing "high" and "medium" importance — \
+these are the most likely to be targeted by opponents via press_uncertainty attacks. If you \
+can now resolve any — through new evidence, reasoning, or claims developed during this \
+debate — add the supporting material (new C#, E#, or A#) and use resolve_uncertainty to \
+mark the U# as resolved. The resolution_note must reference the new material. If you cannot \
+resolve a U#, leave it active.
 </mandatory_rules>
 
 <example>
@@ -1232,8 +1259,7 @@ need stronger evidence for causal claims", "response_sufficiency": "partial"}}}}
 {{"response_sufficiency": "sufficient", "my_response": "Successfully defended bidirectional \
 dependence argument in cross-examination"}}}},
     {{"op": "add_uncertainty", "item": {{"id": "U3", "targets": ["C4"], "question": "Is C4's \
-computational model compatible with opponent's C3?", "status": "active", "importance": "Empirical \
-studies on computational consciousness models could resolve this"}}}}
+computational model compatible with opponent's C3?", "status": "active", "importance": "medium"}}}}
   ]
 }}
 ```
@@ -1477,6 +1503,11 @@ def build_stage_5_phase2_introspection_prompt(agent_name: str,
         _breadth_rows.append(f"    {nc} claim{'s' if nc != 1 else ' '} → {bm:.2f}")
     _breadth_table = "\n".join(_breadth_rows)
 
+    # Pre-compute example values for strength_reasoning illustration
+    _ex3_np = 3 ** p
+    _ex3_breadth = round(_ex3_np / (_ex3_np + 1), 2)
+    _ex3_result = round(0.62 * _ex3_breadth, 2)
+
     _debate_ctx = build_debate_context("Belief update (strategic) — strengthening your position")
     return f"""\
 {_debate_ctx}
@@ -1588,7 +1619,9 @@ withstands the counterposition.
 Unaddressed counterpositions with no impact on their targets are incoherent.
 
 B) Uncertainty Review
-Review all active uncertainties (U#). For each one:
+Review all active uncertainties (U#). Prioritize "high" and "medium" \
+importance uncertainties — these are the most likely to be targeted by \
+opponents in future rounds via press_uncertainty attacks. For each one:
 - Can you now resolve it — through new evidence, reasoning, or claims \
 developed during this debate?
 - If yes, add the supporting material (new A#, E#, or C#) and use \
@@ -1659,7 +1692,7 @@ SUPPORTED OPERATIONS:
 - {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
 "status": "revised", "strength_justification": "..."}}, "new_statement": "...", "new_type": "..."}}
 - {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
-"status": "active", "importance": "..."}}}}
+"status": "active", "importance": "high|medium|low"}}}}
 - {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
 - {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
 "statement": "...", "my_response": "...", \
@@ -1696,7 +1729,7 @@ X2 is still "unaddressed" targeting C3. Active claims: C1(0.75), C2(0.55), C3(0.
 "summary_bullets": ["Neural complexity remains the strongest explanation for conscious experience", \
 "The explanatory gap is narrower than dualists claim but wider than initially assumed", \
 "Phenomenal concepts pose a genuine philosophical difficulty that requires further work"], \
-"strength_reasoning": "avg(0.75, 0.55, 0.55) × (3^1.5 / (3^1.5 + 1)) = 0.62 × 0.84 = 0.52"}}
+"strength_reasoning": "avg(0.75, 0.55, 0.55) × (3^{p} / (3^{p} + 1)) = 0.62 × {_ex3_breadth} = {_ex3_result}"}}
   ]
 }}
 ```

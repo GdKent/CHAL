@@ -20,7 +20,7 @@ Supported patch operations:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 import json
 from datetime import datetime
 from chal.beliefs.belief_graph import BeliefGraph
@@ -431,7 +431,35 @@ def apply_patches(
     return updated
 
 
-def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> List[str]:
+# --- Validation constants ---
+_STATUS_ENUM: Set[str] = {"active", "revised", "retracted"}
+_UNCERTAINTY_STATUS_ENUM: Set[str] = {"active", "resolved"}
+_IMPORTANCE_ENUM: Set[str] = {"high", "medium", "low"}
+_ASSUMPTION_TYPE_ENUM: Set[str] = {"foundational", "empirical", "methodological"}
+_EVIDENCE_TYPE_ENUM: Set[str] = {"empirical", "conceptual", "expert_consensus"}
+_ATTACK_TYPE_ENUM: Set[str] = {"undermining", "rebutting", "undercutting"}
+_SUFFICIENCY_ENUM: Set[str] = {"sufficient", "partial", "unaddressed"}
+_CHANGE_ENUM: Set[str] = {"weaken", "strengthen"}
+
+_UPDATE_CLAIM_WHITELIST: Set[str] = {
+    "strength", "strength_justification", "statement", "status",
+    "depends_on", "predictions", "inference_chain", "type",
+}
+_UPDATE_EVIDENCE_WHITELIST: Set[str] = {
+    "strength", "strength_justification", "summary", "source",
+    "status", "relevance_to_claims", "type",
+}
+_UPDATE_ASSUMPTION_WHITELIST: Set[str] = {
+    "strength", "strength_justification", "statement", "status",
+    "type", "supports_claims",
+}
+_UPDATE_COUNTERPOSITION_WHITELIST: Set[str] = {
+    "my_response", "response_sufficiency", "statement",
+    "attack_type", "targets",
+}
+
+
+def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, List[str]]:
     """
     Validate patch operations before applying them.
 
@@ -440,9 +468,13 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> List[str]:
         belief: Belief object to validate against
 
     Returns:
-        List of validation errors (empty if valid)
+        Dict mapping patch index to list of validation errors.
+        Empty dict means all patches are valid.
     """
-    errors: List[str] = []
+    errors: Dict[int, List[str]] = {}
+
+    def err(idx: int, msg: str) -> None:
+        errors.setdefault(idx, []).append(msg)
 
     # Build ID sets for fast lookup
     assumption_ids = {a["id"] for a in belief.get("assumptions", []) if "id" in a}
@@ -450,12 +482,13 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> List[str]:
     evidence_ids = {e["id"] for e in belief.get("evidence", []) if "id" in e}
     counterposition_ids = {x["id"] for x in belief.get("counterpositions", []) if "id" in x}
     uncertainty_ids = {u["id"] for u in belief.get("uncertainties", []) if "id" in u}
+    all_ref_ids = assumption_ids | claim_ids | evidence_ids
 
     for i, patch in enumerate(patches):
         op = patch.get("op")
 
         if not op:
-            errors.append(f"Patch {i}: Missing 'op' field")
+            err(i, "Missing 'op' field")
             continue
 
         if op == "update_thesis":
@@ -468,198 +501,382 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> List[str]:
             has_strength_op = new_strength is not None or change is not None
             has_text_op = stance is not None or summary_bullets is not None
             if not has_strength_op and not has_text_op:
-                errors.append(f"Patch {i}: update_thesis requires at least one of: new_strength, change, stance, summary_bullets")
+                err(i, "update_thesis requires at least one of: new_strength, change, stance, summary_bullets")
+
+            # Mutual exclusivity
+            if new_strength is not None and change is not None:
+                err(i, "update_thesis cannot have both new_strength and change (mutually exclusive)")
 
             # Validate strength fields
             if new_strength is not None:
                 if not isinstance(new_strength, (int, float)):
-                    errors.append(f"Patch {i}: update_thesis new_strength must be a number")
+                    err(i, "update_thesis new_strength must be a number")
                 elif not (0.0 <= new_strength <= 1.0):
-                    errors.append(f"Patch {i}: update_thesis new_strength must be between 0.0 and 1.0")
-            elif change is not None and change not in ["weaken", "strengthen"]:
-                errors.append(f"Patch {i}: update_thesis change must be 'weaken' or 'strengthen'")
+                    err(i, "update_thesis new_strength must be between 0.0 and 1.0")
+
+            if change is not None and change not in _CHANGE_ENUM:
+                err(i, "update_thesis change must be 'weaken' or 'strengthen'")
 
             # Validate stance
             if stance is not None:
                 if not isinstance(stance, str) or not stance.strip():
-                    errors.append(f"Patch {i}: update_thesis stance must be a non-empty string")
+                    err(i, "update_thesis stance must be a non-empty string")
 
             # Validate summary_bullets
             if summary_bullets is not None:
                 if not isinstance(summary_bullets, list) or len(summary_bullets) == 0:
-                    errors.append(f"Patch {i}: update_thesis summary_bullets must be a non-empty list")
+                    err(i, "update_thesis summary_bullets must be a non-empty list")
                 elif not all(isinstance(b, str) for b in summary_bullets):
-                    errors.append(f"Patch {i}: update_thesis summary_bullets must contain only strings")
+                    err(i, "update_thesis summary_bullets must contain only strings")
 
         elif op == "update_claim":
             target_id = patch.get("target_id")
             if not target_id:
-                errors.append(f"Patch {i}: update_claim missing target_id")
+                err(i, "update_claim missing target_id")
             elif target_id not in claim_ids:
-                errors.append(f"Patch {i}: update_claim references non-existent claim '{target_id}'")
-            patch_changes = patch.get("changes", {})
-            if "strength" in patch_changes:
-                s = patch_changes["strength"]
-                if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
-                    errors.append(f"Patch {i}: update_claim strength must be between 0.0 and 1.0")
+                err(i, f"update_claim references non-existent claim '{target_id}'")
+
+            changes = patch.get("changes")
+            if not changes or not isinstance(changes, dict):
+                err(i, "update_claim requires non-empty changes dict")
+            else:
+                # Whitelist check
+                unknown = set(changes.keys()) - _UPDATE_CLAIM_WHITELIST
+                if unknown:
+                    err(i, f"update_claim changes contains unknown fields: {sorted(unknown)}")
+                if "strength" in changes:
+                    s = changes["strength"]
+                    if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
+                        err(i, "update_claim strength must be between 0.0 and 1.0")
+                if "status" in changes and changes["status"] not in _STATUS_ENUM:
+                    err(i, f"update_claim status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
+                if "strength_justification" in changes:
+                    if not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip():
+                        err(i, "update_claim strength_justification must be a non-empty string")
+                if "statement" in changes:
+                    if not isinstance(changes["statement"], str) or not changes["statement"].strip():
+                        err(i, "update_claim statement must be a non-empty string")
 
         elif op == "retire_claim":
             target_id = patch.get("target_id")
             if not target_id:
-                errors.append(f"Patch {i}: retire_claim missing target_id")
+                err(i, "retire_claim missing target_id")
             elif target_id not in claim_ids:
-                errors.append(f"Patch {i}: retire_claim references non-existent claim '{target_id}'")
+                err(i, f"retire_claim references non-existent claim '{target_id}'")
 
         elif op == "add_claim":
             item = patch.get("item")
             if not item:
-                errors.append(f"Patch {i}: add_claim missing item")
+                err(i, "add_claim missing item")
             elif "id" not in item:
-                errors.append(f"Patch {i}: add_claim item missing 'id' field")
+                err(i, "add_claim item missing 'id' field")
             else:
                 if item["id"] in claim_ids:
-                    errors.append(f"Patch {i}: add_claim item ID '{item['id']}' already exists")
-                required_fields = ["id", "type", "statement", "depends_on", "strength", "status", "predictions", "inference_chain"]
+                    err(i, f"add_claim item ID '{item['id']}' already exists")
+                required_fields = ["id", "type", "statement", "depends_on", "strength", "status", "predictions", "inference_chain", "strength_justification"]
                 for field in required_fields:
                     if field not in item:
-                        errors.append(f"Patch {i}: add_claim item missing required field '{field}'")
+                        err(i, f"add_claim item missing required field '{field}'")
                 # Validate depends_on references (A#, E#, C# all valid)
                 if "depends_on" in item and isinstance(item["depends_on"], list):
                     for dep in item["depends_on"]:
-                        if dep not in assumption_ids and dep not in claim_ids and dep not in evidence_ids:
-                            errors.append(f"Patch {i}: add_claim depends_on references non-existent ID '{dep}'")
+                        if dep not in all_ref_ids:
+                            err(i, f"add_claim depends_on references non-existent ID '{dep}'")
                 # Validate strength
                 if "strength" in item:
                     s = item["strength"]
                     if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
-                        errors.append(f"Patch {i}: add_claim strength must be between 0.0 and 1.0")
+                        err(i, "add_claim strength must be between 0.0 and 1.0")
                 # Validate status
-                if "status" in item and item["status"] not in ("active", "revised", "retracted"):
-                    errors.append(f"Patch {i}: add_claim status must be one of: active, revised, retracted")
+                if "status" in item and item["status"] not in _STATUS_ENUM:
+                    err(i, f"add_claim status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
                 # Validate predictions
                 if "predictions" in item:
                     preds = item["predictions"]
                     if not isinstance(preds, list) or len(preds) == 0:
-                        errors.append(f"Patch {i}: add_claim predictions must be a non-empty array")
+                        err(i, "add_claim predictions must be a non-empty array")
                     elif isinstance(preds, list):
                         for j, pred in enumerate(preds):
                             if not isinstance(pred, dict):
-                                errors.append(f"Patch {i}: add_claim predictions[{j}] must be a dict")
+                                err(i, f"add_claim predictions[{j}] must be a dict")
                             else:
                                 for pf in ("statement", "test", "decision_criterion"):
                                     if pf not in pred:
-                                        errors.append(f"Patch {i}: add_claim predictions[{j}] missing required field '{pf}'")
+                                        err(i, f"add_claim predictions[{j}] missing required field '{pf}'")
                 # Validate inference_chain
                 if "inference_chain" in item:
                     ic = item["inference_chain"]
                     if not isinstance(ic, list) or len(ic) == 0:
-                        errors.append(f"Patch {i}: add_claim inference_chain must be a non-empty array")
+                        err(i, "add_claim inference_chain must be a non-empty array")
+                # Validate strength_justification
+                if "strength_justification" in item:
+                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
+                        err(i, "add_claim strength_justification must be a non-empty string")
 
         elif op == "add_evidence":
             item = patch.get("item")
             if not item:
-                errors.append(f"Patch {i}: add_evidence missing item")
+                err(i, "add_evidence missing item")
             elif "id" not in item:
-                errors.append(f"Patch {i}: add_evidence item missing 'id' field")
-            elif item["id"] in evidence_ids:
-                errors.append(f"Patch {i}: add_evidence item ID '{item['id']}' already exists")
-            if item and "status" in item and item["status"] not in ("active", "revised", "retracted"):
-                errors.append(f"Patch {i}: add_evidence status must be one of: active, revised, retracted")
+                err(i, "add_evidence item missing 'id' field")
+            else:
+                if item["id"] in evidence_ids:
+                    err(i, f"add_evidence item ID '{item['id']}' already exists")
+                # Required fields
+                required_fields = ["id", "type", "summary", "source", "relevance_to_claims", "strength", "strength_justification"]
+                for field in required_fields:
+                    if field not in item:
+                        err(i, f"add_evidence item missing required field '{field}'")
+                # Type enum
+                if "type" in item and item["type"] not in _EVIDENCE_TYPE_ENUM:
+                    err(i, f"add_evidence type must be one of: {', '.join(sorted(_EVIDENCE_TYPE_ENUM))}")
+                # Non-empty strings
+                if "summary" in item:
+                    if not isinstance(item["summary"], str) or not item["summary"].strip():
+                        err(i, "add_evidence summary must be a non-empty string")
+                if "source" in item:
+                    if not isinstance(item["source"], str) or not item["source"].strip():
+                        err(i, "add_evidence source must be a non-empty string")
+                if "strength_justification" in item:
+                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
+                        err(i, "add_evidence strength_justification must be a non-empty string")
+                # relevance_to_claims validation
+                if "relevance_to_claims" in item:
+                    rtc = item["relevance_to_claims"]
+                    if not isinstance(rtc, list) or len(rtc) == 0:
+                        err(i, "add_evidence relevance_to_claims must be a non-empty list")
+                    elif isinstance(rtc, list):
+                        for ref in rtc:
+                            if ref not in claim_ids:
+                                err(i, f"add_evidence relevance_to_claims references non-existent claim '{ref}'")
+                # Strength validation
+                if "strength" in item:
+                    s = item["strength"]
+                    if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
+                        err(i, "add_evidence strength must be between 0.0 and 1.0")
+                # Status enum
+                if "status" in item and item["status"] not in _STATUS_ENUM:
+                    err(i, f"add_evidence status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
 
         elif op == "update_evidence":
             target_id = patch.get("target_id")
             if not target_id:
-                errors.append(f"Patch {i}: update_evidence missing target_id")
+                err(i, "update_evidence missing target_id")
             elif target_id not in evidence_ids:
-                errors.append(f"Patch {i}: update_evidence references non-existent evidence '{target_id}'")
-            patch_changes = patch.get("changes", {})
-            if "strength" in patch_changes:
-                s = patch_changes["strength"]
-                if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
-                    errors.append(f"Patch {i}: update_evidence strength must be between 0.0 and 1.0")
-            if "status" in patch_changes and patch_changes["status"] not in ("active", "revised", "retracted"):
-                errors.append(f"Patch {i}: update_evidence status must be one of: active, revised, retracted")
+                err(i, f"update_evidence references non-existent evidence '{target_id}'")
+
+            changes = patch.get("changes")
+            if not changes or not isinstance(changes, dict):
+                err(i, "update_evidence requires non-empty changes dict")
+            else:
+                # Whitelist check
+                unknown = set(changes.keys()) - _UPDATE_EVIDENCE_WHITELIST
+                if unknown:
+                    err(i, f"update_evidence changes contains unknown fields: {sorted(unknown)}")
+                if "strength" in changes:
+                    s = changes["strength"]
+                    if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
+                        err(i, "update_evidence strength must be between 0.0 and 1.0")
+                if "status" in changes and changes["status"] not in _STATUS_ENUM:
+                    err(i, f"update_evidence status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
+                # Type enum
+                if "type" in changes and changes["type"] not in _EVIDENCE_TYPE_ENUM:
+                    err(i, f"update_evidence type must be one of: {', '.join(sorted(_EVIDENCE_TYPE_ENUM))}")
+                # Non-empty strings
+                if "strength_justification" in changes:
+                    if not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip():
+                        err(i, "update_evidence strength_justification must be a non-empty string")
+                if "summary" in changes:
+                    if not isinstance(changes["summary"], str) or not changes["summary"].strip():
+                        err(i, "update_evidence summary must be a non-empty string")
+                if "source" in changes:
+                    if not isinstance(changes["source"], str) or not changes["source"].strip():
+                        err(i, "update_evidence source must be a non-empty string")
 
         elif op == "update_assumption":
             target_id = patch.get("target_id")
             if not target_id:
-                errors.append(f"Patch {i}: update_assumption missing target_id")
+                err(i, "update_assumption missing target_id")
             elif target_id not in assumption_ids:
-                errors.append(f"Patch {i}: update_assumption references non-existent assumption '{target_id}'")
-            patch_changes = patch.get("changes", {})
-            if "strength" in patch_changes:
-                s = patch_changes["strength"]
-                if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
-                    errors.append(f"Patch {i}: update_assumption strength must be between 0.0 and 1.0")
-            if "status" in patch_changes and patch_changes["status"] not in ("active", "revised", "retracted"):
-                errors.append(f"Patch {i}: update_assumption status must be one of: active, revised, retracted")
+                err(i, f"update_assumption references non-existent assumption '{target_id}'")
+
+            changes = patch.get("changes", {})
+            new_statement = patch.get("new_statement")
+            new_type = patch.get("new_type")
+
+            # At least one content field required
+            has_changes = isinstance(changes, dict) and len(changes) > 0
+            if not new_statement and not new_type and not has_changes:
+                err(i, "update_assumption requires at least one of: new_statement, new_type, changes")
+
+            # new_type enum
+            if new_type is not None and new_type not in _ASSUMPTION_TYPE_ENUM:
+                err(i, f"update_assumption new_type must be one of: {', '.join(sorted(_ASSUMPTION_TYPE_ENUM))}")
+
+            # new_statement non-empty
+            if new_statement is not None:
+                if not isinstance(new_statement, str) or not new_statement.strip():
+                    err(i, "update_assumption new_statement must be a non-empty string")
+
+            if has_changes:
+                # Whitelist check
+                unknown = set(changes.keys()) - _UPDATE_ASSUMPTION_WHITELIST
+                if unknown:
+                    err(i, f"update_assumption changes contains unknown fields: {sorted(unknown)}")
+                if "strength" in changes:
+                    s = changes["strength"]
+                    if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
+                        err(i, "update_assumption strength must be between 0.0 and 1.0")
+                if "status" in changes and changes["status"] not in _STATUS_ENUM:
+                    err(i, f"update_assumption status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
+                # Type enum in changes
+                if "type" in changes and changes["type"] not in _ASSUMPTION_TYPE_ENUM:
+                    err(i, f"update_assumption type must be one of: {', '.join(sorted(_ASSUMPTION_TYPE_ENUM))}")
+                # Non-empty strings
+                if "strength_justification" in changes:
+                    if not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip():
+                        err(i, "update_assumption strength_justification must be a non-empty string")
+                if "statement" in changes:
+                    if not isinstance(changes["statement"], str) or not changes["statement"].strip():
+                        err(i, "update_assumption statement must be a non-empty string")
 
         elif op == "add_assumption":
             item = patch.get("item")
             if not item:
-                errors.append(f"Patch {i}: add_assumption missing item")
+                err(i, "add_assumption missing item")
             elif "id" not in item:
-                errors.append(f"Patch {i}: add_assumption item missing 'id' field")
+                err(i, "add_assumption item missing 'id' field")
             else:
                 if item["id"] in assumption_ids:
-                    errors.append(f"Patch {i}: add_assumption item ID '{item['id']}' already exists")
+                    err(i, f"add_assumption item ID '{item['id']}' already exists")
                 # Default supports_claims to empty array if missing
                 if "supports_claims" not in item:
                     item["supports_claims"] = []
-                required_fields = ["id", "type", "statement", "strength"]
+                required_fields = ["id", "type", "statement", "strength", "strength_justification"]
                 for field in required_fields:
                     if field not in item:
-                        errors.append(f"Patch {i}: add_assumption item missing required field '{field}'")
-                if "type" in item and item["type"] not in ("foundational", "empirical", "methodological"):
-                    errors.append(f"Patch {i}: add_assumption type must be one of: foundational, empirical, methodological")
+                        err(i, f"add_assumption item missing required field '{field}'")
+                if "type" in item and item["type"] not in _ASSUMPTION_TYPE_ENUM:
+                    err(i, f"add_assumption type must be one of: {', '.join(sorted(_ASSUMPTION_TYPE_ENUM))}")
                 if "strength" in item:
                     s = item["strength"]
                     if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
-                        errors.append(f"Patch {i}: add_assumption strength must be between 0.0 and 1.0")
-                if "status" in item and item["status"] not in ("active", "revised", "retracted"):
-                    errors.append(f"Patch {i}: add_assumption status must be one of: active, revised, retracted")
+                        err(i, "add_assumption strength must be between 0.0 and 1.0")
+                if "status" in item and item["status"] not in _STATUS_ENUM:
+                    err(i, f"add_assumption status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
+                # strength_justification non-empty
+                if "strength_justification" in item:
+                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
+                        err(i, "add_assumption strength_justification must be a non-empty string")
 
         elif op == "add_counterposition":
             item = patch.get("item")
             if not item:
-                errors.append(f"Patch {i}: add_counterposition missing item")
+                err(i, "add_counterposition missing item")
             elif "id" not in item:
-                errors.append(f"Patch {i}: add_counterposition item missing 'id' field")
+                err(i, "add_counterposition item missing 'id' field")
             else:
                 if item["id"] in counterposition_ids:
-                    errors.append(f"Patch {i}: add_counterposition item ID '{item['id']}' already exists")
+                    err(i, f"add_counterposition item ID '{item['id']}' already exists")
                 required_fields = ["targets", "attack_type", "statement", "my_response", "response_sufficiency"]
                 for field in required_fields:
                     if field not in item:
-                        errors.append(f"Patch {i}: add_counterposition item missing required field '{field}'")
+                        err(i, f"add_counterposition item missing required field '{field}'")
+                # Enum validations
+                if "attack_type" in item and item["attack_type"] not in _ATTACK_TYPE_ENUM:
+                    err(i, f"add_counterposition attack_type must be one of: {', '.join(sorted(_ATTACK_TYPE_ENUM))}")
+                if "response_sufficiency" in item and item["response_sufficiency"] not in _SUFFICIENCY_ENUM:
+                    err(i, f"add_counterposition response_sufficiency must be one of: {', '.join(sorted(_SUFFICIENCY_ENUM))}")
+                # Targets validation
+                if "targets" in item:
+                    targets = item["targets"]
+                    if not isinstance(targets, list) or len(targets) == 0:
+                        err(i, "add_counterposition targets must be a non-empty list")
+                    elif isinstance(targets, list):
+                        for ref in targets:
+                            if ref not in all_ref_ids:
+                                err(i, f"add_counterposition targets references non-existent ID '{ref}'")
+                # Non-empty strings
+                if "statement" in item:
+                    if not isinstance(item["statement"], str) or not item["statement"].strip():
+                        err(i, "add_counterposition statement must be a non-empty string")
+                if "my_response" in item:
+                    if not isinstance(item["my_response"], str) or not item["my_response"].strip():
+                        err(i, "add_counterposition my_response must be a non-empty string")
 
         elif op == "update_counterposition":
             target_id = patch.get("target_id")
             if not target_id:
-                errors.append(f"Patch {i}: update_counterposition missing target_id")
+                err(i, "update_counterposition missing target_id")
             elif target_id not in counterposition_ids:
-                errors.append(f"Patch {i}: update_counterposition references non-existent counterposition '{target_id}'")
+                err(i, f"update_counterposition references non-existent counterposition '{target_id}'")
+
+            changes = patch.get("changes")
+            if not changes or not isinstance(changes, dict):
+                err(i, "update_counterposition requires non-empty changes dict")
+            else:
+                # Whitelist check
+                unknown = set(changes.keys()) - _UPDATE_COUNTERPOSITION_WHITELIST
+                if unknown:
+                    err(i, f"update_counterposition changes contains unknown fields: {sorted(unknown)}")
+                # Enum validations
+                if "response_sufficiency" in changes and changes["response_sufficiency"] not in _SUFFICIENCY_ENUM:
+                    err(i, f"update_counterposition response_sufficiency must be one of: {', '.join(sorted(_SUFFICIENCY_ENUM))}")
+                if "attack_type" in changes and changes["attack_type"] not in _ATTACK_TYPE_ENUM:
+                    err(i, f"update_counterposition attack_type must be one of: {', '.join(sorted(_ATTACK_TYPE_ENUM))}")
+                # Non-empty strings
+                if "statement" in changes:
+                    if not isinstance(changes["statement"], str) or not changes["statement"].strip():
+                        err(i, "update_counterposition statement must be a non-empty string")
+                if "my_response" in changes:
+                    if not isinstance(changes["my_response"], str) or not changes["my_response"].strip():
+                        err(i, "update_counterposition my_response must be a non-empty string")
 
         elif op == "add_uncertainty":
             item = patch.get("item")
             if not item:
-                errors.append(f"Patch {i}: add_uncertainty missing item")
+                err(i, "add_uncertainty missing item")
             elif "id" not in item:
-                errors.append(f"Patch {i}: add_uncertainty item missing 'id' field")
-            elif item["id"] in uncertainty_ids:
-                errors.append(f"Patch {i}: add_uncertainty item ID '{item['id']}' already exists")
+                err(i, "add_uncertainty item missing 'id' field")
+            else:
+                if item["id"] in uncertainty_ids:
+                    err(i, f"add_uncertainty item ID '{item['id']}' already exists")
+                # Required fields
+                required_fields = ["id", "targets", "question", "status", "importance"]
+                for field in required_fields:
+                    if field not in item:
+                        err(i, f"add_uncertainty item missing required field '{field}'")
+                # Targets validation
+                if "targets" in item:
+                    targets = item["targets"]
+                    if not isinstance(targets, list) or len(targets) == 0:
+                        err(i, "add_uncertainty targets must be a non-empty list")
+                    elif isinstance(targets, list):
+                        for ref in targets:
+                            if ref not in all_ref_ids:
+                                err(i, f"add_uncertainty targets references non-existent ID '{ref}'")
+                # Question non-empty
+                if "question" in item:
+                    if not isinstance(item["question"], str) or not item["question"].strip():
+                        err(i, "add_uncertainty question must be a non-empty string")
+                # Status enum
+                if "status" in item and item["status"] not in _UNCERTAINTY_STATUS_ENUM:
+                    err(i, f"add_uncertainty status must be one of: {', '.join(sorted(_UNCERTAINTY_STATUS_ENUM))}")
+                # Importance enum
+                if "importance" in item and item["importance"] not in _IMPORTANCE_ENUM:
+                    err(i, f"add_uncertainty importance must be one of: {', '.join(sorted(_IMPORTANCE_ENUM))}")
 
         elif op == "resolve_uncertainty":
             target_id = patch.get("target_id")
             resolution_note = patch.get("resolution_note", "")
             if not target_id:
-                errors.append(f"Patch {i}: resolve_uncertainty missing target_id")
+                err(i, "resolve_uncertainty missing target_id")
             elif target_id not in uncertainty_ids:
-                errors.append(f"Patch {i}: resolve_uncertainty references non-existent uncertainty '{target_id}'")
+                err(i, f"resolve_uncertainty references non-existent uncertainty '{target_id}'")
             if not resolution_note:
-                errors.append(f"Patch {i}: resolve_uncertainty requires non-empty resolution_note")
+                err(i, "resolve_uncertainty requires non-empty resolution_note")
 
         else:
-            errors.append(f"Patch {i}: Unknown operation '{op}'")
+            err(i, f"Unknown operation '{op}'")
 
     return errors

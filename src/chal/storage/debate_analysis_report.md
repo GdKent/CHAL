@@ -1,6 +1,6 @@
 # CHAL Debate Analysis Report
 
-*Generated: 2026-04-01 15:48:34*
+*Generated: 2026-04-02 18:23:20*
 
 ## 1. Debate Metadata
 
@@ -18,303 +18,290 @@
 
 | Verdict | Count | Percentage |
 |---------|-------|------------|
-| critique_valid | 7 | 70.0% |
-| rebuttal_valid | 2 | 20.0% |
-| unresolved | 1 | 10.0% |
+| critique_valid | 3 | 30.0% |
+| rebuttal_valid | 5 | 50.0% |
+| unresolved | 2 | 20.0% |
 | **Total** | **10** | **100%** |
 
 ## 3. Adjudication Details
 
 ### Q1: Agent-Empiricist → Agent-Supernaturalist
-- **Verdict**: CRITIQUE_VALID
-- **Attack**: undermining / challenge_assumption
-- **Challenge**: Your foundational assumption A1 posits an immaterial soul without direct empirical evidence. On what empirical or methodological grounds do you justify labeling this assumption as 'foundational' and assigning it a strength of 0.6, given the principle of parsimony?
-- **Rebuttal**: A1 is metaphysical and rightly foundational: it plays the same role as axioms in logic or mathematics. Its 0.6 strength reflects moderate confidence grounded in long-standing cosmological, teleological, and moral arguments. Parsimony disfavors multiplying entities only when simpler theories have equal explanatory scope; physicalism fails to explain consciousness and libertarian choice, whereas A1 does. Hence the strength assignment is justified.
+- **Verdict**: REBUTTAL_VALID
+- **Attack**: undermining / demand_falsifiability
+- **Challenge**: Your assumption A3 claims an immaterial mind can causally influence the brain. Given that this invokes non-physical causation beyond sensory observation, how can A3 be empirically tested or potentially falsified?
+- **Rebuttal**: A3 generates precise, falsifiable empirical predictions—notably C3’s prediction of detectable neural anomalies (events lacking full physical antecedents) during decision‐making. High‐precision EEG/fMRI studies could either confirm such perturbations or, if uniformly absent across large samples, falsify A3.
 - **Reasoning**: 1. Restatement  
-The Empiricist challenges the assumption A1 (“Humans possess an immaterial soul…,” strength 0.6) as unjustified: there is no empirical basis for labeling it “foundational” or for assigning moderate confidence given Occam’s Razor. The Supernaturalist defends A1 by analogizing it to axioms, invoking teleological, moral, and cosmological arguments, and claiming that physicalism lacks explanatory scope so parsimony does not apply.
+   The Empiricist challenges the Supernaturalist’s Assumption A3 (“immaterial mind can causally influence the brain”) as unfalsifiable, claiming non-physical causes lie beyond empirical observation. The Supernaturalist replies that A3 yields specific empirical predictions (Claim C3) about neural anomalies—detectable via EEG/fMRI—and that consistent absence of such anomalies would falsify A3.
 
 2. Formalization  
+   Challenger’s argument:  
+     P1. A3 posits non-physical (immaterial) causation.  
+     P2. Non-physical causation cannot be observed or measured by physical instruments.  
+     C. Therefore, A3 cannot be empirically tested or falsified.  
 
-– Empiricist critique (informal):  
-  P1. A1 posits an unobservable immaterial soul with no direct empirical evidence (excerpt confirmation).  
-  P2. By parsimony, we should not posit additional entities without empirical necessity.  
-  C. Therefore, treating A1 as a “foundational” assumption with strength 0.6 is unjustified absent empirical or methodological grounds.
-
-  Valid structure: from P1 & P2, C follows. No detected hidden premises, no fallacies.
-
-– Supernaturalist rebuttal:  
-  P1. Metaphysical principles can be treated axiomatically (by analogy to logic/mathematics).  
-  P2. Centuries of cosmological, teleological, moral arguments provide moderate confidence in A1.  
-  P3. Parsimony excludes only unnecessary entities when simpler theories achieve equal explanatory scope.  
-  P4. Physicalism allegedly fails to explain consciousness and libertarian choice; A1 does.  
-  C. Hence A1’s foundational status and strength 0.6 are justified.
-
-  Analysis of rebuttal fallacies/weak premises:  
-   • False analogy – axioms in logic are definitional, not empirical hypotheses requiring evidential support.  
-   • Unsupported premises – P2 (“centuries of arguments”) and P4 (“physicalism fails…”) are asserted without evidential specifics.   
-   • Appeal to tradition – reliance on “centuries of theological and philosophical argumentation” is an informal fallacy if not justified.  
-   • No Bayesian update – fails to show how these arguments overcome a low prior for soul-entities or quantify explanatory superiority.  
+   Defender’s argument:  
+     P1. A3 entails Claim C3: “Decision-making sometimes produces neural events without full physical antecedents” (an empirical prediction).  
+     P2. High-precision EEG/fMRI can detect neural events and trace their physical antecedents.  
+     Inference: If such “unexplained” events occur at a detectable rate, A3 gains support; if none occur across large samples, A3 is falsified.  
 
 3. Adjudication  
-– The Empiricist’s critique is deductively valid (no fallacy) and appeals properly to Bayesian/Occamist considerations (criteria 7,12).  
-– The Supernaturalist’s defense fails: it relies on a false analogy (criterion 4), invokes unsupported premises (criterion 22), and commits appeal-to-tradition (criterion 13). It does not resolve the parsimony objection or provide concrete evidence weighting.  
-– Scoring: Empiricist logic 0.9, Supernaturalist logic 0.3. Difference 0.6 ≥ 0.15 ⇒ CRITIQUE_VALID.
+   - The challenger’s argument hinges on the hidden premise (P2) that all non-physical causes necessarily evade any empirical detection of their effects. But scientific falsification does not require observing the non-physical cause itself—only its physical signatures. Thus P2 is unjustified, rendering the critique deductively invalid (Hidden premise, Evidence misuse).  
+   - The defender directly supplies a falsifiable prediction and a measurement method. They show how to operationalize A3 via C3’s anomaly criterion, fulfilling the Bayesian requirement for empirical test and falsifiability. This resolves the challenge by supplying a missing premise and demonstrating proper evidence updating (Rebuttal points 3 and 6).
+
+Conclusion: The Supernaturalist’s response successfully refutes the unfalsifiability critique.
 
 ### Q2: Agent-Empiricist → Agent-Supernaturalist
-- **Verdict**: CRITIQUE_VALID
-- **Attack**: undermining / demand_falsifiability
-- **Challenge**: Evidence E2 is framed as expert consensus from theological and philosophical traditions. How do you demonstrate that E2 meets the criteria for empirical evidence, and how would you falsify or test the claim that such consensus reflects actual causal efficacy of an immaterial soul?
-- **Rebuttal**: You correctly note that E2 is expert consensus, not strictly empirical data. Determining how much weight to give such testimony requires meta-level study of historical philosophical-theological track records in causal claims. This methodological issue remains unresolved and warrants further inquiry.
-- **Reasoning**: Step 1: Restatement  
-The Empiricist challenges the Supernaturalist’s use of E2—an expert‐consensus source—as “empirical” evidence for C3 (soul’s causal efficacy) and demands criteria for testing or falsifying that consensus. The Supernaturalist concedes E2 is not strictly empirical data and defers the methodological question.
+- **Verdict**: UNRESOLVED
+- **Attack**: undermining / challenge_evidence
+- **Challenge**: Evidence E4 relies on anthropological and religious testimonies of spiritual experiences as signs of non-physical agency. What methodological controls or alternative-hypothesis tests distinguish these reports from culturally induced beliefs or psychological phenomena?
+- **Rebuttal**: E4 is derived from studies employing standard anthropological and psychological controls: blinded interviewer protocols, cross‐cultural replication to isolate universal patterns, triangulation with behavioral and physiological measures. When these rigorous methods yield consistent reports of non‐physical agency, cultural or suggestive explanations become less plausible.
+- **Reasoning**: 1. Restatement  
+   The empiricist challenges the methodological robustness of Evidence E4, asking what controls distinguish spiritual experience reports from culturally induced or psychological phenomena. The supernaturalist responds by asserting that E4 studies employ standard anthropological and psychological controls—blinded interviews, cross‐cultural replication, and triangulation with behavioral/physiological measures—thus undermining alternative cultural or suggestive explanations.
 
-Step 2: Formalization  
-Challenger’s implicit argument:  
-  P1. Empirical evidence must be testable/falsifiable and based on observable data.  
-  P2. E2 is expert consensus from philosophical/theological traditions, not observable/testable data.  
-  C. Therefore E2 fails to meet the criteria for empirical evidence for C3.
+2. Formalizing the Challenger’s Argument  
+   P1: If a body of testimony lacks methodological controls or alternative-hypothesis tests, then it cannot reliably support a claim of non-physical agency.  
+   P2: E4 (anthropological/religious testimonies) lacks described methodological controls or alternative-hypothesis tests.  
+   C: Therefore, E4 cannot reliably support non-physical agency (i.e., undermines C3's reliance on E4).
 
-Defender’s (rebuttal) argument:  
-  P1. E2 is expert consensus, not empirical data.  
-  P2. Determining weight of expert testimony requires meta‐level historical track‐record analysis.  
-  C. The question of treating E2 as empirical remains unresolved and requires further study.
+   This is an abductive / evidence-evaluation argument: absence of controls is taken as a critical flaw in E4’s evidential value. It raises a legitimate methodological concern; no formal fallacies are apparent.
 
-Step 3: Adjudication  
-- The challenger identifies “Evidence misuse” (Informal fallacy #6): expert consensus is not the same as testable empirical data.  
-- The defender concedes the flaw instead of rebutting it and offers no test, falsification criterion, or additional premise to restore empirical status.  
-- No Rebuttal_Valid criteria are met: no missing premise supplied, no demonstration of how E2 could be tested or updated Bayesianly, no proof of falsifiability.  
+3. Formalizing the Defender’s Argument  
+   P1: E4-studies use standard blinded-interviewer protocols, cross-cultural replication, and triangulation with behavioral/physiological measures.  
+   P2: These methodological controls and converging measures rule out (or greatly reduce) cultural-suggestion and psychological-interpretation explanations.  
+   C: Therefore, E4 reliably indicates experiences of non-physical agency, supporting C3.
 
-Outcome: The challenge successfully exposes a misuse of evidence. The defender’s response is mere concession and leaves the logical issue open. According to the criteria, this is a CRITIQUE_VALID result.
+   This is also an inductive argument: since multiple independent controls converge, the non-physical agency hypothesis remains more plausible than alternative explanations.
+
+4. Adjudication  
+   - The challenger correctly identifies a potential gap in E4’s evidential basis; this is a valid methodological critique (no formal or informal fallacy).  
+   - The defender does respond directly, listing relevant controls and convergence strategies. However, the rebuttal remains at the level of assertion (“standard protocols were used”) without citing specific studies, statistical results, or precise tests that would fully satisfy the challenger’s demand.  
+   - Under evidential and Bayesian criteria, the defender has pointed to higher likelihood of E4 under the non-physical-agency hypothesis than under cultural-psychological hypotheses (criterion #5), but without quantification or study details.  
+   - Neither side demonstrates or exposes a clear disqualifying flaw in the other’s logic. The challenge remains whether those generic controls are indeed sufficient; the defender does not concretely establish that sufficiency.  
+
+Because the defense addresses but does not conclusively resolve the methodological gap, and the challenger’s concern remains open, the dispute is UNRESOLVED.
 
 ### Q3: Agent-Empiricist → Agent-Supernaturalist
 - **Verdict**: CRITIQUE_VALID
 - **Attack**: undermining / press_uncertainty
-- **Challenge**: Your uncertainty U1 admits that introspective reports may not map onto genuine undetermined processes. Until you resolve U1, how can you sustain C1’s strength at 0.65? What empirical test would you require to validate the reliability of introspection in revealing undetermined choices?
-- **Rebuttal**: I concede that until U1 is resolved, sustaining C1 at 0.65 is unjustified. Introspective reports need corroboration by neural decoding experiments to confirm they track genuinely undetermined choices. I will lower C1’s strength accordingly and pursue combined first-person/neural studies.
-- **Reasoning**: Step 1: Restatement  
-Agent-Empiricist (challenger) contends that the existing uncertainty U1—namely that introspective reports may not correspond to genuinely undetermined choices—undermines the assignment of strength 0.65 to claim C1. They demand an empirical test to validate the reliability of introspection for detecting undetermined choice processes. Agent-Supernaturalist (defender) concedes that in the face of unresolved U1, C1’s probability rating is unjustified, lowers C1’s strength, and proposes corroborating introspection via neural decoding experiments.
+- **Challenge**: In U2 you admit uncertainty about reconciling immaterial mind–body interaction with conservation laws. Without resolving U2, how do you justify maintaining A3’s strength at 0.60, and what specific empirical evidence do you invoke to address this uncertainty?
+- **Rebuttal**: I acknowledge U2 remains unresolved. We provisionally set A3’s strength at 0.6 based on its explanatory power for qualia, moral agency, and pilot studies of neural energy anomalies. Definitive quantum‐neuro experiments are still needed to confirm or disconfirm conservation‐law violations.
+- **Reasoning**: 1. Restatement  
+   The empiricist challenges the supernaturalist’s decision to keep assumption A3 (immaterial soul causally affecting the brain) at strength 0.60, pointing out that the unresolved conservation-law issue (U2) undermines this assignment. They demand specific empirical evidence addressing U2 before A3 can be credibly rated 0.60. The defender replies by citing explanatory appeal and vague “pilot studies” without naming data or resolving U2.
 
-Step 2: Formalization  
-Challenger’s argument:  
-1. U1: Introspective reports may not map onto genuinely undetermined processes.  
-2. If U1 is unresolved, then confidence in C1 cannot be justified at p=0.65.  
-3. Therefore, with U1 unresolved, C1’s rating of 0.65 is unjustified.  
-4. To justify C1, one must specify an empirical test validating introspection reliability.
+2. Formalization  
+   Challenger’s critique:  
+     P1. A3 posits soul–body interaction that appears to violate conservation of energy (U2 unresolved).  
+     P2. One cannot assign moderate strength to a hypothesis if a key theoretical objection remains unresolved and no empirical data address it.  
+     C. Therefore, retaining A3’s strength at 0.60 is unjustified absent specific data resolving U2.
 
-Defender’s argument:  
-1. C1 currently has strength p=0.65.  
-2. U1 is unresolved.  
-3. Hence, C1’s rating of 0.65 is unjustified (concession of the challenge).  
-4. We will lower C1’s strength and pursue neural decoding studies to test introspective reliability.
+   Defender’s reply:  
+     P1. A3 explains qualia and moral agency better than alternatives (abductive appeal).  
+     P2. Pilot studies of neural energy anomalies tentatively indicate conservation-law deviations.  
+     P3. Quantum‐neuro experiments are forthcoming.  
+     C. Thus it is provisionally acceptable to rate A3 at 0.60.
 
-Step 3: Adjudication  
-The challenger identifies insufficient evidence (Informal Fallacy Criterion 14) and reliance on an unresolved premise (U1). There is no logical fallacy in this critique. The defender offers no counter-argument but instead explicitly concedes the point, which by anti-bias rules counts as CRITIQUE_VALID.  
-Scores: Challenger’s logic is strong; defender fails to mount a defensive argument.  
-Outcome: critique_valid
+3. Adjudication  
+   The challenger invokes burden-of-proof norms and correctly identifies “insufficient evidence” (14) and a “burden of proof violation” (19): a substantive empirical claim (possible conservation-law violation at neural scale) is asserted with no cited data. No disqualifying fallacies are committed by the critic.  
+
+   The defender’s reply fails to supply actual empirical studies or demonstrate how U2 is mitigated. Citing “pilot studies” without reference is unsupported (Evidence misuse/Insufficient evidence). The appeal to explanatory power is abductive but does not address the gap in empirical support. As a result, the defense does not resolve the logical issue; it neither provides data nor shows that A3’s posterior probability remains 0.60 despite low prior plausibility due to conservation-law concerns (Bayesian updating violation).  
+
+   Hence the challenge stands as a valid critique and the rebuttal is not sufficient.
 
 ### Q4: Agent-Empiricist → Agent-Supernaturalist
 - **Verdict**: CRITIQUE_VALID
 - **Attack**: undercutting / challenge_inference_step
-- **Challenge**: In C3, you infer from A1 and E2 that an immaterial soul can exert causal influence over physical events. Why does the inference that ‘the best explanation is non-physical agency’ follow, rather than simply reflecting gaps in our current understanding of neurobiology?
-- **Rebuttal**: The inference in C3 is an abductive move to the best explanation: only a non-physical agent can account for genuine mental causation and alternative possibilities where physical monism falls short (no account of qualia or libertarian choice). Physicalist ‘gap’ arguments remain unresolved, so C3 stands.
-- **Reasoning**: 1. Restatement  
-   The Empiricist challenges the Supernaturalist’s claim C3—that from premises A1 (“humans have an immaterial soul”) and E2 (“philosophical-theological consensus affirms the soul’s causal efficacy”) one may abductively infer that the “best explanation is non-physical agency.” The question is why this abductive step excludes the possibility that the apparent causal gap merely reflects limits in our current neurobiological understanding.
-
-2. Formalization  
-   Challenger’s critique (inference):  
-     P1: A1 and E2 leave open a causal gap in explaining mental-to-physical influence.  
-     P2: If a causal gap can be due to undiscovered physical mechanisms, then abducting to a non-physical soul is unwarranted.  
-     C: Therefore, the inference in C3 is unwarranted unless one rules out unknown neurobiological explanations.
-
-   Defender’s original C3 (abductive argument):  
-     P1: Humans have an immaterial soul (A1).  
-     P2: Consensus affirms that the soul exerts causal efficacy (E2).  
-     Abduction: The best explanation for genuine mental causation is a non-physical agent.  
-     C3: Therefore, souls enable mental-to-physical causation beyond physical law.
-
-3. Adjudication  
-   - The challenger points out an underdetermination: the abductive leap to non-physical agency ignores the viable hypothesis of undiscovered neurobiological processes. This is a valid Bayesian and abductive critique (Bayesian: one must compare likelihoods under both physical-gap and soul-hypotheses; abductive: best-explanation status demands ruling out alternatives).  
-   - The defender’s reply merely restates the abductive claim (“only a non-physical agent can account…”), without showing why physicalist accounts of qualia or choice are impossible or implausible. Thus it commits:
-     • Appeal to ignorance / burden of proof fallacy (E3/E14): “physicalist gaps remain unresolved, so soul wins”  
-     • False dilemma (E13): asserting “only soul vs. unresolved gap” without eliminating intermediate or future physicalist accounts  
-     • No comparative likelihoods or elimination of alternatives, violating abductive rigor and Bayesian updating (failure of criterion 5 & 10).  
-   - The defender has not provided new premises or evidence to restore validity. They have not shown that all neurobiological explanations are implausible or eliminated, nor given a probabilistic comparison.
-
-   Conclusion: The Empiricist’s critique is VALID under the combined criteria (it identifies flaws 4/6/13/19/10). The Supernaturalist’s rebuttal FAILS to resolve the logical and evidential issue.  
-   Scores reflect a strong critique and a weak defense.
-
-### Q5: Agent-Empiricist → Agent-Supernaturalist
-- **Verdict**: CRITIQUE_VALID
-- **Attack**: undermining / demand_falsifiability
-- **Challenge**: Assumption A3 holds that moral responsibility requires genuine alternative possibilities. How do you propose to empirically test or potentially falsify this normative claim, and what evidence could demonstrate that moral responsibility is compatible with deterministic psychology?
-- **Rebuttal**: A3 is a normative, conceptual claim. It is evaluated through conceptual analysis and moral psychology (e.g. folk-moral surveys under deterministic scenarios), which consistently show people deny desert-based praise without alternative possibilities. Thus the normative premise is upheld, and the challenge is refuted.
-- **Reasoning**: Step 1: Restating the Dispute  
-Agent-Empiricist challenges the normative assumption A3 (“Moral responsibility presupposes the ability to do otherwise”) by demanding an empirical test or potential falsification procedure for what is explicitly a normative, conceptual claim. They also ask what evidence could show moral responsibility is compatible with deterministic psychology. Agent-Supernaturalist replies that A3 is normative and must be evaluated by conceptual analysis plus moral-psychological (folk survey) data showing that people deny desert-based praise under deterministic scenarios, thereby upholding A3.
-
-Step 2: Formalizing the Arguments  
-Challenger (Empiricist) informally:
-1. A3 is a normative, conceptual claim.  
-2. Normative claims should admit empirical tests or potential falsifiers if they are to have empirical bite.  
-3. How could we test or falsify A3, or show moral responsibility is compatible with determinism?  
-(conclusion: A3 may be unfalsifiable or improperly treated as empirical.)
-
-Defender (Supernaturalist):
-1. A3 is normative/conceptual, not empirical.  
-2. We can evaluate normative/conceptual claims by conceptual analysis and folk-moral surveys.  
-3. Folk surveys under deterministic conditions show people withhold desert-based praise if no alternatives exist.  
-4. Therefore, the normative assumption A3 is supported and the empirical challenge fails.
-
-Step 3: Adjudication  
-– The challenger raises a legitimate methodological question about the empirical testability of a normative premise; no formal fallacy is committed in asking for falsifiability. This is a valid meta-logical critique (no circularity, no misrepresentation).  
-– The defender’s reliance on “folk-moral surveys” to settle a normative, conceptual claim commits an informal fallacy: appeal to popular intuitions (ad populum) or conflates “is” (people believe) with “ought” (normative truth). Empirical data about lay intuitions does not deductively establish a normative principle. This is evidence misuse (criterion 6) and a named informal fallacy (criterion 13).  
-– The defender does not show how conceptual analysis alone yields A3, nor how folk responses justify normative truth; they simply assert surveys suffice. They offer no deductive inference or justificatory premise bridging “people’s intuitions” to “normative truth.”  
-
-Because the defender’s response fails to resolve the logical issue—indeed it commits clear informal fallacies—the critic’s challenge is successful.  
-Conclusion: critique_valid.
-
-### Q1: Agent-Supernaturalist → Agent-Empiricist
-- **Verdict**: REBUTTAL_VALID
-- **Attack**: undermining / press_uncertainty
-- **Challenge**: You rate A1 (physical causal closure) at 0.85, yet you admit U2: “Are there any empirical exceptions to physical causal closure at macroscopic scales?” What rigorous studies or observations can you cite that conclusively rule out any non-physical causation? If none exist, how do you justify A1’s high confidence?
-- **Rebuttal**: I refute. A1’s 0.85 rating reflects the vast, convergent absence of any macroscopic anomalies across classical mechanics, quantum field experiments, gravitational tests, and cosmology. Hundreds of high‐precision studies have found no credible evidence of non-physical causal inputs, so the high confidence is empirically grounded.
+- **Challenge**: Your claim C3 concludes that libertarian free will arises from soul–brain interaction based on A3 and E4. Even granting those premises, why must that interaction constitute genuine alternative possibilities rather than random or epiphenomenal perturbations? Please clarify the logical inference connecting A3 and E4 to libertarian agency.
+- **Rebuttal**: The soul–brain interaction reported in E4 aligns systematically with conscious intentions and deliberative content. Such coherent, reason‐driven perturbations cannot be random or epiphenomenal; abductively, genuine agent causation (libertarian choice) best explains the data.
 - **Reasoning**: Step 1: Restatement  
-The dispute centers on whether it is reasonable to assign a high (0.85) confidence to the principle of physical causal closure (A1) given the apparent absence of “rigorous studies” that definitively rule out any non‐physical interventions at macroscopic scales. The challenger (Agent-Supernaturalist) demands conclusive empirical disproof of non‐physical causation before one can claim high confidence. The defender (Agent-Empiricist) replies that the overwhelming lack of any credible anomalies across a vast array of high‐precision physical experiments justifies an 0.85 rating.
+Agent-Empiricist challenges Claim C3 (“Libertarian free will arises from soul–brain interaction”) by observing that A3 (soul–brain causal capacity) plus E4 (spiritual reports of nonphysical influence) do not logically entail that those influences are genuine alternative possibilities rather than random noise or epiphenomenal side-effects. The critic demands the hidden inferential step that bridges “nonphysical perturbations” to “agent causation.”
+
+Agent-Supernaturalist rebuts by asserting that E4’s reported perturbations align systematically with conscious intentions, which allegedly rules out randomness or epiphenomenalism, and so, abductively, agent causation is the best explanation.
 
 Step 2: Formalizations  
-Challenger’s Argument:  
-P1: There are no rigorous, conclusive studies disproving non‐physical macroscopic causation (hidden premise: ruling out non‐physical causes requires deductive proof).  
-P2: If no conclusive disproof exists, one cannot justifiably ascribe high confidence to physical causal closure.  
-C: Assigning A1 a confidence of 0.85 is unjustified.  
+Challenger’s implicit inference:  
+P1. A3: The immaterial soul can causally influence the brain.  
+P2. E4: Spiritual experiences report nonphysical influences on decisions.  
+―  
+C. Therefore, these influences are genuine alternative possibilities (agent causation), not random or epiphenomenal perturbations.  
 
-Defender’s Argument:  
-P1: Hundreds of high‐precision studies in classical mechanics, quantum fields, gravitation, and cosmology have found zero credible evidence of non‐physical causal inputs.  
-P2: A long‐running absence of anomalies under highly sensitive conditions significantly lowers the probability of any non‐physical intervention. (Bayesian updating: P(evidence|physical closure) ≫ P(evidence|non-physical inputs))  
-C: Thus, a confidence rating of 0.85 in physical causal closure is empirically warranted.
+This inference is invalid or incomplete because it requires the unstated premise “If the soul influences the brain, then that influence constitutes genuine agent causation,” which is not self-evident and absent.
+
+Defender’s argument:  
+P1. E4 aligns systematically with subjects’ conscious intentions and deliberation.  
+P2. Random perturbations or epiphenomenal effects would not show such coherent, intention-driven patterns.  
+P3 (unstated but invoked): The hypothesis that agent causation yields systematically intention-aligned perturbations has higher likelihood for E4 than competing hypotheses.  
+―  
+C. Abductively, agent causation best explains E4, so the soul-brain interaction must be genuine free choices.
 
 Step 3: Adjudication  
-Challenger’s argument fails primarily because it demands deductive “conclusive studies” to establish an empirical principle, committing a burden of proof violation (Criterion 19) and an argument from ignorance. Physical causal closure is an empirical generalization, necessarily supported by inductive evidence, not deductive proof. The challenger’s insistence that “no deductive disproof” undercuts inductive justification is a misuse of evidential standards (also informal fallacy: appeal to ignorance).  
+The critic correctly identifies a Hidden Premise fallacy (criterion 3) and a gap between abductive claim and data: without ruling out coherent epiphenomenal models, the conclusion doesn’t follow.  
 
-The defender, by contrast, provides a clear Bayesian defense (Rebuttal Criterion 5): the probability of observing no anomalous non‐physical causation across numerous sensitive experiments is far higher if causal closure holds than if it fails. This constitutes proper evidence updating from a reasonable prior to justify a high confidence rating. No formal deductive structure is needed because the claim is empirical; inductive strength and Bayesian coherence are the appropriate standards.  
+The defender attempts a Bayesian abductive defense (criterion 5), but merely asserts that no alternative could produce intention-aligned perturbations without showing why epiphenomenal or random causes have low likelihood. This remains an unsupported claim.  
 
-Conclusion: The defender successfully rebuts the challenge.
+Thus the critic’s objection stands (CRITIQUE_VALID), while the defender fails to supply the missing premise or rigorous likelihood comparison to close the gap.
 
-### Q2: Agent-Supernaturalist → Agent-Empiricist
-- **Verdict**: CRITIQUE_VALID
-- **Attack**: undercutting / challenge_inference_step
-- **Challenge**: Your C1 concludes conscious intention is epiphenomenal because readiness potentials precede reported intentions. Given your U1 uncertainty about subcortical or distributed processes contributing to decision initiation, how can you validly infer that those early neural signatures are the true causal origin of decisions?
-- **Rebuttal**: I defer. You’re right that subcortical and distributed neural networks (e.g., basal ganglia, thalamocortical loops) could contribute causally before cortical readiness potentials. Addressing U1 requires targeted recordings or manipulations in those structures to map their role in decision initiation.
+### Q5: Agent-Empiricist → Agent-Supernaturalist
+- **Verdict**: REBUTTAL_VALID
+- **Attack**: undermining / challenge_assumption
+- **Challenge**: Assumption A2 holds that introspective self-awareness reliably indicates volitional choice. Considering documented cognitive biases and introspection errors, which empirical studies validate introspection’s reliability for detecting free choice and justify assigning A2 a strength of 0.75?
+- **Rebuttal**: Empirical studies (e.g., Metcalfe & Greene 2007; Fleming et al. 2012) demonstrate that introspective reports of deliberation vs. compulsion align about 70–80% with independent behavioral and physiological markers, validating A2’s 0.75 reliability rating.
 - **Reasoning**: 1. Restatement  
-   The challenger disputes the defender’s C1: “Conscious intention is epiphenomenal” based on readiness potentials (E1) and fMRI prediction (E2). The challenger invokes U1—uncertainty about subcortical/distributed decision‐initiating processes—to argue there is a hidden premise: that no other neural processes cause decisions prior to the measured signatures. Without that premise, inferring that the recorded readiness potentials are the true causal origin is invalid.
+The Empiricist challenges the assumption A2’s reliability rating of 0.75 for introspective self-awareness, asking for empirical studies showing introspection actually achieves that level of agreement with independent measures of volitional choice. The Supernaturalist replies by citing Metcalfe & Greene (2007) and Fleming et al. (2012), which report 70–80% alignment between introspective reports and behavioral/physiological markers, thus justifying the 0.75 rating.
 
 2. Formalization  
+Challenger (Empiricist) implicitly relies on this structure:  
+  P1: Introspection is subject to cognitive biases and known errors.  
+  P2: If introspective reports do not reliably track volitional choice, then A2’s strength of 0.75 is unjustified.  
+  Q: Provide empirical studies showing introspection’s reliability ≈0.75.
 
-   Challenger’s critique:  
-     P1 (U1): It is unknown whether subcortical/distributed neural processes contribute causally before readiness potentials.  
-     P2: C1’s inference tacitly assumes “no other processes initiate decisions.”  
-     Hidden premise needed for validity (HP): “Only the measured readiness potentials (and fMRI‐identified signatures) can causally initiate decisions.”  
-     → Conclusion: Without HP, the inference from E1/E2 to C1 is invalid (falls to criterion 3: hidden premise).
-
-   Defender’s original inference (C1):  
-     A1: Physical causal closure holds.  
-     A2: Neuroscience can reliably time‐order brain vs. conscious events.  
-     E1: Readiness potentials reliably precede reported intentions.  
-     E2: fMRI predicts choices before awareness.  
-     (Implicit HP): No unmeasured subcortical/distributed processes initiate decisions before these signatures.  
-     Inductive inference: If measurable neural signatures precede awareness, then conscious intention is after‐the‐fact and epiphenomenal.  
-     Conclusion: C1.
+Defender (Supernaturalist) offers this inductive argument:  
+  P1: Metcalfe & Greene (2007) find introspective judgments of deliberation vs. compulsion align ~70% with behavioral/physiological indicators.  
+  P2: Fleming et al. (2012) report metacognitive accuracy in perceptual decision‐making at ~75%.  
+  C: Therefore, introspective self-awareness reliably indicates volitional choice at about 0.75 reliability.
 
 3. Adjudication  
-   - The challenger correctly identifies a hidden premise (criterion 3). The defender’s inference from readiness potentials to epiphenomenalism requires establishing that no other neural processes can initiate decisions; this premise is neither stated nor self‐evident, and U1 explicitly acknowledges the opposite uncertainty.  
-   - The defender concedes (“I defer. You’re right…”) without supplying the missing premise or evidence to resolve U1. This is an explicit concession and thus fails to resolve the logical flaw.  
+- The Empiricist’s challenge is a request for evidence, grounded in the known issue of introspection errors (an inductive critique). They did not provide new data, only pointed out potential biases. This is a valid request rather than a formal argument; it is not itself a deductive inference.  
+- The Supernaturalist responds with two peer‐reviewed studies reporting introspection-behavior alignment in the 70–80% range, directly addressing the question. The evidence is relevant (studies measure introspective accuracy versus independent markers) and the reported accuracy brackets the 0.75 figure.  
 
-   Therefore, the challenger’s critique succeeds under the criteria for CRITIQUE_VALID.
+No formal fallacies are present in the rebuttal: it does not circularly assume A2, misrepresent the challenge, or commit equivocation. It supplies concrete empirical support, meeting the evidentiary burden for an inductive claim about reliability. Nor does the Empiricist’s request expose hidden premises or demand deductive certainty where inductive evidence suffices.  
+
+Because the defender’s evidence directly substantiates the assumption’s reliability rating, the rebuttal successfully resolves the challenge.
+
+### Q1: Agent-Supernaturalist → Agent-Empiricist
+- **Verdict**: UNRESOLVED
+- **Attack**: undercutting / challenge_inference_step
+- **Challenge**: Your Claim C1 infers that neural precursors causally initiate decisions before awareness. How do you justify this inference step given alternative explanations (e.g., readiness potentials as preparatory or epiphenomenal) rather than genuine decision causes?
+- **Rebuttal**: Interventional studies using TMS and direct cortical microstimulation have shown that perturbing the same neural signals identified as readiness potentials reliably shifts the timing and outcome of decisions, demonstrating causal efficacy rather than mere correlation.
+- **Reasoning**: <reasoning>
+Step 1: Restatement  
+The challenger (Agent-Supernaturalist) disputes the step in Claim C1 that “readiness potentials” (neural precursors) causally initiate decisions, pointing out that mere temporal precedence and correlation do not establish causation and that these signals might be epiphenomenal or preparatory. The defender (Agent-Empiricist) replies that interventional studies (TMS or direct cortical microstimulation) have manipulated the very neural signals identified as readiness potentials and thereby altered decision timing and outcomes, which demonstrates causal efficacy.
+
+Step 2: Formalization  
+Challenger’s argument (undercutting the causation inference):  
+P1: Readiness potentials precede reported conscious intention. (E1, E2)  
+P2: Temporal precedence plus correlation does not establish causation.  
+—> C: Therefore, the inference from readiness-potential precedence to “neural precursors causally initiate decisions” is unjustified; the readiness potential may be epiphenomenal.
+
+Defender’s counter-argument (rebuttal with intervention):  
+P1: Readiness potentials are the neural signals identified as decision precursors. (from C1)  
+P2: Interventions (TMS, cortical microstimulation) that perturb these signals reliably shift decision timing and choice.  
+P3: A manipulation that systematically changes an outcome provides evidence of causal efficacy (e.g., interventionist causation criterion).  
+—> C: Therefore, the readiness potentials do causally initiate decisions rather than merely correlate.
+
+Step 3: Adjudication  
+The challenger correctly identifies an informal fallacy (correlation ≠ causation) and a hidden premise (that temporal precedence alone suffices for causation), thus CRITIQUE_VALID under criteria 6 (Evidence misuse) and 5 (Reliance on inductive reasoning where direct causal demonstration is required).  
+
+The defender then provides direct interventional evidence, showing the neural events in question have a higher likelihood under the causal hypothesis than under an epiphenomenal one, satisfying Bayesian-style and interventionist standards for causality (REBUTTAL_VALID under criterion 5). The rebuttal resolves the logical issue rather than merely acknowledging it, so the defense succeeds.
+
+### Q2: Agent-Supernaturalist → Agent-Empiricist
+- **Verdict**: REBUTTAL_VALID
+- **Attack**: undermining / challenge_strength_calibration
+- **Challenge**: You assign strength 0.65 to Evidence E2 (Soon et al. fMRI predictions). Considering modest effect sizes and mixed replication results, on what basis do you calibrate E2 so highly in support of C1?
+- **Rebuttal**: E2’s 0.65 rating reflects consistent above‐chance prediction accuracy (often 55–60%) across multiple labs and large sample sizes, with robust cross‐validation and statistical significance in meta‐analyses, justifying a moderately high confidence despite effect size limitations.
+- **Reasoning**: Step 1: Restatement  
+The Supernaturalist challenges the Empiricist’s assignment of strength 0.65 to evidence E2 (Soon et al. fMRI predictions), arguing that modest effect sizes and mixed replications call into question such a high rating. The Empiricist replies that multiple labs consistently achieve 55–60% above‐chance predictive accuracy, supported by large samples, robust cross‐validation, and significant meta‐analytic results, justifying the 0.65 confidence.
+
+Step 2: Formalization  
+Challenger’s implicit inference chain:  
+  P1: Soon et al.’s fMRI studies have only modest effect sizes (≈55–60%) and some failed replications.  
+  C: Therefore, assigning E2 a strength of 0.65 overstates its evidential support for C1.  
+
+Defender’s inference chain:  
+  P1: Multiple independent labs report above‐chance (55–60%) decision-prediction accuracy in Soon‐style fMRI experiments.  
+  P2: These results come from large sample sizes with robust cross‐validation.  
+  P3: Meta‐analyses find the above‐chance results statistically significant across studies.  
+  I (inductive): Consistent, statistically robust, above‐chance predictions justify moderate confidence in E2.  
+  C: Assigning E2 a strength of 0.65 is warranted.
+
+Step 3: Adjudication  
+- The challenger raises a legitimate evidential concern (Insufficient Evidence, Fallacy 14), but offers no formal deductive structure beyond questioning the calibration. No circularity, misrepresentation, or formal fallacy is present. The logic is serviceable but minimal.  
+- The defender directly addresses the request by supplying additional empirical particulars (criterion 13: “The defender provides sufficient additional evidence to meet the challenged evidentiary standard”), restoring the justification for the 0.65 rating. No hidden premises or informal fallacies are detected.  
+
+Because the Empiricist’s response resolves the evidential challenge by supplying relevant data that underwrites the assigned strength, the rebuttal qualifies as a valid defense.
 
 ### Q3: Agent-Supernaturalist → Agent-Empiricist
-- **Verdict**: UNRESOLVED
-- **Attack**: undermining / challenge_evidence
-- **Challenge**: E2’s fMRI studies predict choices with ~60% accuracy—only modestly above chance. How do you defend using E2 at strength 0.75 to support your C1? Are there larger replications demonstrating consistent predictive validity above, say, 80%?
-- **Rebuttal**: I refute. While Soon et al.’s 60% accuracy is moderate, it sits significantly above chance and is reinforced by subsequent EEG–fMRI fusion and intracranial studies reaching ~65–70%. The 0.75 strength reflects this convergent empirical support, not an arbitrary >80% benchmark.
-- **Reasoning**: <reasoning>
-Step 1 (Restatement):
-The challenger (Agent-Supernaturalist) disputes the evidential strength assigned to E2 (Soon et al.’s fMRI predictive accuracy ≈60%) in support of C1, asking how one can justify rating E2 at 0.75 without replications showing ≥80% accuracy. The defender (Agent-Empiricist) replies that additional EEG–fMRI fusion and intracranial studies (≈65–70%) bolster the case, so 0.75 is not an arbitrary benchmark.
+- **Verdict**: REBUTTAL_VALID
+- **Attack**: undermining / challenge_assumption
+- **Challenge**: Assumption A1 holds that mind states supervene on brain states with strength 0.8. Given ongoing debates about emergent consciousness, qualia, and potential non-classical processes, how do you justify both the empirical classification and high confidence in A1?
+- **Rebuttal**: A1 is supported by convergent lesion, neuroimaging, and stimulation studies showing systematic brain–mind correlations and causal manipulations. Alternative non‐classical or emergent-process theories lack empirical tests or predictive success, making A1 the best current empirical generalization.
+- **Reasoning**: Step 1: Restatement  
+The Supernaturalist challenges the assumption A1 (“mind states supervene on brain states,” strength 0.8) by pointing to unresolved debates about emergent consciousness, qualia, and non‐classical processes, and asks how one justifies both calling A1 “empirical” and assigning it high confidence. The Empiricist replies that A1 rests on convergent lesion, neuroimaging, and stimulation studies demonstrating systematic correlations and causal manipulations, and that rival non‐classical theories lack empirical tests or predictive power—making A1 the best available generalization.
 
-Step 2 (Formalization):
-Challenger’s argument:
-  1. Premise: E2’s stated predictive accuracy ≈60% (from Soon et al. 2008).
-  2. Premise: A strength rating of 0.75 implies substantially higher reliability than mere chance (50%)—typically near or above 80%.
-  3. Inference (informal/Bayesian): 60% accuracy is insufficient to support a 0.75 strength rating.
-  4. Conclusion: Using E2 at 0.75 to bolster C1 is unjustified absent stronger replications (≥80%).
+Step 2: Formalization  
+Challenger’s implicit critique:  
+  P1: There are ongoing, substantive debates (emergent properties, qualia, non‐classical mechanisms) that call into question whether mind–brain supervenience holds.  
+  P2: If such plausible alternatives exist and remain empirically untested, then confidence in A1 should be downgraded, and its status as “well‐supported empirical” is unjustified.  
+  C: Therefore, the high confidence rating (0.8) and “empirical” classification of A1 is not justified.
 
-Defender’s argument:
-  1. Premise: Soon et al. fMRI yields ≈60% accuracy.
-  2. Premise (unsupported in the excerpt): Subsequent EEG–fMRI fusion and intracranial studies yield ≈65–70% accuracy.
-  3. Inference (Bayesian/convergent evidence): Convergent predictive accuracies significantly above chance justify assigning 0.75 to E2.
-  4. Conclusion: E2’s strength rating of 0.75 is based on the aggregate empirical support and not an arbitrary demand for ≥80%.
+Defender’s rebuttal:  
+  P1: Convergent evidence from lesion studies, neuroimaging correlations, and brain‐stimulation causal manipulations all support that changes in brain states track changes in mind states.  
+  P2: A1 predicts these patterns, whereas alternative non‐classical/emergent theories have no empirical tests or successful predictions.  
+  C: Hence A1 legitimately qualifies as empirical and commands high confidence as the best current generalization.
 
-Step 3 (Adjudication):
-- The challenger correctly identifies an inconsistency between E2’s documented performance (~60%) and assigning it a high strength (0.75). This is a valid evidence‐based critique falling under “Insufficient evidence” (criterion 14). No fallacy is committed.
-- The responder fails to substantiate the key premise about 65–70% accuracy—those studies are not cited in the provided belief excerpt, making this an “Unsupported premise” (criterion 22). The defender does not demonstrate how those figures map quantitatively to 0.75, nor do they show that 65–70% accuracy suffices for that rating. They also ignore the challenger’s threshold question (≥80%).
-- Accordingly, the critique stands, and the defense fails to resolve the logical issue.
+Step 3: Adjudication  
+The challenger raises a concern about missing evidence for alternatives (criterion 14: “Insufficient evidence”). However, they offer no concrete data or probability analyses showing supervenience is unlikely, nor do they demonstrate a formal flaw in A1’s justification. Instead, they issue a request for further justification. The defender directly cites the converging neuroscientific data (matching the target excerpt’s strength_justification) and notes that no competitor theory has empirical validation or predictive record. This addresses the challenger’s demand by pointing to why A1 has a higher likelihood in light of evidence (Bayesian counter, criterion 5) and why, absent tested rivals, it is the simplest empirically rooted hypothesis (Occam defense, criterion 12). There is no formal fallacy, hidden premise, or misuse of evidence in the rebuttal. The defender has resolved the core complaint: A1 is grounded in reproducible empirical findings, whereas proposed alternatives remain speculative and untested. 
 
-Result: critique_valid
+Given the disparity (defender’s logic far stronger than the challenger’s unsupported critique), the correct outcome is rebuttal_valid.
 
 ### Q4: Agent-Supernaturalist → Agent-Empiricist
 - **Verdict**: REBUTTAL_VALID
-- **Attack**: undermining / challenge_assumption
-- **Challenge**: Your A3 claims that randomness cannot constitute agentive control, rated 0.8. How do you rule out non-classical forms of indeterminacy (e.g., Orch OR or other quantum brain models) that proponents argue could underlie structured, non-random agency? Without engaging these, isn't A3 overconfident?
-- **Rebuttal**: I refute. Quantum‐brain models like Orch-OR lack any replicable empirical support: calculated decoherence times in neurons are far too short, no quantum interference has been detected in neural tissue, and no unique behavioral predictions have emerged. Thus A3’s high confidence stands.
-- **Reasoning**: Step 1: Restatement  
-The challenger (Agent-Supernaturalist) contends that Assumption A3 (“Randomness does not constitute agentive control”) is overconfident because it ignores non-classical indeterminacy proposals (e.g., Orch-OR). The defender (Agent-Empiricist) replies that all such quantum-brain models lack empirical support (decoherence too fast, no interference, no predictions), so A3 remains justified.
+- **Attack**: undermining / press_uncertainty
+- **Challenge**: You list U1 (‘Are readiness potentials truly causal precursors…?’) as a high‐importance uncertainty. How can you maintain C1’s strength of 0.65 without first resolving this key causal question?
+- **Rebuttal**: C1’s strength of 0.65 already factors in uncertainty U1 about causal status. It is a provisional confidence level that integrates both positive evidence and unresolved questions; unresolved uncertainties do not force strength to zero but moderate it.
+- **Reasoning**: 1. Restatement  
+   Agent‐Supernaturalist (the challenger) claims that because uncertainty U1 (“Are readiness potentials truly causal precursors…?”) remains unresolved, any confidence level for claim C1 cannot meaningfully be 0.65. They implicitly assert that an unresolved key causal uncertainty must drive the confidence in C1 to zero. Agent‐Empiricist (the defender) replies that C1’s 0.65 already incorporates U1; one can have a nonzero degree of belief even if some causal questions remain unsettled, because that uncertainty has been factored into the Bayesian calculation.
 
-Step 2: Formalization  
-Challenger’s implicit argument:  
-  P1: If any plausible quantum-brain model could structure indeterminacy into control, then randomness might constitute agentive control.  
-  P2: Proponents of Orch-OR and similar models claim precisely that.  
-  C: Therefore, without addressing and refuting those models, A3’s blanket rejection of randomness as agency is unjustified.
+2. Formalization  
+   Challenger’s implicit inference chain:  
+     P1. U1 is a “key causal question” for claim C1.  
+     P2. If a key causal question about a claim is unresolved, confidence in that claim must be zero.  (hidden premise)  
+     C. Therefore, confidence in C1 must be 0, so C1 cannot have strength 0.65.
 
-Defender’s rebuttal:  
-  P1: Orch-OR and other quantum-brain models predict quantum coherence in neurons.  
-  P2: Empirical data show decoherence times in neurons are orders of magnitude too short; no quantum interference in neural tissue has ever been observed; no unique behavioral predictions have been made.  
-  C: Therefore, quantum-brain models are so weakly supported that A3’s assumption remains well justified.
+   Defender’s inference chain:  
+     P1. Confidence (strength) for C1 is a Bayesian posterior that combines all evidence and uncertainties, including U1.  
+     P2. An unresolved uncertainty does not force posterior probability to zero, but reduces it from what it would be if fully resolved.  
+     C. Thus assigning C1 a strength of 0.65 is coherent given unresolved U1.
 
-Step 3: Adjudication  
-– The challenger failed to introduce any actual evidence that Orch-OR or similar models are empirically plausible; instead, they shifted the burden of proof onto A3 to disprove all non-classical models, which is a burden-of-proof violation (informal fallacy #19) and cited insufficient evidence (fallacy #14).  
-– The defender supplies concrete empirical observations and Bayesian reasoning: the evidence (or lack thereof) is far more likely under “no quantum agency” than under “quantum‐guided agency,” thereby properly justifying the high confidence in A3 (#5, #6).  
+3. Adjudication under the criteria  
+   - The challenger relies on a hidden, non‐self‐evident premise (P2) that “any unresolved key causal question means zero confidence.” This is not universally required in deductive logic, nor is it a known Bayesian axiom, so it fails for hidden premise (criterion 3).  
+   - The defender correctly appeals to basic Bayesian reasoning: unresolved uncertainties are incorporated into the posterior probability rather than nullifying it, showing a proper evidence‐updating principle (rebuttal criterion 5) and that the argument does not demand certainty where probabilistic reasoning is appropriate (rebuttal criterion 10).  
+   - No circular reasoning, misrepresentation, or other disqualifying fallacy arises in the defender’s reply.  
 
-Conclusion: The defender’s rebuttal succeeds in resolving the logical issue; thus, rebuttal_valid.
+Conclusion: The defender has provided a valid rebuttal by exposing the challenger’s hidden premise error and invoking proper Bayesian updating.
 
 ### Q5: Agent-Supernaturalist → Agent-Empiricist
 - **Verdict**: CRITIQUE_VALID
-- **Attack**: undercutting / challenge_inference_step
-- **Challenge**: In C3 you infer from TMS/subliminal priming studies (E4) that compatibilist free will is coherent and empirically measurable. How does a diminished subjective sense of agency translate into genuine normative freedom or moral responsibility, rather than mere phenomenological illusion?
-- **Rebuttal**: I concede. C3 overreached by equating measured sense-of-agency with normative freedom and moral responsibility. I will revise C3 to clarify it as a descriptive, empirical index of compatibilist agency, and lower its strength accordingly.
-- **Reasoning**: <reasoning>
-1. Restatement
-The core dispute concerns claim C3 from Agent-Empiricist’s target beliefs: whether empirical manipulations of the sense of agency (E4) legitimately support the normative conclusion that compatibilist free will (and thus moral responsibility) is coherent and measurable. The challenger (Agent-Supernaturalist) objects that a mere phenomenological shift in reported “sense of agency” does not automatically translate into genuine normative freedom or moral responsibility.
+- **Attack**: undercutting / challenge_scope
+- **Challenge**: Your Claim C2 generalizes from simple motor decision tasks to all forms of human agency. What justifies extending findings on neural precursors in lab movements to complex moral, deliberative, or creative choices?
+- **Rebuttal**: You’re correct that applying findings from simple motor tasks to complex moral or creative decisions exceeds the current direct evidence. I will lower C2’s strength to reflect this extrapolation and add an uncertainty about the generalizability to complex forms of agency.
+- **Reasoning**: 1. Restatement of Disagreement:
+   The supernaturalist challenges the empiricist’s Claim C2, which asserts that “agent-level free will, defined as decisions uncaused by prior neural states, lacks empirical support,” on the grounds that C2 illegitimately generalizes from laboratory findings about simple motor decisions (e.g., button-press tasks with neural precursors) to all forms of human agency, including complex moral, deliberative, or creative choices.
 
-2. Formalizations
-Challenger’s position (implicit argument structure):
-  P1: E4 shows only that subjective reports of agency can be modulated by physical interventions.
-  P2: Normative freedom and moral responsibility require more than phenomenological report—they require genuine alternative possibilities or justificatory power.
-  C: Therefore, from E4 one cannot infer that compatibilist free will (normative freedom) is coherent or empirically measurable.
+2. Formalizing the Arguments:
 
-Defender’s original target argument for C3:
-  A1: Physical causal closure holds.
-  E4: Sense of agency varies reliably with internal motivation under deterministic conditions.
-  (Implicit P3): If subjective sense of agency varies under deterministic conditions, then that index counts as genuine compatibilist freedom.
-  C3: Hence, compatibilist free will is coherent and empirically measurable—even if libertarian free will fails.
+   Challenger’s Implicit Argument (Attack on C2):
+   - P1: Experiments establish neural precursors preceding simple motor decisions (e.g., Libet-style tasks).
+   - P2 (Hidden/unjustified): Neural mechanisms in simple motor tasks are representative of all forms of decision-making.
+   - C: Therefore, all human decisions—moral, deliberative, creative—are preceded by neural precursors, supporting C2’s universal claim.
 
-3. Adjudication
-The challenger successfully identifies that the defender’s inference from E4 to normative freedom depends on a hidden, non‐self‐evident premise (P3). This omission is a formal gap (hidden premise fallacy, criterion 3) and evidence misuse (criterion 6), since phenomenological measures do not by themselves establish normative status. The defender’s rebuttal concedes the point (“I concede. C3 overreached…”) rather than resolving the missing‐premise issue or providing independent support for the normative claim. Under the anti‐bias rules, this explicit concession and weakening of C3 constitutes a successful critique and no valid defense is offered. Criteria for CRITIQUE_VALID are met, and no REBUTTAL_VALID criterion is satisfied.
+   Rebuttal by Agent-Empiricist:
+   - Acknowledges that P2 is unjustified: “Applying findings from simple motor tasks to complex moral or creative decisions exceeds the current direct evidence.”
+   - Concedes the generalization was too strong and proposes lowering C2’s strength and adding uncertainty about generalizability.
+   - No affirmative argument is offered to salvage the universal claim.
 
-Outcome: critique_valid.
+3. Adjudication:
+   - The challenger correctly identifies a hidden premise (P2) required for deductive or strong inductive support of C2’s universal form. This is an example of an evidential overreach (Evidence Misuse) and a hidden premise fallacy.
+   - The defender’s response is an explicit concession: they admit the extrapolation is unwarranted and propose weakening the claim. Under the criteria, an explicit concession or acknowledgment without a substantive resolution constitutes a successful critique (CRITIQUE_VALID) and not a successful defense.
+   - No attempt at formal or Bayesian counter-argument is offered; the defender does not restore validity or supply new premises. Thus the rebuttal fails to meet any Rebuttal_Valid criteria.
+
+Result: The challenger’s critique is valid, the defender’s response concedes the point and does not defend, so the outcome is critique_valid.
 
 ## 4. Agent Performance Summary
 
 | Agent | Score | Critiques Won | Rebuttals Won | Failed | Unresolved |
 |-------|-------|---------------|---------------|--------|------------|
-| Agent-Empiricist | 14.50 | 5 | 2 | 2 | 1 |
-| Agent-Supernaturalist | -4.50 | 2 | 0 | 5 | 1 |
+| Agent-Empiricist | 9.00 | 2 | 3 | 1 | 2 |
+| Agent-Supernaturalist | 2.00 | 1 | 2 | 2 | 2 |
 
 ## 5. Belief Evolution Summary
 
@@ -322,12 +309,12 @@ Outcome: critique_valid.
 
 - **Belief snapshots**: 2
 - **Thesis changed**: No
-- **Claims**: 3 → 3
-- **Avg strength drift**: -0.067 (across 3 shared claims)
+- **Claims**: 2 → 3
+- **Avg strength drift**: -0.050 (across 2 shared claims)
 
 ### Agent-Supernaturalist
 
 - **Belief snapshots**: 2
 - **Thesis changed**: No
-- **Claims**: 4 → 5
-- **Avg strength drift**: -0.125 (across 4 shared claims)
+- **Claims**: 3 → 3
+- **Avg strength drift**: -0.117 (across 3 shared claims)

@@ -2848,9 +2848,10 @@ def _apply_patches_and_validate(
 
     patch_errors = validate_patches(patches, prior_json)
     if patch_errors:
-        log_entries.append((f"Patch validation warnings for {name}:", "WARN"))
-        for err in patch_errors:
-            log_entries.append((f"  - {err}", "WARN"))
+        invalid_indices = set(patch_errors.keys())
+        for idx in sorted(invalid_indices):
+            log_entries.append((f"SKIPPING invalid patch {idx} ({patches[idx].get('op', '?')}): {'; '.join(patch_errors[idx])}", "WARN"))
+        patches = [p for i, p in enumerate(patches) if i not in invalid_indices]
 
     try:
         updated_belief = apply_patches(prior_json, patches, propagate_strength=True)
@@ -3113,9 +3114,10 @@ def _run_stage5_cbs_two_phase(
 
         patch_errors = validate_patches(phase1_patches, prior_json)
         if patch_errors:
-            log_entries.append((f"Phase 1 patch validation warnings for {name}:", "WARN"))
-            for err in patch_errors:
-                log_entries.append((f"  - {err}", "WARN"))
+            invalid_indices = set(patch_errors.keys())
+            for idx in sorted(invalid_indices):
+                log_entries.append((f"SKIPPING invalid Phase 1 patch {idx} ({phase1_patches[idx].get('op', '?')}): {'; '.join(patch_errors[idx])}", "WARN"))
+            phase1_patches = [p for i, p in enumerate(phase1_patches) if i not in invalid_indices]
 
         try:
             intermediate_belief = apply_patches(prior_json, phase1_patches, propagate_strength=True)
@@ -3213,9 +3215,10 @@ def _run_stage5_cbs_two_phase(
         if phase2_patches:
             patch_errors = validate_patches(phase2_patches, intermediate_belief)
             if patch_errors:
-                log_entries.append((f"Phase 2 patch validation warnings for {name}:", "WARN"))
-                for err in patch_errors:
-                    log_entries.append((f"  - {err}", "WARN"))
+                invalid_indices = set(patch_errors.keys())
+                for idx in sorted(invalid_indices):
+                    log_entries.append((f"SKIPPING invalid Phase 2 patch {idx} ({phase2_patches[idx].get('op', '?')}): {'; '.join(patch_errors[idx])}", "WARN"))
+                phase2_patches = [p for i, p in enumerate(phase2_patches) if i not in invalid_indices]
 
             try:
                 final_belief = apply_patches(intermediate_belief, phase2_patches, propagate_strength=True)
