@@ -57,13 +57,37 @@ PERSONA_CHOICES = [
 PROVIDER_CHOICES = ["openai", "anthropic", "google", "ollama", "xai", "perplexity"]
 
 MODEL_SUGGESTIONS: dict[str, list[str]] = {
-    "openai": ["gpt-4o", "gpt-4o-mini", "o4-mini", "o3-mini"],
-    "anthropic": ["claude-sonnet-4-5-20250929", "claude-opus-4-6", "claude-haiku-4-5-20251001"],
-    "google": ["gemini-2.0-flash", "gemini-2.0-pro"],
-    "ollama": ["deepseek-r1:14b", "llama3.1:8b", "phi4", "qwen2.5:14b"],
-    "xai": ["grok-3-mini", "grok-2"],
-    "perplexity": ["sonar-pro", "sonar-reasoning-pro", "sonar"],
+    "openai": ["o4-mini", "o3", "o3-mini"],
+    "anthropic": ["claude-opus-4-6", "claude-sonnet-4-5-20250929"],
+    "google": ["gemini-2.5-pro", "gemini-2.5-flash"],
+    "ollama": ["deepseek-r1:14b", "deepseek-r1:32b", "qwq"],
+    "xai": ["grok-3-mini", "grok-3"],
+    "perplexity": ["sonar-reasoning-pro", "sonar-reasoning"],
 }
+
+# Short wizard tags for logic/ethics system selectors (displayed instead of
+# the full multi-sentence descriptions from logic_systems.py / ethics_systems.py)
+_LOGIC_WIZARD_TAGS: dict[str, str] = {
+    "CLASSICAL_INFORMAL_BAYESIAN": "Recommended",
+    "FORMAL_DEDUCTIVE": "Strict deduction",
+    "BAYESIAN": "Evidence-based",
+    "INFORMAL_CRITICAL": "Fallacy detection",
+    "DIALECTICAL": "Thesis-antithesis",
+    "FUZZY_MULTIVALUED": "Degrees of truth",
+    "PARACONSISTENT": "Tolerates contradictions",
+}
+
+_ETHICS_WIZARD_TAGS: dict[str, str] = {
+    "NONE": "Recommended",
+    "UTILITARIAN": "Maximize welfare",
+    "DEONTOLOGICAL": "Moral duties",
+    "VIRTUE_ETHICS": "Character & flourishing",
+    "CARE_ETHICS": "Relationships",
+    "BALANCED": "Outcomes + duties",
+}
+
+# Display order for ethics system selector (BALANCED second, after NONE)
+_ETHICS_KEY_ORDER = ["NONE", "BALANCED", "UTILITARIAN", "DEONTOLOGICAL", "VIRTUE_ETHICS", "CARE_ETHICS"]
 
 # (display label, OutputConfig attribute, default value)
 OUTPUT_TOGGLES: list[tuple[str, str, bool]] = [
@@ -215,12 +239,12 @@ most productive debates.[/dim]\
 HELP_PROVIDER = """\
 Choose which LLM provider to use for this agent:
 
-  \u2022 [bold]openai[/bold] \u2014 GPT-4o and o-series reasoning models.
-  \u2022 [bold]anthropic[/bold] \u2014 Claude Sonnet, Opus, and Haiku models.
-  \u2022 [bold]google[/bold] \u2014 Gemini 2.0 Flash and Pro models.
-  \u2022 [bold]ollama[/bold] \u2014 Local inference via Ollama. No API key required.
-  \u2022 [bold]xai[/bold] \u2014 Grok models from xAI.
-  \u2022 [bold]perplexity[/bold] \u2014 Sonar models from Perplexity.
+  \u2022 [bold]openai[/bold] \u2014 o-series reasoning models (o4-mini, o3, o3-mini).
+  \u2022 [bold]anthropic[/bold] \u2014 Claude Opus and Sonnet with extended thinking.
+  \u2022 [bold]google[/bold] \u2014 Gemini 2.5 reasoning models with thinking mode.
+  \u2022 [bold]ollama[/bold] \u2014 Local reasoning models (DeepSeek-R1, QwQ). No API key required.
+  \u2022 [bold]xai[/bold] \u2014 Grok reasoning models with think mode.
+  \u2022 [bold]perplexity[/bold] \u2014 Sonar reasoning models with citations.
 
 [dim]Make sure you have the corresponding API key set in your .env file \
 (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, XAI_API_KEY, or \
@@ -228,40 +252,36 @@ PERPLEXITY_API_KEY). Ollama runs locally and needs no key.[/dim]\
 """
 
 HELP_MODEL = """\
-[bold]Available models by provider:[/bold]
+[bold]Available reasoning models by provider:[/bold]
 
 [bold]OpenAI:[/bold]
-  \u2022 gpt-4o \u2014 Flagship multimodal model. Strong general reasoning.
-  \u2022 gpt-4o-mini \u2014 Faster and cheaper; good for quick debates.
-  \u2022 o4-mini \u2014 Advanced reasoning model. Best balance of speed and depth. [bold](Recommended)[/bold]
-  \u2022 o3-mini \u2014 Compact reasoning model.
+  \u2022 o4-mini \u2014 Advanced reasoning. Best balance of speed and depth. [bold](Recommended)[/bold]
+  \u2022 o3 \u2014 Full-size reasoning model. Maximum depth.
+  \u2022 o3-mini \u2014 Compact reasoning model. Fast and cost-effective.
 
 [bold]Anthropic:[/bold]
-  \u2022 claude-opus-4-6 \u2014 Most capable Claude model. Deep reasoning. [bold](Recommended)[/bold]
-  \u2022 claude-sonnet-4-5-20250929 \u2014 Strong balance of speed and quality.
-  \u2022 claude-haiku-4-5-20251001 \u2014 Fastest Claude model. Lower cost.
+  \u2022 claude-opus-4-6 \u2014 Most capable Claude model. Deep extended thinking. [bold](Recommended)[/bold]
+  \u2022 claude-sonnet-4-5-20250929 \u2014 Strong reasoning with extended thinking.
 
 [bold]Google:[/bold]
-  \u2022 gemini-2.0-pro \u2014 Strongest Gemini model. [bold](Recommended)[/bold]
-  \u2022 gemini-2.0-flash \u2014 Fast and efficient for lighter workloads.
+  \u2022 gemini-2.5-pro \u2014 Strongest Gemini reasoning model. [bold](Recommended)[/bold]
+  \u2022 gemini-2.5-flash \u2014 Fast reasoning with thinking mode.
 
 [bold]Ollama:[/bold]
-  \u2022 deepseek-r1:14b \u2014 Deep reasoning model. Good balance of quality and speed. [bold](Recommended)[/bold]
-  \u2022 llama3.1:8b \u2014 Meta's Llama 3.1. Fast local inference.
-  \u2022 phi4 \u2014 Microsoft's compact reasoning model.
+  \u2022 deepseek-r1:14b \u2014 Deep reasoning. Good balance of quality and speed. [bold](Recommended)[/bold]
+  \u2022 deepseek-r1:32b \u2014 Larger reasoning model. Higher quality, more resources.
+  \u2022 qwq \u2014 Qwen's reasoning model. Strong analytical capabilities.
 
 [bold]xAI:[/bold]
-  \u2022 grok-3-mini \u2014 Compact Grok model. Fast and cost-effective. [bold](Recommended)[/bold]
-  \u2022 grok-2 \u2014 Full Grok model. Strongest reasoning.
+  \u2022 grok-3-mini \u2014 Compact Grok reasoning model. Fast. [bold](Recommended)[/bold]
+  \u2022 grok-3 \u2014 Full Grok reasoning model. Maximum depth.
 
 [bold]Perplexity:[/bold]
-  \u2022 sonar-pro \u2014 Enhanced search-augmented model. [bold](Recommended)[/bold]
-  \u2022 sonar-reasoning-pro \u2014 Multi-step reasoning with citations.
-  \u2022 sonar \u2014 Base search-augmented model.
+  \u2022 sonar-reasoning-pro \u2014 Multi-step reasoning with citations. [bold](Recommended)[/bold]
+  \u2022 sonar-reasoning \u2014 Basic reasoning with search augmentation.
 
-[dim]Tip: For the most rigorous debates, use reasoning-focused models (o4-mini, \
-claude-opus-4-6, gemini-2.0-pro). You can also type any valid model name \
-not listed here.[/dim]\
+[dim]All listed models are reasoning-focused. You can also type any valid \
+model name not listed here.[/dim]\
 """
 
 HELP_TEMPERATURE = """\
@@ -749,9 +769,10 @@ def ask_num_agents(default: int = 2) -> int:
 
 
 def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentConfig:
-    """Step 3: Configure a single agent (persona, provider, model, temperature).
+    """Step 3: Configure a single agent (persona, provider, model).
 
     Supports internal back navigation between sub-questions via Ctrl+Z.
+    Temperature is fixed at 1.0 (required/expected by reasoning models).
     """
     console = Console()
     console.print(f"\n[bold]Configure Agent {index + 1}:[/bold]")
@@ -760,11 +781,11 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
     d_persona = default.persona if default else None
     d_provider = default.provider if default else "openai"
     d_model = default.model if default else None
-    d_temp = default.temperature if default else 0.7
+    d_temp = 1.0  # Fixed — reasoning models require or expect temperature 1.0
     d_name = default.name if default else None
 
     sub = 0
-    while sub < 4:
+    while sub < 3:
         try:
             if sub == 0:
                 d_persona = _ask(questionary.select(
@@ -780,19 +801,12 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
                 ), help_text=HELP_PROVIDER)
             elif sub == 2:
                 suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
-                default_model = d_model or (suggestions[0] if suggestions else "gpt-4o")
+                default_model = d_model or (suggestions[0] if suggestions else "o4-mini")
                 d_model = _ask(questionary.autocomplete(
                     "Model:",
                     choices=suggestions,
                     default=default_model,
                 ), help_text=HELP_MODEL)
-            elif sub == 3:
-                temp_str = _ask(questionary.text(
-                    "Temperature (0.0-1.0):",
-                    default=str(d_temp),
-                    validate=lambda t: _validate_float_range(t, 0.0, 1.0),
-                ), help_text=HELP_TEMPERATURE)
-                d_temp = float(temp_str)
             sub += 1
         except WizardBack:
             if sub > 0:
@@ -960,12 +974,12 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
         k for k in LOGIC_SYSTEMS if k != "CLASSICAL_INFORMAL_BAYESIAN"
     ]
     logic_sys_choices = [
-        Choice(f"{get_logic_system_label(k)} — {get_logic_system_description(k)}", value=k)
+        Choice(f"{get_logic_system_label(k)} — {_LOGIC_WIZARD_TAGS[k]}", value=k)
         for k in _LOGIC_KEY_ORDER
     ]
     ethics_sys_choices = [
-        Choice(f"{get_ethics_system_label(k)} — {get_ethics_system_description(k)}", value=k)
-        for k in ETHICS_SYSTEMS
+        Choice(f"{get_ethics_system_label(k)} — {_ETHICS_WIZARD_TAGS[k]}", value=k)
+        for k in _ETHICS_KEY_ORDER
     ]
 
     sub = 0
@@ -979,10 +993,11 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
                 ), help_text=HELP_PROVIDER)
             elif sub == 1:
                 suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
+                default_model = d_model or (suggestions[0] if suggestions else "o4-mini")
                 d_model = _ask(questionary.autocomplete(
                     "Adjudicator model:",
                     choices=suggestions,
-                    default=d_model,
+                    default=default_model,
                 ), help_text=HELP_MODEL)
             elif sub == 2:
                 d_logic_sys = _ask(questionary.select(
@@ -1214,7 +1229,7 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
 
     agent_lines = []
     for a in config.agents:
-        agent_lines.append(f"{a.name} ({a.persona}, {a.provider}/{a.model}, t={a.temperature})")
+        agent_lines.append(f"{a.name} ({a.persona}, {a.provider}/{a.model})")
     table.add_row("Agents", "\n".join(agent_lines))
 
     table.add_row("Stage 2", config.stage2_mode)

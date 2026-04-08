@@ -130,7 +130,7 @@ def test_parse_model_output_normalizes_aceux_ids():
     }
   ],
   "assumptions": [{"id": "A#1", "type": "empirical", "statement": "Test", "strength": 0.8}],
-  "evidence": [{"id": "E#1", "type": "empirical", "summary": "Test", "source": "Test (2026)", "relevance_to_claims": ["C#1"], "strength": 0.8}]
+  "evidence": [{"id": "E#1", "type": "empirical", "summary": "Test", "source": "Test (2026)", "supports_claims": ["C#1"], "strength": 0.8}]
 }
 ```'''
 
@@ -597,3 +597,43 @@ def test_project_for_embedding_complete(test_beliefs):
     assert isinstance(projection, str)
     assert len(projection) > 100
     assert belief["thesis"]["stance"] in projection
+
+
+# ==============================================
+# Inference Chain Rendering Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_render_structured_inference_chain():
+    """Structured inference_chain renders with Premise/Inference/Conclusion lines."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["claims"][0]["inference_chain"] = [
+        {"role": "premise", "text": "A1 establishes the foundation", "reference": "A1"},
+        {"role": "premise", "text": "E1 provides empirical support", "reference": "E1"},
+        {"role": "inference", "text": "Together they entail the claim", "inference_type": "inductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+
+    md = belief_to_markdown(belief)
+
+    assert "Premise (A1): A1 establishes the foundation" in md
+    assert "Premise (E1): E1 provides empirical support" in md
+    assert "Inference (inductive): Together they entail the claim" in md
+    assert "Conclusion: Claim 1" in md
+    assert "[legacy]" not in md
+
+
+@pytest.mark.unit
+def test_render_legacy_string_inference_chain():
+    """Legacy string inference_chain renders with [legacy] tag."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["claims"][0]["inference_chain"] = [
+        "Premise: A1 holds",
+        "Inference (deductive): Therefore claim follows",
+        "Conclusion: Claim 1",
+    ]
+
+    md = belief_to_markdown(belief)
+
+    assert "[legacy]" in md
+    assert "Premise: A1 holds" in md

@@ -33,7 +33,7 @@ _VALID_WEIGHT_COMBOS = {(1.0, 0.0), (0.5, 0.5), (0.0, 1.0)}
 @dataclass
 class AdjudicationConfig:
     """Configuration for the adjudicator agent."""
-    model: str = "gpt-4o"
+    model: str = "o4-mini"
     logic_weight: float = 1.0
     ethics_weight: float = 0.0
     logic_system: str = "CLASSICAL_INFORMAL_BAYESIAN"
@@ -153,6 +153,26 @@ class ParallelConfig:
 
 
 @dataclass
+class DefenseBoostConfig:
+    """Configuration for the mechanical defense boost system.
+
+    When a node survives a challenge (REBUTTAL_VALID verdict), the system
+    automatically applies a formula-driven strength increase. All parameters
+    are tunable here.
+
+    Formula: boost(n) = min(base_boost + boost_increment * n, max_boost_per_defense)
+    Ceiling: min(current + boost, original_strength + max_cumulative_boost, 1.0)
+
+    Where n = consecutive successful defenses (1-indexed).
+    """
+    enabled: bool = True                    # Master switch for defense boosts
+    base_boost: float = 0.02               # Starting constant in the boost formula
+    boost_increment: float = 0.01          # Added per consecutive defense
+    max_boost_per_defense: float = 0.05    # Per-defense ceiling
+    max_cumulative_boost: float = 0.20     # Max total boost above original_strength
+
+
+@dataclass
 class ModeratorConfig:
     """Configuration for the debate moderator/roadmap agent."""
     model: str = "o4-mini"
@@ -193,6 +213,7 @@ class DebateConfig:
     bloodsport: BloodSportConfig = field(default_factory=BloodSportConfig)
     moderator: ModeratorConfig = field(default_factory=ModeratorConfig)
     parallel: ParallelConfig = field(default_factory=ParallelConfig)
+    defense_boost: DefenseBoostConfig = field(default_factory=DefenseBoostConfig)
 
     @classmethod
     def from_yaml(cls, config_path: Path) -> 'DebateConfig':
@@ -316,6 +337,16 @@ class DebateConfig:
             max_workers=par_data.get('max_workers', 5),
         )
 
+        # Parse defense boost config
+        db_data = data.get('defense_boost', {})
+        defense_boost = DefenseBoostConfig(
+            enabled=db_data.get('enabled', True),
+            base_boost=db_data.get('base_boost', 0.02),
+            boost_increment=db_data.get('boost_increment', 0.01),
+            max_boost_per_defense=db_data.get('max_boost_per_defense', 0.05),
+            max_cumulative_boost=db_data.get('max_cumulative_boost', 0.20),
+        )
+
         # Parse debate settings
         debate_data = data.get('debate', {})
 
@@ -336,6 +367,7 @@ class DebateConfig:
             bloodsport=bloodsport,
             moderator=moderator,
             parallel=parallel,
+            defense_boost=defense_boost,
         )
 
     @classmethod
@@ -452,6 +484,13 @@ class DebateConfig:
             "parallel": {
                 "enabled": self.parallel.enabled,
                 "max_workers": self.parallel.max_workers,
+            },
+            "defense_boost": {
+                "enabled": self.defense_boost.enabled,
+                "base_boost": self.defense_boost.base_boost,
+                "boost_increment": self.defense_boost.boost_increment,
+                "max_boost_per_defense": self.defense_boost.max_boost_per_defense,
+                "max_cumulative_boost": self.defense_boost.max_cumulative_boost,
             },
         }
 

@@ -153,16 +153,13 @@ class TestAskNumAgents:
 class TestAskAgentConfig:
 
     @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.text")
     @patch("chal.cli.wizard.questionary.autocomplete")
     @patch("chal.cli.wizard.questionary.select")
-    def test_returns_agent_config(self, mock_select, mock_auto, mock_text):
+    def test_returns_agent_config(self, mock_select, mock_auto):
         # select calls: persona, provider
         mock_select.return_value.ask.side_effect = ["EMPIRICIST", "openai"]
         # autocomplete call: model
         mock_auto.return_value.ask.return_value = "gpt-4o"
-        # text call: temperature
-        mock_text.return_value.ask.return_value = "0.7"
 
         result = ask_agent_config(0)
 
@@ -170,21 +167,19 @@ class TestAskAgentConfig:
         assert result.persona == "EMPIRICIST"
         assert result.provider == "openai"
         assert result.model == "gpt-4o"
-        assert result.temperature == 0.7
+        assert result.temperature == 1.0
         assert "Empiricist" in result.name
 
     @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.text")
     @patch("chal.cli.wizard.questionary.autocomplete")
     @patch("chal.cli.wizard.questionary.select")
-    def test_uses_default(self, mock_select, mock_auto, mock_text):
+    def test_uses_default(self, mock_select, mock_auto):
         default = AgentConfig(
             name="Agent-Test", persona="SKEPTIC", model="o1-mini",
-            provider="openai", temperature=0.5
+            provider="openai", temperature=1.0
         )
         mock_select.return_value.ask.side_effect = ["SKEPTIC", "openai"]
         mock_auto.return_value.ask.return_value = "o1-mini"
-        mock_text.return_value.ask.return_value = "0.5"
 
         result = ask_agent_config(0, default=default)
 
@@ -624,8 +619,6 @@ class TestRunWizard:
             m_text.return_value.ask.side_effect = [
                 "Test topic",  # topic
                 "2",           # num_agents
-                "0.7",         # agent 1 temp
-                "0.7",         # agent 2 temp
                 "3",           # num_rounds
                 "5",           # max_workers
             ]
@@ -668,8 +661,6 @@ class TestRunWizard:
             m_text.return_value.ask.side_effect = [
                 "Does free will exist?",  # topic
                 "2",                       # num_agents
-                "0.7",                     # agent 1 temp
-                "0.5",                     # agent 2 temp
                 "3",                       # num_rounds
                 "5",                       # max_workers
             ]
@@ -727,8 +718,6 @@ class TestRunWizard:
             m_text.return_value.ask.side_effect = [
                 "Save test topic",  # topic
                 "2",                # num_agents
-                "0.7",              # agent 1 temp
-                "0.7",              # agent 2 temp
                 "1",                # num_rounds
                 "5",                # max_workers
                 str(yaml_path),     # save path

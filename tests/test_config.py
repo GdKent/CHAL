@@ -257,7 +257,7 @@ def test_to_dict_returns_dict():
     expected_keys = {
         "metadata", "debate", "agents", "adjudication",
         "stages", "outputs", "scribe", "collaborative",
-        "bloodsport", "moderator", "parallel",
+        "bloodsport", "moderator", "parallel", "defense_boost",
     }
     assert set(d.keys()) == expected_keys
 
@@ -509,6 +509,112 @@ def test_adjudication_config_default_logic_system():
     from chal.config import AdjudicationConfig
     cfg = AdjudicationConfig()
     assert cfg.logic_system == "CLASSICAL_INFORMAL_BAYESIAN"
+
+
+# ==============================================
+# DefenseBoostConfig Tests
+# ==============================================
+
+def test_defense_boost_config_defaults():
+    """DefenseBoostConfig has correct defaults."""
+    from chal.config import DefenseBoostConfig
+    cfg = DefenseBoostConfig()
+    assert cfg.enabled is True
+    assert cfg.base_boost == 0.02
+    assert cfg.boost_increment == 0.01
+    assert cfg.max_boost_per_defense == 0.05
+    assert cfg.max_cumulative_boost == 0.20
+
+
+def test_defense_boost_config_from_yaml(tmp_path):
+    """defense_boost section is parsed from YAML correctly."""
+    yaml_content = textwrap.dedent("""\
+        metadata:
+          name: "Defense Boost Test"
+          version: "1.0"
+        debate:
+          topic: "Test topic"
+          max_rounds: 1
+        agents:
+          - name: "Agent-A"
+            persona: "EMPIRICIST"
+            model: "gpt-4o"
+            temperature: 0.7
+        adjudication:
+          model: "gpt-4o"
+          logic_weight: 1.0
+          ethics_weight: 0.0
+          logic_system: "Classical logic"
+          ethics_system: "None"
+        defense_boost:
+          enabled: false
+          base_boost: 0.05
+          boost_increment: 0.02
+          max_boost_per_defense: 0.10
+          max_cumulative_boost: 0.30
+    """)
+    config_file = tmp_path / "defense_boost_test.yaml"
+    config_file.write_text(yaml_content)
+
+    from chal.config import DebateConfig
+    cfg = DebateConfig.from_yaml(config_file)
+
+    assert cfg.defense_boost.enabled is False
+    assert cfg.defense_boost.base_boost == 0.05
+    assert cfg.defense_boost.boost_increment == 0.02
+    assert cfg.defense_boost.max_boost_per_defense == 0.10
+    assert cfg.defense_boost.max_cumulative_boost == 0.30
+
+
+def test_defense_boost_config_missing_section(tmp_path):
+    """Missing defense_boost: section in YAML uses defaults."""
+    yaml_content = textwrap.dedent("""\
+        metadata:
+          name: "No Defense Boost"
+          version: "1.0"
+        debate:
+          topic: "Test topic"
+          max_rounds: 1
+        agents:
+          - name: "Agent-A"
+            persona: "EMPIRICIST"
+            model: "gpt-4o"
+            temperature: 0.7
+        adjudication:
+          model: "gpt-4o"
+          logic_weight: 1.0
+          ethics_weight: 0.0
+          logic_system: "Classical logic"
+          ethics_system: "None"
+    """)
+    config_file = tmp_path / "no_defense_boost.yaml"
+    config_file.write_text(yaml_content)
+
+    from chal.config import DebateConfig
+    cfg = DebateConfig.from_yaml(config_file)
+
+    assert cfg.defense_boost.enabled is True
+    assert cfg.defense_boost.base_boost == 0.02
+
+
+def test_defense_boost_config_to_dict():
+    """defense_boost round-trips through to_dict()."""
+    config = load_config('default')
+    d = config.to_dict()
+
+    assert "defense_boost" in d
+    assert d["defense_boost"]["enabled"] is True
+    assert d["defense_boost"]["base_boost"] == 0.02
+    assert d["defense_boost"]["boost_increment"] == 0.01
+    assert d["defense_boost"]["max_boost_per_defense"] == 0.05
+    assert d["defense_boost"]["max_cumulative_boost"] == 0.20
+
+
+def test_defense_boost_config_in_debate_config():
+    """DebateConfig includes DefenseBoostConfig from default.yaml."""
+    config = load_config('default')
+    assert hasattr(config, "defense_boost")
+    assert config.defense_boost.enabled is True
 
 
 if __name__ == "__main__":

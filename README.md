@@ -232,7 +232,7 @@ flowchart TD
 
 **Stage 0: Briefing.** The system initializes each agent with universal debate rules governing logical reasoning and argumentation norms, applies persona-specific prompts that encode distinct epistemological frameworks, and establishes the central topic for dialectical examination.
 
-**Stage 1: Opening Positions.** Agents generate initial belief structures conforming to the CBS schema, articulating their thesis statements alongside supporting claims, foundational assumptions, and empirical evidence. The system validates each belief graph for structural integrity, rejecting malformed beliefs containing orphaned claims (assertions lacking evidentiary support) or circular dependencies (propositions that depend on themselves through transitive relationships). Agents receive up to three opportunities to revise invalid beliefs before proceeding.
+**Stage 1: Opening Positions.** Agents generate initial belief structures conforming to the CBS schema, beginning with key term definitions (D#) that ground foundational assumptions and empirical evidence, then articulating supporting claims, counterpositions, uncertainties, and finally a thesis statement. The system validates each belief graph for structural integrity, rejecting malformed beliefs containing orphaned claims (assertions lacking evidentiary support), circular dependencies (propositions that depend on themselves through transitive relationships), or broken cross-references between definitions and the nodes they support. Agents receive up to three opportunities to revise invalid beliefs before proceeding.
 
 **Moderator Roadmap Generation (Moderated Mode Only).** When `stage2_mode` is set to `"moderated"`, a dedicated moderator agent analyzes the debate topic and decomposes it into an ordered sequence of sub-topics, one per round. Each sub-topic includes a title, description, rationale, and guiding questions. In interactive mode, the user can review and edit the roadmap before the debate begins — reordering, adding, removing, or editing sub-topics, or regenerating the roadmap entirely. The number of rounds can also be adjusted to match the roadmap. See [Cross-Examination Modes](#cross-examination-modes) for details.
 
@@ -250,32 +250,47 @@ The **Stage 4: Adjudication** process (used in rebuttal mode, or embedded inline
 
 ### CBS Belief Schema
 
-Formal JSON structure for tracking agent beliefs:
+Formal JSON structure for tracking agent beliefs. Each node type has a unique ID prefix:
+
+- **D# (Definitions)**: Key term definitions that ground assumptions and evidence. D# strengths act as ceilings on dependent nodes.
+- **A# (Assumptions)**: Foundational premises (foundational, empirical, methodological, scoping). Each references its grounding D# definitions.
+- **C# (Claims)**: Substantive propositions with explicit dependencies, predictions, and inference chains.
+- **E# (Evidence)**: Supporting data with source citations. Each references its grounding D# definitions.
+- **U# (Uncertainties)**: Open questions targeting specific nodes, ranked by importance.
+- **X# (Counterpositions)**: Self-identified objections with prepared responses and attack strategies.
 
 ```json
 {
   "schema_version": "CBS",
-  "thesis": {
-    "stance": "Core position",
-    "summary_bullets": ["Key point 1", "Key point 2"],
-    "confidence": 0.75
-  },
-  "claims": [
+  "definitions": [
     {
-      "id": "C1",
-      "statement": "Specific proposition",
-      "depends_on": ["A1", "E1"],
-      "confidence": 0.8
+      "id": "D1",
+      "term": "free will",
+      "definition": "The capacity of agents to choose...",
+      "strength": 0.8,
+      "used_by": ["A1", "E1"]
     }
   ],
-  "assumptions": [{"id": "A1", "statement": "Foundational premise"}],
-  "evidence": [{"id": "E1", "type": "empirical", "summary": "Supporting data"}],
-  "predictions": [{"id": "P1", "statement": "Testable prediction"}],
-  "normative_implications": [{"id": "N1", "statement": "Ethical consequence"}]
+  "thesis": {
+    "stance": "Core position (A1, C1, E1)",
+    "summary_bullets": ["Key point 1", "Key point 2"],
+    "strength": 0.72
+  },
+  "assumptions": [
+    {"id": "A1", "type": "foundational", "statement": "...", "strength": 0.75, "supported_by_definitions": ["D1"]}
+  ],
+  "claims": [
+    {"id": "C1", "statement": "...", "depends_on": ["A1", "E1"], "strength": 0.7}
+  ],
+  "evidence": [
+    {"id": "E1", "type": "empirical", "summary": "...", "strength": 0.8, "supported_by_definitions": ["D1"]}
+  ],
+  "uncertainties": [{"id": "U1", "targets": ["C1"], "question": "...", "importance": "medium"}],
+  "counterpositions": [{"id": "X1", "targets": ["C1"], "attack_type": "rebutting", "attack_strategy": "present_counter_evidence"}]
 }
 ```
 
-The schema implements comprehensive dependency tracking whereby propositional claims explicitly reference their supporting assumptions and evidence through unique identifiers, forming directed acyclic graphs amenable to graph-theoretic analysis. Confidence scores attached to each element undergo Bayesian propagation such that dependent claims cannot maintain confidence levels exceeding their weakest supporting elements, ensuring epistemic coherence. The validation system performs structural integrity checks detecting orphaned claims, circular dependencies, and broken references before accepting belief updates. The patchable architecture enables incremental belief revisions without requiring complete belief reconstruction, supporting efficient iterative refinement during multi-round debates.
+The schema implements comprehensive dependency tracking whereby definitions ground assumptions and evidence, which in turn support propositional claims, forming directed acyclic graphs amenable to graph-theoretic analysis. Strength scores (0.0–1.0) propagate through the graph: D# strengths act as ceilings on dependent A#/E# nodes, claim strengths are capped by their weakest active dependency, and thesis strength is computed deterministically from active claim strengths. The validation system performs structural integrity checks detecting orphaned claims, circular dependencies, broken references, and bidirectional cross-reference mismatches before accepting belief updates. The patchable architecture enables incremental belief revisions without requiring complete belief reconstruction, supporting efficient iterative refinement during multi-round debates.
 
 ### Agent Personas
 

@@ -275,6 +275,26 @@ scribe:
 #   max_revisions: -1                # Max total revisions (-1 = unlimited)
 
 # ============================================================================
+# DEFENSE BOOST SETTINGS
+# ============================================================================
+# Mechanical strength increases for nodes that survive adversarial challenges.
+# When a node is targeted by a critique and the rebuttal wins (REBUTTAL_VALID),
+# the system automatically applies a formula-driven strength boost.
+#
+# Formula: boost(n) = min(base_boost + boost_increment * n, max_boost_per_defense)
+# Ceiling: min(current + boost, original_strength + max_cumulative_boost, 1.0)
+# Where n = consecutive successful defenses (1-indexed).
+#
+# The boost resets to 0 consecutive defenses when a node loses a defense
+# (CRITIQUE_VALID). Nodes not attacked in a round are unchanged.
+defense_boost:
+  enabled: true                    # Master switch — set false to disable all defense boosts
+  base_boost: 0.02                # Starting constant in the formula (default: 0.02)
+  boost_increment: 0.01           # Added per consecutive defense (default: 0.01)
+  max_boost_per_defense: 0.05     # Maximum boost for a single defense (default: 0.05)
+  max_cumulative_boost: 0.20      # Maximum total boost above original_strength (default: 0.20)
+
+# ============================================================================
 # PARALLELIZATION SETTINGS
 # ============================================================================
 # Fire independent API calls concurrently within each stage to reduce latency.

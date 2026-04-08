@@ -58,6 +58,7 @@ def export_debate_graph(
 
     # Color scheme by node type
     node_colors = {
+        "definition": "#2AA198",  # Teal
         "assumption": "#3498db",  # Blue
         "claim": "#e74c3c",       # Red
         "evidence": "#2ecc71",    # Green
@@ -83,7 +84,9 @@ def export_debate_graph(
             node_data = node_info["data"]
 
             # Determine label
-            if node_type == "claim":
+            if node_type == "definition":
+                label = f"{node_id}: {node_data.get('term', '')[:50]}"
+            elif node_type == "claim":
                 label = f"{node_id}: {node_data.get('statement', '')[:50]}..."
             elif node_type == "assumption":
                 label = f"{node_id}: {node_data.get('statement', '')[:50]}..."
@@ -261,6 +264,10 @@ def export_debate_graph(
 
             <div class="legend">
                 <h3>Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2AA198;"></div>
+                    <span>Definition (D#)</span>
+                </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #3498db;"></div>
                     <span>Assumption (A#)</span>

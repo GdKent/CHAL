@@ -66,11 +66,13 @@ def test_build_graph_assumptions_only():
     belief = create_sample_belief(num_assumptions=3, num_claims=0, num_evidence=0)
     graph = BeliefGraph(belief)
 
-    # 3 assumptions + THESIS
-    assert len(graph.nodes) == 4
+    # 3 assumptions + THESIS + D1 (auto-created to support A#)
+    assert len(graph.nodes) == 5
     assert "THESIS" in graph.nodes
     assert sum(1 for n in graph.nodes.values() if n["type"] == "assumption") == 3
-    assert len(graph.edges) == 0
+    assert sum(1 for n in graph.nodes.values() if n["type"] == "definition") == 1
+    # 3 edges: D1→A1, D1→A2, D1→A3 (supports)
+    assert len(graph.edges) == 3
 
 
 @pytest.mark.unit
@@ -100,6 +102,7 @@ def test_build_graph_complete(test_beliefs):
     assert "THESIS" in graph.nodes
     node_types = {n["type"] for n in graph.nodes.values()}
     assert "thesis" in node_types
+    assert "definition" in node_types
     assert "assumption" in node_types
     assert "claim" in node_types
     assert "evidence" in node_types
@@ -262,6 +265,7 @@ def test_counterposition_targets_evidence():
             "id": "X1",
             "targets": ["E1"],
             "attack_type": "undermining",
+            "attack_strategy": "challenge_evidence",
             "statement": "Evidence is flawed",
             "my_response": "No it isn't",
             "response_sufficiency": "sufficient"
@@ -565,6 +569,7 @@ def test_challenges_edges_dont_count_as_support():
             "id": "X1",
             "targets": ["C1"],
             "attack_type": "rebutting",
+            "attack_strategy": "present_counter_evidence",
             "statement": "Test",
             "my_response": "Test",
             "response_sufficiency": "sufficient"
@@ -843,5 +848,178 @@ def test_get_graph_metrics_edge_counts():
     graph = BeliefGraph(belief)
     metrics = graph.get_graph_metrics()
 
-    # 3 edges: A1→C1 (supports), E1→C1 (supports), C1→THESIS (supports)
-    assert metrics["total_edges"] == 3
+    # 5 edges: D1→A1, D1→E1 (supports), A1→C1, E1→C1 (supports), C1→THESIS (supports)
+    assert metrics["total_edges"] == 5
+
+
+# ==============================================
+# 10. D# Definition Node Graph Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_definition_nodes_created():
+    """Test that D# nodes are created from definitions."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1)
+    graph = BeliefGraph(belief)
+
+    assert "D1" in graph.nodes
+    assert graph.nodes["D1"]["type"] == "definition"
+    assert graph.nodes["D1"]["data"]["term"] == "test term"
+
+
+@pytest.mark.unit
+def test_definition_nodes_not_created_when_no_ae():
+    """Test that no D# nodes are created when there are no A# or E# nodes."""
+    belief = create_sample_belief(num_assumptions=0, num_claims=0, num_evidence=0)
+    graph = BeliefGraph(belief)
+
+    definition_nodes = [nid for nid, n in graph.nodes.items() if n["type"] == "definition"]
+    assert len(definition_nodes) == 0
+
+
+@pytest.mark.unit
+def test_definition_supports_edges():
+    """Test that D# used_by produces 'supports' edges to A# and E#."""
+    belief = create_sample_belief(num_assumptions=2, num_evidence=1)
+    graph = BeliefGraph(belief)
+
+    # D1 should support A1, A2, E1
+    d_edges = [(f, t, et) for f, t, et in graph.edges if f == "D1" and et == "supports"]
+    target_ids = {t for _, t, _ in d_edges}
+
+    assert "A1" in target_ids
+    assert "A2" in target_ids
+    assert "E1" in target_ids
+    assert len(d_edges) == 3
+
+
+@pytest.mark.unit
+def test_definition_in_support_chain():
+    """Test that D# appears in transitive support chain for claims."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=0)
+    belief["claims"][0]["depends_on"] = ["A1"]
+
+    graph = BeliefGraph(belief)
+    chain = graph.get_support_chain("C1")
+
+    # C1 ← A1 ← D1
+    assert "A1" in chain
+    assert "D1" in chain
+
+
+@pytest.mark.unit
+def test_definition_in_thesis_support_chain():
+    """Test that D# appears in transitive support chain for THESIS."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=0)
+    belief["claims"][0]["depends_on"] = ["A1"]
+
+    graph = BeliefGraph(belief)
+    chain = graph.get_support_chain("THESIS")
+
+    # THESIS ← C1 ← A1 ← D1
+    assert "C1" in chain
+    assert "A1" in chain
+    assert "D1" in chain
+
+
+@pytest.mark.unit
+def test_definition_dependent_nodes():
+    """Test that D# dependents include A#, C#, and THESIS."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=0)
+    belief["claims"][0]["depends_on"] = ["A1"]
+
+    graph = BeliefGraph(belief)
+    dependents = graph.get_dependent_nodes("D1")
+
+    # D1 → A1 → C1 → THESIS
+    assert "A1" in dependents
+    assert "C1" in dependents
+    assert "THESIS" in dependents
+
+
+@pytest.mark.unit
+def test_definition_metrics_count():
+    """Test that graph metrics include D# definition count."""
+    belief = create_sample_belief(num_assumptions=2, num_evidence=1)
+    graph = BeliefGraph(belief)
+
+    metrics = graph.get_graph_metrics()
+
+    assert "definitions" in metrics["node_counts"]
+    assert metrics["node_counts"]["definitions"] == 1
+
+
+@pytest.mark.unit
+def test_definition_metrics_count_zero():
+    """Test that definition count is zero when no A#/E# exist."""
+    belief = create_sample_belief(num_assumptions=0, num_claims=0, num_evidence=0)
+    graph = BeliefGraph(belief)
+
+    metrics = graph.get_graph_metrics()
+
+    assert metrics["node_counts"]["definitions"] == 0
+
+
+@pytest.mark.unit
+def test_definition_critical_path():
+    """Test that critical path includes D# when it's the sole support chain."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=0)
+    belief["claims"][0]["depends_on"] = ["A1"]
+    belief["claims"][0]["strength"] = 0.85  # High strength to trigger critical path
+
+    graph = BeliefGraph(belief)
+    critical_paths = graph.find_critical_paths()
+
+    # A1 → C1 is a critical path (sole support)
+    # D1 → A1 is upstream but critical_paths finds A#→C# paths
+    assert len(critical_paths) > 0
+    # At least one path should include A1
+    assert any("A1" in path for path in critical_paths)
+
+
+@pytest.mark.unit
+def test_multiple_definitions_graph():
+    """Test graph with multiple D# nodes supporting different A#/E#."""
+    belief = create_sample_belief(num_assumptions=2, num_claims=1, num_evidence=1)
+    belief["claims"][0]["depends_on"] = ["A1", "E1"]
+
+    # Replace auto-generated D1 with two separate definitions
+    belief["definitions"] = [
+        {
+            "id": "D1",
+            "term": "term one",
+            "definition": "First definition.",
+            "strength": 0.9,
+            "strength_justification": "Well-established",
+            "status": "active",
+            "used_by": ["A1"]
+        },
+        {
+            "id": "D2",
+            "term": "term two",
+            "definition": "Second definition.",
+            "strength": 0.85,
+            "strength_justification": "Commonly accepted",
+            "status": "active",
+            "used_by": ["A2", "E1"]
+        }
+    ]
+    # Update supported_by_definitions to match
+    belief["assumptions"][0]["supported_by_definitions"] = ["D1"]
+    belief["assumptions"][1]["supported_by_definitions"] = ["D2"]
+    belief["evidence"][0]["supported_by_definitions"] = ["D2"]
+
+    graph = BeliefGraph(belief)
+
+    assert "D1" in graph.nodes
+    assert "D2" in graph.nodes
+
+    # D1→A1, D2→A2, D2→E1
+    d1_edges = [(f, t) for f, t, et in graph.edges if f == "D1" and et == "supports"]
+    d2_edges = [(f, t) for f, t, et in graph.edges if f == "D2" and et == "supports"]
+
+    assert ("D1", "A1") in d1_edges
+    assert len(d1_edges) == 1
+    assert ("D2", "A2") in d2_edges
+    assert ("D2", "E1") in d2_edges
+    assert len(d2_edges) == 2

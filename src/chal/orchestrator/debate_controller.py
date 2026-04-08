@@ -36,11 +36,12 @@ from chal.orchestrator.adjudicator import Adjudicator
 from chal.orchestrator.moderator import Moderator
 from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary, validate_stage2_questions
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
-from chal.convergence import calculate_claim_agreement, format_convergence_summary, get_convergence_trajectory_summary
+from chal.convergence import calculate_claim_agreement, calculate_definitional_alignment, format_convergence_summary, get_convergence_trajectory_summary
 from chal.beliefs.io import parse_model_output_to_belief, belief_to_markdown
 from chal.beliefs.io import project_for_embedding
+from chal.beliefs.patches import initialize_defense_tracking
 from chal.beliefs.graph_visualizer import export_debate_graph
-from chal.config import DebateConfig, AdjudicationConfig
+from chal.config import DebateConfig, AdjudicationConfig, DefenseBoostConfig
 from chal.utilities.training_data import DebateRecorder
 from chal.utilities.reporting import generate_analysis_report, generate_analysis_json
 from chal.utilities.parallel import ParallelDispatcher, WorkItem
@@ -255,6 +256,53 @@ class DebateController:
     def _add_to_markdown(self, content: str) -> None:
         """Add content to the clean markdown transcript."""
         self.markdown_transcript.append(content)
+
+    def _log_definition_statistics(self) -> None:
+        """Log end-of-debate D# (definition) statistics per agent."""
+        lines = ["", "=" * 70, "DEFINITION STATISTICS", "=" * 70]
+
+        for agent in self.agents:
+            belief = agent.belief if hasattr(agent, "belief") else {}
+            if not isinstance(belief, dict):
+                continue
+            defs = belief.get("definitions", [])
+            if not defs:
+                lines.append(f"  {agent.name}: no definitions")
+                continue
+
+            total = len(defs)
+            active = [d for d in defs if d.get("status") != "retracted"]
+            retracted = [d for d in defs if d.get("status") == "retracted"]
+            strengths = [d.get("strength", 0.0) for d in active]
+            avg_str = sum(strengths) / len(strengths) if strengths else 0.0
+
+            lines.append(f"  {agent.name}: {total} definitions "
+                         f"({len(active)} active, {len(retracted)} retracted)")
+            lines.append(f"    Avg D# strength (active): {avg_str:.2f}")
+
+            # Most challenged: D# IDs that appear in X# targets across ALL agents
+            challenged_counts: Dict[str, int] = {}
+            for other_agent in self.agents:
+                other_belief = other_agent.belief if hasattr(other_agent, "belief") else {}
+                if not isinstance(other_belief, dict):
+                    continue
+                for x in other_belief.get("counterpositions", []):
+                    for tid in x.get("targets", []):
+                        if tid.startswith("D"):
+                            challenged_counts[tid] = challenged_counts.get(tid, 0) + 1
+
+            # Filter to this agent's definitions
+            agent_def_ids = {d.get("id") for d in defs}
+            agent_challenged = {
+                k: v for k, v in challenged_counts.items() if k in agent_def_ids
+            }
+            if agent_challenged:
+                top = sorted(agent_challenged.items(), key=lambda x: x[1], reverse=True)[:3]
+                top_str = ", ".join(f"{did} ({cnt}x)" for did, cnt in top)
+                lines.append(f"    Most challenged: {top_str}")
+
+        lines.append("=" * 70)
+        self._log("\n".join(lines), "INFO")
 
     def _retry_on_parse_failure(self, generate_fn, is_valid_fn, stage_label, agent_name,
                                  initial_result=None):
@@ -493,10 +541,13 @@ class DebateController:
         self.current_round_key = "round-0"
 
         # --- GATHER: Fire all opening-position calls in parallel ---
+        s1_max_retries = self.config.stages.parse_retries if self.config else 3
         items = [
             WorkItem(
                 key=agent.name,
-                callable=lambda a=agent: _generate_opening_position(a, topic),
+                callable=lambda a=agent: _generate_opening_position(
+                    a, topic, max_retries=s1_max_retries, log_fn=self._log,
+                ),
                 context={"agent": agent},
             )
             for agent in self.agents
@@ -545,6 +596,7 @@ class DebateController:
                 if graph_metrics:
                     self._log(f"Graph metrics: {graph_metrics['total_nodes']} nodes, {graph_metrics['total_edges']} edges, {graph_metrics['critical_path_count']} critical paths", "INFO")
 
+                initialize_defense_tracking(belief_obj)                      # set original_strength + consecutive_defenses
                 agent.set_internal_belief_obj(belief_obj)                   # store structured JSON (auto-rebuilds graph)
                 # Generate Markdown from JSON (no longer requested from model)
                 md_view = belief_to_markdown(belief_obj)
@@ -636,6 +688,7 @@ class DebateController:
                 pairs.append((challenger, target))
 
         # --- GATHER: Fire all cross-examination calls in parallel ---
+        s2_max_retries = self.config.stages.parse_retries if self.config else 3
         items = [
             WorkItem(
                 key=f"{c.name}→{t.name}",
@@ -643,6 +696,8 @@ class DebateController:
                     challenger=c, target=t, topic=topic, config=self.config,
                     previous_challenges=self.previous_rounds_challenges.get(f"{c.name}→{t.name}", []),
                     focus_subtopic=focus_subtopic,
+                    max_retries=s2_max_retries,
+                    log_fn=self._log,
                 ),
                 context={"challenger": c, "target": t},
             )
@@ -659,21 +714,12 @@ class DebateController:
 
             self._log(f"\n--- Cross-examination: {challenger_name} → {target_name} ---", "INFO")
 
-            r = self._retry_on_parse_failure(
-                generate_fn=lambda c=challenger, t=target: _generate_cross_examination(
-                    challenger=c, target=t, topic=topic, config=self.config,
-                    previous_challenges=self.previous_rounds_challenges.get(f"{c.name}→{t.name}", []),
-                    focus_subtopic=focus_subtopic,
-                ),
-                is_valid_fn=_validate_cross_exam_result,
-                stage_label="Stage 2",
-                agent_name=pair_key,
-                initial_result=work_result,
-            )
-
-            if r is None:
+            if work_result.error is not None:
+                self._log(f"[Stage 2] Error for {pair_key}: {work_result.error}", "ERROR")
                 self._notify("agent_complete", {"agent_name": challenger_name, "stage": 2, "action": f"Error questioning {target_name}"})
                 continue
+
+            r = work_result.result
 
             response = r["response"]
             prompt = r["prompt"]
@@ -800,11 +846,13 @@ class DebateController:
             agents_with_entries.append((target_agent, relevant_entries))
 
         # --- GATHER: Fire all rebuttal calls in parallel ---
+        s3_max_retries = self.config.stages.parse_retries if self.config else 3
         items = [
             WorkItem(
                 key=target_agent.name,
                 callable=lambda ta=target_agent, re=relevant_entries: _generate_rebuttal(
                     target_agent=ta, relevant_entries=re, topic=topic, config=self.config,
+                    max_retries=s3_max_retries, log_fn=self._log,
                 ),
                 context={"target_agent": target_agent, "relevant_entries": relevant_entries},
             )
@@ -820,19 +868,12 @@ class DebateController:
             self._log(f"\n--- Processing rebuttals for: {target_name} ---", "INFO")
             self._log(f"Agent faces {len(relevant_entries)} question(s)", "INFO")
 
-            r = self._retry_on_parse_failure(
-                generate_fn=lambda ta=target_agent, re=relevant_entries: _generate_rebuttal(
-                    target_agent=ta, relevant_entries=re, topic=topic, config=self.config,
-                ),
-                is_valid_fn=lambda r: bool(r.get("rebuttals")),
-                stage_label="Stage 3",
-                agent_name=target_name,
-                initial_result=work_result,
-            )
-
-            if r is None:
+            if work_result.error is not None:
+                self._log(f"[Stage 3] Error for {target_name}: {work_result.error}", "ERROR")
                 self._notify("agent_complete", {"agent_name": target_name, "stage": 3, "action": "Rebuttal generation failed"})
                 continue
+
+            r = work_result.result
             response = r["response"]
             prompt = r["prompt"]
             rebuttals = r["rebuttals"]
@@ -1364,7 +1405,9 @@ class DebateController:
                     challenge=combined_challenge,
                     rebuttal=combined_rebuttal,
                     challenger=challenger_name,
-                    target=defender_name
+                    target=defender_name,
+                    max_retries=self.config.stages.parse_retries if self.config else 3,
+                    log_fn=self._log,
                 )
 
                 # Log the per-pair prompt and raw response for debugging
@@ -1470,10 +1513,14 @@ class DebateController:
                 complete_pairs.append((i, entry))
 
         # --- GATHER: Fire all adjudication calls in parallel ---
+        adj_max_retries = self.config.stages.parse_retries if self.config else 3
         items = [
             WorkItem(
                 key=f"{entry['challenger']}→{entry['target']}:{entry.get('qid', f'Q{i}')}",
-                callable=lambda e=entry: _run_adjudication(self.adjudicator, e, agent_by_name),
+                callable=lambda e=entry: _run_adjudication(
+                    self.adjudicator, e, agent_by_name,
+                    max_retries=adj_max_retries, log_fn=self._log,
+                ),
                 context={"entry_index": i},
             )
             for i, entry in complete_pairs
@@ -1493,7 +1540,10 @@ class DebateController:
             self._log(f"Rebuttal: {entry['rebuttal'][:100]}...", "DEBUG")
 
             r = self._retry_on_parse_failure(
-                generate_fn=lambda e=entry: _run_adjudication(self.adjudicator, e, agent_by_name),
+                generate_fn=lambda e=entry: _run_adjudication(
+                    self.adjudicator, e, agent_by_name,
+                    max_retries=adj_max_retries, log_fn=self._log,
+                ),
                 is_valid_fn=lambda r: True,
                 stage_label="Stage 4",
                 agent_name=item.key,
@@ -1625,6 +1675,7 @@ class DebateController:
         stage3_mode = self.config.stage3_mode if self.config else "rebuttal"
         generation_temp = self.config.stages.generation_temperature if self.config else 0.2
         max_retries = self.config.stages.parse_retries if self.config else 3
+        defense_boost_config = self.config.defense_boost if self.config else None
 
         # --- GATHER: Build work items for agents with adjudication results ---
         items = [
@@ -1637,6 +1688,7 @@ class DebateController:
                     last_rebuttals_patches=self.last_rebuttals_patches.get(a.name, []),
                     generation_temp=generation_temp,
                     max_retries=max_retries,
+                    defense_boost_config=defense_boost_config,
                 ),
                 context={"agent": agent},
             )
@@ -2201,13 +2253,20 @@ class DebateController:
                         similarity_threshold=self.config.convergence.similarity_threshold
                     )
 
+                    # Calculate definitional alignment
+                    def_alignment_data = calculate_definitional_alignment(
+                        agent_beliefs,
+                        embedding_model=embedding_tracker.model,
+                    )
+
                     # Store in history if tracking enabled
                     if self.config.convergence.track_history:
                         self.convergence_history.append({
                             "round": round_num,
                             "convergence_score": convergence_data["convergence_score"],
                             "shared_claim_pairs": convergence_data["shared_claim_pairs"],
-                            "unique_claims_count": len(convergence_data["unique_claims"])
+                            "unique_claims_count": len(convergence_data["unique_claims"]),
+                            "definitional_alignment_score": def_alignment_data["definitional_alignment_score"],
                         })
 
                     # Log convergence summary
@@ -2216,7 +2275,8 @@ class DebateController:
                         conv_summary = format_convergence_summary(
                             convergence_data,
                             agent_names,
-                            round_number=round_num
+                            round_number=round_num,
+                            definitional_data=def_alignment_data,
                         )
                         self._log(f"\n{conv_summary}", "INFO")
 
@@ -2332,6 +2392,9 @@ class DebateController:
             # Log agent stats (display handled by callback / display layer)
             self._log(f"Final agent stats: {json.dumps(self.agent_stats, default=str)}", "INFO")
 
+            # Log D# statistics per agent
+            self._log_definition_statistics()
+
             # Log convergence trajectory (if enabled)
             if self.config and hasattr(self.config, 'convergence') and self.config.convergence.enabled:
                 if self.config.convergence.display_in_final_summary and self.convergence_history:
@@ -2431,7 +2494,8 @@ class DebateController:
 
 # --- Pure Functions for Parallel Dispatch ---
 
-def _generate_opening_position(agent, topic: str) -> dict:
+def _generate_opening_position(agent, topic: str, max_retries: int = 3,
+                               log_fn=None) -> dict:
     """Pure function: generate an opening position for one agent.
 
     Handles the full API call → parse → graph-validation retry loop.
@@ -2442,12 +2506,24 @@ def _generate_opening_position(agent, topic: str) -> dict:
     method.
     """
     from chal.beliefs.belief_graph import BeliefGraph
+    from chal.utilities.retry import generate_with_retry
+    from chal.utilities.validators import validate_stage1_output, STAGE1_REMEDIATION_HINTS
 
     opening_prompt = prompts.build_stage_1_belief_prompt_cbs(
         topic=topic, agent_name=agent.name, persona_label=agent.persona_label
     )
     stage_request = [Message(role="user", content=opening_prompt)]
-    response = agent.generate(stage_request)
+
+    # Layer 1: Retry until we get parseable, schema-valid JSON
+    response, retry_records = generate_with_retry(
+        agent=agent,
+        messages=stage_request,
+        validator_fn=validate_stage1_output,
+        max_retries=max_retries,
+        stage_label=f"Stage 1 Opening Position ({agent.name})",
+        log_fn=log_fn,
+        remediation_hints=STAGE1_REMEDIATION_HINTS,
+    )
 
     belief_obj, md_view, errs = parse_model_output_to_belief(response.content)
 
@@ -2538,15 +2614,19 @@ def _generate_opening_position(agent, topic: str) -> dict:
         "prompt": opening_prompt,
         "graph_metrics": graph_metrics,
         "validation_logs": validation_logs,
+        "retry_records": retry_records,
     }
 
 
 def _generate_cross_examination(challenger, target, topic, config, previous_challenges,
-                                 focus_subtopic) -> dict:
+                                 focus_subtopic, max_retries=3, log_fn=None) -> dict:
     """Pure function: generate cross-examination questions from challenger to target.
 
     Returns a dict of results for the sequential apply step.
     """
+    from chal.utilities.retry import generate_with_retry
+    from chal.utilities.validators import validate_stage2_output, STAGE2_REMEDIATION_HINTS
+
     challenger_name = challenger.name
     target_name = target.name
 
@@ -2585,7 +2665,17 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
 
     stage_request = [Message(role="user", content=prompt)]
     generation_temp = config.stages.generation_temperature if config else 0.2
-    response = challenger.generate(stage_request, temperature=generation_temp)
+
+    response, retry_records = generate_with_retry(
+        agent=challenger,
+        messages=stage_request,
+        validator_fn=validate_stage2_output,
+        max_retries=max_retries,
+        stage_label="Stage 2 Cross-Examination",
+        log_fn=log_fn,
+        temperature=generation_temp,
+        remediation_hints=STAGE2_REMEDIATION_HINTS,
+    )
 
     # Parse the FIRST fenced JSON block -> {"questions":[...]}
     questions_obj = _extract_first_json_block(response.content)
@@ -2603,14 +2693,20 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
         "parsed_challenges": parsed_challenges,
         "ch_belief_obj": ch_belief_obj,
         "tg_belief_obj": tg_belief_obj,
+        "retry_records": retry_records,
     }
 
 
-def _generate_rebuttal(target_agent, relevant_entries, topic, config) -> dict:
+def _generate_rebuttal(target_agent, relevant_entries, topic, config,
+                       max_retries=3, log_fn=None) -> dict:
     """Pure function: generate rebuttals for one target agent.
 
     Returns a dict of results for the sequential apply step.
     """
+    from functools import partial
+    from chal.utilities.retry import generate_with_retry
+    from chal.utilities.validators import validate_stage3_output, STAGE3_REMEDIATION_HINTS
+
     target_name = target_agent.name
 
     questions_payload = {
@@ -2625,6 +2721,9 @@ def _generate_rebuttal(target_agent, relevant_entries, topic, config) -> dict:
         ]
     }
     received_questions_json = json.dumps(questions_payload, ensure_ascii=False, indent=2)
+
+    # Collect expected qids for coverage validation
+    expected_qids = [q["qid"] for q in questions_payload["questions"]]
 
     tgt_belief_obj = target_agent.get_internal_belief_obj()
     tgt_belief_json = json.dumps(tgt_belief_obj, ensure_ascii=False, indent=2) if tgt_belief_obj else ""
@@ -2645,7 +2744,18 @@ def _generate_rebuttal(target_agent, relevant_entries, topic, config) -> dict:
 
     stage_request = [Message(role="user", content=prompt)]
     generation_temp = config.stages.generation_temperature if config else 0.2
-    response = target_agent.generate(stage_request, temperature=generation_temp)
+
+    validator = partial(validate_stage3_output, expected_qids=expected_qids)
+    response, retry_records = generate_with_retry(
+        agent=target_agent,
+        messages=stage_request,
+        validator_fn=validator,
+        max_retries=max_retries,
+        stage_label="Stage 3 Rebuttal",
+        log_fn=log_fn,
+        temperature=generation_temp,
+        remediation_hints=STAGE3_REMEDIATION_HINTS,
+    )
 
     # Parse JSON: prompt requests a single block with both "rebuttals" and "patches" keys.
     # Fallback: if two separate blocks exist, treat block[0] as rebuttals, block[1] as patches.
@@ -2676,10 +2786,11 @@ def _generate_rebuttal(target_agent, relevant_entries, topic, config) -> dict:
         "received_questions_json": received_questions_json,
         "tgt_belief_obj": tgt_belief_obj,
         "relevant_entries": relevant_entries,
+        "retry_records": retry_records,
     }
 
 
-def _run_adjudication(adjudicator, entry, agent_by_name) -> dict:
+def _run_adjudication(adjudicator, entry, agent_by_name, max_retries=3, log_fn=None) -> dict:
     """Pure function: adjudicate a single challenge-rebuttal pair.
 
     Returns a dict of results for the sequential apply step.
@@ -2709,7 +2820,9 @@ def _run_adjudication(adjudicator, entry, agent_by_name) -> dict:
         challenger=entry["challenger"],
         target=entry["target"],
         challenger_belief_excerpt_json=challenger_belief_excerpt_json,
-        target_belief_excerpt_json=target_belief_excerpt_json
+        target_belief_excerpt_json=target_belief_excerpt_json,
+        max_retries=max_retries,
+        log_fn=log_fn,
     )
 
     return {"resolution": resolution}
@@ -2917,6 +3030,7 @@ def _run_stage5_for_agent(
     last_rebuttals_patches: list,
     generation_temp: float,
     max_retries: int,
+    defense_boost_config: DefenseBoostConfig | None = None,
 ) -> dict:
     """Pure function: run full Stage 5 belief update for one agent.
 
@@ -2952,6 +3066,7 @@ def _run_stage5_for_agent(
             relevant_entries, last_rebuttals_patches,
             generation_temp, max_retries,
             api_calls, log_entries, debug_entries,
+            defense_boost_config=defense_boost_config,
         )
 
     else:
@@ -2993,28 +3108,27 @@ def _run_stage5_bloodsport(
     label = "Stage 5 - Belief Update (Bloodsport)"
     stage_request = [Message(role="user", content=prompt)]
     log_entries.append((f"Calling model for {name} belief update (bloodsport)...", "INFO"))
-    response = agent.generate(stage_request, temperature=generation_temp)
-    api_calls.append({"prompt": prompt, "response": response, "label": label, "is_retry": False})
 
-    # Retry if no JSON blocks found
-    if not _extract_all_json_blocks(response.content):
-        for bs_attempt in range(1, max_retries + 1):
-            log_entries.append((
-                f"[Stage 5 Bloodsport] Parse retry {bs_attempt}/{max_retries} for {name}: no JSON blocks",
-                "WARN",
-            ))
-            response = agent.generate(stage_request, temperature=generation_temp)
-            api_calls.append({
-                "prompt": prompt, "response": response,
-                "label": f"Stage 5 - Bloodsport retry {bs_attempt}",
-                "is_retry": True,
-            })
-            if _extract_all_json_blocks(response.content):
-                log_entries.append((
-                    f"[Stage 5 Bloodsport] Retry {bs_attempt} succeeded for {name}",
-                    "INFO",
-                ))
-                break
+    from functools import partial
+    from chal.utilities.retry import generate_with_retry
+    from chal.utilities.validators import validate_stage5_phase1_output, STAGE5_PHASE1_REMEDIATION_HINTS
+
+    critique_valid_count = sum(
+        1 for entry in relevant_entries
+        if (entry.get("resolution") or {}).get("status") == "critique_valid"
+    )
+    validator = partial(validate_stage5_phase1_output, critique_valid_count=critique_valid_count)
+    response, retry_records = generate_with_retry(
+        agent=agent,
+        messages=stage_request,
+        validator_fn=validator,
+        max_retries=max_retries,
+        stage_label="Stage 5 Bloodsport",
+        log_fn=lambda msg, lvl: log_entries.append((msg, lvl)),
+        temperature=generation_temp,
+        remediation_hints=STAGE5_PHASE1_REMEDIATION_HINTS,
+    )
+    api_calls.append({"prompt": prompt, "response": response, "label": label, "is_retry": False})
 
     patch_result = _apply_patches_and_validate(
         name, response.content, prior_json, relevant_entries, md_view_fallback
@@ -3040,18 +3154,31 @@ def _run_stage5_cbs_two_phase(
     relevant_entries, last_rebuttals_patches,
     generation_temp, max_retries,
     api_calls, log_entries, debug_entries,
+    defense_boost_config: DefenseBoostConfig | None = None,
 ) -> dict:
     """CBS two-phase flow (Phase 1: enforcement, Phase 2: introspection)."""
     log_entries.append((f"Using two-phase CBS belief update for {name}", "DEBUG"))
 
     from chal.beliefs.patches import apply_patches, validate_patches
     from chal.beliefs.belief_graph import BeliefGraph
+    from functools import partial
+    from chal.utilities.retry import generate_with_retry
+    from chal.utilities.validators import (
+        validate_stage5_phase1_output, STAGE5_PHASE1_REMEDIATION_HINTS,
+        validate_stage5_phase2_output, STAGE5_PHASE2_REMEDIATION_HINTS,
+    )
 
     stage_3_patches_json = (
         json.dumps(last_rebuttals_patches, ensure_ascii=False, indent=2)
         if last_rebuttals_patches else ""
     )
     prior_belief_json_str = json.dumps(prior_json, ensure_ascii=False, indent=2)
+
+    # Count enforcement-relevant outcomes for validator
+    critique_valid_count = sum(
+        1 for entry in relevant_entries
+        if (entry.get("resolution") or {}).get("status") == "critique_valid"
+    )
 
     # --- PHASE 1: Adjudication Enforcement ---
     log_entries.append((f"Phase 1: Adjudication enforcement for {name}", "INFO"))
@@ -3063,40 +3190,25 @@ def _run_stage5_cbs_two_phase(
         stage_3_patches_json=stage_3_patches_json,
     )
 
-    phase1_response = agent.generate(
-        [Message(role="user", content=phase1_prompt)],
+    phase1_validator = partial(validate_stage5_phase1_output, critique_valid_count=critique_valid_count)
+    phase1_response, phase1_retries = generate_with_retry(
+        agent=agent,
+        messages=[Message(role="user", content=phase1_prompt)],
+        validator_fn=phase1_validator,
+        max_retries=max_retries,
+        stage_label="Stage 5 Phase 1",
+        log_fn=lambda msg, lvl: log_entries.append((msg, lvl)),
         temperature=generation_temp,
+        remediation_hints=STAGE5_PHASE1_REMEDIATION_HINTS,
     )
     api_calls.append({
         "prompt": phase1_prompt, "response": phase1_response,
         "label": "Stage 5 Phase 1 - Enforcement", "is_retry": False,
     })
 
-    # Parse Phase 1 patches (with retry if no JSON blocks)
+    # Parse Phase 1 patches
     phase1_patches = []
     phase1_blocks = _extract_all_json_blocks(phase1_response.content)
-    if not phase1_blocks:
-        for p1_attempt in range(1, max_retries + 1):
-            log_entries.append((
-                f"[Stage 5 Phase 1] Parse retry {p1_attempt}/{max_retries} for {name}: no JSON blocks",
-                "WARN",
-            ))
-            phase1_response = agent.generate(
-                [Message(role="user", content=phase1_prompt)],
-                temperature=generation_temp,
-            )
-            api_calls.append({
-                "prompt": phase1_prompt, "response": phase1_response,
-                "label": f"Stage 5 Phase 1 - Enforcement retry {p1_attempt}",
-                "is_retry": True,
-            })
-            phase1_blocks = _extract_all_json_blocks(phase1_response.content)
-            if phase1_blocks:
-                log_entries.append((
-                    f"[Stage 5 Phase 1] Retry {p1_attempt} succeeded for {name}",
-                    "INFO",
-                ))
-                break
 
     intermediate_belief = prior_json  # Default: unchanged
 
@@ -3126,11 +3238,7 @@ def _run_stage5_cbs_two_phase(
             log_entries.append((f"Phase 1: error applying patches for {name}: {e}", "ERROR"))
             intermediate_belief = prior_json
     else:
-        # Check enforcement compliance
-        critique_valid_count = sum(
-            1 for entry in relevant_entries
-            if (entry.get("resolution") or {}).get("status") == "critique_valid"
-        )
+        # Enforcement compliance fallback (validator retries may have been exhausted)
         if critique_valid_count > 0:
             log_entries.append((
                 f"ENFORCEMENT FAILURE: {name} received {critique_valid_count} CRITIQUE_VALID "
@@ -3144,6 +3252,42 @@ def _run_stage5_cbs_two_phase(
     phase1_summary = summarize_changes(phase1_patches, prior_json, intermediate_belief)
     log_entries.append((f"Phase 1 summary for {name}:\n{phase1_summary}", "DEBUG"))
 
+    # --- DEFENSE BOOSTS: Mechanical strength increases for REBUTTAL_VALID ---
+    intermediate_belief = apply_defense_boosts(
+        belief=intermediate_belief,
+        challenge_rebuttal_pairs=relevant_entries,
+        log_entries=log_entries,
+        agent_name=name,
+        boost_config=defense_boost_config,
+    )
+
+    # --- DEPENDENCY CEILING: Ensure defense-boosted claims don't exceed
+    # the minimum strength of their active dependencies ---
+    for claim in intermediate_belief.get("claims", []):
+        if claim.get("status") == "retracted":
+            continue
+        deps = claim.get("depends_on", [])
+        if not deps:
+            continue
+        dep_strengths = []
+        for dep_id in deps:
+            # Look up dependency strength from assumptions, evidence, or claims
+            for collection in ("assumptions", "evidence", "claims"):
+                for node in intermediate_belief.get(collection, []):
+                    if node["id"] == dep_id and node.get("status") != "retracted":
+                        dep_strengths.append(node.get("strength", 0.5))
+                        break
+        if dep_strengths:
+            min_dep = min(dep_strengths)
+            if claim["strength"] > min_dep:
+                log_entries.append((
+                    f"Dependency ceiling: {claim['id']} strength "
+                    f"{claim['strength']:.4f} → {min_dep:.4f} "
+                    f"(limited by weakest active dependency)",
+                    "INFO",
+                ))
+                claim["strength"] = min_dep
+
     # --- PHASE 2: Introspective Evaluation ---
     log_entries.append((f"Phase 2: Introspective evaluation for {name}", "INFO"))
 
@@ -3153,40 +3297,24 @@ def _run_stage5_cbs_two_phase(
         phase1_changes_summary=phase1_summary,
     )
 
-    phase2_response = agent.generate(
-        [Message(role="user", content=phase2_prompt)],
+    phase2_response, phase2_retries = generate_with_retry(
+        agent=agent,
+        messages=[Message(role="user", content=phase2_prompt)],
+        validator_fn=validate_stage5_phase2_output,
+        max_retries=max_retries,
+        stage_label="Stage 5 Phase 2",
+        log_fn=lambda msg, lvl: log_entries.append((msg, lvl)),
         temperature=generation_temp,
+        remediation_hints=STAGE5_PHASE2_REMEDIATION_HINTS,
     )
     api_calls.append({
         "prompt": phase2_prompt, "response": phase2_response,
         "label": "Stage 5 Phase 2 - Introspection", "is_retry": False,
     })
 
-    # Parse Phase 2 patches (with retry if no JSON blocks)
+    # Parse Phase 2 patches
     phase2_patches = []
     phase2_blocks = _extract_all_json_blocks(phase2_response.content)
-    if not phase2_blocks:
-        for p2_attempt in range(1, max_retries + 1):
-            log_entries.append((
-                f"[Stage 5 Phase 2] Parse retry {p2_attempt}/{max_retries} for {name}: no JSON blocks",
-                "WARN",
-            ))
-            phase2_response = agent.generate(
-                [Message(role="user", content=phase2_prompt)],
-                temperature=generation_temp,
-            )
-            api_calls.append({
-                "prompt": phase2_prompt, "response": phase2_response,
-                "label": f"Stage 5 Phase 2 - Introspection retry {p2_attempt}",
-                "is_retry": True,
-            })
-            phase2_blocks = _extract_all_json_blocks(phase2_response.content)
-            if phase2_blocks:
-                log_entries.append((
-                    f"[Stage 5 Phase 2] Retry {p2_attempt} succeeded for {name}",
-                    "INFO",
-                ))
-                break
 
     final_belief = intermediate_belief  # Default: Phase 1 result
 
@@ -3195,13 +3323,13 @@ def _run_stage5_cbs_two_phase(
         phase2_patches = phase2_patches_block.get("patches", [])
 
     if phase2_patches:
-        # GUARDRAIL: Filter reversals
+        # GUARDRAIL: No unilateral strengthening
         original_count = len(phase2_patches)
-        phase2_patches = filter_reversal_patches(phase2_patches, phase1_patches, intermediate_belief)
+        phase2_patches = filter_strength_increases(phase2_patches, intermediate_belief)
         filtered_count = original_count - len(phase2_patches)
         if filtered_count > 0:
             log_entries.append((
-                f"Phase 2: filtered {filtered_count} reversal patch(es) for {name}",
+                f"Phase 2: stripped/filtered {filtered_count} strength increase(s) for {name}",
                 "WARN",
             ))
 
@@ -3304,28 +3432,27 @@ def _run_stage5_legacy(
     label = "Stage 5 - Belief Update (Legacy)"
     stage_request = [Message(role="user", content=prompt)]
     log_entries.append((f"Calling model for {name} belief update (legacy)...", "INFO"))
-    response = agent.generate(stage_request, temperature=generation_temp)
-    api_calls.append({"prompt": prompt, "response": response, "label": label, "is_retry": False})
 
-    # Retry if no JSON blocks found
-    if not _extract_all_json_blocks(response.content):
-        for leg_attempt in range(1, max_retries + 1):
-            log_entries.append((
-                f"[Stage 5 Legacy] Parse retry {leg_attempt}/{max_retries} for {name}: no JSON blocks",
-                "WARN",
-            ))
-            response = agent.generate(stage_request, temperature=generation_temp)
-            api_calls.append({
-                "prompt": prompt, "response": response,
-                "label": f"Stage 5 - Legacy retry {leg_attempt}",
-                "is_retry": True,
-            })
-            if _extract_all_json_blocks(response.content):
-                log_entries.append((
-                    f"[Stage 5 Legacy] Retry {leg_attempt} succeeded for {name}",
-                    "INFO",
-                ))
-                break
+    from functools import partial
+    from chal.utilities.retry import generate_with_retry
+    from chal.utilities.validators import validate_stage5_phase1_output, STAGE5_PHASE1_REMEDIATION_HINTS
+
+    critique_valid_count = sum(
+        1 for entry in relevant_entries
+        if (entry.get("resolution") or {}).get("status") == "critique_valid"
+    )
+    validator = partial(validate_stage5_phase1_output, critique_valid_count=critique_valid_count)
+    response, retry_records = generate_with_retry(
+        agent=agent,
+        messages=stage_request,
+        validator_fn=validator,
+        max_retries=max_retries,
+        stage_label="Stage 5 Legacy",
+        log_fn=lambda msg, lvl: log_entries.append((msg, lvl)),
+        temperature=generation_temp,
+        remediation_hints=STAGE5_PHASE1_REMEDIATION_HINTS,
+    )
+    api_calls.append({"prompt": prompt, "response": response, "label": label, "is_retry": False})
 
     patch_result = _apply_patches_and_validate(
         name, response.content, prior_json, relevant_entries, md_view_fallback
@@ -3479,8 +3606,6 @@ def summarize_changes(patches: list, before: dict, after: dict) -> str:
             if "status" in changes:
                 parts.append(f"status→{changes['status']}")
             lines.append(f"- Updated {tid}: {', '.join(parts) if parts else 'fields updated'}")
-        elif op == "retire_claim":
-            lines.append(f"- Retired {p.get('target_id', '?')}")
         elif op == "add_evidence":
             item = p.get("item", {})
             lines.append(f"- Added evidence {item.get('id', '?')}: {item.get('summary', '')[:80]}")
@@ -3516,62 +3641,263 @@ def summarize_changes(patches: list, before: dict, after: dict) -> str:
     return "\n".join(lines) if lines else "(no changes)"
 
 
-def filter_reversal_patches(phase2_patches: list, phase1_patches: list,
-                            intermediate_belief: dict) -> list:
-    """Remove Phase 2 patches that would reverse Phase 1 enforcement.
+def compute_defense_boost(
+    consecutive_defenses: int,
+    base_boost: float = 0.02,
+    boost_increment: float = 0.01,
+    max_boost_per_defense: float = 0.05,
+) -> float:
+    """Calculate per-defense strength boost using stepwise curve.
 
-    Specifically: if Phase 1 weakened a node (claim/thesis), Phase 2 cannot
-    strengthen it back above its intermediate (post-Phase-1) value.
+    boost(n) = min(base_boost + boost_increment * n, max_boost_per_defense)
 
-    Returns a filtered copy of phase2_patches with reversals removed.
+    All parameters are sourced from DefenseBoostConfig; defaults here match
+    the config defaults for convenience in testing.
+
+    Args:
+        consecutive_defenses: Number of consecutive successful defenses (1-indexed).
+        base_boost: Starting constant in the formula.
+        boost_increment: Added per consecutive defense.
+        max_boost_per_defense: Per-defense ceiling.
+
+    Returns:
+        The strength boost amount for this defense.
     """
-    # Build a set of nodes that Phase 1 weakened (target_id → post-Phase-1 strength)
-    phase1_weakened: dict[str, float] = {}
+    if consecutive_defenses < 1:
+        return 0.0
+    return min(base_boost + boost_increment * consecutive_defenses, max_boost_per_defense)
 
-    for p in phase1_patches:
-        op = p.get("op")
-        if op == "update_claim":
-            tid = p.get("target_id", "")
-            new_strength = p.get("changes", {}).get("strength")
-            if new_strength is not None:
-                # Find post-Phase-1 strength from intermediate belief
-                for c in intermediate_belief.get("claims", []):
-                    if c["id"] == tid:
-                        phase1_weakened[tid] = c.get("strength", new_strength)
-                        break
-        elif op == "update_thesis":
-            new_str = p.get("new_strength")
-            change = p.get("change")
-            if new_str is not None or change == "weaken":
-                phase1_weakened["THESIS"] = intermediate_belief.get("thesis", {}).get("strength", 0.5)
-        elif op == "retire_claim":
-            phase1_weakened[p.get("target_id", "")] = 0.0
 
-    if not phase1_weakened:
-        return phase2_patches
+def apply_defense_boosts(
+    belief: dict,
+    challenge_rebuttal_pairs: list,
+    log_entries: list,
+    agent_name: str,
+    boost_config: DefenseBoostConfig | None = None,
+) -> dict:
+    """Mechanically apply defense boosts for REBUTTAL_VALID outcomes.
+
+    For each REBUTTAL_VALID verdict, identify the targeted node(s) from the
+    original critique's target_ids. Increment each targeted node's
+    consecutive_defenses counter and apply the formula-driven strength boost.
+
+    For each CRITIQUE_VALID verdict, reset the consecutive_defenses counter
+    on all targeted nodes to 0 (streak broken).
+
+    Nodes not attacked in this round are untouched.
+
+    Args:
+        belief: The intermediate belief dict (post-Phase-1). Deep-copied
+                internally; the original is not mutated.
+        challenge_rebuttal_pairs: List of {challenger, challenge, rebuttal,
+                resolution: {status, ...}, target_ids: [...]} dicts.
+        log_entries: Logging list for debug output.
+        agent_name: Name of the agent whose belief is being boosted.
+        boost_config: Defense boost configuration. If None, uses defaults.
+
+    Returns:
+        The modified belief dict with defense boosts applied.
+    """
+    import copy
+
+    if boost_config is None:
+        boost_config = DefenseBoostConfig()
+
+    if not boost_config.enabled:
+        return belief
+
+    belief = copy.deepcopy(belief)
+
+    # Build a lookup: node_id -> (collection_key, index)
+    node_lookup: dict[str, tuple[str, int]] = {}
+    for key in ("definitions", "assumptions", "evidence", "claims"):
+        for idx, node in enumerate(belief.get(key, [])):
+            nid = node.get("id", "")
+            if nid:
+                node_lookup[nid] = (key, idx)
+
+    # Build resolution map for U#/X# → their underlying D#/A#/E#/C# target nodes
+    indirect_targets: dict[str, list[str]] = {}
+    for u in belief.get("uncertainties", []):
+        uid = u.get("id", "")
+        if uid:
+            indirect_targets[uid] = [t for t in u.get("targets", []) if t in node_lookup]
+    for x in belief.get("counterpositions", []):
+        xid = x.get("id", "")
+        if xid:
+            indirect_targets[xid] = [t for t in x.get("targets", []) if t in node_lookup]
+
+    # Process each adjudication outcome
+    for pair in challenge_rebuttal_pairs:
+        resolution = pair.get("resolution") or {}
+        status = resolution.get("status", "")
+        target_ids = pair.get("target_ids", [])
+
+        # Resolve U#/X# targets to their underlying D#/A#/E#/C# nodes
+        resolved_ids: list[str] = []
+        seen: set[str] = set()
+        for tid in target_ids:
+            if tid in node_lookup:
+                if tid not in seen:
+                    resolved_ids.append(tid)
+                    seen.add(tid)
+            elif tid in indirect_targets:
+                for resolved_tid in indirect_targets[tid]:
+                    if resolved_tid not in seen:
+                        resolved_ids.append(resolved_tid)
+                        seen.add(resolved_tid)
+        target_ids = resolved_ids
+
+        if not target_ids:
+            continue
+
+        if status == "rebuttal_valid":
+            for tid in target_ids:
+                if tid not in node_lookup:
+                    continue
+                collection_key, idx = node_lookup[tid]
+                node = belief[collection_key][idx]
+
+                # Skip retracted nodes
+                if node.get("status") == "retracted":
+                    continue
+
+                # Ensure original_strength is set
+                if "original_strength" not in node:
+                    node["original_strength"] = node.get("strength", 0.5)
+
+                # Increment consecutive defenses
+                prev_count = node.get("consecutive_defenses", 0)
+                new_count = prev_count + 1
+                node["consecutive_defenses"] = new_count
+
+                # Calculate and apply boost (using config parameters)
+                boost = compute_defense_boost(
+                    new_count,
+                    base_boost=boost_config.base_boost,
+                    boost_increment=boost_config.boost_increment,
+                    max_boost_per_defense=boost_config.max_boost_per_defense,
+                )
+                original = node["original_strength"]
+                current = node.get("strength", 0.5)
+                ceiling = min(original + boost_config.max_cumulative_boost, 1.0)
+                new_strength = min(current + boost, ceiling)
+
+                if new_strength > current:
+                    log_entries.append((
+                        f"Defense boost: {tid} ({collection_key}) for {agent_name}: "
+                        f"{current:.2f} → {new_strength:.2f} "
+                        f"(defense #{new_count}, boost +{boost:.2f}, "
+                        f"ceiling {ceiling:.2f})",
+                        "INFO",
+                    ))
+                    node["strength"] = round(new_strength, 4)
+                else:
+                    log_entries.append((
+                        f"Defense boost: {tid} for {agent_name}: at ceiling "
+                        f"({current:.2f} >= {ceiling:.2f}), no increase",
+                        "DEBUG",
+                    ))
+
+        elif status == "critique_valid":
+            # Reset consecutive defense counter for targeted nodes
+            for tid in target_ids:
+                if tid not in node_lookup:
+                    continue
+                collection_key, idx = node_lookup[tid]
+                node = belief[collection_key][idx]
+                prev_count = node.get("consecutive_defenses", 0)
+                if prev_count > 0:
+                    node["consecutive_defenses"] = 0
+                    log_entries.append((
+                        f"Defense streak reset: {tid} for {agent_name} "
+                        f"(was {prev_count}, reset due to CRITIQUE_VALID)",
+                        "DEBUG",
+                    ))
+
+    return belief
+
+
+def filter_strength_increases(phase2_patches: list, intermediate_belief: dict) -> list:
+    """Strip strength increases from Phase 2 patches on existing nodes.
+
+    Phase 2 is unilateral — no opponent scrutiny — so existing node strengths
+    can only stay the same or go down, never up. This prevents "trust me bro"
+    self-strengthening.
+
+    For update_* operations (update_claim, update_assumption, update_evidence,
+    update_definition): if the patch would increase the node's strength above
+    its current value in intermediate_belief, the strength field is removed
+    from the patch's changes dict. The rest of the patch (semantic changes,
+    status changes, etc.) is preserved.
+
+    For update_thesis: if new_strength > current thesis strength, the
+    new_strength is removed. If change == "strengthen", the patch is dropped.
+
+    add_* operations are NOT affected — new nodes can have any strength.
+
+    Args:
+        phase2_patches: List of Phase 2 patch dicts.
+        intermediate_belief: The post-Phase-1, post-defense-boost belief.
+
+    Returns:
+        Filtered copy of phase2_patches with strength increases stripped.
+    """
+    import copy
+
+    # Build lookup: node_id -> current strength
+    current_strengths: dict[str, float] = {}
+    for key in ("definitions", "assumptions", "evidence", "claims"):
+        for node in intermediate_belief.get(key, []):
+            nid = node.get("id", "")
+            if nid and "strength" in node:
+                current_strengths[nid] = node["strength"]
+
+    thesis_strength = intermediate_belief.get("thesis", {}).get("strength", 0.5)
 
     filtered = []
-    for p in phase2_patches:
-        op = p.get("op")
-        keep = True
+    for patch in phase2_patches:
+        op = patch.get("op", "")
 
-        if op == "update_claim":
-            tid = p.get("target_id", "")
-            if tid in phase1_weakened:
-                new_strength = p.get("changes", {}).get("strength")
-                if new_strength is not None and new_strength > phase1_weakened[tid]:
-                    keep = False  # Would reverse Phase 1 weakening
+        # update_claim, update_assumption, update_evidence, update_definition
+        if op in ("update_claim", "update_assumption", "update_evidence", "update_definition"):
+            tid = patch.get("target_id", "")
+            changes = patch.get("changes", {})
+            new_strength = changes.get("strength")
+
+            if new_strength is not None and tid in current_strengths:
+                if new_strength > current_strengths[tid]:
+                    # Strip the strength increase; keep everything else
+                    patch = copy.deepcopy(patch)
+                    del patch["changes"]["strength"]
+                    # Also strip strength_justification if strength was removed
+                    patch["changes"].pop("strength_justification", None)
+                    # If changes dict is now empty, skip the whole patch
+                    if not patch.get("changes"):
+                        continue
+            filtered.append(patch)
+
         elif op == "update_thesis":
-            if "THESIS" in phase1_weakened:
-                new_str = p.get("new_strength")
-                change = p.get("change")
-                if new_str is not None and new_str > phase1_weakened["THESIS"]:
-                    keep = False
-                elif change == "strengthen":
-                    keep = False  # Cannot strengthen thesis that was weakened in Phase 1
+            new_str = patch.get("new_strength")
+            change = patch.get("change")
 
-        if keep:
-            filtered.append(p)
+            if change == "strengthen":
+                continue  # Drop the entire patch
+
+            if new_str is not None and new_str > thesis_strength:
+                # Strip the strength increase from thesis update
+                patch = copy.deepcopy(patch)
+                patch.pop("new_strength", None)
+                # Keep stance/summary_bullets/strength_reasoning if present
+                if not any(k in patch for k in ("stance", "summary_bullets", "strength_reasoning")):
+                    if patch.get("op"):
+                        # Only has op — skip entirely
+                        continue
+            filtered.append(patch)
+
+        else:
+            # add_* operations, resolve_uncertainty, etc. — pass through
+            filtered.append(patch)
 
     return filtered
 

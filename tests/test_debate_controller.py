@@ -26,7 +26,9 @@ from pathlib import Path
 from chal.orchestrator.debate_controller import (
     DebateController,
     summarize_changes,
-    filter_reversal_patches,
+    filter_strength_increases,
+    apply_defense_boosts,
+    compute_defense_boost,
     _extract_first_json_block,
     _generate_rebuttal,
     _extract_all_json_blocks,
@@ -97,6 +99,15 @@ def mock_agents(mock_openai_responses):
     ])
 
     return [agent_a, agent_b]
+
+
+@pytest.fixture(autouse=True)
+def mock_adjudicator_agent(mock_openai_responses):
+    """Patch create_agent so the adjudicator uses a mock instead of real API calls."""
+    adj_response = mock_openai_responses["adjudicator_verdict"]["content"]
+    mock_adj = create_mock_agent("Adjudicator", responses=[adj_response])
+    with patch("chal.orchestrator.debate_controller.create_agent", return_value=mock_adj):
+        yield mock_adj
 
 
 # ==============================================
@@ -803,123 +814,543 @@ def test_summarize_changes_empty_patches():
 
 
 # ==============================================
-# 16. filter_reversal_patches() Helper Tests
+# 16. filter_strength_increases() Helper Tests
 # ==============================================
 
 @pytest.mark.unit
-def test_filter_reversal_blocks_strengthening():
-    """Phase 1 weakened C1 from 0.7→0.5. Phase 2 tries to strengthen to 0.6: filtered out."""
-    phase1_patches = [
-        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}}
-    ]
+def test_filter_strips_strength_increase_on_existing_claim():
+    """Phase 2 cannot raise existing claim strength — patch dropped if only strength."""
     intermediate = {
         "thesis": {"strength": 0.7},
-        "claims": [{"id": "C1", "strength": 0.5}]
+        "claims": [{"id": "C1", "strength": 0.5}],
+        "assumptions": [], "evidence": [], "definitions": [],
     }
     phase2_patches = [
-        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.6}}
+        {"op": "update_claim", "target_id": "C1",
+         "changes": {"strength": 0.9, "strength_justification": "trust me"}}
     ]
 
-    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+    filtered = filter_strength_increases(phase2_patches, intermediate)
 
-    assert len(filtered) == 0
+    assert len(filtered) == 0  # Only had strength — whole patch dropped
 
 
 @pytest.mark.unit
-def test_filter_reversal_allows_further_weakening():
-    """Phase 1 weakened C1 to 0.5. Phase 2 weakens to 0.3: allowed."""
-    phase1_patches = [
-        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}}
-    ]
+def test_filter_preserves_strength_decrease():
+    """Phase 2 CAN lower existing node strengths."""
     intermediate = {
         "thesis": {"strength": 0.7},
-        "claims": [{"id": "C1", "strength": 0.5}]
+        "claims": [{"id": "C1", "strength": 0.5}],
+        "assumptions": [], "evidence": [], "definitions": [],
     }
     phase2_patches = [
-        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.3}}
+        {"op": "update_claim", "target_id": "C1",
+         "changes": {"strength": 0.3, "strength_justification": "weakened"}}
     ]
 
-    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+    filtered = filter_strength_increases(phase2_patches, intermediate)
 
     assert len(filtered) == 1
     assert filtered[0]["changes"]["strength"] == 0.3
 
 
 @pytest.mark.unit
-def test_filter_reversal_allows_unrelated_patches():
-    """Phase 1 weakened C1. Phase 2 adds evidence E4: allowed (unrelated)."""
-    phase1_patches = [
-        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}}
-    ]
+def test_filter_preserves_semantic_changes_when_strength_stripped():
+    """Semantic changes survive even when strength increase is stripped."""
     intermediate = {
         "thesis": {"strength": 0.7},
-        "claims": [{"id": "C1", "strength": 0.5}]
+        "claims": [], "definitions": [],
+        "assumptions": [{"id": "A1", "strength": 0.6}],
+        "evidence": [],
     }
     phase2_patches = [
-        {"op": "add_evidence", "item": {"id": "E4", "type": "empirical", "summary": "New"}},
+        {"op": "update_assumption", "target_id": "A1",
+         "changes": {"strength": 0.99, "statement": "Improved text"}}
     ]
 
-    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+    filtered = filter_strength_increases(phase2_patches, intermediate)
 
     assert len(filtered) == 1
-    assert filtered[0]["op"] == "add_evidence"
+    assert "strength" not in filtered[0]["changes"]
+    assert filtered[0]["changes"]["statement"] == "Improved text"
 
 
 @pytest.mark.unit
-def test_filter_reversal_blocks_thesis_reversal():
-    """Phase 1 weakened thesis from 0.6→0.4. Phase 2 tries 0.5: filtered out."""
-    phase1_patches = [
-        {"op": "update_thesis", "new_strength": 0.4}
-    ]
+def test_filter_strips_thesis_strengthen():
+    """Phase 2 cannot strengthen thesis (change='strengthen' is dropped)."""
     intermediate = {
-        "thesis": {"strength": 0.4},
-        "claims": []
+        "thesis": {"strength": 0.7},
+        "claims": [], "assumptions": [], "evidence": [], "definitions": [],
     }
     phase2_patches = [
-        {"op": "update_thesis", "new_strength": 0.5}
+        {"op": "update_thesis", "change": "strengthen"}
     ]
 
-    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+    filtered = filter_strength_increases(phase2_patches, intermediate)
 
     assert len(filtered) == 0
 
 
 @pytest.mark.unit
-def test_filter_reversal_allows_thesis_further_weakening():
-    """Phase 1 weakened thesis to 0.4. Phase 2 sets 0.35: allowed."""
-    phase1_patches = [
-        {"op": "update_thesis", "new_strength": 0.4}
-    ]
+def test_filter_strips_thesis_strength_increase():
+    """Phase 2 thesis new_strength above current is stripped."""
     intermediate = {
         "thesis": {"strength": 0.4},
-        "claims": []
+        "claims": [], "assumptions": [], "evidence": [], "definitions": [],
     }
     phase2_patches = [
-        {"op": "update_thesis", "new_strength": 0.35}
+        {"op": "update_thesis", "new_strength": 0.5, "stance": "Revised stance"}
     ]
 
-    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+    filtered = filter_strength_increases(phase2_patches, intermediate)
 
     assert len(filtered) == 1
-    assert filtered[0]["new_strength"] == 0.35
+    assert "new_strength" not in filtered[0]
+    assert filtered[0]["stance"] == "Revised stance"
 
 
 @pytest.mark.unit
-def test_filter_reversal_empty_phase1():
-    """No Phase 1 patches → all Phase 2 patches allowed."""
-    phase1_patches = []
+def test_filter_allows_thesis_decrease():
+    """Phase 2 can lower thesis strength."""
     intermediate = {
         "thesis": {"strength": 0.7},
-        "claims": [{"id": "C1", "strength": 0.7}]
+        "claims": [], "assumptions": [], "evidence": [], "definitions": [],
     }
     phase2_patches = [
-        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.9}},
-        {"op": "update_thesis", "new_strength": 0.8},
+        {"op": "update_thesis", "new_strength": 0.5, "stance": "Weakened stance"}
     ]
 
-    filtered = filter_reversal_patches(phase2_patches, phase1_patches, intermediate)
+    filtered = filter_strength_increases(phase2_patches, intermediate)
+
+    assert len(filtered) == 1
+    assert filtered[0]["new_strength"] == 0.5
+
+
+@pytest.mark.unit
+def test_filter_allows_add_operations():
+    """add_* operations are not affected by the filter."""
+    intermediate = {
+        "thesis": {"strength": 0.7},
+        "claims": [{"id": "C1", "strength": 0.5}],
+        "assumptions": [], "evidence": [], "definitions": [],
+    }
+    phase2_patches = [
+        {"op": "add_evidence", "item": {"id": "E4", "type": "empirical", "summary": "New"}},
+        {"op": "add_claim", "item": {"id": "C2", "strength": 0.90}},
+    ]
+
+    filtered = filter_strength_increases(phase2_patches, intermediate)
 
     assert len(filtered) == 2
+    assert filtered[0]["op"] == "add_evidence"
+    assert filtered[1]["op"] == "add_claim"
+
+
+@pytest.mark.unit
+def test_filter_strips_all_update_types():
+    """Filter applies to update_definition, update_assumption, update_evidence, update_claim."""
+    intermediate = {
+        "thesis": {"strength": 0.7},
+        "definitions": [{"id": "D1", "strength": 0.5}],
+        "assumptions": [{"id": "A1", "strength": 0.5}],
+        "evidence": [{"id": "E1", "strength": 0.5}],
+        "claims": [{"id": "C1", "strength": 0.5}],
+    }
+    phase2_patches = [
+        {"op": "update_definition", "target_id": "D1", "changes": {"strength": 0.99}},
+        {"op": "update_assumption", "target_id": "A1", "changes": {"strength": 0.99}},
+        {"op": "update_evidence", "target_id": "E1", "changes": {"strength": 0.99}},
+        {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.99}},
+    ]
+
+    filtered = filter_strength_increases(phase2_patches, intermediate)
+
+    assert len(filtered) == 0  # All stripped (only had strength changes)
+
+
+# ==============================================
+# 16b. apply_defense_boosts() + compute_defense_boost() Tests
+# ==============================================
+
+class TestApplyDefenseBoosts:
+
+    def test_rebuttal_valid_increments_counter(self):
+        """REBUTTAL_VALID increments consecutive_defenses."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        belief["claims"][0]["consecutive_defenses"] = 0
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["consecutive_defenses"] == 1
+
+    def test_first_defense_boost_is_003(self):
+        """First successful defense gives +0.03 boost."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        original = belief["claims"][0]["strength"]
+        belief["claims"][0]["original_strength"] = original
+        belief["claims"][0]["consecutive_defenses"] = 0
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert abs(result["claims"][0]["strength"] - (original + 0.03)) < 0.001
+
+    def test_second_defense_boost_is_004(self):
+        """Second consecutive defense gives +0.04 boost."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        original = belief["claims"][0]["strength"]
+        belief["claims"][0]["original_strength"] = original
+        belief["claims"][0]["consecutive_defenses"] = 1  # Already defended once
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert abs(result["claims"][0]["strength"] - (original + 0.04)) < 0.001
+
+    def test_third_plus_defense_boost_caps_at_005(self):
+        """Third+ defense gives +0.05 (max per-defense boost)."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        original = belief["claims"][0]["strength"]
+        belief["claims"][0]["original_strength"] = original
+        belief["claims"][0]["consecutive_defenses"] = 2
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert abs(result["claims"][0]["strength"] - (original + 0.05)) < 0.001
+
+    def test_ceiling_original_plus_020(self):
+        """Node strength cannot exceed original_strength + 0.20."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.85
+        belief["claims"][0]["original_strength"] = 0.70  # Ceiling = 0.90
+        belief["claims"][0]["consecutive_defenses"] = 5
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["strength"] <= 0.90
+
+    def test_ceiling_absolute_10(self):
+        """Node strength cannot exceed 1.0."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.98
+        belief["claims"][0]["original_strength"] = 0.95
+        belief["claims"][0]["consecutive_defenses"] = 3
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["strength"] <= 1.0
+
+    def test_critique_valid_resets_counter(self):
+        """CRITIQUE_VALID resets consecutive_defenses to 0."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["consecutive_defenses"] = 3
+        pairs = [{"resolution": {"status": "critique_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["consecutive_defenses"] == 0
+
+    def test_unresolved_no_change(self):
+        """UNRESOLVED leaves counter unchanged."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["consecutive_defenses"] = 2
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        original_strength = belief["claims"][0]["strength"]
+        pairs = [{"resolution": {"status": "unresolved"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["consecutive_defenses"] == 2
+        assert result["claims"][0]["strength"] == original_strength
+
+    def test_no_target_ids_no_crash(self):
+        """Pairs without target_ids are safely skipped."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        pairs = [{"resolution": {"status": "rebuttal_valid"}}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0].get("consecutive_defenses", 0) == 0
+
+    def test_retracted_nodes_skipped(self):
+        """Retracted nodes do not receive defense boosts."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["status"] = "retracted"
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        belief["claims"][0]["consecutive_defenses"] = 0
+        original_strength = belief["claims"][0]["strength"]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["strength"] == original_strength
+
+    def test_compute_defense_boost_formula(self):
+        """Verify the stepwise formula: min(base_boost + boost_increment*n, max_boost_per_defense)."""
+        assert compute_defense_boost(0) == 0.0
+        assert abs(compute_defense_boost(1) - 0.03) < 0.001
+        assert abs(compute_defense_boost(2) - 0.04) < 0.001
+        assert abs(compute_defense_boost(3) - 0.05) < 0.001
+        assert abs(compute_defense_boost(4) - 0.05) < 0.001
+        assert abs(compute_defense_boost(10) - 0.05) < 0.001
+
+    def test_compute_defense_boost_custom_params(self):
+        """Custom config parameters change the boost curve."""
+        assert abs(compute_defense_boost(1, base_boost=0.05, boost_increment=0.02,
+                                          max_boost_per_defense=0.10) - 0.07) < 0.001
+        assert abs(compute_defense_boost(3, base_boost=0.05, boost_increment=0.02,
+                                          max_boost_per_defense=0.10) - 0.10) < 0.001
+
+    def test_defense_boost_disabled_via_config(self):
+        """When enabled=False, no boosts are applied."""
+        from chal.config import DefenseBoostConfig
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        belief["claims"][0]["consecutive_defenses"] = 0
+        original_strength = belief["claims"][0]["strength"]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        config = DefenseBoostConfig(enabled=False)
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A", boost_config=config)
+        assert result["claims"][0]["strength"] == original_strength
+
+    def test_defense_boost_custom_cumulative_ceiling(self):
+        """Custom max_cumulative_boost changes the ceiling."""
+        from chal.config import DefenseBoostConfig
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.70
+        belief["claims"][0]["original_strength"] = 0.65
+        belief["claims"][0]["consecutive_defenses"] = 5
+        config = DefenseBoostConfig(max_cumulative_boost=0.10)  # Ceiling = 0.65 + 0.10 = 0.75
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A", boost_config=config)
+        assert result["claims"][0]["strength"] <= 0.75
+
+    def test_rebuttal_valid_resolves_uncertainty_targets(self):
+        """REBUTTAL_VALID with target_ids=["U1"] resolves to U1's underlying targets."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        belief["claims"][0]["consecutive_defenses"] = 0
+        belief["evidence"][0]["original_strength"] = belief["evidence"][0]["strength"]
+        belief["evidence"][0]["consecutive_defenses"] = 0
+        belief["uncertainties"] = [
+            {"id": "U1", "question": "Test?", "targets": ["E1", "C1"],
+             "importance": "high", "status": "active"}
+        ]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["U1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["evidence"][0]["consecutive_defenses"] == 1, \
+            "E1 should get defense boost via U1 resolution"
+        assert result["claims"][0]["consecutive_defenses"] == 1, \
+            "C1 should get defense boost via U1 resolution"
+
+    def test_rebuttal_valid_resolves_counterposition_targets(self):
+        """REBUTTAL_VALID with target_ids=["X1"] resolves to X1's underlying targets."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        belief["claims"][0]["consecutive_defenses"] = 0
+        belief["counterpositions"] = [
+            {"id": "X1", "statement": "Counter", "targets": ["C1"],
+             "attack_type": "undermining", "my_response": "response",
+             "response_sufficiency": "partial"}
+        ]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["X1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["consecutive_defenses"] == 1, \
+            "C1 should get defense boost via X1 resolution"
+
+    def test_critique_valid_resolves_uncertainty_resets_counter(self):
+        """CRITIQUE_VALID with target_ids=["U1"] resets consecutive_defenses on resolved nodes."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["consecutive_defenses"] = 3
+        belief["evidence"][0]["consecutive_defenses"] = 2
+        belief["uncertainties"] = [
+            {"id": "U1", "question": "Test?", "targets": ["E1", "C1"],
+             "importance": "high", "status": "active"}
+        ]
+        pairs = [{"resolution": {"status": "critique_valid"}, "target_ids": ["U1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["evidence"][0]["consecutive_defenses"] == 0, \
+            "E1 consecutive_defenses should reset via U1 resolution"
+        assert result["claims"][0]["consecutive_defenses"] == 0, \
+            "C1 consecutive_defenses should reset via U1 resolution"
+
+    def test_mixed_direct_and_indirect_targets(self):
+        """target_ids=["C1", "U1"] where U1.targets=["E1"]. Both C1 and E1 get boosts."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        belief["claims"][0]["consecutive_defenses"] = 0
+        belief["evidence"][0]["original_strength"] = belief["evidence"][0]["strength"]
+        belief["evidence"][0]["consecutive_defenses"] = 0
+        belief["uncertainties"] = [
+            {"id": "U1", "question": "Test?", "targets": ["E1"],
+             "importance": "high", "status": "active"}
+        ]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1", "U1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["consecutive_defenses"] == 1, \
+            "C1 should get direct defense boost"
+        assert result["evidence"][0]["consecutive_defenses"] == 1, \
+            "E1 should get indirect defense boost via U1"
+
+    def test_indirect_target_with_nonexistent_node_skipped(self):
+        """U1.targets=["E99"]. Should skip gracefully without crash."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["uncertainties"] = [
+            {"id": "U1", "question": "Test?", "targets": ["E99"],
+             "importance": "high", "status": "active"}
+        ]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["U1"]}]
+        # Should not crash
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        # E1 should be untouched (E99 doesn't exist, so U1 resolves to empty)
+        assert result["evidence"][0].get("consecutive_defenses", 0) == 0
+
+    def test_indirect_target_retracted_node_skipped(self):
+        """U1.targets=["E1"] where E1 is retracted. Should skip the retracted node."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["evidence"][0]["status"] = "retracted"
+        belief["evidence"][0]["original_strength"] = belief["evidence"][0]["strength"]
+        belief["evidence"][0]["consecutive_defenses"] = 0
+        original_strength = belief["evidence"][0]["strength"]
+        belief["uncertainties"] = [
+            {"id": "U1", "question": "Test?", "targets": ["E1"],
+             "importance": "high", "status": "active"}
+        ]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["U1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["evidence"][0]["strength"] == original_strength, \
+            "Retracted E1 should not get boosted"
+
+    def test_rebuttal_valid_deduplicates_direct_and_indirect(self):
+        """target_ids=["U1", "A1"] where U1.targets=["A1", "C1"].
+
+        A1 appears both directly and via U1. After dedup, A1 should get
+        exactly ONE boost and C1 should get exactly ONE boost.
+        """
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["original_strength"] = belief["claims"][0]["strength"]
+        belief["claims"][0]["consecutive_defenses"] = 0
+        belief["assumptions"][0]["original_strength"] = belief["assumptions"][0]["strength"]
+        belief["assumptions"][0]["consecutive_defenses"] = 0
+        belief["uncertainties"] = [
+            {"id": "U1", "question": "Test?", "targets": ["A1", "C1"],
+             "importance": "high", "status": "active"}
+        ]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["U1", "A1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["assumptions"][0]["consecutive_defenses"] == 1, \
+            "A1 should get exactly ONE boost (not two from direct + indirect)"
+        assert result["claims"][0]["consecutive_defenses"] == 1, \
+            "C1 should get exactly ONE boost via U1"
+
+    def test_rebuttal_valid_deduplicates_multiple_indirect(self):
+        """target_ids=["U1", "U2"] where U1.targets=["A1", "E1"] and U2.targets=["A1"].
+
+        A1 appears in both U1 and U2 resolutions. Should get exactly ONE boost.
+        """
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["assumptions"][0]["original_strength"] = belief["assumptions"][0]["strength"]
+        belief["assumptions"][0]["consecutive_defenses"] = 0
+        belief["evidence"][0]["original_strength"] = belief["evidence"][0]["strength"]
+        belief["evidence"][0]["consecutive_defenses"] = 0
+        belief["uncertainties"] = [
+            {"id": "U1", "question": "Test?", "targets": ["A1", "E1"],
+             "importance": "high", "status": "active"},
+            {"id": "U2", "question": "Test2?", "targets": ["A1"],
+             "importance": "high", "status": "active"},
+        ]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["U1", "U2"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["assumptions"][0]["consecutive_defenses"] == 1, \
+            "A1 should get exactly ONE boost (not two from U1 + U2)"
+        assert result["evidence"][0]["consecutive_defenses"] == 1, \
+            "E1 should get exactly ONE boost via U1"
+
+
+# ==============================================
+# 16b. Dependency Ceiling After Defense Boosts
+# ==============================================
+
+
+def _apply_dependency_ceiling(belief: dict) -> list[tuple]:
+    """Replicate the dependency ceiling pass from debate_controller.
+
+    This mirrors the inline logic added after apply_defense_boosts in
+    run_stage_5_update_positions, allowing unit-level testing without
+    mocking the full orchestration pipeline.
+    """
+    log_entries: list[tuple] = []
+    for claim in belief.get("claims", []):
+        if claim.get("status") == "retracted":
+            continue
+        deps = claim.get("depends_on", [])
+        if not deps:
+            continue
+        dep_strengths = []
+        for dep_id in deps:
+            for collection in ("assumptions", "evidence", "claims"):
+                for node in belief.get(collection, []):
+                    if node["id"] == dep_id and node.get("status") != "retracted":
+                        dep_strengths.append(node.get("strength", 0.5))
+                        break
+        if dep_strengths:
+            min_dep = min(dep_strengths)
+            if claim["strength"] > min_dep:
+                log_entries.append((
+                    f"Dependency ceiling: {claim['id']} strength "
+                    f"{claim['strength']:.4f} → {min_dep:.4f} "
+                    f"(limited by weakest active dependency)",
+                    "INFO",
+                ))
+                claim["strength"] = min_dep
+    return log_entries
+
+
+class TestDependencyCeilingAfterDefenseBoosts:
+    """Tests for the dependency ceiling enforcement that runs after defense boosts."""
+
+    def test_defense_boost_respects_dependency_ceiling(self):
+        """Claim C1 (0.60) depends on A1 (0.55). After boost, C1 should cap at 0.55."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["depends_on"] = ["A1"]
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["claims"][0]["consecutive_defenses"] = 0
+        belief["assumptions"][0]["strength"] = 0.55
+        # Apply defense boost — C1 gets boosted from 0.60 → ~0.63
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["strength"] > 0.60, \
+            "C1 should have been boosted above 0.60 before ceiling"
+        # Now apply dependency ceiling
+        logs = _apply_dependency_ceiling(result)
+        assert result["claims"][0]["strength"] == 0.55, \
+            f"C1 should be capped at A1's 0.55, got {result['claims'][0]['strength']}"
+        assert len(logs) == 1, "Should have one ceiling log entry"
+        assert "Dependency ceiling" in logs[0][0]
+
+    def test_defense_boost_ceiling_allows_boost_within_deps(self):
+        """Claim C1 (0.60) depends on A1 (0.90). Boost to ~0.63 is within ceiling — no cap."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["depends_on"] = ["A1"]
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["claims"][0]["consecutive_defenses"] = 0
+        belief["assumptions"][0]["strength"] = 0.90
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        boosted_strength = result["claims"][0]["strength"]
+        assert boosted_strength > 0.60, "C1 should have been boosted"
+        # Apply dependency ceiling — should NOT cap since 0.63 < 0.90
+        logs = _apply_dependency_ceiling(result)
+        assert result["claims"][0]["strength"] == boosted_strength, \
+            "C1 should remain at boosted strength (below A1's 0.90)"
+        assert len(logs) == 0, "No ceiling log expected"
+
+    def test_defense_boost_ceiling_skips_retracted_deps(self):
+        """C1 depends on A1 (retracted) and E1 (0.80). Retracted A1 excluded from ceiling."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.75
+        belief["claims"][0]["depends_on"] = ["A1", "E1"]
+        belief["claims"][0]["original_strength"] = 0.75
+        belief["claims"][0]["consecutive_defenses"] = 0
+        belief["assumptions"][0]["strength"] = 0.30
+        belief["assumptions"][0]["status"] = "retracted"
+        belief["evidence"][0]["strength"] = 0.80
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        boosted_strength = result["claims"][0]["strength"]
+        # Apply dependency ceiling — retracted A1 (0.30) should be excluded,
+        # so ceiling is E1's 0.80 which is above the boosted value
+        logs = _apply_dependency_ceiling(result)
+        assert result["claims"][0]["strength"] == boosted_strength, \
+            f"C1 should remain at {boosted_strength} (retracted A1 excluded, E1=0.80 is higher)"
+        assert len(logs) == 0, "No ceiling log expected (retracted dep excluded)"
 
 
 # ==============================================
@@ -1398,14 +1829,14 @@ def test_generate_rebuttal_parses_two_blocks_legacy():
         '{"rebuttals": [{"qid": "Q1", "answer": "Rebutted", "action": "refute", "linked_ids": ["C1"]}]}'
         '\n```\n\n'
         '```json\n'
-        '{"patches": [{"op": "retire_claim", "target_id": "C2"}]}'
+        '{"patches": [{"op": "update_claim", "target_id": "C2", "changes": {"status": "retracted"}}]}'
         '\n```'
     )
     agent = _make_rebuttal_agent(content)
     result = _generate_rebuttal(agent, _make_rebuttal_entries(), "Test topic", _make_rebuttal_config())
     assert len(result["rebuttals"]) == 1
     assert len(result["patches"]) == 1
-    assert result["patches"][0]["op"] == "retire_claim"
+    assert result["patches"][0]["op"] == "update_claim"
 
 
 @pytest.mark.unit
@@ -1445,3 +1876,136 @@ def test_generate_rebuttal_no_json_blocks():
     result = _generate_rebuttal(agent, _make_rebuttal_entries(), "Test topic", _make_rebuttal_config())
     assert result["rebuttals"] == []
     assert result["patches"] == []
+
+
+# ==============================================
+# Integration: Retry Behaviour Tests
+# ==============================================
+
+@pytest.mark.integration
+def test_adjudicator_retries_on_missing_json():
+    """Adjudicator retries when first response has no JSON, succeeds on second."""
+    from chal.orchestrator.adjudicator import Adjudicator
+
+    no_json = "I cannot decide. This is just plain text."
+    valid_json = (
+        '<reasoning>The critique was valid.</reasoning>\n\n'
+        '```json\n'
+        '{"outcome": "critique_valid", "reasoning": "Valid critique.", '
+        '"restatement": "Whether C1 is supported."}\n'
+        '```'
+    )
+    agent = create_mock_agent("AdjudicatorRetry", responses=[no_json, valid_json])
+    adj = Adjudicator(adjudicator_agent=agent)
+    log_entries = []
+
+    result = adj.run(
+        challenge="Your C1 is weak",
+        rebuttal="I defended C1",
+        challenger="Agent-A",
+        target="Agent-B",
+        max_retries=2,
+        log_fn=lambda msg, lvl: log_entries.append((msg, lvl)),
+    )
+
+    assert result["status"] == "critique_valid"
+    assert agent.generate.call_count == 2
+    # Should have logged a WARN for the first failure and an INFO for retry success
+    warn_logs = [e for e in log_entries if e[1] == "WARN"]
+    assert len(warn_logs) >= 1
+
+
+@pytest.mark.integration
+def test_adjudicator_retries_exhausted_falls_back():
+    """Adjudicator falls back to UNRESOLVED when all retries produce no JSON."""
+    from chal.orchestrator.adjudicator import Adjudicator
+
+    no_json = "I cannot produce structured output."
+    agent = create_mock_agent("AdjudicatorExhaust", responses=[no_json])
+    adj = Adjudicator(adjudicator_agent=agent)
+    log_entries = []
+
+    result = adj.run(
+        challenge="Your C1 is weak",
+        rebuttal="I defended C1",
+        challenger="Agent-A",
+        target="Agent-B",
+        max_retries=2,
+        log_fn=lambda msg, lvl: log_entries.append((msg, lvl)),
+    )
+
+    assert result["status"] == "unresolved"
+    assert agent.generate.call_count == 3  # initial + 2 retries
+    error_logs = [e for e in log_entries if e[1] == "ERROR"]
+    assert len(error_logs) >= 1
+
+
+@pytest.mark.integration
+def test_stage5_retries_on_empty_patches_with_critique_valid():
+    """Stage 5 retries when first response has empty patches despite CRITIQUE_VALID."""
+    empty_patches = (
+        '<reasoning>No changes needed.</reasoning>\n\n'
+        '```json\n{"patches": []}\n```'
+    )
+    valid_patches = (
+        '<reasoning>Lowering C1 strength.</reasoning>\n\n'
+        '```json\n{"patches": [{"op": "update_claim", "target_id": "C1", '
+        '"changes": {"strength": 0.55}}]}\n```'
+    )
+    # Phase 2 response (introspective — empty is fine)
+    phase2_response = (
+        '<reasoning>No further changes.</reasoning>\n\n'
+        '```json\n{"patches": []}\n```'
+    )
+
+    agent = create_mock_agent("Agent-A", responses=[
+        empty_patches,   # Phase 1 attempt 0: empty patches — fails enforcement
+        valid_patches,   # Phase 1 attempt 1: valid patches — succeeds
+        phase2_response, # Phase 2: empty but valid
+    ])
+
+    sample_belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    agent.get_internal_belief_obj.return_value = sample_belief
+    agent.get_internal_belief.return_value = "test belief"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config = DebateConfig(
+            name="Retry Test",
+            topic="Test topic",
+            max_rounds=1,
+            agents=[AgentConfig(name="Agent-A", persona="TEST")],
+            adjudication=AdjudicationConfig(),
+            outputs=OutputConfig(storage_dir=Path(tmpdir)),
+        )
+
+        controller = DebateController([agent], config=config)
+        controller.current_round_key = "round_1"
+        controller.round_histories = {"round_1": []}
+        controller.opening_positions = {"Agent-A": "opening"}
+        controller.current_positions = {}
+        controller.last_rebuttals_patches = {}
+
+        controller.challenge_rebuttal_pairs = [{
+            "target": "Agent-A",
+            "challenger": "Agent-B",
+            "challenge": "C1 is weak",
+            "qid": "Q1",
+            "target_ids": ["C1"],
+            "attack_type": "undermining",
+            "attack_strategy": "challenge_strength_calibration",
+            "rebuttal": "I defended",
+            "resolution": {
+                "status": "critique_valid",
+                "reasoning": "Valid critique",
+            },
+        }]
+
+        controller.run_stage_5_update_positions()
+
+        # Phase 1 should have retried (2 calls), then Phase 2 (1 call) = 3 total
+        assert agent.generate.call_count == 3
+        # Verify C1 strength was lowered to 0.55 by the valid patches
+        if agent.set_internal_belief_obj.called:
+            final_belief = agent.set_internal_belief_obj.call_args[0][0]
+            c1 = next(c for c in final_belief["claims"] if c["id"] == "C1")
+            assert c1["strength"] == pytest.approx(0.55, abs=0.01)

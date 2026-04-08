@@ -157,7 +157,8 @@ def _group_shared_claims(shared_pairs: List[Dict[str, Any]]) -> List[Dict[str, A
 def format_convergence_summary(
     convergence_data: Dict[str, Any],
     agent_names: Optional[List[str]] = None,
-    round_number: Optional[int] = None
+    round_number: Optional[int] = None,
+    definitional_data: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Format convergence analysis as human-readable summary for logging/display.
@@ -166,6 +167,7 @@ def format_convergence_summary(
         convergence_data: Output from calculate_claim_agreement()
         agent_names: Optional list of agent names for display
         round_number: Optional round number for display
+        definitional_data: Optional output from calculate_definitional_alignment()
 
     Returns:
         Formatted string suitable for console output and logging
@@ -215,6 +217,39 @@ def format_convergence_summary(
                 lines.append(f"  {agent_name}: {len(agent_unique)} unique claim(s)")
         lines.append("")
 
+    # Definitional alignment section
+    if definitional_data:
+        def_score = definitional_data.get("definitional_alignment_score", 0.0)
+        aligned = definitional_data.get("aligned_terms", [])
+        divergent = definitional_data.get("divergent_terms", [])
+        unique_defs = definitional_data.get("unique_terms", [])
+
+        lines.append("DEFINITIONAL ALIGNMENT:")
+        lines.append(f"  Alignment Score: {def_score:.1%}")
+        lines.append(f"  Aligned Terms: {len(aligned)}")
+        lines.append(f"  Divergent Terms: {len(divergent)}")
+        lines.append(f"  Unique Terms: {len(unique_defs)}")
+
+        if aligned:
+            lines.append("")
+            for item in aligned[:3]:
+                agents_str = ", ".join(item["agents"])
+                lines.append(
+                    f"  ALIGNED: \"{item['term']}\" — {agents_str} "
+                    f"(similarity: {item['similarity']:.2f})"
+                )
+
+        if divergent:
+            lines.append("")
+            for item in divergent[:3]:
+                agents_str = ", ".join(item["agents"])
+                lines.append(
+                    f"  DIVERGENT: \"{item['term']}\" — {agents_str} "
+                    f"(similarity: {item['similarity']:.2f})"
+                )
+
+        lines.append("")
+
     # Interpretation
     if score >= 0.7:
         lines.append("INTERPRETATION: High convergence - agents strongly agree on claims")
@@ -249,16 +284,26 @@ def get_convergence_trajectory_summary(convergence_history: List[Dict[str, Any]]
         "=" * 70
     ]
 
+    has_def_data = any(
+        "definitional_alignment_score" in entry for entry in convergence_history
+    )
+
     for entry in convergence_history:
         round_num = entry.get("round", "?")
         score = entry.get("convergence_score", 0.0)
         shared = entry.get("shared_claim_pairs", 0)
         unique = entry.get("unique_claims_count", 0)
 
-        lines.append(
+        line = (
             f"Round {round_num}: {score:.1%} convergence "
             f"({shared} shared pairs, {unique} unique)"
         )
+
+        def_score = entry.get("definitional_alignment_score")
+        if def_score is not None:
+            line += f" | def. alignment: {def_score:.1%}"
+
+        lines.append(line)
 
     # Calculate trend
     if len(convergence_history) > 1:
@@ -276,6 +321,160 @@ def get_convergence_trajectory_summary(convergence_history: List[Dict[str, Any]]
         lines.append("")
         lines.append(f"Overall Trend: {trend} ({change:+.1%})")
 
+        # Definitional alignment trend
+        if has_def_data:
+            initial_def = convergence_history[0].get("definitional_alignment_score", 0.0)
+            final_def = convergence_history[-1].get("definitional_alignment_score", 0.0)
+            def_change = final_def - initial_def
+            if def_change > 0.1:
+                def_trend = "ALIGNING"
+            elif def_change < -0.1:
+                def_trend = "DIVERGING"
+            else:
+                def_trend = "STABLE"
+            lines.append(f"Definitional Trend: {def_trend} ({def_change:+.1%})")
+
     lines.append("=" * 70)
 
     return "\n".join(lines)
+
+
+def calculate_definitional_alignment(
+    agent_beliefs: List[Dict[str, Any]],
+    embedding_model,
+    term_match_threshold: float = 0.85,
+    definition_match_threshold: float = 0.80
+) -> Dict[str, Any]:
+    """
+    Compare D# nodes across agents to detect definitional alignment/divergence.
+
+    Two definitions align if:
+    1. They define the same term (exact string match or cosine similarity >= term_match_threshold)
+    2. Their definitions are semantically similar (cosine similarity >= definition_match_threshold)
+
+    Args:
+        agent_beliefs: List of CBS belief dicts from all agents.
+        embedding_model: SentenceTransformer instance from embedding_tracker.model.
+        term_match_threshold: Cosine similarity threshold for term matching (0.0-1.0).
+        definition_match_threshold: Cosine similarity threshold for definition matching (0.0-1.0).
+
+    Returns:
+        Dict with:
+        - definitional_alignment_score: 0.0-1.0
+        - aligned_terms: list of {term, agents, similarity}
+        - divergent_terms: list of {term, agents, definitions, similarity}
+        - unique_terms: list of {term, agent_id} (terms only one agent defines)
+    """
+    if len(agent_beliefs) < 2:
+        return {
+            "definitional_alignment_score": 1.0,
+            "aligned_terms": [],
+            "divergent_terms": [],
+            "unique_terms": [],
+        }
+
+    # Extract all active definitions with metadata
+    all_defs: List[Dict[str, Any]] = []
+    for belief in agent_beliefs:
+        agent_id = belief.get("belief_id", "unknown")
+        for d in belief.get("definitions", []):
+            if d.get("status") == "retracted":
+                continue
+            all_defs.append({
+                "agent_id": agent_id,
+                "def_id": d.get("id", "?"),
+                "term": d.get("term", ""),
+                "definition": d.get("definition", ""),
+                "strength": d.get("strength", 0.5),
+            })
+
+    if not all_defs:
+        return {
+            "definitional_alignment_score": 0.0,
+            "aligned_terms": [],
+            "divergent_terms": [],
+            "unique_terms": [],
+        }
+
+    # Embed terms and definitions separately
+    terms = [d["term"] for d in all_defs]
+    definitions = [d["definition"] for d in all_defs]
+
+    term_embeddings = embedding_model.encode(terms, convert_to_numpy=True)
+    def_embeddings = embedding_model.encode(definitions, convert_to_numpy=True)
+
+    term_sim = cosine_similarity(term_embeddings)
+    def_sim = cosine_similarity(def_embeddings)
+
+    # Find cross-agent term matches
+    aligned_terms: List[Dict[str, Any]] = []
+    divergent_terms: List[Dict[str, Any]] = []
+    matched_indices: set = set()
+
+    for i in range(len(all_defs)):
+        for j in range(i + 1, len(all_defs)):
+            if all_defs[i]["agent_id"] == all_defs[j]["agent_id"]:
+                continue
+
+            # Check term match (exact or semantic)
+            terms_match = (
+                all_defs[i]["term"].lower() == all_defs[j]["term"].lower()
+                or float(term_sim[i][j]) >= term_match_threshold
+            )
+            if not terms_match:
+                continue
+
+            matched_indices.add(i)
+            matched_indices.add(j)
+
+            # Check definition alignment
+            sim = float(def_sim[i][j])
+            if sim >= definition_match_threshold:
+                aligned_terms.append({
+                    "term": all_defs[i]["term"],
+                    "agents": [all_defs[i]["agent_id"], all_defs[j]["agent_id"]],
+                    "similarity": round(sim, 3),
+                })
+            else:
+                divergent_terms.append({
+                    "term": all_defs[i]["term"],
+                    "agents": [all_defs[i]["agent_id"], all_defs[j]["agent_id"]],
+                    "definitions": [
+                        all_defs[i]["definition"][:100],
+                        all_defs[j]["definition"][:100],
+                    ],
+                    "similarity": round(sim, 3),
+                })
+
+    # Unique terms (no cross-agent match)
+    unique_terms: List[Dict[str, Any]] = []
+    for idx, d in enumerate(all_defs):
+        if idx not in matched_indices:
+            unique_terms.append({
+                "term": d["term"],
+                "agent_id": d["agent_id"],
+            })
+
+    # Score: proportion of definitions that found a cross-agent aligned match
+    aligned_indices = set()
+    for i in range(len(all_defs)):
+        for j in range(i + 1, len(all_defs)):
+            if all_defs[i]["agent_id"] == all_defs[j]["agent_id"]:
+                continue
+            terms_match = (
+                all_defs[i]["term"].lower() == all_defs[j]["term"].lower()
+                or float(term_sim[i][j]) >= term_match_threshold
+            )
+            if terms_match and float(def_sim[i][j]) >= definition_match_threshold:
+                aligned_indices.add(i)
+                aligned_indices.add(j)
+
+    total = len(all_defs)
+    score = len(aligned_indices) / total if total > 0 else 0.0
+
+    return {
+        "definitional_alignment_score": round(score, 3),
+        "aligned_terms": aligned_terms,
+        "divergent_terms": divergent_terms,
+        "unique_terms": unique_terms,
+    }

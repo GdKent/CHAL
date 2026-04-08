@@ -229,25 +229,14 @@ def test_validate_metadata_required_fields():
 
 
 @pytest.mark.unit
-def test_validate_metadata_optional_fields(test_beliefs):
-    """Test that optional metadata fields are accepted."""
+def test_validate_metadata_only_required_fields(test_beliefs):
+    """Test that metadata with only required fields passes validation."""
     belief = test_beliefs["complete_valid"]
-    assert "last_updated" in belief["metadata"]
-    assert "scope_conditions" in belief["metadata"]
-    assert "definitions" in belief["metadata"]
+    # Metadata should only have the required fields (topic_query, agent_persona)
+    assert "topic_query" in belief["metadata"]
+    assert "agent_persona" in belief["metadata"]
     errors = validate_belief(belief)
     assert len(errors) == 0
-
-
-@pytest.mark.unit
-def test_validate_metadata_definitions_structure(test_beliefs):
-    """Test that definitions are structured as term/definition pairs."""
-    belief = test_beliefs["complete_valid"]
-    definitions = belief["metadata"]["definitions"]
-    assert isinstance(definitions, list)
-    assert len(definitions) > 0
-    assert "term" in definitions[0]
-    assert "definition" in definitions[0]
 
 
 # ==============================================
@@ -360,7 +349,7 @@ def test_validate_evidence_structure():
 @pytest.mark.unit
 def test_validate_assumption_type_valid():
     """Test that valid assumption types are accepted."""
-    for atype in ("foundational", "empirical", "methodological"):
+    for atype in ("foundational", "empirical", "methodological", "scoping"):
         belief = create_sample_belief(num_assumptions=1)
         belief["assumptions"][0]["type"] = atype
         errors = validate_belief(belief)
@@ -429,6 +418,7 @@ def test_validate_counterpositions_structure(test_beliefs):
     assert "id" in cp
     assert "targets" in cp
     assert "attack_type" in cp
+    assert "attack_strategy" in cp
     assert "statement" in cp
     assert "my_response" in cp
     assert "response_sufficiency" in cp
@@ -446,6 +436,7 @@ def test_validate_counterposition_valid_without_strength():
         "id": "X1",
         "targets": ["C1"],
         "attack_type": "rebutting",
+        "attack_strategy": "present_counter_evidence",
         "statement": "Test counterposition",
         "my_response": "Test response",
         "response_sufficiency": "partial"
@@ -457,12 +448,18 @@ def test_validate_counterposition_valid_without_strength():
 @pytest.mark.unit
 def test_validate_counterposition_attack_type_valid():
     """Test that valid attack types are accepted."""
-    for attack_type in ("undermining", "rebutting", "undercutting"):
+    type_to_strategy = {
+        "undermining": "challenge_assumption",
+        "rebutting": "present_counter_evidence",
+        "undercutting": "challenge_inference_step",
+    }
+    for attack_type, strategy in type_to_strategy.items():
         belief = create_sample_belief(num_claims=1)
         belief["counterpositions"] = [{
             "id": "X1",
             "targets": ["C1"],
             "attack_type": attack_type,
+            "attack_strategy": strategy,
             "statement": "Test counterposition",
             "my_response": "Test response",
             "response_sufficiency": "partial"
@@ -479,6 +476,7 @@ def test_validate_counterposition_attack_type_invalid():
         "id": "X1",
         "targets": ["C1"],
         "attack_type": "destroying",
+        "attack_strategy": "some_strategy",
         "statement": "Test counterposition",
         "my_response": "Test response",
         "response_sufficiency": "partial"
@@ -496,6 +494,7 @@ def test_validate_counterposition_response_sufficiency_valid():
             "id": "X1",
             "targets": ["C1"],
             "attack_type": "rebutting",
+            "attack_strategy": "present_counter_evidence",
             "statement": "Test counterposition",
             "my_response": "Test response",
             "response_sufficiency": sufficiency
@@ -512,6 +511,7 @@ def test_validate_counterposition_response_sufficiency_invalid():
         "id": "X1",
         "targets": ["C1"],
         "attack_type": "rebutting",
+        "attack_strategy": "present_counter_evidence",
         "statement": "Test counterposition",
         "my_response": "Test response",
         "response_sufficiency": "maybe"
@@ -528,6 +528,7 @@ def test_validate_counterposition_id_prefix():
         "id": "C99",
         "targets": ["C1"],
         "attack_type": "rebutting",
+        "attack_strategy": "present_counter_evidence",
         "statement": "Test counterposition",
         "my_response": "Test response",
         "response_sufficiency": "partial"
@@ -553,6 +554,7 @@ def test_validate_counterposition_field_name():
         "id": "X1",
         "targets": ["C1"],
         "attack_type": "rebutting",
+        "attack_strategy": "present_counter_evidence",
         "statement": "Test",
         "my_response": "Response",
         "response_sufficiency": "sufficient"
@@ -569,7 +571,7 @@ def test_validate_counterposition_field_name():
 def test_validate_claim_valid_structure():
     """Test that a full claim with all required fields passes validation."""
     belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
-    belief["claims"][0]["inference_chain"] = ["Step 1: premise", "Step 2: conclusion"]
+    belief["claims"][0]["inference_chain"] = [{"role": "premise", "text": "A1 holds", "reference": "A1"}, {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"}, {"role": "conclusion", "text": "Claim 1"}]
     belief["claims"][0]["strength_justification"] = "Strong empirical support"
     errors = validate_belief(belief)
     assert len(errors) == 0, f"Full claim should pass validation, got: {errors}"
@@ -830,7 +832,6 @@ def test_validate_changelog_valid_structure():
     belief["changelog"] = [{
         "version": 2,
         "changes": ["Updated thesis strength", "Revised claim C1"],
-        "timestamp": "2026-02-16T10:00:00Z"
     }]
     errors = validate_belief(belief)
     assert len(errors) == 0, f"Valid changelog should pass, got: {errors}"
@@ -844,12 +845,10 @@ def test_validate_changelog_multiple_entries():
         {
             "version": 2,
             "changes": ["Initial revision"],
-            "timestamp": "2026-02-16T10:00:00Z"
         },
         {
             "version": 3,
             "changes": ["Added evidence E3", "Updated claim C2"],
-            "timestamp": "2026-02-17T14:30:00Z"
         }
     ]
     errors = validate_belief(belief)
@@ -945,3 +944,482 @@ def test_inference_chain_empty_rejected():
     belief["claims"][0]["inference_chain"] = []
     errors = validate_belief(belief)
     assert len(errors) > 0, "Empty inference_chain on claims should produce errors"
+
+
+# --- Structured inference_chain validation tests ---
+
+def _make_belief_with_ic(ic):
+    """Helper: create a valid belief and replace C1's inference_chain."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["claims"][0]["inference_chain"] = ic
+    return belief
+
+
+@pytest.mark.unit
+def test_ic_valid_two_premises():
+    """Valid chain: 2 premises + inference + conclusion passes."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "premise", "text": "E1 supports", "reference": "E1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    ic_errors = [e for e in errors if "inference_chain" in e.lower() or "Claim 'C1'" in e]
+    assert len(ic_errors) == 0, f"Valid 2-premise chain should pass, got: {ic_errors}"
+
+
+@pytest.mark.unit
+def test_ic_valid_minimum():
+    """Valid chain: 1 premise + inference + conclusion (minimum) passes."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "inductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    ic_errors = [e for e in errors if "inference_chain" in e.lower() or "Claim 'C1'" in e]
+    assert len(ic_errors) == 0, f"Valid minimum chain should pass, got: {ic_errors}"
+
+
+@pytest.mark.unit
+def test_ic_missing_inference_step():
+    """Missing inference step triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("inference step" in e for e in errors), f"Missing inference step should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_missing_conclusion_step():
+    """Missing conclusion step triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("conclusion step" in e for e in errors), f"Missing conclusion should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_zero_premises():
+    """Zero premises triggers error."""
+    ic = [
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("premise step" in e for e in errors), f"Zero premises should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_duplicate_inference_steps():
+    """Two inference steps triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "inference", "text": "First inference", "inference_type": "deductive"},
+        {"role": "inference", "text": "Second inference", "inference_type": "inductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("2 inference steps" in e for e in errors), f"Duplicate inference should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_duplicate_conclusion_steps():
+    """Two conclusion steps triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+        {"role": "conclusion", "text": "Claim 1 restated"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("2 conclusion steps" in e for e in errors), f"Duplicate conclusion should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_wrong_order_conclusion_before_inference():
+    """Conclusion before inference triggers ordering error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "conclusion", "text": "Claim 1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("out of order" in e for e in errors), f"Wrong order should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_premise_missing_reference():
+    """Premise missing 'reference' field triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("reference" in e for e in errors), f"Missing reference should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_premise_reference_bad_format():
+    """Premise reference not matching ^[ACE]\\d+$ triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "D1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("A#/E#/C# format" in e for e in errors), f"Bad reference format should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_inference_missing_inference_type():
+    """Inference step missing 'inference_type' triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "inference", "text": "Therefore claim follows"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("inference_type" in e for e in errors), f"Missing inference_type should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_invalid_inference_type():
+    """Invalid inference_type value triggers error."""
+    ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "analogical"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("analogical" in e for e in errors), f"Invalid inference_type should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_legacy_string_items_rejected():
+    """Legacy string items in inference_chain fail validation."""
+    ic = [
+        "Premise: A1 holds",
+        "Inference (deductive): Therefore claim follows",
+        "Conclusion: Claim 1",
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("must be an object" in e for e in errors), f"String items should error, got: {errors}"
+
+
+@pytest.mark.unit
+def test_ic_empty_text_field():
+    """Empty 'text' field triggers error."""
+    ic = [
+        {"role": "premise", "text": "", "reference": "A1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    errors = validate_belief(_make_belief_with_ic(ic))
+    assert any("empty 'text'" in e for e in errors), f"Empty text should error, got: {errors}"
+
+
+# ==============================================
+# 14. Definition (D#) Validation Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_definition_valid():
+    """Test that a valid D# node passes validation."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    # create_sample_belief already creates D1 with used_by pointing to A1 and E1
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"Valid belief with D# should pass, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_definition_missing_required_fields():
+    """Test that D# with missing required fields is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"] = [{"id": "D1"}]  # Missing all other fields
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "D# with missing fields should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_definition_invalid_id_format():
+    """Test that D# with invalid ID format is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"] = [{
+        "id": "X1",  # Wrong prefix for definitions
+        "term": "test",
+        "definition": "test definition",
+        "strength": 0.8,
+        "strength_justification": "test",
+        "status": "active",
+        "used_by": ["A1"]
+    }]
+    belief["assumptions"][0]["supported_by_definitions"] = ["X1"]
+    errors = validate_belief(belief)
+    assert len(errors) > 0, "D# with wrong ID prefix should produce errors"
+
+
+@pytest.mark.unit
+def test_validate_definition_duplicate_ids():
+    """Test that duplicate D# IDs are rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"] = [
+        {
+            "id": "D1", "term": "term1", "definition": "def1",
+            "strength": 0.8, "strength_justification": "test",
+            "status": "active", "used_by": ["A1"]
+        },
+        {
+            "id": "D1", "term": "term2", "definition": "def2",
+            "strength": 0.7, "strength_justification": "test",
+            "status": "active", "used_by": ["E1"]
+        },
+    ]
+    belief["assumptions"][0]["supported_by_definitions"] = ["D1"]
+    belief["evidence"][0]["supported_by_definitions"] = ["D1"]
+    errors = validate_belief(belief)
+    assert any("duplicate" in e.lower() for e in errors), f"Duplicate D# IDs should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_definition_strength_out_of_range():
+    """Test that D# strength outside [0.0, 1.0] is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"][0]["strength"] = 1.5
+    errors = validate_belief(belief)
+    assert any("strength" in e.lower() and "d1" in e.lower() for e in errors), \
+        f"D# strength out of range should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_definition_invalid_status():
+    """Test that D# with invalid status is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"][0]["status"] = "pending"
+    errors = validate_belief(belief)
+    assert any("definition status" in e.lower() or "status" in e.lower() for e in errors), \
+        f"D# invalid status should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_definition_empty_used_by():
+    """Test that D# with empty used_by array is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"][0]["used_by"] = []
+    errors = validate_belief(belief)
+    assert any("used_by" in e.lower() for e in errors), \
+        f"D# with empty used_by should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_definition_empty_term():
+    """Test that D# with empty term is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"][0]["term"] = ""
+    errors = validate_belief(belief)
+    assert any("term" in e.lower() for e in errors), \
+        f"D# with empty term should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_definition_empty_definition():
+    """Test that D# with empty definition text is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"][0]["definition"] = ""
+    errors = validate_belief(belief)
+    assert any("definition" in e.lower() for e in errors), \
+        f"D# with empty definition should produce errors, got: {errors}"
+
+
+# ==============================================
+# 15. D# Cross-Reference Validation Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_definition_used_by_nonexistent_node():
+    """Test that D#.used_by referencing non-existent A#/E# is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["definitions"][0]["used_by"] = ["A99"]  # Non-existent
+    errors = validate_belief(belief)
+    assert any("a99" in e.lower() or "non-existent" in e.lower() for e in errors), \
+        f"D# used_by referencing non-existent node should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_supported_by_definitions_nonexistent_d():
+    """Test that A#.supported_by_definitions referencing non-existent D# is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["assumptions"][0]["supported_by_definitions"] = ["D99"]  # Non-existent
+    errors = validate_belief(belief)
+    assert any("d99" in e.lower() or "non-existent" in e.lower() for e in errors), \
+        f"A# supported_by_definitions referencing non-existent D# should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_evidence_supported_by_definitions_nonexistent_d():
+    """Test that E#.supported_by_definitions referencing non-existent D# is rejected."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    belief["evidence"][0]["supported_by_definitions"] = ["D99"]  # Non-existent
+    errors = validate_belief(belief)
+    assert any("d99" in e.lower() or "non-existent" in e.lower() for e in errors), \
+        f"E# supported_by_definitions referencing non-existent D# should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_bidirectional_consistency_d_to_ae():
+    """Test bidirectional consistency: D# lists A# in used_by but A# doesn't reference D#."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    # D1 says it's used_by A1, but A1's supported_by_definitions doesn't include D1
+    belief["definitions"] = [{
+        "id": "D1", "term": "test", "definition": "test def",
+        "strength": 0.9, "strength_justification": "test",
+        "status": "active", "used_by": ["A1", "E1"]
+    }]
+    belief["assumptions"][0]["supported_by_definitions"] = ["D1"]
+    belief["evidence"][0]["supported_by_definitions"] = []  # Missing D1 back-reference
+    errors = validate_belief(belief)
+    assert any("bidirectional" in e.lower() or "inconsistency" in e.lower() for e in errors), \
+        f"Bidirectional inconsistency should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_bidirectional_consistency_ae_to_d():
+    """Test bidirectional consistency: A# references D# but D# doesn't list A# in used_by."""
+    belief = create_sample_belief(num_assumptions=1, num_evidence=1, num_claims=1)
+    # D1 used_by only lists E1, but A1 references D1
+    belief["definitions"] = [{
+        "id": "D1", "term": "test", "definition": "test def",
+        "strength": 0.9, "strength_justification": "test",
+        "status": "active", "used_by": ["E1"]  # Does NOT include A1
+    }]
+    belief["assumptions"][0]["supported_by_definitions"] = ["D1"]  # A1 references D1
+    belief["evidence"][0]["supported_by_definitions"] = ["D1"]
+    errors = validate_belief(belief)
+    assert any("bidirectional" in e.lower() or "inconsistency" in e.lower() for e in errors), \
+        f"Bidirectional inconsistency should produce errors, got: {errors}"
+
+
+# ==============================================
+# 16. Scoping Assumption Type Test
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_assumption_type_scoping_valid():
+    """Test that 'scoping' assumption type is accepted."""
+    belief = create_sample_belief(num_assumptions=1, num_claims=1, num_evidence=1)
+    belief["assumptions"][0]["type"] = "scoping"
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"'scoping' assumption type should be valid, got: {errors}"
+
+
+# ==============================================
+# 17. Attack Strategy Validation Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_attack_strategy_required():
+    """Test that missing attack_strategy on X# is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        # attack_strategy intentionally omitted
+        "statement": "Test",
+        "my_response": "Test",
+        "response_sufficiency": "partial"
+    }]
+    errors = validate_belief(belief)
+    assert any("attack_strategy" in e.lower() for e in errors), \
+        f"Missing attack_strategy should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_attack_strategy_invalid_for_type():
+    """Test that attack_strategy invalid for the given attack_type is rejected."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "attack_strategy": "circularity",  # circularity is undercutting, not rebutting
+        "statement": "Test",
+        "my_response": "Test",
+        "response_sufficiency": "partial"
+    }]
+    errors = validate_belief(belief)
+    assert any("attack_strategy" in e.lower() and "not valid" in e.lower() for e in errors), \
+        f"Invalid attack_strategy for type should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_attack_strategy_valid_for_each_type():
+    """Test that valid attack_strategy for each attack_type passes."""
+    from chal.utilities.utils import VALID_ATTACK_STRATEGIES
+    for attack_type, strategies in VALID_ATTACK_STRATEGIES.items():
+        for strategy in strategies:
+            belief = create_sample_belief(num_claims=1)
+            belief["counterpositions"] = [{
+                "id": "X1",
+                "targets": ["C1"],
+                "attack_type": attack_type,
+                "attack_strategy": strategy,
+                "statement": "Test",
+                "my_response": "Test",
+                "response_sufficiency": "partial"
+            }]
+            errors = validate_belief(belief)
+            assert len(errors) == 0, \
+                f"Strategy '{strategy}' for type '{attack_type}' should be valid, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_redistributed_definition_strategies_valid():
+    """Test that former definitional strategies are valid under their new types."""
+    # over_extension → undermining, circularity → undercutting
+    for attack_type, strategy in [("undermining", "over_extension"),
+                                   ("undermining", "under_extension"),
+                                   ("undercutting", "circularity"),
+                                   ("undercutting", "stipulative_bias"),
+                                   ("undercutting", "conceptual_conflation")]:
+        belief = create_sample_belief(num_claims=1)
+        belief["counterpositions"] = [{
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": attack_type,
+            "attack_strategy": strategy,
+            "statement": f"Testing {strategy} under {attack_type}",
+            "my_response": "Response",
+            "response_sufficiency": "sufficient"
+        }]
+        errors = validate_belief(belief)
+        assert len(errors) == 0, f"{strategy} under {attack_type} should be valid, got: {errors}"
+
+
+# ==============================================
+# 18. Definitions Required at Top Level
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_definitions_required():
+    """Test that missing definitions top-level key is rejected."""
+    belief = create_sample_belief()
+    del belief["definitions"]
+    errors = validate_belief(belief)
+    assert any("definitions" in e.lower() for e in errors), \
+        f"Missing definitions should produce errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_definitions_empty_array_valid():
+    """Test that empty definitions array is valid (when no A#/E# exist)."""
+    belief = create_sample_belief(num_assumptions=0, num_claims=0, num_evidence=0)
+    assert belief["definitions"] == []
+    errors = validate_belief(belief)
+    assert len(errors) == 0, f"Empty definitions array should pass, got: {errors}"

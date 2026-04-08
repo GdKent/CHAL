@@ -40,7 +40,7 @@ def parse_model_output_to_belief(output: str) -> Tuple[Optional[Dict[str, Any]],
     if raw_json_str:
         try:
             # Normalize IDs: some models use "A#1" instead of "A1"
-            raw_json_str = re.sub(r'"([ACEUX])#(\d+)"', r'"\1\2"', raw_json_str)
+            raw_json_str = re.sub(r'"([ACDEUX])#(\d+)"', r'"\1\2"', raw_json_str)
             belief_obj = json.loads(raw_json_str)
         except Exception as e:
             errors.append(f"JSON parse error: {e}")
@@ -76,17 +76,6 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     if th.get("strength_reasoning"):
         md.append(f"- Reasoning: {th['strength_reasoning']}")
 
-    md.append("\n# Scope & Definitions")
-    meta = belief.get("metadata", {})
-    if not isinstance(meta, dict):
-        meta = {}
-    if meta.get("scope_conditions"): md.append(f"- Scope conditions: {meta['scope_conditions']}")
-    defs = meta.get("definitions") or []
-    if defs:
-        md.append("- Definitions:")
-        for d in defs:
-            md.append(f"  - {d.get('term')}: {d.get('definition')}")
-
     def list_block(title: str, key: str, formatter):
         items = belief.get(key) or []
         if not items: return
@@ -94,11 +83,24 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         for item in items:
             md.append(formatter(item))
 
+    def definition_fmt(d):
+        lines = [f"- [{d.get('id','')}] **{d.get('term','')}**: {d.get('definition','')}"]
+        lines.append(f"  - Strength: {d.get('strength', '')} ({d.get('strength_justification', '')})")
+        lines.append(f"  - Used by: {', '.join(d.get('used_by', []))}")
+        lines.append(f"  - Status: {d.get('status', 'active')}")
+        if d.get("consecutive_defenses", 0) > 0:
+            lines.append(f"  - Defenses: {d['consecutive_defenses']} consecutive (original strength: {d.get('original_strength', '?')})")
+        return "\n".join(lines)
+    list_block("Definitions", "definitions", definition_fmt)
+
     def assumption_fmt(a):
         lines = [f"- [{a.get('id','')}] ({a.get('type','')}) {a.get('statement','')}"]
         lines.append(f"  - Supports: {', '.join(a.get('supports_claims') or [])}")
         lines.append(f"  - Strength: {a.get('strength', '')} ({a.get('strength_justification', '')})")
+        lines.append(f"  - Supported by definitions: {', '.join(a.get('supported_by_definitions', []))}")
         lines.append(f"  - Status: {a.get('status', 'active')}")
+        if a.get("consecutive_defenses", 0) > 0:
+            lines.append(f"  - Defenses: {a['consecutive_defenses']} consecutive (original strength: {a.get('original_strength', '?')})")
         return "\n".join(lines)
     list_block("Assumptions", "assumptions", assumption_fmt)
 
@@ -108,12 +110,30 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         if c.get("inference_chain"):
             parts.append("  - Inference chain:")
             for step in c["inference_chain"]:
-                if isinstance(step, dict):
-                    parts.append(f"    - Step: {step.get('step','')} | Justification: {step.get('justification','')}")
+                if isinstance(step, dict) and "role" in step:
+                    # New structured format: role-based steps
+                    role = step.get("role", "")
+                    text = step.get("text", "")
+                    if role == "premise":
+                        ref = step.get("reference", "")
+                        parts.append(f"    - Premise ({ref}): {text}")
+                    elif role == "inference":
+                        inf_type = step.get("inference_type", "")
+                        parts.append(f"    - Inference ({inf_type}): {text}")
+                    elif role == "conclusion":
+                        parts.append(f"    - Conclusion: {text}")
+                    else:
+                        parts.append(f"    - {role}: {text}")
+                elif isinstance(step, dict):
+                    # Legacy dict format: {step, justification}
+                    parts.append(f"    - [legacy] {step.get('step','')} | {step.get('justification','')}")
                 else:
-                    parts.append(f"    - {step}")
+                    # Legacy string format
+                    parts.append(f"    - [legacy] {step}")
         parts.append(f"  - Strength: {c.get('strength','')} ({c.get('strength_justification','')})")
         parts.append(f"  - Status: {c.get('status','')}")
+        if c.get("consecutive_defenses", 0) > 0:
+            parts.append(f"  - Defenses: {c['consecutive_defenses']} consecutive (original strength: {c.get('original_strength', '?')})")
         # Inline predictions under the claim
         preds = c.get("predictions") or []
         if preds:
@@ -135,8 +155,11 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         lines = [f"- [{e.get('id','')}] ({e.get('type','')}) {e.get('summary','')}"]
         lines.append(f"  - Strength: {e.get('strength', '')} ({e.get('strength_justification', '')})")
         lines.append(f"  - Source: {src_str}")
-        lines.append(f"  - Supports: {', '.join(e.get('relevance_to_claims') or [])}")
+        lines.append(f"  - Supports: {', '.join(e.get('supports_claims') or [])}")
+        lines.append(f"  - Supported by definitions: {', '.join(e.get('supported_by_definitions', []))}")
         lines.append(f"  - Status: {e.get('status', 'active')}")
+        if e.get("consecutive_defenses", 0) > 0:
+            lines.append(f"  - Defenses: {e['consecutive_defenses']} consecutive (original strength: {e.get('original_strength', '?')})")
         return "\n".join(lines)
     list_block("Evidence", "evidence", ev_fmt)
 
@@ -156,6 +179,7 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     def x_fmt(x):
         lines = [f"- [{x.get('id','')}] Statement: {x.get('statement','')}"]
         lines.append(f"  - Attack type: {x.get('attack_type','')}")
+        lines.append(f"  - Attack strategy: {x.get('attack_strategy','')}")
         lines.append(f"  - Targets: {', '.join(x.get('targets', []))}")
         if x.get("my_response"):
             lines.append(f"  - My response: {x['my_response']}")
@@ -163,22 +187,10 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
         return "\n".join(lines)
     list_block("Counterpositions", "counterpositions", x_fmt)
 
-    if belief.get("update_policy") and isinstance(belief["update_policy"], dict):
-        up = belief["update_policy"]
-        md.append("\n# Update Policy")
-        if up.get("revision_triggers"): md.append(f"- Triggers: {', '.join(up['revision_triggers'])}")
-        if up.get("strength_update_rule"): md.append(f"- Strength update rule: {up['strength_update_rule']}")
-        if up.get("retirement_criteria"): md.append(f"- Retirement criteria: {', '.join(up['retirement_criteria'])}")
-
-
     if belief.get("changelog"):
         md.append("\n# Changelog")
         for ch in belief["changelog"]:
-            ts = ch.get('timestamp')
-            prefix = f"- v{ch.get('version')}"
-            if ts:
-                prefix += f" ({ts})"
-            md.append(f"{prefix}: " + "; ".join(ch.get("changes") or []))
+            md.append(f"- v{ch.get('version')}: " + "; ".join(ch.get("changes") or []))
 
     return "\n".join(md).strip()
 
@@ -192,6 +204,15 @@ def project_for_embedding(belief: Dict[str, Any]) -> str:
     lines = [f"Thesis: {th.get('stance','')}",
              "Bullets: " + " | ".join(th.get("summary_bullets") or []),
              f"Strength: {th.get('strength','')}"]
+
+    # Top 3 definitions by strength
+    defs = sorted(
+        [d for d in belief.get("definitions", []) if d.get("status") != "retracted"],
+        key=lambda d: d.get("strength", 0), reverse=True
+    )[:3]
+    if defs:
+        def_parts = [f"{d['term']}={d['definition']}" for d in defs]
+        lines.append("Key definitions: " + "; ".join(def_parts))
 
     # Top 3 claims by strength if available
     claims = sorted((belief.get("claims") or []), key=lambda c: -(c.get("strength", 0.0)))[:3]

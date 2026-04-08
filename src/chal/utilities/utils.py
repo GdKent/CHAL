@@ -21,6 +21,8 @@ VALID_ATTACK_STRATEGIES = {
         "demand_falsifiability",
         "challenge_strength_calibration",
         "press_uncertainty",
+        "over_extension",           # D# definition is too broad — weakens the premise foundation
+        "under_extension",          # D# definition is too narrow — premise doesn't cover key cases
     },
     "rebutting": {
         "present_counter_evidence",
@@ -34,12 +36,15 @@ VALID_ATTACK_STRATEGIES = {
         "expose_inconsistency",
         "identify_equivocation",
         "challenge_scope",
+        "circularity",              # D# definition is circular — breaks the inference chain
+        "stipulative_bias",         # D# definition begs the question — smuggles conclusion into premises
+        "conceptual_conflation",    # D# definition conflates distinct concepts — equivocation
     },
 }
 
-VALID_TARGET_ID_PREFIXES = ("A", "C", "E", "X", "U")
+VALID_TARGET_ID_PREFIXES = ("A", "C", "D", "E", "X", "U")
 
-_TARGET_ID_RE = re.compile(r"^[ACEXU]\d+$")
+_TARGET_ID_RE = re.compile(r"^[ACDEXU]\d+$")
 
 
 def validate_stage2_questions(questions: list[dict]) -> tuple[bool, list[str]]:
@@ -49,7 +54,7 @@ def validate_stage2_questions(questions: list[dict]) -> tuple[bool, list[str]]:
     Checks each question for:
     - Required fields present and non-empty: qid, text, target_ids, attack_type, attack_strategy
     - qid matches pattern Q1, Q2, ...
-    - target_ids is a non-empty list of 1-2 valid CBS node IDs (A#, C#, E#, X#, U#)
+    - target_ids is a non-empty list of 1-2 valid CBS node IDs (A#, C#, D#, E#, X#, U#)
     - attack_type is one of: undermining, rebutting, undercutting
     - attack_strategy is a valid strategy for the chosen attack_type
 
@@ -91,7 +96,7 @@ def validate_stage2_questions(questions: list[dict]) -> tuple[bool, list[str]]:
                 if not isinstance(tid, str) or not _TARGET_ID_RE.match(tid):
                     errors.append(
                         f"{label}: invalid target_ids entry '{tid}' "
-                        f"(must match [ACEXU]<number>)"
+                        f"(must match [ACDEXU]<number>)"
                     )
 
         # --- attack_type ---

@@ -206,32 +206,20 @@ def test_apply_patches_update_claim_not_found():
 
 
 # ==============================================
-# 3. Patch Application - retire_claim
+# 3. Patch Application - update_claim retraction enforcement
 # ==============================================
 
 @pytest.mark.unit
-def test_apply_patches_retire_claim_success(test_patches):
-    """Test retiring a claim sets status='retracted' and strength=0.0."""
+def test_apply_patches_update_claim_retraction_enforcement(test_patches):
+    """Setting status='retracted' via update_claim forces strength to 0.0."""
     belief = create_sample_belief(num_claims=1)
-    patches = test_patches["retire_claim"]
+    belief["claims"][0]["strength"] = 0.8
+    patches = test_patches["update_claim_retract"]
 
     updated = apply_patches(belief, patches)
 
     assert updated["claims"][0]["status"] == "retracted"
     assert updated["claims"][0]["strength"] == 0.0
-
-
-@pytest.mark.unit
-def test_apply_patches_retire_claim_not_found():
-    """Test error when retiring non-existent claim."""
-    belief = create_sample_belief(num_claims=1)
-    patches = [{
-        "op": "retire_claim",
-        "target_id": "C99"
-    }]
-
-    with pytest.raises((ValueError, KeyError)):
-        apply_patches(belief, patches)
 
 
 # ==============================================
@@ -252,7 +240,11 @@ def test_apply_patches_add_claim_success():
             "depends_on": ["A1", "E1"],
             "strength": 0.65,
             "status": "active",
-            "inference_chain": ["Step 1: A1 supports new claim"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 supports new claim", "reference": "A1"},
+                {"role": "inference", "text": "A1 provides evidence for the new claim", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "New claim is supported by A1"}
+            ],
             "predictions": [
                 {"statement": "Pred 1", "test": "Test 1", "decision_criterion": "Crit 1"}
             ]
@@ -285,7 +277,11 @@ def test_apply_patches_add_claim_no_array():
             "depends_on": ["A1", "E1"],
             "strength": 0.7,
             "status": "active",
-            "inference_chain": ["Step 1: A1 supports first claim"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 supports first claim", "reference": "A1"},
+                {"role": "inference", "text": "A1 provides evidence for the first claim", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "First claim is supported by A1"}
+            ],
             "predictions": [
                 {"statement": "Pred", "test": "Test", "decision_criterion": "Crit"}
             ]
@@ -328,7 +324,11 @@ def test_apply_patches_add_claim_changelog():
             "depends_on": ["A1", "E1"],
             "strength": 0.6,
             "status": "active",
-            "inference_chain": ["Step 1: A1 supports new claim"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 supports new claim", "reference": "A1"},
+                {"role": "inference", "text": "A1 provides evidence for the new claim", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "New claim is supported by A1"}
+            ],
             "predictions": [
                 {"statement": "P", "test": "T", "decision_criterion": "DC"}
             ]
@@ -357,7 +357,11 @@ def test_apply_patches_add_claim_affects_thesis_strength():
             "depends_on": ["A1", "E1"],
             "strength": 0.6,
             "status": "active",
-            "inference_chain": ["Step 1: A1 supports second claim"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 supports second claim", "reference": "A1"},
+                {"role": "inference", "text": "A1 provides evidence for the second claim", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Second claim is supported by A1"}
+            ],
             "predictions": [
                 {"statement": "P", "test": "T", "decision_criterion": "DC"}
             ]
@@ -367,9 +371,9 @@ def test_apply_patches_add_claim_affects_thesis_strength():
     updated = apply_patches(belief, patches, propagate_strength=True)
 
     # Now 2 active claims: avg = (0.8 + 0.6) / 2 = 0.7
-    # breadth = 2^1.5 / (2^1.5 + 1) ≈ 0.739
-    # thesis = 0.7 * 0.739 ≈ 0.5172
-    assert updated["thesis"]["strength"] == pytest.approx(0.5172, abs=0.01)
+    # breadth = 2^1.0 / (2^1.0 + 1) = 2/3 ≈ 0.6667
+    # thesis = 0.7 * 0.6667 ≈ 0.4667
+    assert updated["thesis"]["strength"] == pytest.approx(0.4667, abs=0.01)
 
 
 # ==============================================
@@ -386,7 +390,7 @@ def test_apply_patches_add_evidence_success(test_patches):
     updated = apply_patches(belief, patches)
 
     assert len(updated["evidence"]) == original_count + 1
-    assert any(e["id"] == "E3" for e in updated["evidence"])
+    assert any(e["id"] == "E2" for e in updated["evidence"])
 
 
 @pytest.mark.unit
@@ -403,7 +407,7 @@ def test_apply_patches_add_evidence_no_evidence_array():
             "type": "empirical",
             "summary": "New evidence",
             "source": "Test (2026)",
-            "relevance_to_claims": [],
+            "supports_claims": [],
             "strength": 0.8
         }
     }]
@@ -751,7 +755,7 @@ def test_thesis_ceiling_single_claim():
 
 @pytest.mark.unit
 def test_thesis_ceiling_two_claims():
-    """Two active claims → ceiling = avg * breadth(2, p=1.5)."""
+    """Two active claims → ceiling = avg * breadth(2, p=1.0)."""
     belief = create_sample_belief(num_claims=2, num_assumptions=1, num_evidence=1)
     belief["claims"][0]["strength"] = 0.8
     belief["claims"][1]["strength"] = 0.6
@@ -761,14 +765,14 @@ def test_thesis_ceiling_two_claims():
     updated = apply_patches(belief, patches, propagate_strength=True)
 
     # avg = (0.8 + 0.6) / 2 = 0.7
-    # breadth = 2^1.5 / (2^1.5 + 1) ≈ 0.739
-    # ceiling = 0.7 * 0.739 ≈ 0.5172
-    assert updated["thesis"]["strength"] == pytest.approx(0.5172, abs=0.01)
+    # breadth = 2^1.0 / (2^1.0 + 1) = 2/3 ≈ 0.6667
+    # ceiling = 0.7 * 0.6667 ≈ 0.4667
+    assert updated["thesis"]["strength"] == pytest.approx(0.4667, abs=0.01)
 
 
 @pytest.mark.unit
 def test_thesis_ceiling_three_claims():
-    """Three active claims → ceiling = avg * breadth(3, p=1.5)."""
+    """Three active claims → ceiling = avg * breadth(3, p=1.0)."""
     belief = create_sample_belief(num_claims=3, num_assumptions=1, num_evidence=1)
     belief["claims"][0]["strength"] = 0.8
     belief["claims"][1]["strength"] = 0.8
@@ -778,8 +782,8 @@ def test_thesis_ceiling_three_claims():
     patches = [{"op": "update_thesis", "new_strength": 0.9}]
     updated = apply_patches(belief, patches, propagate_strength=True)
 
-    # avg = 0.8, breadth = 3^1.5 / (3^1.5 + 1) ≈ 0.839, ceiling ≈ 0.6709
-    assert updated["thesis"]["strength"] == pytest.approx(0.6709, abs=0.01)
+    # avg = 0.8, breadth = 3^1.0 / (3^1.0 + 1) = 3/4 = 0.75, ceiling = 0.8 * 0.75 = 0.6
+    assert updated["thesis"]["strength"] == pytest.approx(0.6, abs=0.01)
 
 
 @pytest.mark.unit
@@ -812,8 +816,8 @@ def test_thesis_strength_always_equals_formula():
     patches = [{"op": "update_thesis", "new_strength": 0.3}]
     updated = apply_patches(belief, patches, propagate_strength=True)
 
-    # Formula: avg(0.8, 0.8, 0.8) × (3^1.5 / (3^1.5 + 1)) = 0.8 × 0.839 ≈ 0.6709
-    assert updated["thesis"]["strength"] == pytest.approx(0.6709, abs=0.01)
+    # Formula: avg(0.8, 0.8, 0.8) × (3^1.0 / (3^1.0 + 1)) = 0.8 × 0.75 = 0.6
+    assert updated["thesis"]["strength"] == pytest.approx(0.6, abs=0.01)
     assert "strength_reasoning" in updated["thesis"]
 
 
@@ -833,9 +837,9 @@ def test_thesis_ceiling_after_claim_weakness():
     }]
     updated = apply_patches(belief, patches, propagate_strength=True)
 
-    # avg = (0.3 + 0.8) / 2 = 0.55, breadth = 2^1.5 / (2^1.5 + 1) ≈ 0.739
-    # ceiling = 0.55 * 0.739 ≈ 0.4063
-    assert updated["thesis"]["strength"] == pytest.approx(0.4063, abs=0.01)
+    # avg = (0.3 + 0.8) / 2 = 0.55, breadth = 2^1.0 / (2^1.0 + 1) = 2/3 ≈ 0.6667
+    # ceiling = 0.55 * 0.6667 ≈ 0.3667
+    assert updated["thesis"]["strength"] == pytest.approx(0.3667, abs=0.01)
 
 
 # ==============================================
@@ -1101,7 +1105,7 @@ def test_apply_patches_creates_changelog():
 
 @pytest.mark.unit
 def test_apply_patches_changelog_format():
-    """Test that changelog contains version, changes, timestamp."""
+    """Test that changelog contains version and changes."""
     belief = create_sample_belief()
     belief["version"] = 1
     patches = [{"op": "update_thesis", "change": "weaken"}]
@@ -1176,19 +1180,6 @@ def test_validate_patches_update_claim_bad_id():
 
 
 @pytest.mark.unit
-def test_validate_patches_retire_claim_bad_id():
-    """Test error if target_id for retire doesn't exist."""
-    belief = create_sample_belief(num_claims=1)
-    patches = [{
-        "op": "retire_claim",
-        "target_id": "C99"
-    }]
-
-    errors = _flat(validate_patches(patches, belief))
-    assert len(errors) > 0
-
-
-@pytest.mark.unit
 def test_validate_patches_add_evidence_duplicate_id():
     """Test error if evidence ID already exists."""
     belief = create_sample_belief(num_evidence=1)
@@ -1199,7 +1190,7 @@ def test_validate_patches_add_evidence_duplicate_id():
             "type": "empirical",
             "summary": "Duplicate",
             "source": "Test (2026)",
-            "relevance_to_claims": [],
+            "supports_claims": [],
             "strength": 0.8
         }
     }]
@@ -1794,22 +1785,6 @@ def test_validate_patches_update_claim_missing_target():
     assert "missing target_id" in errors[0]
 
 
-@pytest.mark.unit
-def test_validate_patches_retire_claim_missing_target():
-    """Test validation catches retire_claim without target_id."""
-    belief = create_sample_belief()
-
-    patches = [{
-        "op": "retire_claim"
-        # Missing target_id
-    }]
-
-    errors = _flat(validate_patches(patches, belief))
-
-    assert len(errors) == 1
-    assert "missing target_id" in errors[0]
-
-
 # ==============================================
 # 20b. Validation - add_claim
 # ==============================================
@@ -1827,7 +1802,11 @@ def test_validate_patches_add_claim_valid():
             "depends_on": ["A1", "E1"],
             "strength": 0.65,
             "status": "active",
-            "inference_chain": ["Step 1: A1 supports new claim"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 supports new claim", "reference": "A1"},
+                {"role": "inference", "text": "A1 provides evidence for the new claim", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "New claim is supported by A1"}
+            ],
             "predictions": [
                 {"statement": "Pred", "test": "Test", "decision_criterion": "Crit"}
             ],
@@ -1877,7 +1856,11 @@ def test_validate_patches_add_claim_duplicate_id():
             "depends_on": ["A1", "E1"],
             "strength": 0.5,
             "status": "active",
-            "inference_chain": ["Step 1: Duplicate reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides duplicate reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Duplicate reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Duplicate claim is supported"}
+            ],
             "predictions": [
                 {"statement": "P", "test": "T", "decision_criterion": "DC"}
             ]
@@ -1918,7 +1901,11 @@ def test_validate_patches_add_claim_strength_out_of_bounds():
             "depends_on": ["A1", "E1"],
             "strength": 1.5,
             "status": "active",
-            "inference_chain": ["Step 1: Test reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides test reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Test reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Test claim is supported"}
+            ],
             "predictions": [
                 {"statement": "P", "test": "T", "decision_criterion": "DC"}
             ]
@@ -1943,7 +1930,11 @@ def test_validate_patches_add_claim_invalid_status():
             "depends_on": ["A1", "E1"],
             "strength": 0.5,
             "status": "invalid_status",
-            "inference_chain": ["Step 1: Test reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides test reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Test reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Test claim is supported"}
+            ],
             "predictions": [
                 {"statement": "P", "test": "T", "decision_criterion": "DC"}
             ]
@@ -1968,7 +1959,11 @@ def test_validate_patches_add_claim_bad_depends_on():
             "depends_on": ["A99"],  # Non-existent
             "strength": 0.5,
             "status": "active",
-            "inference_chain": ["Step 1: Test reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides test reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Test reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Test claim is supported"}
+            ],
             "predictions": [
                 {"statement": "P", "test": "T", "decision_criterion": "DC"}
             ]
@@ -1993,7 +1988,11 @@ def test_validate_patches_add_claim_bad_evidence_ref():
             "depends_on": ["A1", "E99"],  # E99 doesn't exist
             "strength": 0.5,
             "status": "active",
-            "inference_chain": ["Step 1: Test reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides test reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Test reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Test claim is supported"}
+            ],
             "predictions": [
                 {"statement": "P", "test": "T", "decision_criterion": "DC"}
             ]
@@ -2018,7 +2017,11 @@ def test_validate_patches_add_claim_empty_predictions():
             "depends_on": ["A1", "E1"],
             "strength": 0.5,
             "status": "active",
-            "inference_chain": ["Step 1: Test reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides test reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Test reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Test claim is supported"}
+            ],
             "predictions": []
         }
     }]
@@ -2041,7 +2044,11 @@ def test_validate_patches_add_claim_prediction_missing_fields():
             "depends_on": ["A1", "E1"],
             "strength": 0.5,
             "status": "active",
-            "inference_chain": ["Step 1: Test reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides test reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Test reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Test claim is supported"}
+            ],
             "predictions": [
                 {"statement": "Pred only"}  # Missing test and decision_criterion
             ]
@@ -2385,7 +2392,7 @@ def test_add_evidence_defaults_status_active():
             "type": "empirical",
             "summary": "New evidence",
             "source": "Test (2026)",
-            "relevance_to_claims": ["C1"],
+            "supports_claims": ["C1"],
             "strength": 0.7,
             "strength_justification": "Test justification"
         }
@@ -2574,7 +2581,7 @@ def test_validate_patches_mixed_valid_invalid():
     belief = create_sample_belief(num_claims=1, num_evidence=1)
     patches = [
         {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.6}},  # valid
-        {"op": "retire_claim", "target_id": "C99"},  # invalid
+        {"op": "update_claim", "target_id": "C99", "changes": {"strength": 0.5}},  # invalid - C99 doesn't exist
         {"op": "update_evidence", "target_id": "E1", "changes": {"strength": 0.9}},  # valid
     ]
 
@@ -2612,7 +2619,11 @@ def test_validate_update_claim_allows_all_valid_fields():
             "status": "revised",
             "depends_on": ["A1", "E1"],
             "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}],
-            "inference_chain": ["Step 1: Updated"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 supports updated claim", "reference": "A1"},
+                {"role": "inference", "text": "Updated reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "Updated claim is supported"}
+            ],
             "type": "descriptive",
         }
     }]
@@ -2671,7 +2682,7 @@ def test_validate_update_evidence_allows_all_valid_fields():
             "summary": "Updated summary",
             "source": "Updated source",
             "status": "revised",
-            "relevance_to_claims": ["C1"],
+            "supports_claims": ["C1"],
             "type": "conceptual",
         }
     }]
@@ -2854,12 +2865,12 @@ def test_validate_update_counterposition_attack_type_enum():
 
 @pytest.mark.unit
 def test_validate_add_evidence_missing_required_fields():
-    """Item with only id -> errors for type, summary, source, relevance_to_claims, strength, strength_justification."""
+    """Item with only id -> errors for type, summary, source, supports_claims, strength, strength_justification."""
     belief = create_sample_belief()
     patches = [{"op": "add_evidence", "item": {"id": "E2"}}]
 
     errors = _flat(validate_patches(patches, belief))
-    assert len(errors) >= 6  # Missing type, summary, source, relevance_to_claims, strength, strength_justification
+    assert len(errors) >= 6  # Missing type, summary, source, supports_claims, strength, strength_justification
 
 
 @pytest.mark.unit
@@ -2873,7 +2884,7 @@ def test_validate_add_evidence_valid_all_fields():
             "type": "empirical",
             "summary": "New evidence",
             "source": "Test (2026)",
-            "relevance_to_claims": ["C1"],
+            "supports_claims": ["C1"],
             "strength": 0.7,
             "strength_justification": "0.7 — based on empirical data"
         }
@@ -2894,7 +2905,7 @@ def test_validate_add_evidence_type_enum():
             "type": "invalid",
             "summary": "Test",
             "source": "Test",
-            "relevance_to_claims": ["C1"],
+            "supports_claims": ["C1"],
             "strength": 0.7,
             "strength_justification": "Test"
         }
@@ -2916,7 +2927,7 @@ def test_validate_add_evidence_strength_range():
             "type": "empirical",
             "summary": "Test",
             "source": "Test",
-            "relevance_to_claims": ["C1"],
+            "supports_claims": ["C1"],
             "strength": 1.5,
             "strength_justification": "Test"
         }
@@ -3017,7 +3028,11 @@ def test_validate_add_claim_missing_strength_justification():
             "depends_on": ["A1", "E1"],
             "strength": 0.6,
             "status": "active",
-            "inference_chain": ["Step 1: Reasoning"],
+            "inference_chain": [
+                {"role": "premise", "text": "A1 provides reasoning", "reference": "A1"},
+                {"role": "inference", "text": "Reasoning based on A1", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "New claim is supported by reasoning"}
+            ],
             "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}]
             # Missing strength_justification
         }
@@ -3168,7 +3183,7 @@ def test_all_patches_invalid_returns_unchanged_belief():
 
     patches = [
         {"op": "update_claim", "target_id": "C99", "changes": {"strength": 0.3}},
-        {"op": "retire_claim", "target_id": "C99"},
+        {"op": "update_evidence", "target_id": "E99", "changes": {"strength": 0.5}},
     ]
 
     patch_errors = validate_patches(patches, belief)
@@ -3180,3 +3195,702 @@ def test_all_patches_invalid_returns_unchanged_belief():
     updated = apply_patches(belief, valid_patches)
     # Claim strength unchanged since no patches were applied
     assert updated["claims"][0]["strength"] == original_strength
+
+
+# ==============================================
+# Inference Chain — Patch Validation Tests
+# ==============================================
+
+_VALID_IC = [
+    {"role": "premise", "text": "A1 supports new claim", "reference": "A1"},
+    {"role": "inference", "text": "Therefore the new claim follows", "inference_type": "deductive"},
+    {"role": "conclusion", "text": "New claim statement"},
+]
+
+
+@pytest.mark.unit
+def test_validate_add_claim_valid_inference_chain():
+    """add_claim with a valid structured inference_chain passes validation."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "add_claim", "item": {
+        "id": "C2", "type": "deductive", "statement": "New claim statement",
+        "depends_on": ["A1"], "strength": 0.7, "status": "active",
+        "strength_justification": "Justified by A1",
+        "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}],
+        "inference_chain": _VALID_IC,
+    }}]
+    errors = _flat(validate_patches(patches, belief))
+    ic_errors = [e for e in errors if "inference_chain" in e.lower() or "inference step" in e or "premise" in e.lower()]
+    assert len(ic_errors) == 0, f"Valid IC in add_claim should pass, got: {ic_errors}"
+
+
+@pytest.mark.unit
+def test_validate_add_claim_old_string_format_rejected():
+    """add_claim with old string-format inference_chain fails validation."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "add_claim", "item": {
+        "id": "C2", "type": "deductive", "statement": "New claim",
+        "depends_on": ["A1"], "strength": 0.7, "status": "active",
+        "strength_justification": "Justified",
+        "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}],
+        "inference_chain": ["Step 1: A1 holds", "Step 2: Therefore claim"],
+    }}]
+    errors = _flat(validate_patches(patches, belief))
+    assert any("must be an object" in e for e in errors), \
+        f"String-format IC in add_claim should fail, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_update_claim_valid_inference_chain_replacement():
+    """update_claim replacing inference_chain with valid new one passes."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{"op": "update_claim", "target_id": "C1", "changes": {
+        "inference_chain": _VALID_IC,
+    }}]
+    errors = _flat(validate_patches(patches, belief))
+    ic_errors = [e for e in errors if "inference_chain" in e.lower() or "inference step" in e or "premise" in e.lower()]
+    assert len(ic_errors) == 0, f"Valid IC replacement should pass, got: {ic_errors}"
+
+
+@pytest.mark.unit
+def test_validate_update_claim_invalid_inference_chain_rejected():
+    """update_claim with structurally invalid inference_chain fails."""
+    belief = create_sample_belief(num_claims=1)
+    # Missing conclusion and inference
+    patches = [{"op": "update_claim", "target_id": "C1", "changes": {
+        "inference_chain": [
+            {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        ],
+    }}]
+    errors = _flat(validate_patches(patches, belief))
+    assert any("inference step" in e for e in errors), \
+        f"Invalid IC in update_claim should fail, got: {errors}"
+
+
+@pytest.mark.unit
+def test_update_claim_inference_chain_changelog_formatting():
+    """update_claim with inference_chain produces meaningful changelog entry."""
+    belief = create_sample_belief(num_claims=1)
+    new_ic = [
+        {"role": "premise", "text": "A1 holds", "reference": "A1"},
+        {"role": "premise", "text": "E1 supports", "reference": "E1"},
+        {"role": "inference", "text": "Therefore claim follows", "inference_type": "inductive"},
+        {"role": "conclusion", "text": "Claim 1"},
+    ]
+    patches = [{"op": "update_claim", "target_id": "C1", "changes": {
+        "inference_chain": new_ic,
+    }}]
+    updated = apply_patches(belief, patches)
+    changelog_text = " ".join(updated["changelog"][-1]["changes"])
+    assert "inference_chain updated" in changelog_text, \
+        f"Changelog should contain 'inference_chain updated', got: {changelog_text}"
+    assert "premises" in changelog_text, \
+        f"Changelog should summarise premise count, got: {changelog_text}"
+
+
+# ==============================================
+# Incremental ID Tracking in validate_patches
+# ==============================================
+
+def _make_add_assumption(aid, supports_claims=None, supported_by_definitions=None):
+    """Helper to build an add_assumption patch."""
+    item = {
+        "id": aid, "type": "empirical", "statement": f"{aid} statement",
+        "strength": 0.75, "strength_justification": f"{aid} justification",
+        "supports_claims": supports_claims or [],
+    }
+    if supported_by_definitions:
+        item["supported_by_definitions"] = supported_by_definitions
+    return {"op": "add_assumption", "item": item}
+
+
+def _make_add_evidence(eid, supports_claims=None, supported_by_definitions=None):
+    """Helper to build an add_evidence patch."""
+    item = {
+        "id": eid, "type": "empirical", "summary": f"{eid} summary",
+        "source": "Test (2026)", "supports_claims": supports_claims or [],
+        "strength": 0.75, "strength_justification": f"{eid} justification",
+    }
+    if supported_by_definitions:
+        item["supported_by_definitions"] = supported_by_definitions
+    return {"op": "add_evidence", "item": item}
+
+
+def _make_add_claim(cid, depends_on):
+    """Helper to build an add_claim patch."""
+    return {"op": "add_claim", "item": {
+        "id": cid, "type": "deductive", "statement": f"{cid} statement",
+        "depends_on": depends_on, "strength": 0.7,
+        "strength_justification": f"{cid} justification", "status": "active",
+        "inference_chain": [
+            {"role": "premise", "text": f"From {depends_on[0]}", "reference": depends_on[0]},
+            {"role": "inference", "text": f"Therefore {cid}", "inference_type": "deductive"},
+            {"role": "conclusion", "text": f"{cid} statement"},
+        ],
+        "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}],
+    }}
+
+
+def _make_add_definition(did, used_by):
+    """Helper to build an add_definition patch."""
+    return {"op": "add_definition", "item": {
+        "id": did, "term": f"{did} term", "definition": f"{did} definition",
+        "strength": 0.85, "strength_justification": f"{did} justification",
+        "used_by": used_by,
+    }}
+
+
+def _make_add_counterposition(xid, targets):
+    """Helper to build an add_counterposition patch."""
+    return {"op": "add_counterposition", "item": {
+        "id": xid, "targets": targets, "attack_type": "undercutting",
+        "statement": f"{xid} statement", "my_response": f"{xid} response",
+        "response_sufficiency": "partial",
+    }}
+
+
+@pytest.mark.unit
+def test_validate_incremental_add_evidence_then_claim():
+    """add_claim can reference an E# added earlier in the same batch."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_evidence("E3", supports_claims=["C1"]),
+        _make_add_claim("C4", depends_on=["A1", "E3"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Expected no errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_add_assumption_then_claim():
+    """add_claim can reference an A# added earlier in the same batch."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_assumption("A3", supports_claims=["C1"]),
+        _make_add_claim("C4", depends_on=["A3", "E1"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Expected no errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_add_definition_then_evidence():
+    """add_evidence supported_by_definitions can reference a D# added earlier."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_definition("D2", used_by=["A1"]),
+        _make_add_evidence("E3", supports_claims=["C1"], supported_by_definitions=["D2"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Expected no errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_add_definition_then_assumption():
+    """add_assumption supported_by_definitions can reference a D# added earlier."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_definition("D2", used_by=["A1"]),
+        _make_add_assumption("A3", supported_by_definitions=["D2"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Expected no errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_add_claim_then_evidence_supporting_it():
+    """add_evidence supports_claims can reference a C# added earlier."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_claim("C4", depends_on=["A1", "E1"]),
+        _make_add_evidence("E3", supports_claims=["C4"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Expected no errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_add_claim_then_counterposition():
+    """add_counterposition targets can reference a C# added earlier."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_claim("C4", depends_on=["A1", "E1"]),
+        _make_add_counterposition("X1", targets=["C4"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Expected no errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_forward_ref_fails_if_earlier_patch_invalid():
+    """If add_evidence at index 0 is invalid, add_claim at index 1
+    referencing that E# should also fail (ID not tracked)."""
+    belief = create_sample_belief(num_claims=1)
+    # E3 is invalid: missing required 'summary' field
+    bad_evidence = {"op": "add_evidence", "item": {
+        "id": "E3", "type": "empirical",
+        # "summary" deliberately omitted
+        "source": "Test (2026)", "supports_claims": ["C1"],
+        "strength": 0.75, "strength_justification": "justification",
+    }}
+    patches = [
+        bad_evidence,
+        _make_add_claim("C4", depends_on=["A1", "E3"]),
+    ]
+    errors = validate_patches(patches, belief)
+    # Both patches should have errors
+    assert 0 in errors, "Invalid evidence at index 0 should have errors"
+    assert 1 in errors, "Claim referencing untracked E3 at index 1 should have errors"
+    # The claim error should mention E3
+    claim_errors = errors[1]
+    assert any("E3" in e for e in claim_errors), \
+        f"Claim errors should mention E3, got: {claim_errors}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_duplicate_id_in_batch():
+    """Two add_claim patches with the same C# ID should both error."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_claim("C4", depends_on=["A1", "E1"]),
+        _make_add_claim("C4", depends_on=["A1", "E1"]),
+    ]
+    errors = validate_patches(patches, belief)
+    # The second patch should fail because C4 was already added by the first
+    assert 1 in errors, "Second add_claim with same ID should error"
+    assert any("already exists" in e for e in errors[1]), \
+        f"Error should mention 'already exists', got: {errors[1]}"
+
+
+@pytest.mark.unit
+def test_validate_incremental_full_growth_batch():
+    """A realistic batch: add_definition -> add_assumption -> add_evidence -> add_claim.
+    All should validate successfully with incremental tracking."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_definition("D2", used_by=["A1"]),
+        _make_add_assumption("A3", supports_claims=["C1"], supported_by_definitions=["D2"]),
+        _make_add_evidence("E3", supports_claims=["C1"], supported_by_definitions=["D2"]),
+        _make_add_claim("C4", depends_on=["A3", "E3"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Full growth batch should pass, got: {errors}"
+
+
+# ==============================================
+# Phase 2: Asymmetric supports_claims validation
+# ==============================================
+
+@pytest.mark.unit
+def test_add_assumption_supports_claims_nonexistent():
+    """add_assumption supports_claims referencing a non-existent C# should fail."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_assumption("A3", supports_claims=["C99"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors, "Should reject non-existent claim reference"
+    assert any("C99" in e for e in errors[0]), \
+        f"Error should mention C99, got: {errors[0]}"
+
+
+@pytest.mark.unit
+def test_add_assumption_supports_claims_forward_ref_passes():
+    """add_assumption supports_claims referencing a C# added LATER in the batch
+    should pass thanks to projected-ID pre-registration."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_assumption("A3", supports_claims=["C4"]),
+        _make_add_claim("C4", depends_on=["A1", "E1"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Forward ref to C4 should pass via projection, got: {errors}"
+
+
+@pytest.mark.unit
+def test_add_assumption_supports_claims_backward_ref_passes():
+    """add_assumption supports_claims referencing a C# added EARLIER in the batch
+    should pass (C# was tracked by Phase 1 incremental ID tracking)."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_claim("C4", depends_on=["A1", "E1"]),
+        _make_add_assumption("A3", supports_claims=["C4"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Backward ref to C4 should pass, got: {errors}"
+
+
+# ==============================================
+# Defense Tracking Field Preservation Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_update_claim_preserves_original_strength():
+    """update_claim cannot overwrite original_strength."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    belief["claims"][0]["original_strength"] = 0.65
+    belief["claims"][0]["consecutive_defenses"] = 3
+    patches = [
+        {"op": "update_claim", "target_id": "C1",
+         "changes": {"strength": 0.50, "original_strength": 0.99, "consecutive_defenses": 99}}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    assert result["claims"][0]["original_strength"] == 0.65
+    assert result["claims"][0]["consecutive_defenses"] == 3
+    assert result["claims"][0]["strength"] == 0.50
+
+
+@pytest.mark.unit
+def test_update_assumption_preserves_tracking_fields():
+    """update_assumption cannot overwrite original_strength or consecutive_defenses."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    belief["assumptions"][0]["original_strength"] = 0.80
+    belief["assumptions"][0]["consecutive_defenses"] = 2
+    patches = [
+        {"op": "update_assumption", "target_id": "A1",
+         "changes": {"strength": 0.60, "original_strength": 0.50, "consecutive_defenses": 0}}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    assert result["assumptions"][0]["original_strength"] == 0.80
+    assert result["assumptions"][0]["consecutive_defenses"] == 2
+
+
+@pytest.mark.unit
+def test_update_evidence_preserves_tracking_fields():
+    """update_evidence cannot overwrite original_strength or consecutive_defenses."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    belief["evidence"][0]["original_strength"] = 0.80
+    belief["evidence"][0]["consecutive_defenses"] = 1
+    patches = [
+        {"op": "update_evidence", "target_id": "E1",
+         "changes": {"strength": 0.55, "original_strength": 0.10, "consecutive_defenses": 10}}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    assert result["evidence"][0]["original_strength"] == 0.80
+    assert result["evidence"][0]["consecutive_defenses"] == 1
+
+
+@pytest.mark.unit
+def test_update_definition_preserves_tracking_fields():
+    """update_definition cannot overwrite original_strength or consecutive_defenses."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    belief["definitions"][0]["original_strength"] = 0.90
+    belief["definitions"][0]["consecutive_defenses"] = 4
+    patches = [
+        {"op": "update_definition", "target_id": "D1",
+         "changes": {"strength": 0.70, "original_strength": 0.30, "consecutive_defenses": 0}}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    assert result["definitions"][0]["original_strength"] == 0.90
+    assert result["definitions"][0]["consecutive_defenses"] == 4
+
+
+@pytest.mark.unit
+def test_add_claim_initializes_tracking_fields():
+    """add_claim sets original_strength and consecutive_defenses on new claims."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [
+        {"op": "add_claim", "item": {
+            "id": "C2", "type": "deductive", "statement": "New claim",
+            "depends_on": ["A1"], "strength": 0.70,
+            "strength_justification": "Test",
+            "status": "active",
+            "inference_chain": [
+                {"role": "premise", "text": "A1 holds", "reference": "A1"},
+                {"role": "inference", "text": "Therefore C2", "inference_type": "deductive"},
+                {"role": "conclusion", "text": "C2"}
+            ],
+            "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}]
+        }}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    new_claim = [c for c in result["claims"] if c["id"] == "C2"][0]
+    assert new_claim["original_strength"] == 0.70
+    assert new_claim["consecutive_defenses"] == 0
+
+
+@pytest.mark.unit
+def test_add_evidence_initializes_tracking_fields():
+    """add_evidence sets original_strength and consecutive_defenses on new evidence."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [
+        {"op": "add_evidence", "item": {
+            "id": "E2", "type": "empirical", "summary": "New evidence",
+            "source": "Test (2026)", "supports_claims": ["C1"],
+            "strength": 0.85, "strength_justification": "Test",
+            "supported_by_definitions": ["D1"]
+        }}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    new_ev = [e for e in result["evidence"] if e["id"] == "E2"][0]
+    assert new_ev["original_strength"] == 0.85
+    assert new_ev["consecutive_defenses"] == 0
+
+
+@pytest.mark.unit
+def test_add_assumption_initializes_tracking_fields():
+    """add_assumption sets original_strength and consecutive_defenses on new assumptions."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [
+        {"op": "add_assumption", "item": {
+            "id": "A2", "type": "empirical", "statement": "New assumption",
+            "strength": 0.75, "strength_justification": "Test",
+            "supports_claims": ["C1"], "supported_by_definitions": ["D1"]
+        }}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    new_a = [a for a in result["assumptions"] if a["id"] == "A2"][0]
+    assert new_a["original_strength"] == 0.75
+    assert new_a["consecutive_defenses"] == 0
+
+
+@pytest.mark.unit
+def test_add_definition_initializes_tracking_fields():
+    """add_definition sets original_strength and consecutive_defenses on new definitions."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [
+        {"op": "add_definition", "item": {
+            "id": "D2", "term": "new term", "definition": "New definition",
+            "strength": 0.80, "strength_justification": "Test",
+            "status": "active", "used_by": ["A1"]
+        }}
+    ]
+    result = apply_patches(belief, patches, propagate_strength=False)
+    new_d = [d for d in result["definitions"] if d["id"] == "D2"][0]
+    assert new_d["original_strength"] == 0.80
+    assert new_d["consecutive_defenses"] == 0
+
+
+# ==============================================
+# Projected-ID Validation Tests (Phase 0)
+# ==============================================
+
+@pytest.mark.unit
+def test_validate_projected_ids_cross_reference_batch():
+    """Full cross-referencing chain: D5 → A5/E5 → C3.
+    All patches reference each other and should pass via projected IDs."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_definition("D5", used_by=["A5", "E5"]),
+        _make_add_assumption("A5", supports_claims=["C3"], supported_by_definitions=["D5"]),
+        _make_add_evidence("E5", supports_claims=["C3"], supported_by_definitions=["D5"]),
+        _make_add_claim("C3", depends_on=["A5", "E5"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Cross-referencing batch should pass via projection, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_projected_ids_partial_failure_cascade():
+    """If a projected patch fails for non-reference reasons, dependents cascade-fail."""
+    belief = create_sample_belief(num_claims=1)
+    # D5 has strength out of range → fails validation
+    bad_def = _make_add_definition("D5", used_by=["A5", "E5"])
+    bad_def["item"]["strength"] = 2.0  # Invalid
+    patches = [
+        bad_def,
+        _make_add_assumption("A5", supports_claims=["C1"], supported_by_definitions=["D5"]),
+        _make_add_evidence("E5", supports_claims=["C1"], supported_by_definitions=["D5"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors, "D5 should fail (bad strength)"
+    assert 1 in errors, "A5 should cascade-fail (depends on D5)"
+    assert any("failed patch" in e for e in errors[1]), \
+        f"A5 error should mention failed patch, got: {errors[1]}"
+    assert 2 in errors, "E5 should cascade-fail (depends on D5)"
+
+
+@pytest.mark.unit
+def test_validate_projected_ids_no_false_positives():
+    """Patches referencing genuinely non-existent nodes (not in batch) should still fail."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_assumption("A5", supports_claims=["C99"], supported_by_definitions=["D99"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors, "Should fail for non-existent C99 and D99"
+    error_text = " ".join(errors[0])
+    assert "C99" in error_text, f"Should mention C99, got: {errors[0]}"
+    assert "D99" in error_text, f"Should mention D99, got: {errors[0]}"
+
+
+@pytest.mark.unit
+def test_validate_projected_ids_mixed_valid_invalid():
+    """Batch with valid cross-referencing patches and independently invalid ones.
+    Valid patches should survive; invalid ones fail without contaminating valid ones."""
+    belief = create_sample_belief(num_claims=1)
+    # Patch 0: bad assumption (missing required field 'type')
+    bad_assumption = {"op": "add_assumption", "item": {
+        "id": "A5", "statement": "missing type",
+        "strength": 0.7, "strength_justification": "test",
+        "supports_claims": ["C1"],
+    }}
+    patches = [
+        bad_assumption,
+        # Patch 1: valid definition referencing existing A1
+        _make_add_definition("D5", used_by=["A1"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors, "Bad assumption should fail"
+    assert 1 not in errors, f"Valid definition should pass, got: {errors.get(1)}"
+
+
+@pytest.mark.unit
+def test_validate_projected_definition_used_by_forward_ref():
+    """The exact failure pattern from the live debate: add_definition with used_by
+    referencing an A# that is added later in the same batch."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_definition("D5", used_by=["A5"]),
+        _make_add_assumption("A5", supports_claims=["C1"], supported_by_definitions=["D5"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"Forward ref D5→A5 should pass via projection, got: {errors}"
+
+
+# ==============================================
+# Whitelist Tests (Phase 2: supported_by_definitions)
+# ==============================================
+
+@pytest.mark.unit
+def test_update_assumption_supported_by_definitions_accepted():
+    """update_assumption with supported_by_definitions should pass when D1 exists."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [
+        {"op": "update_assumption", "target_id": "A1",
+         "changes": {"supported_by_definitions": ["D1"]}}
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"supported_by_definitions with valid D1 should pass, got: {errors}"
+
+
+@pytest.mark.unit
+def test_update_evidence_supported_by_definitions_accepted():
+    """update_evidence with supported_by_definitions should pass when D1 exists."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [
+        {"op": "update_evidence", "target_id": "E1",
+         "changes": {"supported_by_definitions": ["D1"]}}
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"supported_by_definitions with valid D1 should pass, got: {errors}"
+
+
+@pytest.mark.unit
+def test_update_assumption_supported_by_definitions_validates_refs():
+    """update_assumption with supported_by_definitions referencing non-existent D# should fail."""
+    belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+    patches = [
+        {"op": "update_assumption", "target_id": "A1",
+         "changes": {"supported_by_definitions": ["D99"]}}
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors, "Should fail for non-existent D99"
+    assert any("D99" in e for e in errors[0]), \
+        f"Error should mention D99, got: {errors[0]}"
+
+
+# --- Phase 0: Transitive cascade removal tests ---
+
+
+@pytest.mark.unit
+def test_cascade_transitive_three_hop():
+    """Three-hop chain: C3 fails → A5/E5 cascade → D6 cascades on second iteration.
+
+    Patch 0: add_claim C3 (missing predictions → fails validation)
+    Patch 1: add_assumption A5 (supports_claims: [C3] → cascade-fails, hop 1)
+    Patch 2: add_evidence E5 (supports_claims: [C3] → cascade-fails, hop 1)
+    Patch 3: add_definition D6 (used_by: [A5, E5] → cascade-fails, hop 2)
+    """
+    belief = create_sample_belief(num_claims=1)
+    # C3 is missing 'predictions' (required for add_claim) → fails
+    bad_claim = _make_add_claim("C3", depends_on=["A1"])
+    del bad_claim["item"]["predictions"]
+    patches = [
+        bad_claim,
+        _make_add_assumption("A5", supports_claims=["C3"]),
+        _make_add_evidence("E5", supports_claims=["C3"]),
+        _make_add_definition("D6", used_by=["A5", "E5"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors, "C3 should fail (missing predictions)"
+    assert 1 in errors, "A5 should cascade-fail (depends on C3)"
+    assert 2 in errors, "E5 should cascade-fail (depends on C3)"
+    assert 3 in errors, "D6 should cascade-fail (depends on A5/E5, second hop)"
+    assert any("failed patch" in e for e in errors[3]), \
+        f"D6 error should mention failed patch, got: {errors[3]}"
+
+
+@pytest.mark.unit
+def test_cascade_transitive_converges():
+    """Same three-hop structure but C3 is valid — all patches should pass."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [
+        _make_add_claim("C3", depends_on=["A1"]),
+        _make_add_assumption("A5", supports_claims=["C3"]),
+        _make_add_evidence("E5", supports_claims=["C3"]),
+        _make_add_definition("D6", used_by=["A5", "E5"]),
+    ]
+    errors = validate_patches(patches, belief)
+    assert errors == {}, f"All patches valid, should have no errors, got: {errors}"
+
+
+@pytest.mark.unit
+def test_cascade_update_targets_failed_add():
+    """update_* targeting a failed add_* ID should cascade-fail.
+
+    Patch 0: add_assumption A5 (missing type → fails)
+    Patch 1: update_assumption A5 (should cascade-fail because A5 was never added)
+    """
+    belief = create_sample_belief(num_claims=1)
+    bad_assumption = {"op": "add_assumption", "item": {
+        "id": "A5", "statement": "missing type field",
+        "strength": 0.75, "strength_justification": "A5 justification",
+        "supports_claims": ["C1"],
+        # 'type' deliberately omitted → validation failure
+    }}
+    patches = [
+        bad_assumption,
+        {"op": "update_assumption", "target_id": "A5",
+         "changes": {"strength": 0.80, "strength_justification": "boosted"}},
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors, "A5 add should fail (missing type)"
+    assert 1 in errors, "update_assumption A5 should cascade-fail (A5 was never added)"
+    assert any("failed patch" in e for e in errors[1]), \
+        f"update_assumption error should mention failed patch, got: {errors[1]}"
+
+
+@pytest.mark.unit
+def test_cascade_no_infinite_loop():
+    """Large batch with a single root failure. Verify convergence and correct error set.
+
+    Structure: C3 (fails) → A5..A14 (each supports_claims: [C3]) → D6..D15 (each used_by: [A5..A14])
+    Total: 1 + 10 + 10 = 21 patches. All should cascade-fail except none should be left valid.
+    """
+    belief = create_sample_belief(num_claims=1)
+    # Root failure: C3 missing predictions
+    bad_claim = _make_add_claim("C3", depends_on=["A1"])
+    del bad_claim["item"]["predictions"]
+    patches = [bad_claim]
+
+    # 10 assumptions depending on C3
+    a_ids = [f"A{5 + j}" for j in range(10)]
+    for aid in a_ids:
+        patches.append(_make_add_assumption(aid, supports_claims=["C3"]))
+
+    # 10 definitions, each depending on one of the assumptions
+    for j, aid in enumerate(a_ids):
+        patches.append(_make_add_definition(f"D{6 + j}", used_by=[aid]))
+
+    errors = validate_patches(patches, belief)
+    # All 21 patches should fail
+    assert len(errors) == 21, f"Expected 21 failures, got {len(errors)}: {sorted(errors.keys())}"
+    # Patch 0 is the root failure
+    assert 0 in errors
+    # All assumption patches (1-10) should cascade-fail
+    for i in range(1, 11):
+        assert i in errors, f"Patch {i} (assumption) should cascade-fail"
+    # All definition patches (11-20) should cascade-fail
+    for i in range(11, 21):
+        assert i in errors, f"Patch {i} (definition) should cascade-fail"

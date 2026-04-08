@@ -6,8 +6,7 @@ Ensures that belief updates are auditable, graph-consistent, and propagate stren
 
 Supported patch operations:
 - update_thesis: Set thesis strength, stance text, and/or summary bullets
-- update_claim: Modify claim properties (strength, status, predictions, etc.)
-- retire_claim: Mark claim as retracted with 0 strength
+- update_claim: Modify claim properties (strength, status, predictions, etc.). Retraction enforcement: setting status to "retracted" forces strength to 0.0.
 - add_claim: Add new C# claim item
 - add_evidence: Add new evidence item
 - update_evidence: Modify evidence properties (strength, summary, etc.)
@@ -17,15 +16,64 @@ Supported patch operations:
 - update_counterposition: Modify counterposition properties
 - add_uncertainty: Add new U# uncertainty item
 - resolve_uncertainty: Mark U# as resolved with a resolution note
+- add_definition: Add new D# definition item
+- update_definition: Modify definition properties (definition, strength, status, used_by)
 """
 
 from __future__ import annotations
 from typing import Dict, Any, List, Set
 import json
-from datetime import datetime
+import re
 from chal.beliefs.belief_graph import BeliefGraph
+from chal.beliefs.schema import ALLOWED_REF_PREFIXES, validate_inference_chain
 
-BREADTH_SENSITIVITY = 1.5
+BREADTH_SENSITIVITY = 1.0
+ORPHAN_AE_CAP = 0.6     # A#/E# with no active D# support — lenient
+ORPHAN_CLAIM_CAP = 0.2   # C# with no active A#/E# support — strict
+
+
+def _summarise_ic_diff(old_ic, new_ic) -> str:
+    """Produce a concise human-readable summary of an inference_chain change."""
+
+    def _ic_stats(ic):
+        if not isinstance(ic, list):
+            return 0, None
+        premises = sum(1 for s in ic if isinstance(s, dict) and s.get("role") == "premise")
+        inf_type = None
+        for s in ic:
+            if isinstance(s, dict) and s.get("role") == "inference":
+                inf_type = s.get("inference_type")
+                break
+        return premises, inf_type
+
+    old_p, old_t = _ic_stats(old_ic)
+    new_p, new_t = _ic_stats(new_ic)
+
+    parts = []
+    if old_p != new_p:
+        parts.append(f"{old_p} premises → {new_p} premises")
+    else:
+        parts.append(f"{new_p} premises")
+    if old_t != new_t:
+        parts.append(f"{old_t} → {new_t}")
+    elif new_t:
+        parts.append(new_t)
+    return ", ".join(parts) if parts else "replaced"
+
+
+def initialize_defense_tracking(belief: dict) -> dict:
+    """Ensure all strength-bearing nodes have original_strength and consecutive_defenses.
+
+    Call this after parsing a Stage 1 belief to ensure tracking fields exist.
+    Modifies the belief dict in-place and returns it for convenience.
+    """
+    for key in ("definitions", "assumptions", "evidence", "claims"):
+        for node in belief.get(key, []):
+            if "strength" in node and "original_strength" not in node:
+                node["original_strength"] = node["strength"]
+            if "consecutive_defenses" not in node:
+                node["consecutive_defenses"] = 0
+    return belief
 
 
 def apply_patches(
@@ -49,7 +97,7 @@ def apply_patches(
         prior_belief: The current CBS belief object
         patches: List of patch operation dicts
         propagate_strength: If True, propagate strength changes through graph (default: True)
-        breadth_sensitivity: Exponent p in breadth formula n^p / (n^p + 1) (default: 1.5)
+        breadth_sensitivity: Exponent p in breadth formula n^p / (n^p + 1) (default: 1.0)
 
     Returns:
         Updated belief object with version incremented and changelog added
@@ -111,6 +159,9 @@ def apply_patches(
         elif op == "update_claim":
             target_id = patch.get("target_id")
             patch_changes = patch.get("changes", {})
+            # Preserve system-managed defense tracking fields
+            patch_changes.pop("original_strength", None)
+            patch_changes.pop("consecutive_defenses", None)
 
             claim_found = False
             for claim in updated.get("claims", []):
@@ -118,28 +169,25 @@ def apply_patches(
                     claim_found = True
                     for key, value in patch_changes.items():
                         old_value = claim.get(key)
+                        # inference_chain is always a full replacement (not a delta).
+                        # The new array completely replaces the old one.
                         claim[key] = value
 
                         if key == "strength":
                             strength_changes[target_id] = value
 
-                        changes.append(f"{target_id}.{key}: {old_value} → {value}")
-                    break
-
-            if not claim_found:
-                raise ValueError(f"Patch references non-existent claim: {target_id}")
-
-        elif op == "retire_claim":
-            target_id = patch.get("target_id")
-
-            claim_found = False
-            for claim in updated.get("claims", []):
-                if claim["id"] == target_id:
-                    claim_found = True
-                    claim["status"] = "retracted"
-                    claim["strength"] = 0.0
-                    strength_changes[target_id] = 0.0
-                    changes.append(f"Retracted {target_id}")
+                        if key == "inference_chain":
+                            changes.append(
+                                f"{target_id}.inference_chain updated "
+                                f"({_summarise_ic_diff(old_value, value)})"
+                            )
+                        else:
+                            changes.append(f"{target_id}.{key}: {old_value} → {value}")
+                    # Retraction enforcement: retracted claims get strength 0.0
+                    if claim.get("status") == "retracted" and claim.get("strength", 0.0) != 0.0:
+                        claim["strength"] = 0.0
+                        strength_changes[target_id] = 0.0
+                        changes.append(f"{target_id}.strength forced to 0.0 (retracted)")
                     break
 
             if not claim_found:
@@ -152,6 +200,11 @@ def apply_patches(
             if "claims" not in updated:
                 updated["claims"] = []
             updated["claims"].append(item)
+            # Initialize defense tracking fields
+            if "original_strength" not in item and "strength" in item:
+                item["original_strength"] = item["strength"]
+            if "consecutive_defenses" not in item:
+                item["consecutive_defenses"] = 0
             changes.append(f"Added claim {item.get('id')}")
 
         elif op == "add_evidence":
@@ -167,11 +220,19 @@ def apply_patches(
                 item["status"] = "active"
 
             updated["evidence"].append(item)
+            # Initialize defense tracking fields
+            if "original_strength" not in item and "strength" in item:
+                item["original_strength"] = item["strength"]
+            if "consecutive_defenses" not in item:
+                item["consecutive_defenses"] = 0
             changes.append(f"Added evidence {item.get('id')}")
 
         elif op == "update_evidence":
             target_id = patch.get("target_id")
             patch_changes = patch.get("changes", {})
+            # Preserve system-managed defense tracking fields
+            patch_changes.pop("original_strength", None)
+            patch_changes.pop("consecutive_defenses", None)
 
             ev_found = False
             for ev in updated.get("evidence", []):
@@ -198,6 +259,9 @@ def apply_patches(
             new_statement = patch.get("new_statement")
             new_type = patch.get("new_type")
             patch_changes = patch.get("changes", {})
+            # Preserve system-managed defense tracking fields
+            patch_changes.pop("original_strength", None)
+            patch_changes.pop("consecutive_defenses", None)
 
             assumption_found = False
             for assumption in updated.get("assumptions", []):
@@ -237,6 +301,11 @@ def apply_patches(
             if "supports_claims" not in item:
                 item["supports_claims"] = []
             updated["assumptions"].append(item)
+            # Initialize defense tracking fields
+            if "original_strength" not in item and "strength" in item:
+                item["original_strength"] = item["strength"]
+            if "consecutive_defenses" not in item:
+                item["consecutive_defenses"] = 0
             changes.append(f"Added assumption {item.get('id')}")
 
         elif op == "add_counterposition":
@@ -286,9 +355,140 @@ def apply_patches(
             if not u_found:
                 raise ValueError(f"Patch references non-existent uncertainty: {target_id}")
 
+        elif op == "add_definition":
+            item = patch.get("item")
+            if not item or "id" not in item:
+                raise ValueError("add_definition patch requires valid item with 'id'")
+            if "definitions" not in updated:
+                updated["definitions"] = []
+
+            # Validate ID unique and format
+            new_id = item["id"]
+            if not re.match(r"^D\d+$", new_id):
+                raise ValueError(f"add_definition ID '{new_id}' must match D<number> format")
+            existing_ids = {d["id"] for d in updated.get("definitions", [])}
+            if new_id in existing_ids:
+                raise ValueError(f"add_definition ID '{new_id}' already exists")
+
+            # Default status to "active" if not provided
+            if "status" not in item:
+                item["status"] = "active"
+
+            updated["definitions"].append(item)
+            # Initialize defense tracking fields
+            if "original_strength" not in item and "strength" in item:
+                item["original_strength"] = item["strength"]
+            if "consecutive_defenses" not in item:
+                item["consecutive_defenses"] = 0
+
+            # Side effect: append D# ID to supported_by_definitions on each referenced A#/E#
+            for used_id in item.get("used_by", []):
+                for collection_key in ("assumptions", "evidence"):
+                    for node in updated.get(collection_key, []):
+                        if node["id"] == used_id:
+                            sbd = node.get("supported_by_definitions", [])
+                            if new_id not in sbd:
+                                sbd.append(new_id)
+                                node["supported_by_definitions"] = sbd
+
+            changes.append(f"Added definition {new_id}: '{item.get('term', '')}'")
+
+        elif op == "update_definition":
+            target_id = patch.get("target_id")
+            patch_changes = patch.get("changes", {})
+            # Preserve system-managed defense tracking fields
+            patch_changes.pop("original_strength", None)
+            patch_changes.pop("consecutive_defenses", None)
+
+            # Reject immutable fields
+            immutable = {"id", "term"}
+            attempted_immutable = immutable & set(patch_changes.keys())
+            if attempted_immutable:
+                raise ValueError(
+                    f"update_definition cannot modify immutable fields: {sorted(attempted_immutable)}"
+                )
+
+            def_found = False
+            for defn in updated.get("definitions", []):
+                if defn["id"] == target_id:
+                    def_found = True
+                    old_used_by = list(defn.get("used_by", []))
+
+                    for key, value in patch_changes.items():
+                        old_value = defn.get(key)
+                        defn[key] = value
+
+                        if key == "strength":
+                            strength_changes[target_id] = value
+
+                        changes.append(f"{target_id}.{key}: {old_value} → {value}")
+
+                    # Retraction enforcement: retracted definitions get strength 0.0
+                    if defn.get("status") == "retracted" and defn.get("strength", 0.0) != 0.0:
+                        defn["strength"] = 0.0
+                        strength_changes[target_id] = 0.0
+                        changes.append(f"{target_id}.strength forced to 0.0 (retracted)")
+
+                    # Side effect: if used_by changed, update supported_by_definitions
+                    new_used_by = list(defn.get("used_by", []))
+                    if "used_by" in patch_changes:
+                        removed = set(old_used_by) - set(new_used_by)
+                        added = set(new_used_by) - set(old_used_by)
+                        for collection_key in ("assumptions", "evidence"):
+                            for node in updated.get(collection_key, []):
+                                if node["id"] in removed:
+                                    sbd = node.get("supported_by_definitions", [])
+                                    if target_id in sbd:
+                                        sbd.remove(target_id)
+                                        node["supported_by_definitions"] = sbd
+                                if node["id"] in added:
+                                    sbd = node.get("supported_by_definitions", [])
+                                    if target_id not in sbd:
+                                        sbd.append(target_id)
+                                        node["supported_by_definitions"] = sbd
+                    break
+
+            if not def_found:
+                raise ValueError(f"Patch references non-existent definition: {target_id}")
+
         else:
             # Unknown operation - log warning but don't fail
             changes.append(f"Warning: Unknown patch operation '{op}' skipped")
+
+    # --- D# ceiling enforcement (pre-step before BFS) ---
+    # A#/E# strength cannot exceed the LOWEST non-retracted D# strength from
+    # supported_by_definitions. If all D# are retracted, cap at ORPHAN_AE_CAP.
+    if propagate_strength:
+        definitions = updated.get("definitions", [])
+        for collection_key in ("assumptions", "evidence"):
+            for node in updated.get(collection_key, []):
+                if node.get("status") == "retracted":
+                    continue
+                supported_defs = node.get("supported_by_definitions", [])
+                active_def_strengths = [
+                    d["strength"] for d in definitions
+                    if d["id"] in supported_defs and d.get("status") != "retracted"
+                ] if definitions else []
+
+                if active_def_strengths:
+                    ceiling = min(active_def_strengths)
+                    if node["strength"] > ceiling:
+                        old_str = node["strength"]
+                        node["strength"] = round(ceiling, 4)
+                        changes.append(
+                            f"Propagated: {node['id']} strength → {ceiling} "
+                            f"(limited by definition ceiling)"
+                        )
+                        strength_changes[node["id"]] = ceiling
+                elif supported_defs:
+                    # Had D# support but all are now retracted — apply orphan cap
+                    if node["strength"] > ORPHAN_AE_CAP:
+                        node["strength"] = ORPHAN_AE_CAP
+                        changes.append(
+                            f"Capped: {node['id']} strength → {ORPHAN_AE_CAP} "
+                            f"(no active definitional support)"
+                        )
+                        strength_changes[node["id"]] = ORPHAN_AE_CAP
 
     # PROPAGATE STRENGTH CHANGES through dependency graph (BFS level-by-level)
     # Rule: A claim's strength must not exceed the LOWEST strength among its
@@ -376,6 +576,21 @@ def apply_patches(
                             current_strengths[dep_id] = min_dep_str
                             if dep_id not in processed:
                                 worklist.append(dep_id)
+                    elif all_deps:
+                        # All dependencies retracted — orphaned claim, cap at ORPHAN_CLAIM_CAP
+                        current_str = current_strengths.get(dep_id, dep_claim.get("strength", 0.5))
+                        if current_str > ORPHAN_CLAIM_CAP:
+                            for claim in updated.get("claims", []):
+                                if claim["id"] == dep_id:
+                                    claim["strength"] = ORPHAN_CLAIM_CAP
+                                    changes.append(
+                                        f"Capped: {dep_id} strength → {ORPHAN_CLAIM_CAP} "
+                                        f"(no active dependencies — unfounded claim)"
+                                    )
+                                    break
+                            current_strengths[dep_id] = ORPHAN_CLAIM_CAP
+                            if dep_id not in processed:
+                                worklist.append(dep_id)
 
         except Exception as e:
             # If propagation fails, log it but don't fail the entire patch operation
@@ -420,13 +635,7 @@ def apply_patches(
     updated["changelog"].append({
         "version": updated["version"],
         "changes": changes,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
     })
-
-    # Update metadata timestamp
-    if "metadata" not in updated:
-        updated["metadata"] = {}
-    updated["metadata"]["last_updated"] = datetime.utcnow().isoformat() + "Z"
 
     return updated
 
@@ -435,7 +644,7 @@ def apply_patches(
 _STATUS_ENUM: Set[str] = {"active", "revised", "retracted"}
 _UNCERTAINTY_STATUS_ENUM: Set[str] = {"active", "resolved"}
 _IMPORTANCE_ENUM: Set[str] = {"high", "medium", "low"}
-_ASSUMPTION_TYPE_ENUM: Set[str] = {"foundational", "empirical", "methodological"}
+_ASSUMPTION_TYPE_ENUM: Set[str] = {"foundational", "empirical", "methodological", "scoping"}
 _EVIDENCE_TYPE_ENUM: Set[str] = {"empirical", "conceptual", "expert_consensus"}
 _ATTACK_TYPE_ENUM: Set[str] = {"undermining", "rebutting", "undercutting"}
 _SUFFICIENCY_ENUM: Set[str] = {"sufficient", "partial", "unaddressed"}
@@ -447,16 +656,20 @@ _UPDATE_CLAIM_WHITELIST: Set[str] = {
 }
 _UPDATE_EVIDENCE_WHITELIST: Set[str] = {
     "strength", "strength_justification", "summary", "source",
-    "status", "relevance_to_claims", "type",
+    "status", "supports_claims", "type", "supported_by_definitions",
 }
 _UPDATE_ASSUMPTION_WHITELIST: Set[str] = {
     "strength", "strength_justification", "statement", "status",
-    "type", "supports_claims",
+    "type", "supports_claims", "supported_by_definitions",
 }
 _UPDATE_COUNTERPOSITION_WHITELIST: Set[str] = {
     "my_response", "response_sufficiency", "statement",
     "attack_type", "targets",
 }
+_UPDATE_DEFINITION_WHITELIST: Set[str] = {
+    "definition", "strength", "strength_justification", "status", "used_by",
+}
+_DEFINITION_ID_RE = re.compile(r"^D\d+$")
 
 
 def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, List[str]]:
@@ -480,9 +693,53 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
     assumption_ids = {a["id"] for a in belief.get("assumptions", []) if "id" in a}
     claim_ids = {c["id"] for c in belief.get("claims", []) if "id" in c}
     evidence_ids = {e["id"] for e in belief.get("evidence", []) if "id" in e}
+    definition_ids = {d["id"] for d in belief.get("definitions", []) if "id" in d}
     counterposition_ids = {x["id"] for x in belief.get("counterpositions", []) if "id" in x}
     uncertainty_ids = {u["id"] for u in belief.get("uncertainties", []) if "id" in u}
-    all_ref_ids = assumption_ids | claim_ids | evidence_ids
+    all_ref_ids = assumption_ids | claim_ids | evidence_ids | definition_ids
+
+    # --- Projection pass: pre-register IDs from all add_* patches ---
+    # This allows cross-references within a batch (e.g., add_definition D5
+    # with used_by: ["A5"] where A5 is added in a later patch).
+    # Save original belief IDs before projection (for duplicate detection).
+    _belief_definition_ids = set(definition_ids)
+    _belief_assumption_ids = set(assumption_ids)
+    _belief_evidence_ids = set(evidence_ids)
+    _belief_claim_ids = set(claim_ids)
+
+    projected_ids: dict[str, str] = {}  # id -> collection type
+    for patch in patches:
+        op = patch.get("op", "")
+        if op.startswith("add_"):
+            item = patch.get("item", {})
+            pid = item.get("id", "")
+            if not pid:
+                continue
+            if op == "add_definition":
+                projected_ids[pid] = "definition"
+            elif op == "add_assumption":
+                projected_ids[pid] = "assumption"
+            elif op == "add_evidence":
+                projected_ids[pid] = "evidence"
+            elif op == "add_claim":
+                projected_ids[pid] = "claim"
+
+    # Inject projected IDs into tracking sets (for reference validation)
+    for pid, ptype in projected_ids.items():
+        if ptype == "definition":
+            definition_ids.add(pid)
+        elif ptype == "assumption":
+            assumption_ids.add(pid)
+            all_ref_ids.add(pid)
+        elif ptype == "evidence":
+            evidence_ids.add(pid)
+            all_ref_ids.add(pid)
+        elif ptype == "claim":
+            claim_ids.add(pid)
+            all_ref_ids.add(pid)
+
+    # Track IDs added within the batch (for within-batch duplicate detection)
+    batch_add_ids: set[str] = set()
 
     for i, patch in enumerate(patches):
         op = patch.get("op")
@@ -556,13 +813,15 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 if "statement" in changes:
                     if not isinstance(changes["statement"], str) or not changes["statement"].strip():
                         err(i, "update_claim statement must be a non-empty string")
-
-        elif op == "retire_claim":
-            target_id = patch.get("target_id")
-            if not target_id:
-                err(i, "retire_claim missing target_id")
-            elif target_id not in claim_ids:
-                err(i, f"retire_claim references non-existent claim '{target_id}'")
+                if "inference_chain" in changes:
+                    ic = changes["inference_chain"]
+                    if not isinstance(ic, list) or len(ic) == 0:
+                        err(i, "update_claim inference_chain must be a non-empty array")
+                    elif isinstance(ic, list) and len(ic) > 0:
+                        ic_errors: list[str] = []
+                        validate_inference_chain(ic, target_id or "?", ic_errors)
+                        for ic_err in ic_errors:
+                            err(i, ic_err)
 
         elif op == "add_claim":
             item = patch.get("item")
@@ -571,7 +830,7 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
             elif "id" not in item:
                 err(i, "add_claim item missing 'id' field")
             else:
-                if item["id"] in claim_ids:
+                if item["id"] in _belief_claim_ids or item["id"] in batch_add_ids:
                     err(i, f"add_claim item ID '{item['id']}' already exists")
                 required_fields = ["id", "type", "statement", "depends_on", "strength", "status", "predictions", "inference_chain", "strength_justification"]
                 for field in required_fields:
@@ -582,6 +841,8 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                     for dep in item["depends_on"]:
                         if dep not in all_ref_ids:
                             err(i, f"add_claim depends_on references non-existent ID '{dep}'")
+                        if isinstance(dep, str) and len(dep) >= 2 and dep[0] not in ALLOWED_REF_PREFIXES["depends_on"]:
+                            err(i, f"add_claim depends_on contains '{dep}' — only A#/E#/C# IDs allowed")
                 # Validate strength
                 if "strength" in item:
                     s = item["strength"]
@@ -603,15 +864,25 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                                 for pf in ("statement", "test", "decision_criterion"):
                                     if pf not in pred:
                                         err(i, f"add_claim predictions[{j}] missing required field '{pf}'")
-                # Validate inference_chain
+                # Validate inference_chain (structural)
                 if "inference_chain" in item:
                     ic = item["inference_chain"]
                     if not isinstance(ic, list) or len(ic) == 0:
                         err(i, "add_claim inference_chain must be a non-empty array")
+                    elif isinstance(ic, list) and len(ic) > 0:
+                        ic_errors: list[str] = []
+                        validate_inference_chain(ic, item.get("id", "?"), ic_errors)
+                        for ic_err in ic_errors:
+                            err(i, ic_err)
                 # Validate strength_justification
                 if "strength_justification" in item:
                     if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
                         err(i, "add_claim strength_justification must be a non-empty string")
+                # Track new ID for forward references within the batch
+                if i not in errors:
+                    claim_ids.add(item["id"])
+                    all_ref_ids.add(item["id"])
+                    batch_add_ids.add(item["id"])
 
         elif op == "add_evidence":
             item = patch.get("item")
@@ -620,10 +891,10 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
             elif "id" not in item:
                 err(i, "add_evidence item missing 'id' field")
             else:
-                if item["id"] in evidence_ids:
+                if item["id"] in _belief_evidence_ids or item["id"] in batch_add_ids:
                     err(i, f"add_evidence item ID '{item['id']}' already exists")
                 # Required fields
-                required_fields = ["id", "type", "summary", "source", "relevance_to_claims", "strength", "strength_justification"]
+                required_fields = ["id", "type", "summary", "source", "supports_claims", "strength", "strength_justification"]
                 for field in required_fields:
                     if field not in item:
                         err(i, f"add_evidence item missing required field '{field}'")
@@ -640,15 +911,26 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 if "strength_justification" in item:
                     if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
                         err(i, "add_evidence strength_justification must be a non-empty string")
-                # relevance_to_claims validation
-                if "relevance_to_claims" in item:
-                    rtc = item["relevance_to_claims"]
+                # supports_claims validation
+                if "supports_claims" in item:
+                    rtc = item["supports_claims"]
                     if not isinstance(rtc, list) or len(rtc) == 0:
-                        err(i, "add_evidence relevance_to_claims must be a non-empty list")
+                        err(i, "add_evidence supports_claims must be a non-empty list")
                     elif isinstance(rtc, list):
                         for ref in rtc:
                             if ref not in claim_ids:
-                                err(i, f"add_evidence relevance_to_claims references non-existent claim '{ref}'")
+                                err(i, f"add_evidence supports_claims references non-existent claim '{ref}'")
+                            if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["supports_claims"]:
+                                err(i, f"add_evidence supports_claims contains '{ref}' — only C# IDs allowed")
+                # supported_by_definitions validation
+                if "supported_by_definitions" in item:
+                    sbd = item["supported_by_definitions"]
+                    if isinstance(sbd, list):
+                        for ref in sbd:
+                            if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["supported_by_definitions"]:
+                                err(i, f"add_evidence supported_by_definitions contains '{ref}' — only D# IDs allowed")
+                            elif isinstance(ref, str) and ref not in definition_ids:
+                                err(i, f"add_evidence supported_by_definitions references non-existent definition '{ref}'")
                 # Strength validation
                 if "strength" in item:
                     s = item["strength"]
@@ -657,6 +939,11 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 # Status enum
                 if "status" in item and item["status"] not in _STATUS_ENUM:
                     err(i, f"add_evidence status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
+                # Track new ID for forward references within the batch
+                if i not in errors:
+                    evidence_ids.add(item["id"])
+                    all_ref_ids.add(item["id"])
+                    batch_add_ids.add(item["id"])
 
         elif op == "update_evidence":
             target_id = patch.get("target_id")
@@ -692,6 +979,15 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 if "source" in changes:
                     if not isinstance(changes["source"], str) or not changes["source"].strip():
                         err(i, "update_evidence source must be a non-empty string")
+                # supported_by_definitions validation
+                if "supported_by_definitions" in changes:
+                    sbd = changes["supported_by_definitions"]
+                    if not isinstance(sbd, list):
+                        err(i, "update_evidence supported_by_definitions must be a list")
+                    elif isinstance(sbd, list):
+                        for ref in sbd:
+                            if isinstance(ref, str) and ref not in definition_ids:
+                                err(i, f"update_evidence supported_by_definitions references non-existent definition '{ref}'")
 
         elif op == "update_assumption":
             target_id = patch.get("target_id")
@@ -739,6 +1035,15 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 if "statement" in changes:
                     if not isinstance(changes["statement"], str) or not changes["statement"].strip():
                         err(i, "update_assumption statement must be a non-empty string")
+                # supported_by_definitions validation
+                if "supported_by_definitions" in changes:
+                    sbd = changes["supported_by_definitions"]
+                    if not isinstance(sbd, list):
+                        err(i, "update_assumption supported_by_definitions must be a list")
+                    elif isinstance(sbd, list):
+                        for ref in sbd:
+                            if isinstance(ref, str) and ref not in definition_ids:
+                                err(i, f"update_assumption supported_by_definitions references non-existent definition '{ref}'")
 
         elif op == "add_assumption":
             item = patch.get("item")
@@ -747,7 +1052,7 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
             elif "id" not in item:
                 err(i, "add_assumption item missing 'id' field")
             else:
-                if item["id"] in assumption_ids:
+                if item["id"] in _belief_assumption_ids or item["id"] in batch_add_ids:
                     err(i, f"add_assumption item ID '{item['id']}' already exists")
                 # Default supports_claims to empty array if missing
                 if "supports_claims" not in item:
@@ -768,6 +1073,25 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 if "strength_justification" in item:
                     if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
                         err(i, "add_assumption strength_justification must be a non-empty string")
+                # supports_claims validation
+                if "supports_claims" in item and isinstance(item["supports_claims"], list):
+                    for ref in item["supports_claims"]:
+                        if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["supports_claims"]:
+                            err(i, f"add_assumption supports_claims contains '{ref}' — only C# IDs allowed")
+                        elif ref not in claim_ids:
+                            err(i, f"add_assumption supports_claims references non-existent claim '{ref}'")
+                # supported_by_definitions validation
+                if "supported_by_definitions" in item and isinstance(item["supported_by_definitions"], list):
+                    for ref in item["supported_by_definitions"]:
+                        if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["supported_by_definitions"]:
+                            err(i, f"add_assumption supported_by_definitions contains '{ref}' — only D# IDs allowed")
+                        elif isinstance(ref, str) and ref not in definition_ids:
+                            err(i, f"add_assumption supported_by_definitions references non-existent definition '{ref}'")
+                # Track new ID for forward references within the batch
+                if i not in errors:
+                    assumption_ids.add(item["id"])
+                    all_ref_ids.add(item["id"])
+                    batch_add_ids.add(item["id"])
 
         elif op == "add_counterposition":
             item = patch.get("item")
@@ -796,6 +1120,8 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                         for ref in targets:
                             if ref not in all_ref_ids:
                                 err(i, f"add_counterposition targets references non-existent ID '{ref}'")
+                            if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["counterposition_targets"]:
+                                err(i, f"add_counterposition targets contains '{ref}' — only C#/A#/E#/D# IDs allowed")
                 # Non-empty strings
                 if "statement" in item:
                     if not isinstance(item["statement"], str) or not item["statement"].strip():
@@ -803,6 +1129,9 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 if "my_response" in item:
                     if not isinstance(item["my_response"], str) or not item["my_response"].strip():
                         err(i, "add_counterposition my_response must be a non-empty string")
+                # Track new ID for forward references within the batch
+                if i not in errors:
+                    counterposition_ids.add(item["id"])
 
         elif op == "update_counterposition":
             target_id = patch.get("target_id")
@@ -855,6 +1184,8 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                         for ref in targets:
                             if ref not in all_ref_ids:
                                 err(i, f"add_uncertainty targets references non-existent ID '{ref}'")
+                            if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["uncertainty_targets"]:
+                                err(i, f"add_uncertainty targets contains '{ref}' — only A#/E#/C#/D# IDs allowed")
                 # Question non-empty
                 if "question" in item:
                     if not isinstance(item["question"], str) or not item["question"].strip():
@@ -865,6 +1196,9 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 # Importance enum
                 if "importance" in item and item["importance"] not in _IMPORTANCE_ENUM:
                     err(i, f"add_uncertainty importance must be one of: {', '.join(sorted(_IMPORTANCE_ENUM))}")
+                # Track new ID for forward references within the batch
+                if i not in errors:
+                    uncertainty_ids.add(item["id"])
 
         elif op == "resolve_uncertainty":
             target_id = patch.get("target_id")
@@ -876,7 +1210,149 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
             if not resolution_note:
                 err(i, "resolve_uncertainty requires non-empty resolution_note")
 
+        elif op == "add_definition":
+            item = patch.get("item")
+            if not item:
+                err(i, "add_definition missing item")
+            elif "id" not in item:
+                err(i, "add_definition item missing 'id' field")
+            else:
+                # ID format and uniqueness
+                d_id = item["id"]
+                if not _DEFINITION_ID_RE.match(d_id):
+                    err(i, f"add_definition ID '{d_id}' must match D<number> format")
+                if d_id in _belief_definition_ids or d_id in batch_add_ids:
+                    err(i, f"add_definition item ID '{d_id}' already exists")
+                # Required fields
+                required_fields = ["id", "term", "definition", "strength",
+                                   "strength_justification", "used_by"]
+                for field in required_fields:
+                    if field not in item:
+                        err(i, f"add_definition item missing required field '{field}'")
+                # Non-empty strings
+                if "term" in item:
+                    if not isinstance(item["term"], str) or not item["term"].strip():
+                        err(i, "add_definition term must be a non-empty string")
+                if "definition" in item:
+                    if not isinstance(item["definition"], str) or not item["definition"].strip():
+                        err(i, "add_definition definition must be a non-empty string")
+                if "strength_justification" in item:
+                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
+                        err(i, "add_definition strength_justification must be a non-empty string")
+                # Strength validation
+                if "strength" in item:
+                    s = item["strength"]
+                    if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
+                        err(i, "add_definition strength must be between 0.0 and 1.0")
+                # Status enum
+                if "status" in item and item["status"] not in _STATUS_ENUM:
+                    err(i, f"add_definition status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
+                # used_by validation
+                if "used_by" in item:
+                    used_by = item["used_by"]
+                    if not isinstance(used_by, list) or len(used_by) == 0:
+                        err(i, "add_definition used_by must be a non-empty list")
+                    elif isinstance(used_by, list):
+                        ae_ids = assumption_ids | evidence_ids
+                        for ref in used_by:
+                            if ref not in ae_ids:
+                                err(i, f"add_definition used_by references non-existent A#/E# '{ref}'")
+                # Track new ID for forward references within the batch
+                if i not in errors:
+                    definition_ids.add(item["id"])
+                    all_ref_ids.add(item["id"])
+                    batch_add_ids.add(item["id"])
+
+        elif op == "update_definition":
+            target_id = patch.get("target_id")
+            if not target_id:
+                err(i, "update_definition missing target_id")
+            elif target_id not in definition_ids:
+                err(i, f"update_definition references non-existent definition '{target_id}'")
+
+            patch_changes = patch.get("changes")
+            if not patch_changes or not isinstance(patch_changes, dict):
+                err(i, "update_definition requires non-empty changes dict")
+            else:
+                # Whitelist check
+                unknown = set(patch_changes.keys()) - _UPDATE_DEFINITION_WHITELIST
+                if unknown:
+                    err(i, f"update_definition changes contains unknown fields: {sorted(unknown)}")
+                # Reject immutable fields
+                immutable_attempted = {"id", "term"} & set(patch_changes.keys())
+                if immutable_attempted:
+                    err(i, f"update_definition cannot modify immutable fields: {sorted(immutable_attempted)}")
+                # Strength validation
+                if "strength" in patch_changes:
+                    s = patch_changes["strength"]
+                    if not isinstance(s, (int, float)) or not (0.0 <= s <= 1.0):
+                        err(i, "update_definition strength must be between 0.0 and 1.0")
+                # Status enum
+                if "status" in patch_changes and patch_changes["status"] not in _STATUS_ENUM:
+                    err(i, f"update_definition status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
+                # Non-empty strings
+                if "definition" in patch_changes:
+                    if not isinstance(patch_changes["definition"], str) or not patch_changes["definition"].strip():
+                        err(i, "update_definition definition must be a non-empty string")
+                if "strength_justification" in patch_changes:
+                    if not isinstance(patch_changes["strength_justification"], str) or not patch_changes["strength_justification"].strip():
+                        err(i, "update_definition strength_justification must be a non-empty string")
+                # used_by validation
+                if "used_by" in patch_changes:
+                    used_by = patch_changes["used_by"]
+                    if not isinstance(used_by, list) or len(used_by) == 0:
+                        err(i, "update_definition used_by must be a non-empty list")
+                    elif isinstance(used_by, list):
+                        ae_ids = assumption_ids | evidence_ids
+                        for ref in used_by:
+                            if ref not in ae_ids:
+                                err(i, f"update_definition used_by references non-existent A#/E# '{ref}'")
+
         else:
             err(i, f"Unknown operation '{op}'")
+
+    # --- Cascade removal: if a projected add_* patch failed validation,
+    # transitively flag other patches that reference its ID ---
+    # Loop until no new failures are discovered (handles multi-hop chains
+    # like C3 fail → A5/E5 cascade → D6 cascade).
+    while True:
+        failed_ids = set()
+        for idx in errors:
+            patch = patches[idx]
+            op = patch.get("op", "")
+            if op.startswith("add_"):
+                item = patch.get("item", {})
+                pid = item.get("id", "")
+                if pid:
+                    failed_ids.add(pid)
+
+        if not failed_ids:
+            break
+
+        new_failures = False
+        for i, patch in enumerate(patches):
+            if i in errors:
+                continue  # Already failed
+            op = patch.get("op", "")
+            item = patch.get("item", {})
+            refs_to_check = set()
+            if op == "add_claim":
+                refs_to_check.update(item.get("depends_on", []))
+            elif op in ("add_assumption", "add_evidence"):
+                refs_to_check.update(item.get("supports_claims", []))
+                refs_to_check.update(item.get("supported_by_definitions", []))
+            elif op == "add_definition":
+                refs_to_check.update(item.get("used_by", []))
+            # Also check update_* ops that target a failed add_* ID
+            elif op.startswith("update_"):
+                target_id = patch.get("target_id", "")
+                if target_id in failed_ids:
+                    refs_to_check.add(target_id)
+            if refs_to_check & failed_ids:
+                err(i, f"depends on failed patch ID(s): {sorted(refs_to_check & failed_ids)}")
+                new_failures = True
+
+        if not new_failures:
+            break
 
     return errors

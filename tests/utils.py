@@ -43,12 +43,21 @@ def create_sample_belief(
             "topic_query": "Test topic",
             "agent_persona": "Test Persona"
         },
+        "definitions": [],
         "thesis": {
             "stance": f"Test stance for {belief_id}",
             "summary_bullets": ["Test bullet 1", "Test bullet 2"],
             "strength": confidence
-        }
+        },
+        "assumptions": [],
+        "claims": [],
+        "evidence": [],
+        "counterpositions": [],
+        "uncertainties": []
     }
+
+    # Track which A#/E# IDs exist for D# generation
+    ae_ids = []
 
     # Add assumptions
     if num_assumptions > 0:
@@ -60,10 +69,14 @@ def create_sample_belief(
                 "statement": f"Assumption {i+1}",
                 "strength": 0.8,
                 "status": "active",
-                "strength_justification": f"Test assumption {i+1} justification"
+                "strength_justification": f"Test assumption {i+1} justification",
+                "supported_by_definitions": ["D1"],
+                "original_strength": 0.8,
+                "consecutive_defenses": 0,
             }
             for i in range(num_assumptions)
         ]
+        ae_ids.extend(f"A{i+1}" for i in range(num_assumptions))
 
     # Add evidence
     if num_evidence > 0:
@@ -73,12 +86,32 @@ def create_sample_belief(
                 "type": "empirical",
                 "summary": f"Evidence {i+1}",
                 "source": f"Test et al. (2026)",
-                "relevance_to_claims": [f"C{i+1}"] if num_claims > i else [],
+                "supports_claims": [f"C{i+1}"] if num_claims > i else [],
                 "strength": 0.8,
                 "status": "active",
-                "strength_justification": f"Test evidence {i+1} justification"
+                "strength_justification": f"Test evidence {i+1} justification",
+                "supported_by_definitions": ["D1"],
+                "original_strength": 0.8,
+                "consecutive_defenses": 0,
             }
             for i in range(num_evidence)
+        ]
+        ae_ids.extend(f"E{i+1}" for i in range(num_evidence))
+
+    # Add a default definition if there are A# or E# nodes
+    if ae_ids:
+        belief["definitions"] = [
+            {
+                "id": "D1",
+                "term": "test term",
+                "definition": "A test definition for testing purposes.",
+                "strength": 0.9,
+                "strength_justification": "Standard test definition",
+                "status": "active",
+                "used_by": ae_ids,
+                "original_strength": 0.9,
+                "consecutive_defenses": 0,
+            }
         ]
 
     # Add claims
@@ -92,9 +125,12 @@ def create_sample_belief(
                 "strength": max(0.0, confidence - 0.1),
                 "strength_justification": f"Test claim {i+1} justification",
                 "status": "active",
+                "original_strength": max(0.0, confidence - 0.1),
+                "consecutive_defenses": 0,
                 "inference_chain": [
-                    f"Step 1: Assume A1 holds for claim {i+1}",
-                    f"Step 2: Therefore claim {i+1} follows"
+                    {"role": "premise", "text": f"A1 holds for claim {i+1}", "reference": "A1"},
+                    {"role": "inference", "text": f"Therefore claim {i+1} follows from A1", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": f"Claim {i+1}"}
                 ],
                 "predictions": [
                     {
@@ -158,7 +194,11 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "strength": 0.7,
                 "strength_justification": "Test justification",
                 "status": "active",
-                "inference_chain": ["Step 1: C2 implies C1"],
+                "inference_chain": [
+                    {"role": "premise", "text": "C2 implies C1", "reference": "C2"},
+                    {"role": "inference", "text": "Therefore C1 follows", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": "Claim 1"}
+                ],
                 "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             },
             {
@@ -169,7 +209,11 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "strength": 0.7,
                 "strength_justification": "Test justification",
                 "status": "active",
-                "inference_chain": ["Step 1: C1 implies C2"],
+                "inference_chain": [
+                    {"role": "premise", "text": "C1 implies C2", "reference": "C1"},
+                    {"role": "inference", "text": "Therefore C2 follows", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": "Claim 2"}
+                ],
                 "predictions": [{"statement": "P2", "test": "T2", "decision_criterion": "DC2"}]
             }
         ]
@@ -183,7 +227,11 @@ def create_invalid_belief(error_type: str) -> Dict[str, Any]:
                 "strength": 0.7,
                 "strength_justification": "Test justification",
                 "status": "active",
-                "inference_chain": ["Step 1: Orphaned reasoning"],
+                "inference_chain": [
+                    {"role": "premise", "text": "Orphaned reasoning", "reference": "A1"},
+                    {"role": "inference", "text": "Therefore orphaned claim follows", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": "Orphaned claim"}
+                ],
                 "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             }
         ]

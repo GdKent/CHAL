@@ -4,12 +4,13 @@ belief_graph.py
 Represents belief structure as a directed acyclic graph (DAG) for validation and analysis.
 
 This module transforms CBS belief objects into graph structures where:
-- Nodes: THESIS, assumptions (A#), claims (C#), evidence (E#), counterpositions (X#), uncertainties (U#)
-- Edges: dependency relationships (depends_on, targets)
+- Nodes: THESIS, definitions (D#), assumptions (A#), claims (C#), evidence (E#), counterpositions (X#), uncertainties (U#)
+- Edges: dependency relationships (depends_on, targets, used_by)
 
 DAG structure:
-    X# ──challenges──→ A#/E#/C#
-    U# ──questions───→ A#/E#/C#
+    X# ──challenges──→ A#/E#/C#/D#
+    U# ──questions───→ A#/E#/C#/D#
+    D# ──supports────→ A#/E#
     A# ──supports────→ C#
     E# ──supports────→ C#
     C# ──supports────→ THESIS
@@ -61,6 +62,13 @@ class BeliefGraph:
             self.nodes["THESIS"] = {"type": "thesis", "data": thesis}
 
         # Add all nodes by category
+        for defn in self.belief.get("definitions", []):
+            if "id" in defn:
+                self.nodes[defn["id"]] = {
+                    "type": "definition",
+                    "data": defn
+                }
+
         for assumption in self.belief.get("assumptions", []):
             if "id" in assumption:
                 self.nodes[assumption["id"]] = {
@@ -95,6 +103,14 @@ class BeliefGraph:
                     "type": "uncertainty",
                     "data": uncertainty
                 }
+
+        # Build edges from D# used_by relationships (D# supports A#/E#)
+        for defn in self.belief.get("definitions", []):
+            defn_id = defn.get("id")
+            if not defn_id:
+                continue
+            for used_by_id in defn.get("used_by", []):
+                self.edges.append((defn_id, used_by_id, "supports"))
 
         # Build edges from dependency relationships
         for claim in self.belief.get("claims", []):
@@ -351,6 +367,7 @@ class BeliefGraph:
             "total_edges": len(self.edges),
             "node_counts": {
                 "thesis": 1 if "THESIS" in self.nodes else 0,
+                "definitions": sum(1 for n in self.nodes.values() if n["type"] == "definition"),
                 "assumptions": sum(1 for n in self.nodes.values() if n["type"] == "assumption"),
                 "claims": sum(1 for n in self.nodes.values() if n["type"] == "claim"),
                 "evidence": sum(1 for n in self.nodes.values() if n["type"] == "evidence"),

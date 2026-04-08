@@ -46,7 +46,7 @@ def pytest_configure(config):
 @pytest.fixture
 def sample_minimal_belief() -> Dict[str, Any]:
     """
-    Minimal valid CBS belief structure with only required fields.
+    Minimal valid CBS belief structure with all required fields.
     """
     return {
         "schema_version": "CBS",
@@ -56,6 +56,7 @@ def sample_minimal_belief() -> Dict[str, Any]:
             "topic_query": "Does free will exist?",
             "agent_persona": "Empiricist",
         },
+        "definitions": [],
         "thesis": {
             "stance": "Free will is an illusion created by deterministic processes.",
             "summary_bullets": [
@@ -63,14 +64,19 @@ def sample_minimal_belief() -> Dict[str, Any]:
                 "Physical determinism governs all events"
             ],
             "strength": 0.75
-        }
+        },
+        "assumptions": [],
+        "claims": [],
+        "evidence": [],
+        "counterpositions": [],
+        "uncertainties": []
     }
 
 
 @pytest.fixture
 def sample_complete_belief() -> Dict[str, Any]:
     """
-    Complete CBS belief structure with all optional fields populated.
+    Complete CBS belief structure with all fields populated.
     """
     return {
         "schema_version": "CBS",
@@ -79,12 +85,18 @@ def sample_complete_belief() -> Dict[str, Any]:
         "metadata": {
             "topic_query": "Does free will exist?",
             "agent_persona": "Rationalist",
-            "last_updated": "2026-02-15T12:30:00Z",
-            "scope_conditions": "Discussion limited to compatibilist framework",
-            "definitions": [
-                {"term": "free will", "definition": "The ability to choose between alternatives without external coercion"}
-            ]
         },
+        "definitions": [
+            {
+                "id": "D1",
+                "term": "free will",
+                "definition": "The capacity of agents to choose between possible courses of action unimpeded.",
+                "strength": 0.9,
+                "strength_justification": "Standard compatibilist definition",
+                "status": "active",
+                "used_by": ["A1", "E1"]
+            }
+        ],
         "thesis": {
             "stance": "Free will exists within a compatibilist framework.",
             "summary_bullets": [
@@ -94,7 +106,7 @@ def sample_complete_belief() -> Dict[str, Any]:
             "strength": 0.80
         },
         "assumptions": [
-            {"id": "A1", "type": "empirical", "statement": "Rational deliberation is a real phenomenon", "strength": 0.9, "status": "active", "strength_justification": "Well-established through cognitive science research"}
+            {"id": "A1", "type": "empirical", "statement": "Rational deliberation is a real phenomenon", "strength": 0.9, "status": "active", "strength_justification": "Well-established through cognitive science research", "supported_by_definitions": ["D1"]}
         ],
         "claims": [
             {
@@ -112,7 +124,10 @@ def sample_complete_belief() -> Dict[str, Any]:
                     }
                 ],
                 "inference_chain": [
-                    {"step": "P1: Rational beings deliberate", "justification": "Empirical observation"}
+                    {"role": "premise", "text": "Rational beings deliberate (A1)", "reference": "A1"},
+                    {"role": "premise", "text": "Studies show humans consider alternatives before deciding (E1)", "reference": "E1"},
+                    {"role": "inference", "text": "Therefore humans can make choices based on reasons", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": "Humans can make choices based on reasons"}
                 ],
                 "strength_justification": "Strong empirical support"
             }
@@ -123,12 +138,15 @@ def sample_complete_belief() -> Dict[str, Any]:
                 "type": "empirical",
                 "summary": "Studies show humans consider alternatives before deciding",
                 "source": "Libet et al. (1983)",
-                "relevance_to_claims": ["C1"],
+                "supports_claims": ["C1"],
                 "strength": 0.8,
                 "status": "active",
-                "strength_justification": "Replicated across labs with converging methods"
+                "strength_justification": "Replicated across labs with converging methods",
+                "supported_by_definitions": ["D1"]
             }
-        ]
+        ],
+        "counterpositions": [],
+        "uncertainties": []
     }
 
 
@@ -145,11 +163,16 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
             "topic_query": "Test topic",
             "agent_persona": "Test",
         },
+        "definitions": [],
         "thesis": {
             "stance": "Test stance",
             "summary_bullets": ["Test bullet"],
             "strength": 0.5
         },
+        "assumptions": [],
+        "evidence": [],
+        "counterpositions": [],
+        "uncertainties": [],
         "claims": [
             {
                 "id": "C1",
@@ -159,7 +182,11 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
                 "strength": 0.7,
                 "strength_justification": "Test justification",
                 "status": "active",
-                "inference_chain": ["Step 1: C2 implies C1"],
+                "inference_chain": [
+                    {"role": "premise", "text": "C2 implies C1", "reference": "C2"},
+                    {"role": "inference", "text": "Therefore C1 follows", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": "Claim 1 depends on Claim 2"}
+                ],
                 "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             },
             {
@@ -170,7 +197,11 @@ def sample_belief_with_cycle() -> Dict[str, Any]:
                 "strength": 0.7,
                 "strength_justification": "Test justification",
                 "status": "active",
-                "inference_chain": ["Step 1: C1 implies C2"],
+                "inference_chain": [
+                    {"role": "premise", "text": "C1 implies C2", "reference": "C1"},
+                    {"role": "inference", "text": "Therefore C2 follows", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": "Claim 2 depends on Claim 1"}
+                ],
                 "predictions": [{"statement": "P2", "test": "T2", "decision_criterion": "DC2"}]
             }
         ]
@@ -190,11 +221,16 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
             "topic_query": "Test topic",
             "agent_persona": "Test",
         },
+        "definitions": [],
         "thesis": {
             "stance": "Test stance",
             "summary_bullets": ["Test bullet"],
             "strength": 0.5
         },
+        "assumptions": [],
+        "evidence": [],
+        "counterpositions": [],
+        "uncertainties": [],
         "claims": [
             {
                 "id": "C1",
@@ -204,7 +240,11 @@ def sample_belief_with_orphan() -> Dict[str, Any]:
                 "strength": 0.7,
                 "strength_justification": "Test justification",
                 "status": "active",
-                "inference_chain": ["Step 1: Orphaned reasoning"],
+                "inference_chain": [
+                    {"role": "premise", "text": "Orphaned reasoning", "reference": "A1"},
+                    {"role": "inference", "text": "Therefore orphaned claim follows", "inference_type": "deductive"},
+                    {"role": "conclusion", "text": "Orphaned claim with no support"}
+                ],
                 "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
             }
         ]

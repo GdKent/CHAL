@@ -52,6 +52,15 @@ def mock_openai_responses(fixtures_dir):
         return json.load(f)
 
 
+@pytest.fixture(autouse=True)
+def mock_adjudicator_agent(mock_openai_responses):
+    """Patch create_agent so the adjudicator uses a mock instead of real API calls."""
+    adj_response = mock_openai_responses["adjudicator_verdict"]["content"]
+    mock_adj = create_mock_agent("Adjudicator", responses=[adj_response])
+    with patch("chal.orchestrator.debate_controller.create_agent", return_value=mock_adj):
+        yield mock_adj
+
+
 def _make_config(parallel_enabled: bool, tmpdir: str) -> DebateConfig:
     """Create a DebateConfig with the given parallel setting."""
     return DebateConfig(

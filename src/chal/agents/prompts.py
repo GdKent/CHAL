@@ -210,7 +210,10 @@ def build_adjudicator_prompt(
         "2. FORMALIZE both sides as explicit inference chains. Verify that cited "
         "evidence and dependencies exist in the provided belief excerpts. Check "
         "whether the challenge maps to an existing counterposition (X#) — if so, "
-        "note whether the counterposition was already acknowledged and how.\n"
+        "note whether the counterposition was already acknowledged and how. "
+        "For definition-targeting challenges (over_extension, under_extension, circularity, "
+        "stipulative_bias, conceptual_conflation), identify the targeted D# node and which "
+        "downstream A#/E# nodes are affected.\n"
         "3. ADJUDICATE using the criteria defined above. You should provide a "
         "thorough and in-depth <reasoning>...</reasoning> block that provides your analysis.\n"
         f"{mode_instruction}\n"
@@ -290,7 +293,20 @@ def build_adjudicator_per_pair_prompt(
         "Execute your three-step protocol. Verify cited evidence against the belief excerpts above. "
         "If the challenge targets a counterposition (X#) the defender already rated as \"partial\" or "
         "\"unaddressed,\" factor this into your assessment. Inside <reasoning> tags, analyze step by "
-        "step before rendering your verdict.\n"
+        "step before rendering your verdict.\n\n"
+        "When evaluating a definition-targeting challenge (strategies: over_extension, "
+        "under_extension, circularity, stipulative_bias, conceptual_conflation):\n"
+        "  1. RESTATE: Identify the challenged D# node, the attack strategy used, and which "
+        "downstream A#/E# nodes are affected.\n"
+        "  2. FORMALIZE: State the challenger's claim about the definition (e.g., \"D2 is circular "
+        "because...\") and the defender's response.\n"
+        "  3. ADJUDICATE:\n"
+        "     - Does the definition actually exhibit the claimed flaw (circularity, over-extension, etc.)?\n"
+        "     - Did the defender adequately justify or revise the definition?\n"
+        "     - Consider the downstream impact: how many A#/E# nodes depend on this D#?\n"
+        "     - A sustained definition challenge should recommend strength reduction for the "
+        "targeted D# and note the cascading effect on dependent nodes.\n"
+        "     - Verdicts follow the same format: REBUTTAL_VALID / CRITIQUE_VALID / UNRESOLVED.\n"
         "</instructions>\n\n"
         "<output_format>\n"
         "1. <reasoning>...</reasoning> block with your thorough and in-depth thought process\n"
@@ -312,6 +328,13 @@ def build_adjudicator_per_pair_prompt(
         "  \"reasoning\": \"\"\n"
         "}\n"
         "```\n"
+        "\n"
+        "**CRITICAL**: You MUST output BOTH parts:\n"
+        "  1. The <reasoning>...</reasoning> block (your analysis)\n"
+        "  2. A SEPARATE fenced ```json ... ``` block (the structured verdict)\n"
+        "The JSON block must appear OUTSIDE the reasoning tags. "
+        "Do NOT nest JSON inside <reasoning>. "
+        "If you omit the JSON block, your verdict will be recorded as UNRESOLVED.\n"
         "</output_format>\n"
     )
 
@@ -444,19 +467,61 @@ REQUIRED TOP-LEVEL:
 """
         + """\
 STRUCTURED SECTIONS (use stable IDs):
-- "assumptions" [A#]: {id, type, statement, supports_claims, strength, status, strength_justification} — all foundational premises your claims rest upon.
+- "definitions" [D#]: {id, term, definition, strength, strength_justification, status, used_by}
+    Define the key terms that ground your assumptions and evidence. Each definition node
+    establishes the precise meaning of a term as YOU use it in YOUR argument.
+    id: Sequential identifier starting at D1. Number sequentially with no gaps: D1, D2, D3, etc.
+    term: The word or phrase being defined.
+    definition: Your precise meaning of the term for THIS argument (not a dictionary definition).
+    strength: 0.0-1.0 — how well-justified, precise, and defensible this definition is.
+    strength_justification: required — rationale for the strength score.
+    status: "active" (default for new definitions).
+    used_by: Array of A# and E# IDs ONLY that rely on this definition. Do NOT include C# IDs — definitions support claims indirectly through the A#/E# layer.
+    Guidelines:
+      - Every A# and E# must be supported by at least one D# node.
+      - Focus on terms that are IMPORTANT, AMBIGUOUS, or CONTENTIOUS in the debate context.
+      - A single D# can support multiple A#/E# nodes if they share the same key term.
+      - Do NOT define trivial, unambiguous words.
+      - D# strengths place a CEILING on supported A#/E# strengths — an A# or E# cannot be
+        stronger than its weakest active supporting definition.
+      - D# nodes should typically have the HIGHEST strengths of all components (0.7-1.0 range).
+        Definitions are the semantic bedrock that everything else builds upon — if a definition
+        is weak, everything downstream of it is weak. Only assign lower strengths when a
+        definition is genuinely contested, ambiguous, or under active revision.
+
+- "assumptions" [A#]: {id, type, statement, supports_claims, strength, status, strength_justification, \
+supported_by_definitions} — all foundational premises your claims rest upon.
+    id: Sequential identifier starting at A1. Number sequentially with no gaps: A1, A2, A3, etc.
     type must be one of:
     - "foundational" — definitional or logical axioms (can only be challenged by showing incoherence)
     - "empirical" — assumed true based on evidence (can be challenged with counter-evidence)
     - "methodological" — adopted for analytical purposes (can be challenged by questioning the method)
+    - "scoping" — boundary condition that defines the domain or scope of analysis.
+      Challenged by arguing the scope is too narrow, too broad, or excludes relevant cases.
+      Example: "This analysis assumes a physicalist ontology."
     supports_claims: array of C# IDs that this assumption supports (e.g., ["C1", "C3"])
     strength: 0.0-1.0 — how well-supported this assumption is
     status must be one of: "active", "revised", "retracted"
     strength_justification: required — rationale for the strength number
+    supported_by_definitions: array of D# IDs that define the key terms used in this assumption.
+      Every assumption must reference at least one D#.
 
 - "claims" [C#]: {id, type, statement, depends_on, strength, status, \
 inference_chain, predictions, strength_justification} — every substantive assertion. Each claim \
-MUST include a multi-step inference_chain and at least one falsifiable prediction.
+MUST include a structured inference_chain and at least one falsifiable prediction.
+    id: Sequential identifier starting at C1. Number sequentially with no gaps: C1, C2, C3, etc.
+    inference_chain: REQUIRED — an array of step objects showing the explicit reasoning from \
+premises to conclusion. Each step has a "role", "text", and role-specific fields:
+      - One or more PREMISE steps (at least one required):
+        {"role": "premise", "text": "<describe what this premise establishes>", "reference": "<A#|E#|C#>"}
+        Every premise must cite exactly one A#, E#, or C# ID via the "reference" field.
+      - Exactly one INFERENCE step:
+        {"role": "inference", "text": "<describe the inferential leap>", "inference_type": "<deductive|inductive|abductive>"}
+        The inference_type field is required and must be one of: "deductive", "inductive", "abductive".
+      - Exactly one CONCLUSION step:
+        {"role": "conclusion", "text": "<restate the claim's statement>"}
+        The conclusion text should match the claim's "statement" field.
+      Ordering: all premises first, then inference, then conclusion.
     predictions: array of {statement, test, decision_criterion} — each prediction specifies how \
 this claim could be tested or disproven. Optional: potential_falsifiers (array of strings).
     status must be one of: "active", "revised", "retracted"
@@ -465,29 +530,40 @@ value, which limits this claim's strength. Format: "<strength> — <rationale>; 
 <ID> (<lowest_value>)". Example: "0.65 — supported by E1 (0.80) and A1 (0.85); limited by \
 A2 (0.65) which has the lowest strength among dependencies"
 
-- "evidence" [E#]: {id, type, summary, source, relevance_to_claims, strength, status, strength_justification} \
-— each item must justify its strength
+- "evidence" [E#]: {id, type, summary, source, supports_claims, strength, status, \
+strength_justification, supported_by_definitions} — each item must justify its strength
+    id: Sequential identifier starting at E1. Number sequentially with no gaps: E1, E2, E3, etc.
     type must be one of: "empirical", "conceptual", "expert_consensus"
     strength: 0.0-1.0 — how strong this evidence is
     status must be one of: "active", "revised", "retracted"
     strength_justification: required — rationale for the strength number
+    supported_by_definitions: array of D# IDs that define the key terms used in this evidence.
+      Every evidence item must reference at least one D#.
 
-- "counterpositions" [X#]: {id, targets, attack_type, statement, my_response, \
+- "counterpositions" [X#]: {id, targets, attack_type, attack_strategy, statement, my_response, \
 response_sufficiency} — your prepared defenses against the strongest known objections. \
 Anticipate the best arguments against your position and provide well-reasoned responses. \
 Rating a weak response as "sufficient" will be exposed during cross-examination and will \
 count against you in adjudication.
+    id: Sequential identifier starting at X1. Number sequentially with no gaps: X1, X2, X3, etc.
     attack_type must be one of:
-    - "undermining" — challenges a premise or assumption
+    - "undermining" — challenges a premise, assumption, or definition directly. Includes \
+definition attacks like over_extension and under_extension.
     - "rebutting" — presents counter-evidence or counter-conclusion
     - "undercutting" — challenges the inference step itself (even if premises are true, \
-conclusion doesn't follow)
+conclusion doesn't follow). Includes definition attacks like circularity, stipulative_bias, \
+and conceptual_conflation.
+    attack_strategy: required — the specific strategy used for this attack. Must be a valid \
+strategy for the given attack_type. Examples: "challenge_evidence" for undermining, \
+"over_extension" for undermining (D# too broad), "present_counter_example" for rebutting, \
+"challenge_inference_step" for undercutting, "circularity" for undercutting (D# is circular).
     response_sufficiency must be one of: "sufficient", "partial", "unaddressed"
-    Counterposition targets must reference existing C#, A#, or E# IDs.
+    Counterposition targets must reference existing C#, A#, E#, or D# IDs.
     Include at least 2 counterpositions.
 
 - "uncertainties" [U#]: {id, targets, question, status, importance, resolution_note}
-    targets: array of A#, E#, or C# IDs that this uncertainty pertains to
+    id: Sequential identifier starting at U1. Number sequentially with no gaps: U1, U2, U3, etc.
+    targets: array of A#, E#, C#, or D# IDs that this uncertainty pertains to
     status: "active" (default for new U#) or "resolved"
     importance: must be one of "high", "medium", or "low"
     resolution_note: optional — used when resolving a U# to reference new supporting material
@@ -532,12 +608,14 @@ numbers plugged in (e.g., "avg(0.70, 0.55, 0.65) × (3^{p} / (3^{p} + 1)) = 0.63
 
 DEPENDENCY RULES:
 - All depends_on entries must reference existing A#, E#, or C# IDs
+- DEFINITION CEILING: A#.strength ≤ min(D.strength for D in supported_by_definitions where D.status == "active")
+                      E#.strength ≤ min(D.strength for D in supported_by_definitions where D.status == "active")
 - A claim's strength must not exceed the LOWEST strength among its active/revised \
 dependencies (C#, A#, or E#). Retracted dependencies are excluded. To find the limit: \
 list all active/revised dependency strengths → pick the minimum → that is the claim's \
 maximum allowed strength. The claim's strength_justification must name this dependency.
-- Counterposition targets must reference existing C#, A#, or E# IDs
-- Uncertainty targets must reference existing A#, E#, or C# IDs
+- Counterposition targets must reference existing C#, A#, E#, or D# IDs
+- Uncertainty targets must reference existing A#, E#, C#, or D# IDs
 - No circular dependencies; every claim needs at least one supporting edge
 </cbs_schema>
 
@@ -545,13 +623,22 @@ maximum allowed strength. The claim's strength_justification must name this depe
 Build your belief bottom-up:
 1. First: Assumptions (A#) — your foundational premises
 2. Then: Evidence (E#) — the empirical/conceptual backing
-3. Then: Claims (C#) — positions supported by assumptions and evidence
-4. Then: Counterpositions (X#) — anticipated objections with your responses
-5. Then: Uncertainties (U#) — open questions about your own position
-6. LAST: Thesis — synthesize your stance, summary bullets, strength \
+3. Then: Definitions (D#) — now that you can see your assumptions and evidence, define the key \
+terms used across them. Every A# and E# must be linked to ≥1 D# via supported_by_definitions. \
+Focus on terms that are important, ambiguous, or contentious. Reuse D# nodes across \
+multiple A#/E# where the same term appears.
+4. Then: Claims (C#) — each must reference ≥1 A#/E# via depends_on. Strength ≤ min(dependency strengths).
+5. Then: Counterpositions (X#) — anticipated objections with your responses. Each must include \
+both attack_type and attack_strategy.
+6. Then: Uncertainties (U#) — open questions about your own position
+7. LAST: Thesis — synthesize your stance, summary bullets, strength \
 (computed via the thesis strength formula), and strength_reasoning \
 based on the claims you actually built. Your thesis should accurately \
 summarize and be grounded in your claims, not the other way around.
+
+NOTE: Although definitions are generated third (after A#/E#), the "definitions" array appears \
+BEFORE "assumptions" in the JSON output. The generation order is about YOUR reasoning process; \
+the JSON schema order is about semantic hierarchy.
 </generation_order>
 
 <example>
@@ -563,9 +650,13 @@ Condensed example showing expected quality (your belief should be more comprehen
   "belief_id": "BELIEF-EXAMPLE-001",
   "version": 1,
   "metadata": {"topic_query": "Is consciousness reducible to physical processes?", "agent_persona": "EMPIRICIST"},
+  "definitions": [
+    {"id": "D1", "term": "consciousness", "definition": "The subjective, first-person experience of awareness — 'what it is like' to be in a particular mental state (phenomenal consciousness).", "strength": 0.85, "strength_justification": "0.85 — standard philosophical usage (Nagel/Chalmers); broadly accepted though boundary cases debated", "status": "active", "used_by": ["A1", "A2", "E1"]},
+    {"id": "D2", "term": "physical causal closure", "definition": "The principle that every physical event has a sufficient physical cause, with no non-physical causation entering the causal chain.", "strength": 0.90, "strength_justification": "0.90 — foundational physics principle with strong empirical backing", "status": "active", "used_by": ["A1"]}
+  ],
   "assumptions": [
-    {"id": "A1", "type": "empirical", "statement": "Physical causal closure: every physical event has a sufficient physical cause", "supports_claims": ["C1"], "strength": 0.85, "status": "active", "strength_justification": "Well-established in physics; no confirmed violations observed"},
-    {"id": "A2", "type": "methodological", "statement": "Third-person empirical methods are the appropriate primary tools for investigating consciousness", "supports_claims": ["C1"], "strength": 0.80, "status": "active", "strength_justification": "Standard scientific methodology, though challenged by hard problem of consciousness"}
+    {"id": "A1", "type": "empirical", "statement": "Physical causal closure: every physical event has a sufficient physical cause", "supports_claims": ["C1"], "strength": 0.85, "status": "active", "strength_justification": "Well-established in physics; no confirmed violations observed", "supported_by_definitions": ["D1", "D2"]},
+    {"id": "A2", "type": "methodological", "statement": "Third-person empirical methods are the appropriate primary tools for investigating consciousness", "supports_claims": ["C1"], "strength": 0.80, "status": "active", "strength_justification": "Standard scientific methodology, though challenged by hard problem of consciousness", "supported_by_definitions": ["D1"]}
   ],
   "claims": [
     {
@@ -576,10 +667,10 @@ Condensed example showing expected quality (your belief should be more comprehen
       "strength": 0.8,
       "status": "active",
       "inference_chain": [
-        "Premise: Empirical studies consistently find specific conscious experiences correspond to specific neural patterns (E1)",
-        "Premise: Disrupting these neural patterns disrupts the corresponding experiences",
-        "Inference (inductive): Systematic bidirectional dependence suggests consciousness is produced by neural processes",
-        "Conclusion: NCCs provide strong evidence that consciousness depends on physical brain states"
+        {"role": "premise", "text": "Empirical studies consistently find specific conscious experiences correspond to specific neural patterns", "reference": "E1"},
+        {"role": "premise", "text": "Disrupting these neural patterns disrupts the corresponding experiences", "reference": "A1"},
+        {"role": "inference", "text": "Systematic bidirectional dependence suggests consciousness is produced by neural processes", "inference_type": "inductive"},
+        {"role": "conclusion", "text": "Neural correlates of consciousness demonstrate systematic dependence of conscious states on brain states"}
       ],
       "predictions": [
         {
@@ -598,10 +689,11 @@ Condensed example showing expected quality (your belief should be more comprehen
       "type": "empirical",
       "summary": "fMRI and EEG studies consistently identify neural correlates for specific conscious experiences across subjects",
       "source": "Neuroscience literature (Koch et al., Dehaene et al.)",
-      "relevance_to_claims": ["C1"],
+      "supports_claims": ["C1"],
       "strength": 0.80,
       "status": "active",
-      "strength_justification": "Strong — replicated across labs, converging methods"
+      "strength_justification": "Strong — replicated across labs, converging methods",
+      "supported_by_definitions": ["D1"]
     }
   ],
   "counterpositions": [
@@ -609,6 +701,7 @@ Condensed example showing expected quality (your belief should be more comprehen
       "id": "X1",
       "targets": ["C1"],
       "attack_type": "undercutting",
+      "attack_strategy": "challenge_inference_step",
       "statement": "Systematic NCC correlations do not warrant the inference to production — correlation is compatible with dualist parallelism, epiphenomenalism, or non-reductive identity theory",
       "my_response": "Bidirectional dependence (disruption -> loss of experience) narrows viable interpretations. Parallelism predicts no disruption effect. This constrains but does not eliminate alternatives.",
       "response_sufficiency": "partial"
@@ -617,6 +710,7 @@ Condensed example showing expected quality (your belief should be more comprehen
       "id": "X2",
       "targets": ["A2"],
       "attack_type": "undermining",
+      "attack_strategy": "challenge_assumption",
       "statement": "Third-person methods are constitutively incapable of capturing first-person experience — the methodology excludes the phenomenon",
       "my_response": "This conflates the tool with the target. Astronomy uses instruments that aren't celestial bodies. The question is whether the physical basis is the complete story, not whether the method is itself subjective.",
       "response_sufficiency": "sufficient"
@@ -716,8 +810,8 @@ You are {agent_name} cross-examining {opponent_name} on: "{topic}"
 Every question must be classified with an attack_type and a specific attack_strategy. \
 The attack_type determines which strategies are available.
 
-**UNDERMINING** — Challenge a premise, assumption, or evidence directly. If the foundation \
-falls, everything built on it collapses.
+**UNDERMINING** — Challenge a premise, assumption, evidence, or definition directly. If the \
+foundation falls, everything built on it collapses.
   - challenge_evidence: Dispute the reliability, relevance, or sufficiency of an E# node.
   - challenge_assumption: Question whether an A# is correctly typed (e.g., labeled \
     "foundational" but actually empirical) or well-founded for the domain.
@@ -732,6 +826,10 @@ falls, everything built on it collapses.
     focus on U# nodes that have been identified as either "high" or "medium" importance, \
     although you may press "low" importance nodes if you feel that the importance has been \
     mis-calibrated.
+  - over_extension: A definition (D#) is too broad, capturing cases it shouldn't — this \
+    weakens all A#/E# nodes that depend on the definition.
+  - under_extension: A definition (D#) is too narrow, excluding cases it should capture — \
+    the premise doesn't cover key cases needed by dependent nodes.
 
 **REBUTTING** — Present counter-evidence or a counter-conclusion that directly opposes a claim.
   - present_counter_evidence: Offer specific evidence that directly contradicts a claim \
@@ -746,7 +844,10 @@ falls, everything built on it collapses.
 **UNDERCUTTING** — Accept the premises but attack the inference step — even if the premises \
 are true, the conclusion does not follow.
   - challenge_inference_step: A specific step in a C#'s inference_chain does not logically \
-    follow from its predecessors.
+    follow from its predecessors. Target a premise's reference (e.g., the cited A# or E# \
+    doesn't support the premise text), the inference step's reasoning (the inference_type \
+    is inappropriate or the inferential leap is unwarranted), or the gap between premises \
+    and conclusion.
   - identify_circularity: The reasoning chain assumes its own conclusion (begging the question).
   - expose_inconsistency: Expose internal inconsistencies — claims contradict each other, \
     strength assignments violate dependency constraints, evidence undermines own claims, \
@@ -755,6 +856,15 @@ are true, the conclusion does not follow.
     across different parts of the argument.
   - challenge_scope: The conclusion overgeneralizes from the evidence (hasty generalization, \
     composition/division fallacies).
+  - circularity: A definition (D#) uses the defined term (or a synonym) within itself — \
+    the reasoning chain that depends on this definition is circular.
+  - stipulative_bias: A definition (D#) is framed to presuppose the conclusion — the \
+    inference begs the question because the definition smuggles in the desired answer.
+  - conceptual_conflation: A definition (D#) conflates two distinct concepts — this is \
+    a form of equivocation that breaks the inference from premises to conclusion.
+
+When targeting a definition (D#), explain which downstream A#/E# nodes are affected and how \
+the definitional flaw cascades through the argument.
 
 The most effective questions often combine vectors. When a question spans multiple vectors, \
 choose the primary one — the attack_type and attack_strategy that best describes the core \
@@ -779,6 +889,18 @@ do you justify C2's strength at 0.55 rather than something lower?",
   "target_ids": ["C2"],
   "attack_type": "undermining",
   "attack_strategy": "challenge_strength_calibration"
+}}
+```
+
+```json
+{{
+  "qid": "Q3",
+  "text": "Your definition of 'consciousness' (D1) as 'any information processing' is \
+over-extended — it would classify a thermostat as conscious, undermining A2 and E1 which \
+depend on this definition.",
+  "target_ids": ["D1"],
+  "attack_type": "undermining",
+  "attack_strategy": "over_extension"
 }}
 ```
 </example>
@@ -806,11 +928,11 @@ Your response must contain:
 - **qid**: Sequential question identifier (Q1, Q2, ...).
 - **text**: The question itself. Must be answerable (not rhetorical) and target specific \
   IDs in the opponent's belief structure.
-- **target_ids**: Array of 1-2 CBS node IDs (A#, C#, E#, X#, U#) that this question \
+- **target_ids**: Array of 1-2 CBS node IDs (A#, C#, D#, E#, X#, U#) that this question \
   targets. Prefer a single target; only use two when the nodes are directly interdependent \
   (e.g., a claim and the assumption it depends on).
-- **attack_type**: One of "undermining", "rebutting", or "undercutting". This must match \
-  the ASPIC+ attack vector described in the taxonomy above.
+- **attack_type**: One of "undermining", "rebutting", or "undercutting". \
+  This must match the attack vector described in the taxonomy above.
 - **attack_strategy**: One of the specific strategies listed under the chosen attack_type. \
   The strategy must belong to the selected attack_type category.
 </output_format>
@@ -870,6 +992,19 @@ the protocol.
 
 "defer" — The challenge raises an unresolved uncertainty. Explain what would resolve it. \
 Patches SHOULD include an `add_uncertainty` targeting the disputed nodes.
+
+If your definitions (D# nodes) have been challenged:
+  - "refute": Defend the definition by explaining why it is precise, non-circular, and \
+appropriate for this context. Cite philosophical precedent or explain why the specific \
+formulation is necessary for your argument.
+  - "concede": If the challenge has merit, include an update_definition patch to revise \
+the definition, lower its strength, or retract it. Consider whether narrowing or \
+broadening the definition resolves the objection.
+  - "defer": If the definitional question is genuinely unresolved, add a U# targeting the \
+D# node.
+
+When adding a counterposition, you MUST include both attack_type and attack_strategy. \
+The attack_strategy must be a valid strategy for the given attack_type.
 </instructions>
 
 <examples>
@@ -898,17 +1033,19 @@ Your response must contain:
   "patches": [
     // --- Modify existing nodes ---
     {{"op": "update_claim", "target_id": "C1", "changes": {{"strength": 0.6, "strength_justification": "Lowered — E1 was shown to be outdated"}}}},
-    {{"op": "retire_claim", "target_id": "C3"}},
+    {{"op": "update_claim", "target_id": "C3", "changes": {{"status": "retracted", "strength_justification": "Retracted — no longer supported after E1 discredited"}}}},
     {{"op": "update_evidence", "target_id": "E1", "changes": {{"strength": 0.5, "strength_justification": "Downgraded — methodology questioned"}}}},
     {{"op": "update_assumption", "target_id": "A2", "changes": {{"strength": 0.6, "status": "revised", "strength_justification": "Weakened after challenge"}}}},
+    {{"op": "update_definition", "target_id": "D1", "changes": {{"definition": "...", "strength": 0.55, "strength_justification": "...", "status": "revised"}}}},
     {{"op": "update_counterposition", "target_id": "X1", "changes": {{"my_response": "...", "response_sufficiency": "sufficient"}}}},
     {{"op": "resolve_uncertainty", "target_id": "U1", "resolution_note": "Resolved by new evidence E4"}},
 
     // --- Add new nodes (use the next available number, e.g. if highest evidence ID is E3, use E4) ---
-    {{"op": "add_claim", "item": {{"id": "C4", "type": "deductive", "statement": "...", "depends_on": ["A1", "E2"], "strength": 0.7, "status": "active", "strength_justification": "...", "predictions": [{{"statement": "...", "test": "...", "decision_criterion": "..."}}], "inference_chain": ["Step 1: ...", "Step 2: ..."]}}}},
-    {{"op": "add_evidence", "item": {{"id": "E4", "type": "empirical", "summary": "...", "source": "...", "relevance_to_claims": ["C1"], "strength": 0.7, "status": "active", "strength_justification": "..."}}}},
+    {{"op": "add_claim", "item": {{"id": "C4", "type": "deductive", "statement": "...", "depends_on": ["A1", "E2"], "strength": 0.7, "status": "active", "strength_justification": "...", "predictions": [{{"statement": "...", "test": "...", "decision_criterion": "..."}}], "inference_chain": [{{"role": "premise", "text": "...", "reference": "A1"}}, {{"role": "premise", "text": "...", "reference": "E2"}}, {{"role": "inference", "text": "...", "inference_type": "deductive"}}, {{"role": "conclusion", "text": "..."}}]}}}},
+    {{"op": "add_evidence", "item": {{"id": "E4", "type": "empirical", "summary": "...", "source": "...", "supports_claims": ["C1"], "strength": 0.7, "status": "active", "strength_justification": "...", "supported_by_definitions": ["D1"]}}}},
     {{"op": "add_assumption", "item": {{"id": "A3", "type": "empirical", "statement": "...", "supports_claims": ["C1"], "strength": 0.75, "status": "active", "strength_justification": "..."}}}},
-    {{"op": "add_counterposition", "item": {{"id": "X3", "targets": ["C2"], "attack_type": "undermining", "statement": "...", "my_response": "...", "response_sufficiency": "partial"}}}},
+    {{"op": "add_definition", "item": {{"id": "D3", "term": "...", "definition": "...", "strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A1", "E2"]}}}},
+    {{"op": "add_counterposition", "item": {{"id": "X3", "targets": ["C2"], "attack_type": "undermining", "attack_strategy": "challenge_assumption", "statement": "...", "my_response": "...", "response_sufficiency": "partial"}}}},
     {{"op": "add_uncertainty", "item": {{"id": "U2", "targets": ["C1", "E1"], "question": "...", "status": "active", "importance": "high"}}}}
   ]
 }}
@@ -1021,20 +1158,31 @@ Then output a single fenced JSON code block.
 
 SUPPORTED OPERATIONS:
 - {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
-"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ..."}}}}
-- {{"op": "retire_claim", "target_id": "C#"}}
+"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ...", \
+"inference_chain": [...]}}}}
+  (All fields in changes are optional — include only the ones you want to modify. \
+To retract a claim, set {{"status": "retracted"}} in changes — strength is forced to 0.0 automatically. \
+Include inference_chain only if the reasoning structure itself needs revision.)
 - {{"op": "add_evidence", "item": {{"id": "E#", "type": "empirical|conceptual|expert_consensus", \
-"summary": "...", "source": "...", "relevance_to_claims": ["C#"], "strength": 0.7, \
-"status": "active", "strength_justification": "..."}}}}
+"summary": "...", "source": "...", "supports_claims": ["C#"], "strength": 0.7, \
+"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
 - {{"op": "update_evidence", "target_id": "E#", "changes": {{"strength": 0.7, \
 "status": "revised", "strength_justification": "..."}}}}
 - {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
-"status": "revised", "strength_justification": "..."}}, "new_statement": "...", "new_type": "..."}}
+"status": "revised", "strength_justification": "..."}}, "new_statement": "...", \
+"new_type": "empirical|foundational|methodological|scoping"}}
+  (new_statement and new_type are TOP-LEVEL fields, NOT inside "changes". Only include if changing them.)
+- {{"op": "add_definition", "item": {{"id": "D#", "term": "...", "definition": "...", \
+"strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A#", "E#"]}}}}
+- {{"op": "update_definition", "target_id": "D#", "changes": {{"definition": "...", \
+"strength": 0.55, "strength_justification": "...", "status": "revised"}}}}
+  Mutable fields: definition, strength, strength_justification, status, used_by.
+  Immutable fields: id, term (to redefine a term, retract the old D# and add a new one).
 - {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
 "status": "active", "importance": "high|medium|low"}}}}
 - {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
 - {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
-"statement": "...", "my_response": "...", \
+"attack_strategy": "...", "statement": "...", "my_response": "...", \
 "response_sufficiency": "sufficient|partial|unaddressed"}}}}
 - {{"op": "update_counterposition", "target_id": "X#", "changes": \
 {{"my_response": "...", "response_sufficiency": "..."}}}}
@@ -1046,13 +1194,20 @@ BINDING — not suggestions:
 retire the claim, or refine to address the flaw. Empty patches after CRITIQUE_VALID = protocol \
 violation. Stage 3 patches do NOT carry over. Also: if the critique reveals a new vulnerability, \
 add a counterposition (X#) recording it.
-- REBUTTAL_VALID for you → optional +0.05 first defense; mandatory +0.05-0.10 second+ defense \
-of same claim; cumulative cap +0.2. If you defended against a listed counterposition, update its \
-response_sufficiency.
+- If a definition-targeting challenge (strategies: over_extension, under_extension, \
+circularity, stipulative_bias, conceptual_conflation) is sustained (CRITIQUE_VALID): \
+lower the targeted D# strength via update_definition. This automatically caps all A#/E# in \
+the D#'s used_by list. Add an X# counterposition recording the definitional vulnerability.
+- REBUTTAL_VALID for you → defense boosts are applied automatically by the system after \
+your patches. Do NOT manually increase node strengths for successful defenses. You SHOULD \
+update the response_sufficiency of any counterposition (X#) you successfully defended against.
 - UNRESOLVED → required: add uncertainty (U#) with targets referencing the disputed nodes, \
 status: "active"; optional: lower strength ~0.05.
 - Thesis strength is always: avg(active claim strengths) × (n^p / (n^p + 1)) where p = {p}. \
 If you lowered or retracted a claim, thesis strength will be recalculated automatically.
+- DEFINITION CEILING: A#/E# strength ≤ min(active D# strengths from supported_by_definitions). \
+If you lower a D# strength, the ceiling automatically propagates — do NOT manually lower \
+every dependent A#/E# (the system handles propagation).
 - A claim's strength must not exceed the LOWEST strength among its active/revised \
 dependencies (C#, A#, or E#). Retracted dependencies are excluded.
 - Review your existing uncertainties (U#), prioritizing "high" and "medium" importance — \
@@ -1076,7 +1231,8 @@ UNRESOLVED on C4:
     {{"op": "update_claim", "target_id": "C2", "changes": {{"strength": 0.55, \
 "strength_justification": "0.55 — reduced from 0.75: E2 (0.55) insufficient for causal claim; limited by E2 (lowest dependency at 0.55)"}}}},
     {{"op": "add_counterposition", "item": {{"id": "X4", "targets": ["C2"], \
-"attack_type": "rebutting", "statement": "Challenger demonstrated E2's correlational \
+"attack_type": "rebutting", "attack_strategy": "present_counter_evidence", \
+"statement": "Challenger demonstrated E2's correlational \
 limitations undermine causal inference", "my_response": "Acknowledged — \
 need stronger evidence for causal claims", "response_sufficiency": "partial"}}}},
     {{"op": "update_claim", "target_id": "C1", "changes": {{"strength": 0.75}}}},
@@ -1084,7 +1240,10 @@ need stronger evidence for causal claims", "response_sufficiency": "partial"}}}}
 {{"response_sufficiency": "sufficient", "my_response": "Successfully defended bidirectional \
 dependence argument in cross-examination"}}}},
     {{"op": "add_uncertainty", "item": {{"id": "U3", "targets": ["C4"], "question": "Is C4's \
-computational model compatible with opponent's C3?", "status": "active", "importance": "medium"}}}}
+computational model compatible with opponent's C3?", "status": "active", "importance": "medium"}}}},
+    {{"op": "update_definition", "target_id": "D2", "changes": {{"strength": 0.50, \
+"strength_justification": "0.50 — revised after over-extension challenge; original definition \
+captured unintended cases", "status": "revised"}}}}
   ]
 }}
 ```
@@ -1100,6 +1259,7 @@ Self-check:
 - Is thesis strength = avg(active claim strengths) × (n^p / (n^p + 1)) where p = {p}?
 - Are there any internal contradictions in my belief system?
 - Have I reviewed my uncertainties (U#) and resolved any that I can now address?
+- Have I considered whether any D# nodes need updating after sustained challenges?
 </output_format>
 """
 
@@ -1195,20 +1355,31 @@ Then output a single fenced JSON code block.
 
 SUPPORTED OPERATIONS:
 - {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
-"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ..."}}}}
-- {{"op": "retire_claim", "target_id": "C#"}}
+"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ...", \
+"inference_chain": [...]}}}}
+  (All fields in changes are optional — include only the ones you want to modify. \
+To retract a claim, set {{"status": "retracted"}} in changes — strength is forced to 0.0 automatically. \
+Include inference_chain only if the reasoning structure itself needs revision.)
 - {{"op": "add_evidence", "item": {{"id": "E#", "type": "empirical|conceptual|expert_consensus", \
-"summary": "...", "source": "...", "relevance_to_claims": ["C#"], "strength": 0.7, \
-"status": "active", "strength_justification": "..."}}}}
+"summary": "...", "source": "...", "supports_claims": ["C#"], "strength": 0.7, \
+"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
 - {{"op": "update_evidence", "target_id": "E#", "changes": {{"strength": 0.7, \
 "status": "revised", "strength_justification": "..."}}}}
 - {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
-"status": "revised", "strength_justification": "..."}}, "new_statement": "...", "new_type": "..."}}
+"status": "revised", "strength_justification": "..."}}, "new_statement": "...", \
+"new_type": "empirical|foundational|methodological|scoping"}}
+  (new_statement and new_type are TOP-LEVEL fields, NOT inside "changes". Only include if changing them.)
+- {{"op": "add_definition", "item": {{"id": "D#", "term": "...", "definition": "...", \
+"strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A#", "E#"]}}}}
+- {{"op": "update_definition", "target_id": "D#", "changes": {{"definition": "...", \
+"strength": 0.55, "strength_justification": "...", "status": "revised"}}}}
+  Mutable fields: definition, strength, strength_justification, status, used_by.
+  Immutable fields: id, term (to redefine a term, retract the old D# and add a new one).
 - {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
 "status": "active", "importance": "high|medium|low"}}}}
 - {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
 - {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
-"statement": "...", "my_response": "...", \
+"attack_strategy": "...", "statement": "...", "my_response": "...", \
 "response_sufficiency": "sufficient|partial|unaddressed"}}}}
 - {{"op": "update_counterposition", "target_id": "X#", "changes": \
 {{"my_response": "...", "response_sufficiency": "..."}}}}
@@ -1226,11 +1397,18 @@ BINDING — not suggestions:
 retire the claim, or refine to address the flaw. Empty patches after CRITIQUE_VALID = protocol \
 violation. Stage 3 patches do NOT carry over. Also: if the critique reveals a new vulnerability, \
 add a counterposition (X#) recording it.
-- REBUTTAL_VALID for you → optional +0.05 first defense; mandatory +0.05-0.10 second+ defense \
-of same claim; cumulative cap +0.2. If you defended against a listed counterposition, update its \
-response_sufficiency.
+- If a definition-targeting challenge (strategies: over_extension, under_extension, \
+circularity, stipulative_bias, conceptual_conflation) is sustained (CRITIQUE_VALID): \
+lower the targeted D# strength via update_definition. This automatically caps all A#/E# in \
+the D#'s used_by list. Add an X# counterposition recording the definitional vulnerability.
+- REBUTTAL_VALID for you → defense boosts are applied automatically by the system after \
+Phase 1. Do NOT manually increase node strengths for successful defenses. You SHOULD update \
+the response_sufficiency of any counterposition (X#) you successfully defended against.
 - UNRESOLVED → required: add uncertainty (U#) with targets referencing the disputed nodes, \
 status: "active"; optional: lower strength ~0.05.
+- DEFINITION CEILING: A#/E# strength ≤ min(active D# strengths from supported_by_definitions). \
+If you lower a D# strength, the ceiling automatically propagates — do NOT manually lower \
+every dependent A#/E# (the system handles propagation).
 - A claim's strength must not exceed the LOWEST strength among its active/revised \
 dependencies (C#, A#, or E#). Retracted dependencies are excluded.
 - Review your existing uncertainties (U#), prioritizing "high" and "medium" importance — \
@@ -1251,7 +1429,8 @@ UNRESOLVED on C4:
     {{"op": "update_claim", "target_id": "C2", "changes": {{"strength": 0.55, \
 "strength_justification": "0.55 — reduced from 0.75: E2 (0.55) insufficient for causal claim; limited by E2 (lowest dependency at 0.55)"}}}},
     {{"op": "add_counterposition", "item": {{"id": "X4", "targets": ["C2"], \
-"attack_type": "rebutting", "statement": "Challenger demonstrated E2's correlational \
+"attack_type": "rebutting", "attack_strategy": "present_counter_evidence", \
+"statement": "Challenger demonstrated E2's correlational \
 limitations undermine causal inference", "my_response": "Acknowledged — \
 need stronger evidence for causal claims", "response_sufficiency": "partial"}}}},
     {{"op": "update_claim", "target_id": "C1", "changes": {{"strength": 0.75}}}},
@@ -1394,12 +1573,91 @@ def compute_position_analysis(belief: dict, breadth_sensitivity: float = None) -
     bottom_deps = dep_items[:3]
 
     if bottom_deps:
-        dep_lines = "\n".join(
-            f"  {dep_id} (strength {dep_str:.2f}) — backs: {', '.join(backed)}"
-            for dep_str, dep_id, backed in bottom_deps
-        )
+        dep_line_parts = []
+        for dep_str, dep_id, backed in bottom_deps:
+            line = f"  {dep_id} (strength {dep_str:.2f}) — backs: {', '.join(backed)}"
+            # Generate suggested action based on node type
+            if dep_id.startswith("A"):
+                line += (
+                    f"\n    → Suggested: update_assumption {dep_id} to revise statement, "
+                    f"or add_evidence corroborating {'/'.join(backed)}"
+                )
+            elif dep_id.startswith("E"):
+                line += (
+                    f"\n    → Suggested: update_evidence {dep_id} with stronger source, "
+                    f"or add_evidence with additional support for {'/'.join(backed)}"
+                )
+            dep_line_parts.append(line)
+        dep_lines = "\n".join(dep_line_parts)
     else:
         dep_lines = "  (no dependency data available)"
+
+    # --- D# vulnerability analysis ---
+    def_vulnerability_lines = []
+
+    active_defs = [d for d in belief.get("definitions", [])
+                   if d.get("status") != "retracted"]
+
+    if active_defs:
+        # Build reverse map: D# id -> list of A#/E# ids it supports
+        def_dependents: dict = {d.get("id", "?"): [] for d in active_defs}
+        for collection_key in ("assumptions", "evidence"):
+            for node in belief.get(collection_key, []):
+                if node.get("status") == "retracted":
+                    continue
+                for did in node.get("supported_by_definitions", []):
+                    if did in def_dependents:
+                        def_dependents[did].append(node.get("id", "?"))
+
+        # Weak definitions: low strength supporting many nodes
+        for d in active_defs:
+            did = d.get("id", "?")
+            d_str = d.get("strength", 0.5)
+            dependents = def_dependents.get(did, [])
+            if d_str < 0.6 and len(dependents) >= 2:
+                def_vulnerability_lines.append(
+                    f"  WEAK DEFINITION: {did} (strength {d_str:.2f}) supports "
+                    f"{len(dependents)} nodes ({', '.join(dependents)}). "
+                    f"Strengthening or revising this definition would raise "
+                    f"the ceiling on all dependent nodes."
+                    f"\n    → Suggested: update_definition {did} with a more precise definition to raise its strength"
+                )
+
+        # Bottleneck definitions: A#/E# constrained by a single active D#
+        for collection_key in ("assumptions", "evidence"):
+            for node in belief.get(collection_key, []):
+                if node.get("status") == "retracted":
+                    continue
+                supported_defs = node.get("supported_by_definitions", [])
+                active_support = [
+                    did for did in supported_defs
+                    if any(d.get("id") == did and d.get("status") != "retracted"
+                           for d in belief.get("definitions", []))
+                ]
+                if len(active_support) == 1:
+                    single_did = active_support[0]
+                    single_d = next(
+                        (d for d in active_defs if d.get("id") == single_did), None
+                    )
+                    if single_d:
+                        node_id = node.get('id', '?')
+                        def_vulnerability_lines.append(
+                            f"  BOTTLENECK: {node_id} depends on "
+                            f"a single definition {single_did} (strength "
+                            f"{single_d.get('strength', 0.5):.2f}). If {single_did} "
+                            f"is challenged, {node_id} loses all "
+                            f"definitional support."
+                            f"\n    → Suggested: add_definition with a complementary term, "
+                            f"then update {node_id}'s supported_by_definitions"
+                        )
+
+    def_vulnerability_section = ""
+    if def_vulnerability_lines:
+        def_vulnerability_section = (
+            "\n"
+            "DEFINITIONAL VULNERABILITIES\n"
+            + "\n".join(def_vulnerability_lines) + "\n"
+        )
 
     # --- Strategic recommendation ---
     gain_s = dT_ds * 0.10  # approximate gain from +0.10 avg strength
@@ -1429,6 +1687,67 @@ def compute_position_analysis(belief: dict, breadth_sensitivity: float = None) -
             f"   {s:.2f}."
         )
 
+    # --- Orphan detection (dynamic) ---
+    orphan_lines = []
+    definitions = belief.get("definitions", [])
+
+    # Build node status map for claim orphan detection
+    node_statuses = {}
+    for a in assumptions:
+        node_statuses[a.get("id", "")] = a.get("status", "active")
+    for e in evidence:
+        node_statuses[e.get("id", "")] = e.get("status", "active")
+    for c in claims:
+        node_statuses[c.get("id", "")] = c.get("status", "active")
+
+    # Detect orphaned A#/E# (no active D# support)
+    for collection_key in ("assumptions", "evidence"):
+        for node in belief.get(collection_key, []):
+            if node.get("status") == "retracted":
+                continue
+            supported_defs = node.get("supported_by_definitions", [])
+            active_defs = [
+                d for d in definitions
+                if d["id"] in supported_defs and d.get("status") != "retracted"
+            ]
+            if not active_defs and supported_defs:
+                orphan_lines.append(
+                    f"  {node['id']} has NO active definitional support "
+                    f"(capped at 0.6)."
+                    f"\n    → Suggested: add_definition covering {node['id']}'s key term, include {node['id']} in used_by"
+                )
+
+    # Detect orphaned C# (no active A#/E# dependencies)
+    for claim in active_claims:
+        all_deps = claim.get("depends_on", [])
+        active_deps = [
+            dep_id for dep_id in all_deps
+            if node_statuses.get(dep_id) != "retracted"
+        ]
+        if not active_deps and all_deps:
+            orphan_lines.append(
+                f"  {claim['id']} has NO active supporting assumptions or "
+                f"evidence (capped at 0.2 — unfounded claim)."
+                f"\n    → HIGH PRIORITY: add_evidence and/or add_assumption supporting {claim['id']}, then update {claim['id']}'s depends_on"
+            )
+        elif not active_deps and not all_deps:
+            orphan_lines.append(
+                f"  {claim['id']} has no depends_on entries at all "
+                f"(capped at 0.2 — unfounded claim)."
+                f"\n    → HIGH PRIORITY: add_evidence and/or add_assumption supporting {claim['id']}, then update {claim['id']}'s depends_on"
+            )
+
+    orphan_section = ""
+    if orphan_lines:
+        orphan_section = (
+            "\n"
+            "STRUCTURAL GAPS — HIGH PRIORITY\n"
+            "  The following nodes are missing required support, which caps their\n"
+            "  effective strength and drags down your thesis. Fixing these is often\n"
+            "  the single highest-impact action you can take.\n"
+            + "\n".join(orphan_lines) + "\n"
+        )
+
     return (
         "<position_analysis>\n"
         "YOUR CURRENT POSITION\n"
@@ -1450,9 +1769,11 @@ def compute_position_analysis(belief: dict, breadth_sensitivity: float = None) -
         "  These assumptions/evidence have the lowest strength values and may be\n"
         "  limiting your claims (a claim cannot exceed its lowest dependency):\n"
         f"{dep_lines}\n"
+        f"{def_vulnerability_section}"
         "\n"
         "STRATEGIC RECOMMENDATION\n"
         f"  {recommendation}\n"
+        f"{orphan_section}"
         "\n"
         "INTEGRITY REMINDER\n"
         "  The analysis above shows what would help mathematically — it does not\n"
@@ -1508,6 +1829,20 @@ def build_stage_5_phase2_introspection_prompt(agent_name: str,
     _ex3_breadth = round(_ex3_np / (_ex3_np + 1), 2)
     _ex3_result = round(0.62 * _ex3_breadth, 2)
 
+    # Growth example values (4 claims: 0.70, 0.65, 0.60, 0.75)
+    _ex4_np = 4 ** p
+    _ex4_breadth = round(_ex4_np / (_ex4_np + 1), 2)
+    _ex4_growth_avg = round((0.70 + 0.65 + 0.60 + 0.75) / 4, 2)
+    _ex3_growth_T = round(0.65 * _ex3_breadth, 2)  # Before: 3 claims at avg 0.65
+    _ex4_growth_result = round(_ex4_growth_avg * _ex4_breadth, 2)
+
+    # Refinement example values (2 claims → 3 claims: add C3 at 0.70)
+    _ex2_np = 2 ** p
+    _ex2_breadth = round(_ex2_np / (_ex2_np + 1), 2)
+    _ex2_refine_T = round(0.625 * _ex2_breadth, 2)       # Before: 2 claims at avg 0.625
+    _ex3_refine_avg = round((0.70 + 0.55 + 0.70) / 3, 2) # After: 3 claims
+    _ex3_refine_result = round(_ex3_refine_avg * _ex3_breadth, 2)
+
     _debate_ctx = build_debate_context("Belief update (strategic) — strengthening your position")
     return f"""\
 {_debate_ctx}
@@ -1556,11 +1891,15 @@ The thesis strength is ALWAYS determined by this formula. You cannot set it
 directly — it is computed from your claims.
 
 DEPENDENCY GRAPH
-  Assumptions (A#) and Evidence (E#)
-      | support |
+  Definitions (D#)
+      | ceiling |
+  Assumptions (A#) and Evidence (E#) — each cannot exceed the LOWEST
+                strength among its active supporting definitions (D#).
+                If ALL D# support is lost, capped at 0.6.
+      | ceiling |
   Claims (C#) — each claim's strength cannot exceed the LOWEST strength
                 among its active/revised dependencies (A#, E#, or C#).
-                Retracted dependencies are excluded.
+                If ALL support is lost, capped at 0.2.
       | determine |
   Thesis strength — computed from claim strengths and claim count
 
@@ -1639,6 +1978,24 @@ Evaluate existing claims:
 can it be strengthened by adding new evidence (add_evidence) or \
 assumptions (add_assumption)?
 
+Strengthen weak dependencies:
+- Review the LOWEST-STRENGTH DEPENDENCIES in the position analysis below. \
+These nodes are bottlenecking your claim strengths — a claim cannot be \
+stronger than its weakest active dependency.
+- For a weak A# (low strength): Revise the statement to be more defensible \
+(update_assumption), add a definition that clarifies a key term it relies on \
+(add_definition), or add corroborating evidence (add_evidence) for the same \
+claim so the argument doesn't rest on a single weak pillar.
+- For a weak E# (low strength): Add corroborating evidence on the same claim \
+(add_evidence with a stronger source), or revise the evidence summary to \
+cite a more authoritative source (update_evidence).
+- For a weak D# (low strength): Revise the definition to be more precise \
+(update_definition). Remember: D# strengths ceiling A#/E# strengths, so \
+raising a D# can unlock higher strength for all dependent nodes.
+- Adding a second or third dependency to an existing claim does not automatically \
+raise the claim's strength (it is still limited by the lowest), but it makes \
+the claim more resilient if one dependency is later challenged or retracted.
+
 Consider adding new claims:
 - Are there well-supported arguments you made during the debate that \
 aren't yet formalized as claims?
@@ -1665,7 +2022,53 @@ be descriptive prose capturing the key themes of your position.
 - Set thesis strength to the result of the formula. Include strength_reasoning \
 showing the equation with your actual numbers plugged in.
 
-Inside <reasoning> tags, work through each step above. Then output patches.
+Inside <reasoning> tags, work through each step systematically. This is where \
+your real thinking happens — be rigorous and thorough.
+
+For Step 1A (Counterposition Audit):
+- For each "unaddressed" or "partial" X#: What specific node does it target? \
+Has that target already been weakened in Phase 1? If not, is the attack \
+genuinely valid? What evidence or reasoning supports your response? \
+If you upgrade response_sufficiency, justify WHY the counterposition no \
+longer undermines its target — do not just assert sufficiency.
+
+For Step 1B (Uncertainty Review):
+- Which U# nodes are "high" or "medium" importance? Can any be resolved \
+with arguments, evidence, or insights developed during this debate? \
+If a U# remains unresolved, does it warrant lowering the strength of \
+the nodes it targets?
+
+For Step 2 (Strategic Position Building):
+- Read the position analysis carefully. What are your weakest dependencies? \
+What are your definitional vulnerabilities? What structural gaps exist?
+- For each weakness, reason about the specific patches that would address it. \
+You cannot raise existing node strengths — they only increase through defense boosts. \
+Instead, consider: what new nodes (D#, A#, E#, C#) could you add to strengthen your \
+position? If you add a new claim, will its strength raise or lower the average? \
+Run the numbers both ways.
+- If you plan to add a new claim: what supporting infrastructure (D#, A#, E#) \
+does it need? Will the new claim's strength be above or below the current \
+average? Run the thesis formula both ways — does adding this claim actually \
+help, or does it drag the average down?
+- Consider trade-offs: is it better to add new strong claims or improve existing \
+node text to be more robust against future attacks? Which approach yields the \
+largest thesis improvement given your current state?
+
+For Step 3 (Thesis Rewrite):
+- After planning all patches, calculate the expected thesis strength using \
+the formula: avg(planned active claim strengths) × (n^p / (n^p + 1)). \
+Show the numbers. Does the result match what you set in update_thesis?
+
+Then output patches.
+
+INFERENCE CHAIN FORMAT (required for add_claim; optional for update_claim):
+Every claim must have a structured inference_chain showing explicit reasoning:
+- One or more PREMISE steps: {{"role": "premise", "text": "...", "reference": "<A#|E#|C#>"}}
+  Every premise must cite exactly one A#, E#, or C# ID via "reference".
+- Exactly one INFERENCE step: {{"role": "inference", "text": "...", "inference_type": "<deductive|inductive|abductive>"}}
+  The inference_type field is required.
+- Exactly one CONCLUSION step: {{"role": "conclusion", "text": "<restate the claim statement>"}}
+Order: all premises first, then inference, then conclusion.
 
 SUPPORTED OPERATIONS:
 - {{"op": "update_thesis", "new_strength": 0.55, "stance": "New stance text...", \
@@ -1673,45 +2076,71 @@ SUPPORTED OPERATIONS:
 "strength_reasoning": "avg(...) × (n^{p} / (n^{p} + 1)) = ..."}}
   (All fields optional — include whichever you want to change)
 - {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
-"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ..."}}}}
-- {{"op": "retire_claim", "target_id": "C#"}}
-- {{"op": "add_claim", "item": {{"id": "C#", "type": "descriptive", "statement": "...", \
-"depends_on": ["A#", "E#", ...], "strength": 0.65, \
+"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ...", \
+"inference_chain": [...]}}}}
+  (All fields in changes are optional — include only the ones you want to modify. \
+To retract a claim, set {{"status": "retracted"}} in changes — strength is forced to 0.0 automatically)
+- {{"op": "add_claim", "item": {{"id": "C#", "type": "deductive|inductive|abductive|...", \
+"statement": "...", "depends_on": ["A#", "E#", ...], "strength": 0.65, \
 "status": "active", "strength_justification": "0.65 — ...; limited by <ID> (<lowest strength>)", \
-"predictions": [{{"statement": "...", "test": "...", \
-"decision_criterion": "..."}}]}}}}
+"inference_chain": [ \
+  {{"role": "premise", "text": "<what this premise establishes>", "reference": "A#|E#|C#"}}, \
+  {{"role": "inference", "text": "<the inferential leap>", "inference_type": "deductive|inductive|abductive"}}, \
+  {{"role": "conclusion", "text": "<restate the claim statement>"}} \
+], \
+"predictions": [{{"statement": "...", "test": "...", "decision_criterion": "..."}}]}}}}
 - {{"op": "add_evidence", "item": {{"id": "E#", "type": "empirical|conceptual|expert_consensus", \
-"summary": "...", "source": "...", "relevance_to_claims": ["C#"], "strength": 0.7, \
-"status": "active", "strength_justification": "..."}}}}
+"summary": "...", "source": "...", "supports_claims": ["C#"], "strength": 0.7, \
+"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
 - {{"op": "update_evidence", "target_id": "E#", "changes": {{"strength": 0.7, \
 "status": "revised", "strength_justification": "..."}}}}
 - {{"op": "add_assumption", "item": {{"id": "A#", \
-"type": "empirical|foundational|methodological", "statement": "...", \
+"type": "empirical|foundational|methodological|scoping", "statement": "...", \
 "supports_claims": ["C#"], "strength": 0.8, \
-"status": "active", "strength_justification": "..."}}}}
+"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
 - {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
-"status": "revised", "strength_justification": "..."}}, "new_statement": "...", "new_type": "..."}}
+"status": "revised", "strength_justification": "..."}}, "new_statement": "...", \
+"new_type": "empirical|foundational|methodological|scoping"}}
+  (new_statement and new_type are TOP-LEVEL fields, NOT inside "changes". Only include if changing them.)
+- {{"op": "add_definition", "item": {{"id": "D#", "term": "...", "definition": "...", \
+"strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A#", "E#"]}}}}
+- {{"op": "update_definition", "target_id": "D#", "changes": {{"definition": "...", \
+"strength": 0.55, "strength_justification": "...", "status": "revised"}}}}
+  Mutable fields: definition, strength, strength_justification, status, used_by.
+  Immutable fields: id, term (to redefine a term, retract the old D# and add a new one).
 - {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
 "status": "active", "importance": "high|medium|low"}}}}
 - {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
 - {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
-"statement": "...", "my_response": "...", \
+"attack_strategy": "...", "statement": "...", "my_response": "...", \
 "response_sufficiency": "sufficient|partial|unaddressed"}}}}
 - {{"op": "update_counterposition", "target_id": "X#", "changes": \
 {{"my_response": "...", "response_sufficiency": "..."}}}}
 </instructions>
 
 <guardrails>
-- You CANNOT reverse Phase 1 changes. If Phase 1 weakened C1 from 0.7 to 0.5, \
-you cannot strengthen C1 back above 0.5.
-- You CAN further weaken nodes, retract claims, add evidence/claims/uncertainties, \
-and rewrite your thesis.
-- Your thesis update (stance, bullets, strength, strength_reasoning) should be the LAST patch in your list.
+- You CANNOT raise the strength of any existing node (D#, A#, E#, or C#). Existing node \
+strengths can only stay the same or decrease. This is enforced mechanically — any strength \
+increase you attempt on an existing node will be stripped.
+- Strength increases are earned through surviving adversarial challenges (REBUTTAL_VALID \
+verdicts). The system applies defense boosts automatically — you do not control this.
+- You CAN improve existing nodes by revising their textual content (definitions, statements, \
+summaries) to make them more precise, better-grounded, and more robust against future criticism. \
+However, textual revisions must preserve the same core semantic meaning — if you need to express \
+a substantially different idea, create a new node instead.
+- You CAN add new nodes (D#, A#, E#, C#, U#, X#) at any strength justified by their content.
+- You CAN further weaken nodes, retract claims, and rewrite your thesis stance/bullets.
+- Your thesis update (stance, bullets, strength, strength_reasoning) should be the LAST patch.
+- Thesis strength is formula-derived: avg(active claim strengths) × (n^p / (n^p + 1)). \
+Adding new claims can raise thesis strength by increasing breadth and/or the average.
+- DEFINITION CEILING: A#/E# strength ≤ min(active D# strengths from supported_by_definitions). \
+If you lower a D# strength, the ceiling automatically propagates — do NOT manually lower \
+every dependent A#/E# (the system handles propagation).
 - A claim's strength must not exceed the LOWEST strength among its active/revised \
 dependencies (C#, A#, or E#). Retracted dependencies are excluded.
 </guardrails>
 
-<example>
+<example title="Defensive: weaken and retract under pressure">
 Post-Phase-1 state: C2 was weakened to 0.55, X4 added, U3 added. \
 X2 is still "unaddressed" targeting C3. Active claims: C1(0.75), C2(0.55), C3(0.65), C4(0.5).
 
@@ -1723,7 +2152,7 @@ X2 is still "unaddressed" targeting C3. Active claims: C1(0.75), C2(0.55), C3(0.
     {{"op": "update_counterposition", "target_id": "X2", "changes": \
 {{"my_response": "Acknowledged impact; C3 strength reduced accordingly", \
 "response_sufficiency": "partial"}}}},
-    {{"op": "retire_claim", "target_id": "C4"}},
+    {{"op": "update_claim", "target_id": "C4", "changes": {{"status": "retracted", "strength_justification": "Retracted — fully undermined by opponent's evidence"}}}},
     {{"op": "update_thesis", "new_strength": 0.52, \
 "stance": "Consciousness remains best explained as an emergent property of neural computation (C1), though the explanatory gap is wider than initially assumed (C2, C3). The hard problem poses a genuine philosophical challenge that physicalism has not yet fully resolved.", \
 "summary_bullets": ["Neural complexity remains the strongest explanation for conscious experience", \
@@ -1735,8 +2164,128 @@ X2 is still "unaddressed" targeting C3. Active claims: C1(0.75), C2(0.55), C3(0.
 ```
 </example>
 
+<example title="Growth: add supporting infrastructure and a new claim">
+Post-Phase-1 state: Active claims C1(0.70), C2(0.65), C3(0.60). Average: 0.65. \
+Breadth multiplier (3 claims): {_ex3_breadth}. Thesis: {_ex3_growth_T}. \
+During the debate you argued that neural plasticity supports your position — \
+this argument is not yet formalized as a claim.
+
+```json
+{{
+  "patches": [
+    {{"op": "add_definition", "item": {{"id": "D4", "term": "neural plasticity", \
+"definition": "The brain's ability to reorganize synaptic connections in response \
+to experience and learning", "strength": 0.85, \
+"strength_justification": "Well-established neuroscience concept with broad empirical support", \
+"status": "active", "used_by": ["A4", "E4"]}}}},
+    {{"op": "add_assumption", "item": {{"id": "A4", \
+"type": "empirical", "statement": "Neural plasticity enables adaptive behavioral change", \
+"supports_claims": ["C4"], "strength": 0.80, \
+"status": "active", "strength_justification": "0.80 — extensive longitudinal evidence; \
+limited by D4 (0.85)", "supported_by_definitions": ["D4"]}}}},
+    {{"op": "add_evidence", "item": {{"id": "E4", \
+"type": "empirical", "summary": "Longitudinal studies show experience-dependent \
+synaptic remodeling correlates with behavioral adaptation", \
+"source": "Draganski et al. (2004)", "supports_claims": ["C4"], "strength": 0.75, \
+"status": "active", "strength_justification": "0.75 — replicated findings but \
+correlation-to-causation gap remains; limited by D4 (0.85)", \
+"supported_by_definitions": ["D4"]}}}},
+    {{"op": "add_claim", "item": {{"id": "C4", \
+"type": "inductive", "statement": "Neural plasticity demonstrates the brain's \
+capacity for genuine adaptive choice", \
+"depends_on": ["A4", "E4"], "strength": 0.75, \
+"status": "active", "strength_justification": "0.75 — supported by A4 (0.80) and \
+E4 (0.75); limited by E4 (lowest dependency at 0.75)", \
+"inference_chain": [ \
+  {{"role": "premise", "text": "Neural plasticity enables adaptive behavioral change (A4)", "reference": "A4"}}, \
+  {{"role": "premise", "text": "Longitudinal studies confirm experience-dependent synaptic remodeling (E4)", "reference": "E4"}}, \
+  {{"role": "inference", "text": "If the brain physically reorganizes in response to experience, behavior is not rigidly predetermined", "inference_type": "inductive"}}, \
+  {{"role": "conclusion", "text": "Neural plasticity demonstrates the brain's capacity for genuine adaptive choice"}} \
+], \
+"predictions": [{{"statement": "Individuals with greater measured neural plasticity will show more adaptive decision-making in novel environments", \
+"test": "Compare decision flexibility scores against neuroimaging plasticity markers", \
+"decision_criterion": "If correlation between plasticity markers and decision flexibility is <0.2, prediction is falsified"}}]}}}},
+    {{"op": "update_thesis", "new_strength": {_ex4_growth_result}, \
+"stance": "Consciousness remains best explained as an emergent property of neural \
+computation (C1). The explanatory gap, while wider than initially assumed (C2, C3), \
+is narrowed by evidence that neural plasticity enables genuine adaptive choice (C4), \
+suggesting the brain's flexibility grounds real agency.", \
+"summary_bullets": ["Neural complexity remains the strongest explanation for conscious experience", \
+"The explanatory gap is narrower than dualists claim but wider than initially assumed", \
+"Neural plasticity provides concrete evidence for adaptive choice capacity", \
+"Physicalism accounts for both fixed and flexible aspects of cognition"], \
+"strength_reasoning": "avg(0.70, 0.65, 0.60, 0.75) × (4^{{p}} / (4^{{p}} + 1)) = {_ex4_growth_avg} × {_ex4_breadth} = {_ex4_growth_result}"}}
+  ]
+}}
+```
+Note: The new claim (C4 at 0.75) raises the average from 0.65 to {_ex4_growth_avg} AND \
+increases the breadth multiplier from {_ex3_breadth} (3 claims) to {_ex4_breadth} (4 claims), \
+producing a net thesis increase from {_ex3_growth_T} to {_ex4_growth_result}.
+</example>
+
+<example title="Refinement: improve existing nodes textually and add supporting infrastructure">
+Post-Phase-1 state: Active claims C1(0.70), C2(0.55). C2 is limited by A2(0.55). \
+D2(0.60) is the only definition supporting A2 — a bottleneck. \
+Average: 0.625. Breadth multiplier (2 claims): {_ex2_breadth}. Thesis: {_ex2_refine_T}.
+
+Strategy: You cannot raise existing node strengths, but you CAN make existing nodes more \
+robust against future attacks by improving their textual precision, AND you can add new \
+supporting infrastructure that contributes to new claims.
+
+```json
+{{
+  "patches": [
+    {{"op": "update_definition", "target_id": "D2", "changes": {{"definition": \
+"Revised to be more precise and less vulnerable to over-extension challenges: \
+<clearer, more bounded definition text>"}}}},
+    {{"op": "add_definition", "item": {{"id": "D3", "term": "causal agency", \
+"definition": "The capacity of an entity to initiate or influence causal chains \
+through internal processes", "strength": 0.80, \
+"strength_justification": "0.80 — standard philosophical term with clear usage", \
+"status": "active", "used_by": ["A3"]}}}},
+    {{"op": "add_assumption", "item": {{"id": "A3", \
+"type": "empirical", "statement": "Causal agency is observable in deliberative behavior", \
+"supports_claims": ["C3"], "strength": 0.75, \
+"status": "active", "strength_justification": "0.75 — supported by behavioral studies; \
+limited by D3 (0.80)", "supported_by_definitions": ["D3"]}}}},
+    {{"op": "add_evidence", "item": {{"id": "E3", "type": "empirical", \
+"summary": "Meta-analysis of 47 studies confirms significant correlation between \
+deliberative processing and outcome quality", \
+"source": "Smith & Jones (2024)", "supports_claims": ["C3"], "strength": 0.70, \
+"status": "active", "strength_justification": "0.70 — large meta-analysis but \
+restricted to laboratory settings; limited by D3 (0.80)", \
+"supported_by_definitions": ["D3"]}}}},
+    {{"op": "add_claim", "item": {{"id": "C3", \
+"type": "inductive", "statement": "Deliberative processing demonstrates genuine \
+causal agency in decision-making", \
+"depends_on": ["A3", "E3"], "strength": 0.70, \
+"status": "active", "strength_justification": "0.70 — supported by A3 (0.75) and \
+E3 (0.70); limited by E3 (lowest dependency at 0.70)", \
+"inference_chain": [ \
+  {{"role": "premise", "text": "Causal agency is observable in deliberative behavior (A3)", "reference": "A3"}}, \
+  {{"role": "premise", "text": "Meta-analysis confirms deliberative processing improves outcomes (E3)", "reference": "E3"}}, \
+  {{"role": "inference", "text": "If deliberation causally improves outcomes, agents exercise genuine causal agency", "inference_type": "inductive"}}, \
+  {{"role": "conclusion", "text": "Deliberative processing demonstrates genuine causal agency"}} \
+], \
+"predictions": [{{"statement": "Individuals who engage in more deliberative processing will show measurably better decision outcomes", \
+"test": "Compare decision quality scores between deliberative and intuitive decision-making conditions", \
+"decision_criterion": "If deliberative group shows <5% improvement, prediction is falsified"}}]}}}},
+    {{"op": "update_thesis", "new_strength": {_ex3_refine_result}, \
+"stance": "Updated stance incorporating new evidence for causal agency (C3)...", \
+"summary_bullets": ["Bullet 1", "Bullet 2", "Deliberative processing demonstrates causal agency"], \
+"strength_reasoning": "avg(0.70, 0.55, 0.70) × (3^{{p}} / (3^{{p}} + 1)) = {_ex3_refine_avg} × {_ex3_breadth} = {_ex3_refine_result}"}}
+  ]
+}}
+```
+Note: Existing node strengths (C1=0.70, C2=0.55, D2=0.60, A2=0.55) remain unchanged — \
+they can only increase through earning defense boosts by surviving future challenges. \
+Instead, the agent improved D2's definition text for robustness and added new infrastructure \
+(D3, A3, E3) to support a new claim C3. Adding C3 at 0.70 raises the average and increases \
+the breadth multiplier, improving the thesis.
+</example>
+
 <output_format>
-1. <reasoning>...</reasoning> tags working through Steps 1-3
+1. <reasoning>...</reasoning> tags working through the structured checklist above (Steps 1A, 1B, 2, 3)
 2. One fenced JSON code block: {{"patches": [...]}}
 
 Self-check:
@@ -1744,8 +2293,10 @@ Self-check:
 - Have I reviewed all active uncertainties (U#)?
 - Is thesis strength = avg(active claim strengths) × (n^p / (n^p + 1)) where p = {p}?
 - Does my thesis stance text accurately reflect my current claims?
-- Did I avoid reversing any Phase 1 changes?
+- Did I avoid raising the strength of any existing node? (Strength increases are only earned through defense boosts.)
+- Did I ensure textual revisions preserve the same core semantic meaning?
 - Are there any internal contradictions in my belief system?
+- Have I addressed any STRUCTURAL GAPS flagged in the position analysis?
 </output_format>
 """
 
@@ -2248,15 +2799,22 @@ Ask up to {max_questions} devastating questions. Each must target specific IDs a
 exploit real weaknesses. Their counterpositions (X#) are a roadmap of their vulnerabilities — use it.
 
 When targeting weaknesses, classify your attack vector:
-- UNDERMINING: Destroy a premise. If A# falls, everything built on it collapses. \
+- UNDERMINING: Destroy a premise or definition. If A# or D# falls, everything built on it collapses. \
   Strategies: challenge_evidence, challenge_assumption, expose_weak_foundation, \
-  demand_falsifiability, challenge_strength_calibration, press_uncertainty.
+  demand_falsifiability, challenge_strength_calibration, press_uncertainty, \
+  over_extension, under_extension.
 - REBUTTING: Produce counter-evidence that directly contradicts C#. \
   Strategies: present_counter_evidence, present_counter_example, \
   exploit_counterposition, offer_alternative_explanation.
 - UNDERCUTTING: Show the inference doesn't follow — the logic is broken even if the premises stand. \
   Strategies: challenge_inference_step, identify_circularity, expose_inconsistency, \
-  identify_equivocation, challenge_scope.
+  identify_equivocation, challenge_scope, circularity, stipulative_bias, conceptual_conflation.
+
+Definition attacks are high-impact: a single weak D# can collapse multiple A#/E# nodes \
+simultaneously. Target D# nodes using undermining (over/under_extension) when the definition \
+is too broad or narrow, or undercutting (circularity, stipulative_bias, conceptual_conflation) \
+when the definition breaks the inference chain.
+
 Their counterpositions (X#) already identify their own attack_type — hit the same vector harder.
 </instructions>
 
@@ -2374,6 +2932,15 @@ You are {agent_name} in adversarial exchange with {opponent_name} on: "{topic}"
 - Subsequent turns: DEFEND against their last attack, then COUNTER-ATTACK.
 
 Reference specific IDs for precision.
+
+Definitional attacks (targeting D# nodes) are high-impact: collapsing a key definition \
+weakens all A#/E# nodes that depend on it. Prioritize definitional challenges when \
+the opponent's terms are vaguely or tendentiously defined. Use strategies: circularity, \
+over_extension, under_extension, stipulative_bias, conceptual_conflation.
+
+If YOUR definitions are challenged, defend aggressively: cite philosophical precedent, \
+explain why the formulation is necessary, or show the challenger's proposed alternative \
+is worse. Only revise if the attack is genuinely devastating.
 </instructions>
 
 <output_format>

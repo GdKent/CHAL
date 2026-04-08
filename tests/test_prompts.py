@@ -682,10 +682,10 @@ def test_stage_3_no_update_thesis():
 
 @pytest.mark.unit
 def test_stage_3_has_all_patch_operations():
-    """Prompt contains all 11 non-thesis patch operations."""
+    """Prompt contains all 10 non-thesis patch operations."""
     prompt = _build_stage_3()
     expected_ops = [
-        "update_claim", "retire_claim", "add_claim",
+        "update_claim", "add_claim",
         "add_evidence", "update_evidence",
         "update_assumption", "add_assumption",
         "add_counterposition", "update_counterposition",
@@ -712,7 +712,7 @@ def test_stage_3_add_evidence_has_required_fields():
     assert '"type": "empirical"' in prompt
     assert '"summary"' in prompt
     assert '"source"' in prompt
-    assert '"relevance_to_claims"' in prompt
+    assert '"supports_claims"' in prompt
     assert '"strength_justification"' in prompt
 
 
@@ -837,7 +837,7 @@ def test_stage_3_example_patches_pass_validate_patches():
     example_patches = [
         # Modify existing
         {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.6, "strength_justification": "Lowered"}},
-        {"op": "retire_claim", "target_id": "C3"},
+        {"op": "update_claim", "target_id": "C3", "changes": {"status": "retracted", "strength_justification": "Retracted"}},
         {"op": "update_evidence", "target_id": "E1", "changes": {"strength": 0.5, "strength_justification": "Downgraded"}},
         {"op": "update_assumption", "target_id": "A2", "changes": {"strength": 0.6, "status": "revised", "strength_justification": "Weakened"}},
         {"op": "update_counterposition", "target_id": "X1", "changes": {"my_response": "Updated", "response_sufficiency": "sufficient"}},
@@ -846,9 +846,9 @@ def test_stage_3_example_patches_pass_validate_patches():
         {"op": "add_claim", "item": {"id": "C5", "type": "deductive", "statement": "New claim",
          "depends_on": ["A1", "E2"], "strength": 0.7, "status": "active", "strength_justification": "Test",
          "predictions": [{"statement": "P", "test": "T", "decision_criterion": "DC"}],
-         "inference_chain": ["Step 1"]}},
+         "inference_chain": [{"role": "premise", "text": "A1 supports claim", "reference": "A1"}, {"role": "inference", "text": "Therefore claim follows", "inference_type": "deductive"}, {"role": "conclusion", "text": "New claim"}]}},
         {"op": "add_evidence", "item": {"id": "E5", "type": "empirical", "summary": "New evidence",
-         "source": "Test", "relevance_to_claims": ["C1"], "strength": 0.7, "status": "active",
+         "source": "Test", "supports_claims": ["C1"], "strength": 0.7, "status": "active",
          "strength_justification": "Test"}},
         {"op": "add_assumption", "item": {"id": "A4", "type": "empirical", "statement": "New assumption",
          "supports_claims": ["C1"], "strength": 0.75, "status": "active", "strength_justification": "Test"}},
@@ -1193,13 +1193,13 @@ def test_phase2_prompt_thesis_rewrite():
 
 @pytest.mark.unit
 def test_phase2_prompt_guardrails():
-    """Prompt contains the 'cannot reverse Phase 1 changes' guardrail."""
+    """Prompt contains the no-unilateral-strengthening guardrail."""
     prompt = build_stage_5_phase2_introspection_prompt(
         agent_name="Agent-A",
         intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
         phase1_changes_summary=PHASE1_SUMMARY
     )
-    assert "CANNOT reverse Phase 1" in prompt or "cannot reverse" in prompt.lower()
+    assert "CANNOT raise the strength" in prompt or "cannot raise the strength" in prompt.lower()
 
 
 @pytest.mark.unit
@@ -1350,22 +1350,22 @@ _PA_BELIEF = {
     "claims": [
         {"id": "C1", "type": "descriptive", "statement": "test", "depends_on": ["A1", "E1"],
          "strength": 0.75, "status": "active",
-         "strength_justification": "test", "inference_chain": ["A1 supports C1"],
+         "strength_justification": "test", "inference_chain": [{"role": "premise", "text": "A1 supports C1", "reference": "A1"}, {"role": "inference", "text": "Therefore C1 follows", "inference_type": "deductive"}, {"role": "conclusion", "text": "C1"}],
          "predictions": [{"statement": "x", "test": "y", "decision_criterion": "z"}]},
         {"id": "C2", "type": "descriptive", "statement": "test", "depends_on": ["A2", "E2"],
          "strength": 0.55, "status": "active",
-         "strength_justification": "test", "inference_chain": ["A2 supports C2"],
+         "strength_justification": "test", "inference_chain": [{"role": "premise", "text": "A2 supports C2", "reference": "A2"}, {"role": "inference", "text": "Therefore C2 follows", "inference_type": "deductive"}, {"role": "conclusion", "text": "C2"}],
          "predictions": [{"statement": "x", "test": "y", "decision_criterion": "z"}]},
         {"id": "C3", "type": "descriptive", "statement": "test", "depends_on": ["A3", "E1"],
          "strength": 0.65, "status": "active",
-         "strength_justification": "test", "inference_chain": ["A3 supports C3"],
+         "strength_justification": "test", "inference_chain": [{"role": "premise", "text": "A3 supports C3", "reference": "A3"}, {"role": "inference", "text": "Therefore C3 follows", "inference_type": "deductive"}, {"role": "conclusion", "text": "C3"}],
          "predictions": [{"statement": "x", "test": "y", "decision_criterion": "z"}]},
     ],
     "evidence": [
         {"id": "E1", "type": "empirical", "summary": "test", "source": "test",
-         "relevance_to_claims": ["C1", "C3"], "strength": 0.30, "status": "active", "strength_justification": "weak"},
+         "supports_claims": ["C1", "C3"], "strength": 0.30, "status": "active", "strength_justification": "weak"},
         {"id": "E2", "type": "conceptual", "summary": "test", "source": "test",
-         "relevance_to_claims": ["C2"], "strength": 0.60, "status": "active", "strength_justification": "moderate"},
+         "supports_claims": ["C2"], "strength": 0.60, "status": "active", "strength_justification": "moderate"},
     ],
     "thesis": {"stance": "test", "strength": 0.5},
 }
@@ -1593,7 +1593,7 @@ def test_phase2_thesis_strength_guide_breadth_table():
         intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
         phase1_changes_summary=PHASE1_SUMMARY
     )
-    # Default p=1.5: 1 claim → 0.50, 2 claims → 0.74
+    # Default p=1.0: 1 claim → 0.50, 2 claims → 0.67
     assert "1 claim" in prompt
     assert "2 claims" in prompt
     assert "0.50" in prompt
@@ -1657,6 +1657,190 @@ def test_phase2_primary_goal_explicit():
         phase1_changes_summary=PHASE1_SUMMARY
     )
     assert "strengthen your position" in prompt
+
+
+@pytest.mark.unit
+def test_phase2_add_claim_template_includes_inference_chain():
+    """The add_claim template in Phase 2 must include inference_chain field."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "inference_chain" in prompt
+    assert "premise" in prompt
+    assert "inference_type" in prompt
+
+
+@pytest.mark.unit
+def test_phase2_inference_chain_format_spec_present():
+    """Phase 2 prompt must include the INFERENCE CHAIN FORMAT specification."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "INFERENCE CHAIN FORMAT" in prompt
+    assert "role" in prompt
+    assert "reference" in prompt
+
+
+@pytest.mark.unit
+def test_phase2_has_growth_example():
+    """Phase 2 prompt must include a growth-focused example with add_claim."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "Growth:" in prompt or "add supporting infrastructure" in prompt
+    assert "add_definition" in prompt
+    assert "add_assumption" in prompt
+    assert "add_evidence" in prompt
+    assert "add_claim" in prompt
+
+
+@pytest.mark.unit
+def test_phase2_growth_example_includes_inference_chain():
+    """The growth example's add_claim must include a complete inference_chain."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    # The growth example should show premise/inference/conclusion in add_claim
+    assert '"role": "premise"' in prompt or "'role': 'premise'" in prompt
+
+
+@pytest.mark.unit
+def test_phase2_has_refinement_example():
+    """Phase 2 prompt must include a refinement example showing how to
+    improve existing nodes textually and add supporting infrastructure."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "Refinement:" in prompt or "improve existing nodes" in prompt
+    assert "update_definition" in prompt
+    assert "update_assumption" in prompt
+
+
+@pytest.mark.unit
+def test_phase2_examples_have_titles():
+    """All Phase 2 examples must have descriptive titles."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "Defensive:" in prompt
+    assert "Growth:" in prompt
+    assert "Refinement:" in prompt
+
+
+@pytest.mark.unit
+def test_phase2_strengthen_weak_dependencies_guidance():
+    """Phase 2 instructions must include guidance on strengthening weak dependencies."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "Strengthen weak dependencies" in prompt
+    assert "update_assumption" in prompt
+    assert "update_definition" in prompt
+    assert "add_evidence" in prompt
+    assert "cannot be stronger than" in prompt or "bottlenecking" in prompt
+
+
+@pytest.mark.unit
+def test_position_analysis_includes_suggested_actions():
+    """Position analysis output should include suggested actions for weaknesses."""
+    from tests.utils import create_sample_belief
+    belief = create_sample_belief(num_assumptions=2, num_evidence=2, num_claims=2)
+    belief["assumptions"][1]["strength"] = 0.40  # Make A2 weak
+    analysis = compute_position_analysis(belief)
+    assert "Suggested:" in analysis or "\u2192" in analysis
+
+
+@pytest.mark.unit
+def test_phase2_reasoning_instruction_is_detailed():
+    """Phase 2 reasoning instruction must include per-step guidance, not just
+    'work through each step above'."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    # Should contain step-specific reasoning guidance
+    assert "Step 1A" in prompt or "Counterposition Audit" in prompt
+    assert "Step 1B" in prompt or "Uncertainty Review" in prompt
+    assert "Step 2" in prompt
+    assert "Run the numbers" in prompt or "calculate" in prompt.lower()
+    # Should NOT still have the vague one-liner
+    assert "work through each step above. Then output patches." not in prompt
+
+
+@pytest.mark.unit
+def test_stage1_prompt_includes_inference_chain_spec():
+    """Stage 1 prompt must document inference_chain with roles, reference, inference_type."""
+    prompt = build_stage_1_belief_prompt_cbs(
+        topic="Test", agent_name="A", persona_label="Test"
+    )
+    assert "inference_chain" in prompt
+    assert "premise" in prompt
+    assert "inference_type" in prompt
+    assert "conclusion" in prompt
+
+
+@pytest.mark.unit
+def test_phase1_enforcement_update_claim_shows_inference_chain():
+    """Phase 1 enforcement prompt's update_claim template should mention inference_chain."""
+    prompt = build_stage_5_phase1_enforcement_prompt(
+        agent_name="Agent-A",
+        challenge_rebuttal_pairs=SAMPLE_PAIRS,
+        prior_belief_json=SAMPLE_BELIEF_JSON
+    )
+    assert "inference_chain" in prompt
+
+
+@pytest.mark.unit
+def test_legacy_stage5_update_claim_shows_inference_chain():
+    """Legacy Stage 5 prompt's update_claim template should mention inference_chain."""
+    pairs = [{"challenger": "B", "challenge": "test",
+              "resolution": {"status": "critique_valid"}}]
+    prompt = build_stage_5_belief_update_prompt_cbs(
+        agent_name="A", challenge_rebuttal_pairs=pairs, prior_belief_json='{}'
+    )
+    assert "inference_chain" in prompt
+
+
+@pytest.mark.unit
+def test_update_assumption_shows_valid_types():
+    """All prompts with update_assumption must list the valid type enum values."""
+    # Phase 1 enforcement
+    p1 = build_stage_5_phase1_enforcement_prompt(
+        agent_name="A", challenge_rebuttal_pairs=SAMPLE_PAIRS,
+        prior_belief_json=SAMPLE_BELIEF_JSON
+    )
+    assert "empirical|foundational|methodological|scoping" in p1
+
+    # Legacy Stage 5
+    pairs = [{"challenger": "B", "challenge": "test",
+              "resolution": {"status": "critique_valid"}}]
+    p_legacy = build_stage_5_belief_update_prompt_cbs(
+        agent_name="A", challenge_rebuttal_pairs=pairs, prior_belief_json='{}'
+    )
+    assert "empirical|foundational|methodological|scoping" in p_legacy
+
+    # Phase 2
+    p2 = build_stage_5_phase2_introspection_prompt(
+        agent_name="A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "empirical|foundational|methodological|scoping" in p2
 
 
 @pytest.mark.unit
@@ -2093,3 +2277,150 @@ def test_phase2_prompt_has_update_thesis():
         phase1_changes_summary=PHASE1_SUMMARY
     )
     assert "update_thesis" in prompt
+
+
+# ==============================================
+# 4. Defense Boost and Attack Cleanup Prompt Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_phase2_no_unilateral_strengthening_rule():
+    """Phase 2 guardrails must state that existing node strengths cannot be raised."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    assert "CANNOT raise the strength of any existing node" in prompt
+    assert "defense boost" in prompt.lower()
+
+
+@pytest.mark.unit
+def test_phase1_defense_boost_is_mechanical():
+    """Phase 1 rules must state defense boosts are applied automatically."""
+    prompt = build_stage_5_phase1_enforcement_prompt(
+        agent_name="Agent-A",
+        challenge_rebuttal_pairs=SAMPLE_PAIRS,
+        prior_belief_json=SAMPLE_BELIEF_JSON
+    )
+    assert "applied automatically" in prompt
+    assert "Do NOT manually increase" in prompt or "do not manually" in prompt.lower()
+
+
+@pytest.mark.unit
+def test_no_definitional_attack_type_in_stage2():
+    """Stage 2 prompt must not include 'definitional' as an attack_type."""
+    prompt = build_stage_2_prompt(
+        topic="Philosophy",
+        agent_name="Agent-A",
+        opponent_name="Agent-B",
+        agent_belief_json='{"thesis": {"statement": "Test"}}',
+        opponent_belief_json='{"thesis": {"statement": "Test2"}}'
+    )
+    # Should not appear as a standalone attack_type option
+    assert '"definitional"' not in prompt
+    assert "| definitional" not in prompt
+    # But the word "definition" should still appear (targeting D# nodes)
+    assert "definition" in prompt.lower()
+
+
+@pytest.mark.unit
+def test_definitional_strategies_redistributed_in_stage2():
+    """The 5 definitional strategies must appear under undermining/undercutting."""
+    prompt = build_stage_2_prompt(
+        topic="Philosophy",
+        agent_name="Agent-A",
+        opponent_name="Agent-B",
+        agent_belief_json='{"thesis": {"statement": "Test"}}',
+        opponent_belief_json='{"thesis": {"statement": "Test2"}}'
+    )
+    # over_extension and under_extension should be under UNDERMINING
+    undermining_idx = prompt.index("UNDERMINING")
+    rebutting_idx = prompt.index("REBUTTING")
+    undermining_section = prompt[undermining_idx:rebutting_idx]
+    assert "over_extension" in undermining_section
+    assert "under_extension" in undermining_section
+    # circularity, stipulative_bias, conceptual_conflation under UNDERCUTTING
+    undercutting_idx = prompt.index("UNDERCUTTING")
+    undercutting_section = prompt[undercutting_idx:]
+    assert "circularity" in undercutting_section
+    assert "stipulative_bias" in undercutting_section
+    assert "conceptual_conflation" in undercutting_section
+
+
+@pytest.mark.unit
+def test_phase2_refinement_example_no_strength_increases():
+    """Phase 2 refinement example must not show raising existing node strengths."""
+    prompt = build_stage_5_phase2_introspection_prompt(
+        agent_name="Agent-A",
+        intermediate_belief_json=INTERMEDIATE_BELIEF_JSON,
+        phase1_changes_summary=PHASE1_SUMMARY
+    )
+    # The old example showed these strength increases — they must be gone
+    assert "0.60→0.80" not in prompt  # D2 strength increase
+    assert "0.55→0.70" not in prompt  # A2 strength increase
+    assert "0.55 to 0.65" not in prompt  # C2 strength increase
+
+
+# ==============================================
+# Post-Debate Fixes: Prompt Clarity Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_update_assumption_top_level_warning():
+    """All 3 prompt locations with update_assumption format must contain TOP-LEVEL warning."""
+    _belief = '{"thesis":{"stance":"test","summary_bullets":["b"],"strength":0.5,"strength_reasoning":"r"},"definitions":[],"assumptions":[],"evidence":[],"claims":[],"uncertainties":[],"counterpositions":[]}'
+    _pairs = [{"challenger": "B", "challenge": "c", "rebuttal": "r",
+               "resolution": {"status": "critique_valid", "reasoning": "r"},
+               "target_ids": ["C1"], "attack_type": "undermining",
+               "attack_strategy": "challenge_strength_calibration"}]
+    prompts_to_check = [
+        build_stage_5_belief_update_prompt_cbs(
+            agent_name="Agent-A",
+            challenge_rebuttal_pairs=_pairs,
+            prior_belief_json=_belief,
+        ),
+        build_stage_5_phase1_enforcement_prompt(
+            agent_name="Agent-A",
+            challenge_rebuttal_pairs=_pairs,
+            prior_belief_json=_belief,
+        ),
+        build_stage_5_phase2_introspection_prompt(
+            agent_name="Agent-A",
+            intermediate_belief_json=_belief,
+            phase1_changes_summary="summary",
+        ),
+    ]
+    for i, prompt in enumerate(prompts_to_check):
+        assert "TOP-LEVEL" in prompt, \
+            f"Prompt {i} should contain TOP-LEVEL warning for update_assumption fields"
+
+
+@pytest.mark.unit
+def test_used_by_no_claims_warning():
+    """CBS schema description must contain warning against C# IDs in used_by."""
+    prompt = build_stage_1_belief_prompt_cbs(
+        topic="Test topic", agent_name="Agent-A", persona_label="Empiricist"
+    )
+    assert "Do NOT include C#" in prompt, \
+        "CBS schema should warn against C# IDs in used_by"
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_contains_critical_json_warning():
+    """Adjudicator per-pair prompt must contain CRITICAL warning about JSON outside reasoning tags."""
+    prompt = build_adjudicator_per_pair_prompt(
+        challenge="Test challenge",
+        rebuttal="Test rebuttal",
+        challenger="Agent-A",
+        target="Agent-B",
+        mode_label="Pure Logic",
+        logic_sys_description="Propositional logic",
+        ethics_sys_description="",
+    )
+    assert "CRITICAL" in prompt, \
+        "Adjudicator prompt should contain CRITICAL warning"
+    assert "OUTSIDE the reasoning tags" in prompt, \
+        "Adjudicator prompt should warn that JSON must be outside reasoning tags"
+    assert "UNRESOLVED" in prompt, \
+        "Adjudicator prompt should warn about UNRESOLVED consequence"
