@@ -130,22 +130,6 @@ class ScribeConfig:
 
 
 @dataclass
-class CollaborativeConfig:
-    """Configuration for collaborative truth-seeking mode (Stage 3B)."""
-    max_turns_per_question: int = 10
-    min_turns_per_question: int = 3
-    adjudicator_check_interval: int = 2  # Call adjudicator every N turns
-    early_termination_on_agreement: bool = True
-
-
-@dataclass
-class BloodSportConfig:
-    """Configuration for blood sport adversarial mode (Stage 3C)."""
-    intensity: str = "moderate"    # "mild" | "moderate" | "extreme"
-    max_exchanges: int = 5         # Max back-and-forth exchanges per agent pair
-
-
-@dataclass
 class ParallelConfig:
     """Configuration for parallel API call dispatch."""
     enabled: bool = False               # Master switch — off by default
@@ -173,22 +157,6 @@ class DefenseBoostConfig:
 
 
 @dataclass
-class ModeratorConfig:
-    """Configuration for the debate moderator/roadmap agent."""
-    model: str = "o4-mini"
-    provider: str = "openai"       # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
-    temperature: float = 0.3
-    context: str = ""              # Optional free-text context (placeholder for future RAG)
-    moderator_mode: str = "static" # "static" | "adaptive"
-    # Adaptive moderator settings (Phase 3)
-    review_frequency: int = 1        # Review every N rounds (1 = every round)
-    allow_reorder: bool = True       # Can the moderator reorder remaining topics?
-    allow_add_topics: bool = True    # Can the moderator insert new topics?
-    allow_remove_topics: bool = False # Can the moderator drop topics? (conservative default)
-    max_revisions: int = -1          # Max total revisions (-1 = unlimited)
-
-
-@dataclass
 class DebateConfig:
     """Main configuration container for a CHAL debate."""
 
@@ -200,8 +168,7 @@ class DebateConfig:
     # Core settings
     topic: str = ""
     max_rounds: int = 1
-    stage2_mode: str = "open"      # "open" | "moderated"
-    stage3_mode: str = "rebuttal"  # "rebuttal" | "collaborative" | "bloodsport"
+    stage3_mode: str = "rebuttal"  # Only supported mode: "rebuttal"
 
     # Component configs
     agents: List[AgentConfig] = field(default_factory=list)
@@ -209,9 +176,6 @@ class DebateConfig:
     stages: StageConfig = field(default_factory=StageConfig)
     outputs: OutputConfig = field(default_factory=lambda: OutputConfig(storage_dir=DEFAULT_STORAGE_DIR))
     scribe: ScribeConfig = field(default_factory=ScribeConfig)
-    collaborative: CollaborativeConfig = field(default_factory=CollaborativeConfig)
-    bloodsport: BloodSportConfig = field(default_factory=BloodSportConfig)
-    moderator: ModeratorConfig = field(default_factory=ModeratorConfig)
     parallel: ParallelConfig = field(default_factory=ParallelConfig)
     defense_boost: DefenseBoostConfig = field(default_factory=DefenseBoostConfig)
 
@@ -299,37 +263,6 @@ class DebateConfig:
             style_hint=scribe_data.get('style_hint', 'formal, expository, research-paper tone')
         )
 
-        # Parse collaborative config
-        collab_data = data.get('collaborative', {})
-        collaborative = CollaborativeConfig(
-            max_turns_per_question=collab_data.get('max_turns_per_question', 10),
-            min_turns_per_question=collab_data.get('min_turns_per_question', 3),
-            adjudicator_check_interval=collab_data.get('adjudicator_check_interval', 2),
-            early_termination_on_agreement=collab_data.get('early_termination_on_agreement', True),
-        )
-
-        # Parse bloodsport config
-        bs_data = data.get('bloodsport', {})
-        bloodsport = BloodSportConfig(
-            intensity=bs_data.get('intensity', 'moderate'),
-            max_exchanges=bs_data.get('max_exchanges', 5),
-        )
-
-        # Parse moderator config
-        mod_data = data.get('moderator', {})
-        moderator = ModeratorConfig(
-            model=mod_data.get('model', 'o4-mini'),
-            provider=mod_data.get('provider', 'openai'),
-            temperature=mod_data.get('temperature', 0.3),
-            context=mod_data.get('context', ''),
-            moderator_mode=mod_data.get('moderator_mode', 'static'),
-            review_frequency=mod_data.get('review_frequency', 1),
-            allow_reorder=mod_data.get('allow_reorder', True),
-            allow_add_topics=mod_data.get('allow_add_topics', True),
-            allow_remove_topics=mod_data.get('allow_remove_topics', False),
-            max_revisions=mod_data.get('max_revisions', -1),
-        )
-
         # Parse parallel config
         par_data = data.get('parallel', {})
         parallel = ParallelConfig(
@@ -356,16 +289,12 @@ class DebateConfig:
             version=meta.get('version', '1.0'),
             topic=debate_data.get('topic', ''),
             max_rounds=debate_data.get('max_rounds', 1),
-            stage2_mode=debate_data.get('stage2_mode', 'open'),
             stage3_mode=debate_data.get('stage3_mode', 'rebuttal'),
             agents=agents,
             adjudication=adjudication,
             stages=stages,
             outputs=outputs,
             scribe=scribe,
-            collaborative=collaborative,
-            bloodsport=bloodsport,
-            moderator=moderator,
             parallel=parallel,
             defense_boost=defense_boost,
         )
@@ -396,7 +325,6 @@ class DebateConfig:
             "debate": {
                 "topic": self.topic,
                 "max_rounds": self.max_rounds,
-                "stage2_mode": self.stage2_mode,
                 "stage3_mode": self.stage3_mode,
             },
             "agents": [
@@ -458,28 +386,6 @@ class DebateConfig:
                 "overlap_chars": self.scribe.overlap_chars,
                 "scribe_temperature": self.scribe.scribe_temperature,
                 "style_hint": self.scribe.style_hint,
-            },
-            "collaborative": {
-                "max_turns_per_question": self.collaborative.max_turns_per_question,
-                "min_turns_per_question": self.collaborative.min_turns_per_question,
-                "adjudicator_check_interval": self.collaborative.adjudicator_check_interval,
-                "early_termination_on_agreement": self.collaborative.early_termination_on_agreement,
-            },
-            "bloodsport": {
-                "intensity": self.bloodsport.intensity,
-                "max_exchanges": self.bloodsport.max_exchanges,
-            },
-            "moderator": {
-                "model": self.moderator.model,
-                "provider": self.moderator.provider,
-                "temperature": self.moderator.temperature,
-                "context": self.moderator.context,
-                "moderator_mode": self.moderator.moderator_mode,
-                "review_frequency": self.moderator.review_frequency,
-                "allow_reorder": self.moderator.allow_reorder,
-                "allow_add_topics": self.moderator.allow_add_topics,
-                "allow_remove_topics": self.moderator.allow_remove_topics,
-                "max_revisions": self.moderator.max_revisions,
             },
             "parallel": {
                 "enabled": self.parallel.enabled,

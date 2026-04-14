@@ -30,10 +30,7 @@ from prompt_toolkit.styles import Style as PTKStyle, merge_styles
 from chal.config import (
     AgentConfig,
     AdjudicationConfig,
-    BloodSportConfig,
-    CollaborativeConfig,
     DebateConfig,
-    ModeratorConfig,
     OutputConfig,
     ParallelConfig,
     CONFIG_DIR,
@@ -299,61 +296,16 @@ HELP_STAGE2 = """\
 Stage 2 is the cross-examination phase where agents challenge each other's \
 initial belief structures.
 
-  \u2022 [bold]Open[/bold] \u2014 Agents freely challenge each other without guidance. Each \
-agent generates questions targeting weaknesses in other agents' arguments.
-  \u2022 [bold]Moderated[/bold] \u2014 A moderator agent creates a structured roadmap of \
-discussion topics, guiding the cross-examination toward productive areas. \
-Requires configuring a moderator agent in a later step.\
+Agents freely challenge each other without guidance. Each agent generates \
+questions targeting weaknesses in other agents' arguments.\
 """
 
 HELP_STAGE3 = """\
 Stage 3 is the main debate phase where agents respond to cross-examination \
 findings and argue their positions.
 
-  \u2022 [bold]Rebuttal[/bold] \u2014 Single-shot responses. Each agent writes one rebuttal per \
-round. Fast and concise. [bold](Recommended for first-time users)[/bold]
-  \u2022 [bold]Collaborative[/bold] \u2014 Multi-turn truth-seeking. Agents engage in extended \
-back-and-forth, aiming for convergence on well-supported conclusions.
-  \u2022 [bold]Blood Sport[/bold] \u2014 Adversarial multi-turn debate. Agents aggressively \
-challenge each other with escalating rhetoric. Entertaining but less \
-focused on truth-seeking.\
-"""
-
-HELP_BLOODSPORT_INTENSITY = """\
-Controls the rhetorical aggressiveness of Blood Sport mode:
-
-  \u2022 [bold]Mild[/bold] \u2014 Firm but respectful challenges. Minimal ad hominem.
-  \u2022 [bold]Moderate[/bold] \u2014 Pointed critiques with some rhetorical flair.
-  \u2022 [bold]Extreme[/bold] \u2014 No-holds-barred argumentation. Maximum rhetorical \
-intensity. Agents will use sharp wit and aggressive tactics.\
-"""
-
-HELP_COLLAB_TURNS = """\
-Maximum number of back-and-forth turns per question in collaborative mode \
-(3\u201330).
-
-  \u2022 [bold]3\u20135 turns[/bold] \u2014 Quick exchanges. Good for simpler sub-questions.
-  \u2022 [bold]6\u201310 turns[/bold] \u2014 Moderate depth. [bold](Recommended)[/bold]
-  \u2022 [bold]11\u201330 turns[/bold] \u2014 Deep exploration. Higher API costs but more thorough.\
-"""
-
-HELP_BLOODSPORT_EXCHANGES = """\
-Maximum number of exchange rounds per agent pair in Blood Sport mode (1\u201320).
-
-Each exchange is one attack + one defense between two agents.
-
-  \u2022 [bold]1\u20133[/bold] \u2014 Brief skirmish. Quick and low-cost.
-  \u2022 [bold]4\u20137[/bold] \u2014 Extended bout. [bold](Recommended)[/bold]
-  \u2022 [bold]8\u201320[/bold] \u2014 Marathon battle. Very thorough but expensive.\
-"""
-
-HELP_COLLAB_EARLY_TERM = """\
-When enabled, the collaborative discussion on a question ends early if both \
-agents signal agreement before reaching the maximum turn count.
-
-  \u2022 [bold]Yes[/bold] \u2014 Saves tokens when agents converge quickly. [bold](Recommended)[/bold]
-  \u2022 [bold]No[/bold] \u2014 Always use all turns, even if agents agree. Can surface \
-additional nuances.\
+In rebuttal mode, each agent writes one single-shot rebuttal per round. \
+This is fast and concise, making it ideal for focused debates.\
 """
 
 HELP_NUM_ROUNDS = """\
@@ -432,16 +384,6 @@ and excellence.
 vulnerability.
   \u2022 [bold]Balanced[/bold] \u2014 Weigh both outcomes/welfare and autonomy/rights \
 equally.\
-"""
-
-HELP_MODERATOR_MODE = """\
-Controls how the moderator guides cross-examination:
-
-  \u2022 [bold]Static[/bold] \u2014 The moderator creates a fixed discussion roadmap at the \
-start and follows it through all rounds unchanged.
-  \u2022 [bold]Adaptive[/bold] \u2014 The moderator revises its roadmap between rounds based on \
-how the debate has progressed, steering toward unresolved points. \
-[bold](Recommended)[/bold]\
 """
 
 HELP_OUTPUTS = """\
@@ -825,111 +767,15 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
     )
 
 
-def ask_stage2_mode(default: str = "open") -> str:
-    """Step 4: Cross-examination style."""
-    return _ask(questionary.select(
-        "Cross-examination style:",
-        choices=[
-            Choice("Open (agents freely challenge each other)", value="open"),
-            Choice("Moderated (guided by a moderator roadmap)", value="moderated"),
-        ],
-        default=default,
-    ), help_text=HELP_STAGE2)
-
-
 def ask_stage3_mode(
     default_mode: str = "rebuttal",
-    default_bloodsport: BloodSportConfig | None = None,
-    default_collaborative: CollaborativeConfig | None = None,
 ) -> tuple[str, dict]:
-    """Step 5: Debate mode + sub-options with internal back navigation.
+    """Step 5: Debate mode (always rebuttal).
 
     Returns:
-        (mode_str, sub_options_dict) where sub_options contains any mode-specific
-        settings (bloodsport intensity/exchanges, collaborative params).
+        ("rebuttal", {}) — rebuttal is the only supported mode.
     """
-    d_mode = default_mode
-
-    # Blood sport defaults
-    bs = default_bloodsport or BloodSportConfig()
-    d_intensity = bs.intensity
-    d_max_exchanges = bs.max_exchanges
-
-    # Collaborative defaults
-    collab = default_collaborative or CollaborativeConfig()
-    d_max_turns = collab.max_turns_per_question
-    d_early_term = collab.early_termination_on_agreement
-
-    sub = 0
-    while True:
-        try:
-            if sub == 0:
-                d_mode = _ask(questionary.select(
-                    "Debate mode:",
-                    choices=[
-                        Choice("Rebuttal (single-shot responses)", value="rebuttal"),
-                        Choice("Collaborative (multi-turn truth-seeking)", value="collaborative"),
-                        Choice("Blood Sport (adversarial multi-turn)", value="bloodsport"),
-                    ],
-                    default=d_mode,
-                ), help_text=HELP_STAGE3)
-                if d_mode == "rebuttal":
-                    return d_mode, {}
-                sub = 1
-
-            elif sub == 1:
-                if d_mode == "bloodsport":
-                    d_intensity = _ask(questionary.select(
-                        "Blood Sport intensity:",
-                        choices=[
-                            Choice("Mild", value="mild"),
-                            Choice("Moderate", value="moderate"),
-                            Choice("Extreme", value="extreme"),
-                        ],
-                        default=d_intensity,
-                    ), help_text=HELP_BLOODSPORT_INTENSITY)
-                elif d_mode == "collaborative":
-                    temp = _ask(questionary.text(
-                        "Max turns per question (3-30):",
-                        default=str(d_max_turns),
-                        validate=lambda t: _validate_int_range(t, 3, 30),
-                    ), help_text=HELP_COLLAB_TURNS)
-                    d_max_turns = int(temp)
-                sub = 2
-
-            elif sub == 2:
-                if d_mode == "bloodsport":
-                    temp = _ask(questionary.text(
-                        "Max exchanges per agent pair (1-20):",
-                        default=str(d_max_exchanges),
-                        validate=lambda t: _validate_int_range(t, 1, 20),
-                    ), help_text=HELP_BLOODSPORT_EXCHANGES)
-                    d_max_exchanges = int(temp)
-                    return d_mode, {
-                        "bloodsport": BloodSportConfig(
-                            intensity=d_intensity,
-                            max_exchanges=d_max_exchanges,
-                        )
-                    }
-                elif d_mode == "collaborative":
-                    d_early_term = _ask(questionary.confirm(
-                        "Enable early termination on agreement?",
-                        default=d_early_term,
-                    ), help_text=HELP_COLLAB_EARLY_TERM)
-                    return d_mode, {
-                        "collaborative": CollaborativeConfig(
-                            max_turns_per_question=d_max_turns,
-                            min_turns_per_question=collab.min_turns_per_question,
-                            adjudicator_check_interval=collab.adjudicator_check_interval,
-                            early_termination_on_agreement=d_early_term,
-                        )
-                    }
-
-        except WizardBack:
-            if sub > 0:
-                sub -= 1
-            else:
-                raise
+    return "rebuttal", {}
 
 
 def ask_num_rounds(default: int = 1) -> int:
@@ -1044,58 +890,6 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
     )
 
 
-def ask_moderator_config(default: ModeratorConfig | None = None) -> ModeratorConfig:
-    """Step 8: Moderator configuration with internal back navigation."""
-    mod = default or ModeratorConfig()
-
-    console = Console()
-    console.print("\n[bold]Moderator Configuration:[/bold]")
-
-    d_provider = mod.provider
-    d_model = mod.model
-    d_mode = mod.moderator_mode
-
-    sub = 0
-    while sub < 3:
-        try:
-            if sub == 0:
-                d_provider = _ask(questionary.select(
-                    "Moderator provider:",
-                    choices=PROVIDER_CHOICES,
-                    default=d_provider,
-                ), help_text=HELP_PROVIDER)
-            elif sub == 1:
-                suggestions = MODEL_SUGGESTIONS.get(d_provider, [])
-                d_model = _ask(questionary.autocomplete(
-                    "Moderator model:",
-                    choices=suggestions,
-                    default=d_model,
-                ), help_text=HELP_MODEL)
-            elif sub == 2:
-                d_mode = _ask(questionary.select(
-                    "Moderator mode:",
-                    choices=[
-                        Choice("Static (fixed roadmap for all rounds)", value="static"),
-                        Choice("Adaptive (revises roadmap between rounds)", value="adaptive"),
-                    ],
-                    default=d_mode,
-                ), help_text=HELP_MODERATOR_MODE)
-            sub += 1
-        except WizardBack:
-            if sub > 0:
-                sub -= 1
-            else:
-                raise
-
-    return ModeratorConfig(
-        model=d_model,
-        provider=d_provider,
-        temperature=mod.temperature,
-        context=mod.context,
-        moderator_mode=d_mode,
-    )
-
-
 def ask_output_toggles(default: OutputConfig | None = None) -> dict[str, bool]:
     """Step 9: Which outputs to generate (multi-select checkbox).
 
@@ -1145,7 +939,7 @@ def ask_max_workers(default: int = 5) -> int:
 def ask_api_keys_for_config(state: dict) -> None:
     """Step 11: Prompt for API keys for each provider used in this config.
 
-    Collects providers from agent configs, adjudication, and moderator.
+    Collects providers from agent configs and adjudication.
     Skips providers that already have keys set in the environment and
     providers that don't need keys (e.g. ollama).
     """
@@ -1161,10 +955,6 @@ def ask_api_keys_for_config(state: dict) -> None:
     adj = state.get('adjudication')
     if adj:
         providers.add(adj.provider)
-    if state.get('stage2_mode') == 'moderated':
-        mod = state.get('moderator')
-        if mod:
-            providers.add(mod.provider)
 
     # Filter to providers that need API keys
     providers = {p for p in providers if p in PROVIDER_ENV_VARS}
@@ -1232,7 +1022,6 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
         agent_lines.append(f"{a.name} ({a.persona}, {a.provider}/{a.model})")
     table.add_row("Agents", "\n".join(agent_lines))
 
-    table.add_row("Stage 2", config.stage2_mode)
     table.add_row("Stage 3", config.stage3_mode)
     table.add_row("Rounds", str(config.max_rounds))
     table.add_row(
@@ -1240,26 +1029,6 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
         f"{config.adjudication.model} ({config.adjudication.provider}), "
         f"logic={config.adjudication.logic_weight}, ethics={config.adjudication.ethics_weight}",
     )
-
-    if config.stage2_mode == "moderated":
-        table.add_row(
-            "Moderator",
-            f"{config.moderator.model} ({config.moderator.provider}), "
-            f"mode={config.moderator.moderator_mode}",
-        )
-
-    if config.stage3_mode == "bloodsport":
-        table.add_row(
-            "Blood Sport",
-            f"intensity={config.bloodsport.intensity}, "
-            f"max_exchanges={config.bloodsport.max_exchanges}",
-        )
-    elif config.stage3_mode == "collaborative":
-        table.add_row(
-            "Collaborative",
-            f"max_turns={config.collaborative.max_turns_per_question}, "
-            f"early_term={config.collaborative.early_termination_on_agreement}",
-        )
 
     # Summarize enabled outputs
     enabled = []
@@ -1290,21 +1059,18 @@ def ask_review_action() -> str:
     ), help_text=HELP_REVIEW_ACTION)
 
 
-def ask_edit_section(show_moderator: bool = False) -> str:
+def ask_edit_section() -> str:
     """Ask which config section to re-edit."""
     choices = [
         Choice("Topic", value="topic"),
         Choice("Number of agents", value="num_agents"),
         Choice("Agent configurations", value="agents"),
-        Choice("Stage 2 mode (cross-examination)", value="stage2"),
         Choice("Stage 3 mode (debate style)", value="stage3"),
         Choice("Number of rounds", value="rounds"),
         Choice("Adjudicator", value="adjudicator"),
+        Choice("Output toggles", value="outputs"),
+        Choice("Parallelization", value="parallelization"),
     ]
-    if show_moderator:
-        choices.append(Choice("Moderator", value="moderator"))
-    choices.append(Choice("Output toggles", value="outputs"))
-    choices.append(Choice("Parallelization", value="parallelization"))
 
     return _ask(questionary.select(
         "Which section would you like to edit?",
@@ -1337,16 +1103,10 @@ def _populate_state_from_config(config: DebateConfig, state: dict) -> None:
     state['topic'] = config.topic
     state['num_agents'] = len(config.agents)
     state['agent_configs'] = list(config.agents)
-    state['stage2_mode'] = config.stage2_mode
     state['stage3_mode'] = config.stage3_mode
     state['sub_options'] = {}
-    if config.stage3_mode == 'bloodsport':
-        state['sub_options']['bloodsport'] = config.bloodsport
-    elif config.stage3_mode == 'collaborative':
-        state['sub_options']['collaborative'] = config.collaborative
     state['max_rounds'] = config.max_rounds
     state['adjudication'] = config.adjudication
-    state['moderator'] = config.moderator
     state['output_flags'] = {
         attr: getattr(config.outputs, attr, fallback)
         for _, attr, fallback in OUTPUT_TOGGLES
@@ -1412,25 +1172,9 @@ def _step_agents(state: dict) -> bool:
     return True
 
 
-def _step_stage2(state: dict) -> bool:
-    """Step 4: Cross-examination mode."""
-    pf = state.get('prefill')
-    default = state.get('stage2_mode', '') or (pf.stage2_mode if pf else 'open')
-    state['stage2_mode'] = ask_stage2_mode(default=default)
-    return True
-
-
 def _step_stage3(state: dict) -> bool:
-    """Step 5: Debate mode + sub-options."""
-    pf = state.get('prefill')
-    default_mode = state.get('stage3_mode', '') or (pf.stage3_mode if pf else 'rebuttal')
-    sub_opts = state.get('sub_options', {})
-
-    mode, new_sub_opts = ask_stage3_mode(
-        default_mode=default_mode,
-        default_bloodsport=sub_opts.get('bloodsport', pf.bloodsport if pf else None),
-        default_collaborative=sub_opts.get('collaborative', pf.collaborative if pf else None),
-    )
+    """Step 5: Debate mode (always rebuttal)."""
+    mode, new_sub_opts = ask_stage3_mode()
     state['stage3_mode'] = mode
     state['sub_options'] = new_sub_opts
     return True
@@ -1449,17 +1193,6 @@ def _step_adjudicator(state: dict) -> bool:
     pf = state.get('prefill')
     default = state.get('adjudication') or (pf.adjudication if pf else None)
     state['adjudication'] = ask_adjudicator_config(default=default)
-    return True
-
-
-def _step_moderator(state: dict) -> bool:
-    """Step 8: Moderator configuration (skipped if not moderated)."""
-    if state.get('stage2_mode') != 'moderated':
-        return False  # no-op: not shown to user
-
-    pf = state.get('prefill')
-    default = state.get('moderator') or (pf.moderator if pf else None)
-    state['moderator'] = ask_moderator_config(default=default)
     return True
 
 
@@ -1502,22 +1235,14 @@ def _build_config(state: dict) -> DebateConfig:
     for attr, val in output_flags.items():
         setattr(outputs, attr, val)
 
-    sub_opts = state.get('sub_options', {})
-    bloodsport = sub_opts.get('bloodsport', pf.bloodsport if pf else BloodSportConfig())
-    collaborative = sub_opts.get('collaborative', pf.collaborative if pf else CollaborativeConfig())
-
     return DebateConfig(
         name=f"Debate: {state['topic'][:50]}",
         topic=state['topic'],
         max_rounds=state['max_rounds'],
-        stage2_mode=state['stage2_mode'],
         stage3_mode=state['stage3_mode'],
         agents=state['agent_configs'],
         adjudication=state['adjudication'],
         outputs=outputs,
-        collaborative=collaborative,
-        bloodsport=bloodsport,
-        moderator=state.get('moderator', ModeratorConfig()),
         parallel=ParallelConfig(enabled=state.get('parallel_enabled', True), max_workers=state.get('max_workers', 5)),
     )
 
@@ -1531,14 +1256,12 @@ _WIZARD_STEPS = [
     _step_topic,           # 1: Debate topic
     _step_num_agents,      # 2: Number of agents
     _step_agents,          # 3: Agent configurations
-    _step_stage2,          # 4: Cross-exam mode
-    _step_stage3,          # 5: Debate mode
-    _step_rounds,          # 6: Number of rounds
-    _step_adjudicator,     # 7: Adjudicator
-    _step_moderator,       # 8: Moderator (conditional)
-    _step_outputs,         # 9: Output toggles
-    _step_parallelization, # 10: Parallelization toggle
-    _step_api_keys,        # 11: API key collection
+    _step_stage3,          # 4: Debate mode
+    _step_rounds,          # 5: Number of rounds
+    _step_adjudicator,     # 6: Adjudicator
+    _step_outputs,         # 7: Output toggles
+    _step_parallelization, # 8: Parallelization toggle
+    _step_api_keys,        # 9: API key collection
 ]
 
 
@@ -1647,7 +1370,7 @@ def run_wizard(
 
             elif action == "edit":
                 try:
-                    section = ask_edit_section(show_moderator=(config.stage2_mode == "moderated"))
+                    section = ask_edit_section()
                     config = _apply_edit(config, section, console)
                 except (WizardExit, KeyboardInterrupt):
                     return None, "cancel"
@@ -1685,32 +1408,15 @@ def _apply_edit(config: DebateConfig, section: str, console: Console) -> DebateC
         ), help_text=HELP_PERSONA)
         config.agents[idx] = ask_agent_config(idx, default=config.agents[idx])
 
-    elif section == "stage2":
-        config.stage2_mode = ask_stage2_mode(default=config.stage2_mode)
-        if config.stage2_mode == "moderated" and config.moderator.model == ModeratorConfig().model:
-            # First time selecting moderated — prompt for moderator config
-            config.moderator = ask_moderator_config()
-
     elif section == "stage3":
-        mode, sub_opts = ask_stage3_mode(
-            default_mode=config.stage3_mode,
-            default_bloodsport=config.bloodsport,
-            default_collaborative=config.collaborative,
-        )
+        mode, sub_opts = ask_stage3_mode()
         config.stage3_mode = mode
-        if "bloodsport" in sub_opts:
-            config.bloodsport = sub_opts["bloodsport"]
-        if "collaborative" in sub_opts:
-            config.collaborative = sub_opts["collaborative"]
 
     elif section == "rounds":
         config.max_rounds = ask_num_rounds(default=config.max_rounds)
 
     elif section == "adjudicator":
         config.adjudication = ask_adjudicator_config(default=config.adjudication)
-
-    elif section == "moderator":
-        config.moderator = ask_moderator_config(default=config.moderator)
 
     elif section == "outputs":
         output_flags = ask_output_toggles(default=config.outputs)

@@ -31,8 +31,7 @@ def run_debate(
         config: Fully populated debate configuration.
         console: Rich console for styled output.
         verbose: Whether to show verbose/debug output.
-        interactive: Whether the session is interactive (enables roadmap
-            review for moderated debates).
+        interactive: Whether the session is interactive.
 
     Returns:
         Exit code (0 = success, 1 = failure).
@@ -80,33 +79,6 @@ def run_debate(
         config=config,
         key_pool=key_pool,
     )
-
-    # Interactive roadmap review (moderated mode only)
-    if (
-        interactive
-        and config.stage2_mode == "moderated"
-        and controller.moderator is not None
-        and controller.roadmap is not None
-    ):
-        from chal.cli.roadmap_review import run_roadmap_review
-
-        try:
-            agent_persona_labels = [
-                getattr(a, "persona_label", a.name) for a in agents
-            ]
-            _, new_rounds, was_modified = run_roadmap_review(
-                console=console,
-                moderator=controller.moderator,
-                topic=config.topic,
-                num_rounds=config.max_rounds,
-                agent_personas=agent_persona_labels,
-            )
-            if new_rounds != config.max_rounds:
-                config.max_rounds = new_rounds
-                controller.max_rounds = new_rounds
-            controller.roadmap_user_modified = was_modified
-        except KeyboardInterrupt:
-            console.print("\n[dim]Roadmap review cancelled.[/dim]")
 
     # Create display and wire callback
     display = DebateDisplay(

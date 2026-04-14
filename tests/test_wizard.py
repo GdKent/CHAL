@@ -17,10 +17,7 @@ from rich.console import Console
 from chal.config import (
     AgentConfig,
     AdjudicationConfig,
-    BloodSportConfig,
-    CollaborativeConfig,
     DebateConfig,
-    ModeratorConfig,
     OutputConfig,
     ParallelConfig,
     DEFAULT_STORAGE_DIR,
@@ -29,11 +26,9 @@ from chal.cli.wizard import (
     ask_topic,
     ask_num_agents,
     ask_agent_config,
-    ask_stage2_mode,
     ask_stage3_mode,
     ask_num_rounds,
     ask_adjudicator_config,
-    ask_moderator_config,
     ask_output_toggles,
     ask_parallelization,
     ask_max_workers,
@@ -187,21 +182,6 @@ class TestAskAgentConfig:
         assert result.persona == "SKEPTIC"
 
 
-class TestAskStage2Mode:
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.select")
-    def test_returns_open(self, mock_select):
-        mock_select.return_value.ask.return_value = "open"
-        assert ask_stage2_mode() == "open"
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.select")
-    def test_returns_moderated(self, mock_select):
-        mock_select.return_value.ask.return_value = "moderated"
-        assert ask_stage2_mode() == "moderated"
-
-
 class TestAskStage3Mode:
 
     @pytest.mark.unit
@@ -211,39 +191,6 @@ class TestAskStage3Mode:
         mode, opts = ask_stage3_mode()
         assert mode == "rebuttal"
         assert opts == {}
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.text")
-    @patch("chal.cli.wizard.questionary.select")
-    def test_bloodsport_prompts_sub_options(self, mock_select, mock_text):
-        # First select: mode, second select: intensity
-        mock_select.return_value.ask.side_effect = ["bloodsport", "extreme"]
-        # text: max_exchanges
-        mock_text.return_value.ask.return_value = "10"
-
-        mode, opts = ask_stage3_mode()
-
-        assert mode == "bloodsport"
-        assert "bloodsport" in opts
-        assert opts["bloodsport"].intensity == "extreme"
-        assert opts["bloodsport"].max_exchanges == 10
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.confirm")
-    @patch("chal.cli.wizard.questionary.text")
-    @patch("chal.cli.wizard.questionary.select")
-    def test_collaborative_prompts_sub_options(self, mock_select, mock_text, mock_confirm):
-        mock_select.return_value.ask.return_value = "collaborative"
-        mock_text.return_value.ask.return_value = "15"
-        mock_confirm.return_value.ask.return_value = True
-
-        mode, opts = ask_stage3_mode()
-
-        assert mode == "collaborative"
-        assert "collaborative" in opts
-        assert opts["collaborative"].max_turns_per_question == 15
-        assert opts["collaborative"].early_termination_on_agreement is True
-
 
 class TestAskNumRounds:
 
@@ -277,23 +224,6 @@ class TestAskAdjudicatorConfig:
         assert result.ethics_system == "NONE"
         assert result.logic_weight == 1.0
         assert result.ethics_weight == 0.0
-
-
-class TestAskModeratorConfig:
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.select")
-    @patch("chal.cli.wizard.questionary.autocomplete")
-    def test_returns_moderator_config(self, mock_auto, mock_select):
-        # select calls: provider, moderator_mode
-        mock_select.return_value.ask.side_effect = ["openai", "static"]
-        mock_auto.return_value.ask.return_value = "o1-mini"
-
-        result = ask_moderator_config()
-
-        assert isinstance(result, ModeratorConfig)
-        assert result.model == "o1-mini"
-        assert result.moderator_mode == "static"
 
 
 class TestAskOutputToggles:
@@ -338,34 +268,6 @@ class TestShowReviewPanel:
         )
         console = _console()
         show_review_panel(config, console)
-
-    @pytest.mark.unit
-    def test_shows_moderator_when_moderated(self):
-        config = DebateConfig(
-            topic="Test",
-            stage2_mode="moderated",
-            moderator=ModeratorConfig(model="o1-mini"),
-            agents=[AgentConfig(name="A1", persona="EMPIRICIST")],
-        )
-        buf = StringIO()
-        console = Console(file=buf)
-        show_review_panel(config, console)
-        output = buf.getvalue()
-        assert "Moderator" in output
-
-    @pytest.mark.unit
-    def test_shows_bloodsport_when_selected(self):
-        config = DebateConfig(
-            topic="Test",
-            stage3_mode="bloodsport",
-            bloodsport=BloodSportConfig(intensity="extreme", max_exchanges=10),
-            agents=[AgentConfig(name="A1", persona="EMPIRICIST")],
-        )
-        buf = StringIO()
-        console = Console(file=buf)
-        show_review_panel(config, console)
-        output = buf.getvalue()
-        assert "extreme" in output
 
     @pytest.mark.unit
     def test_shows_parallelization_enabled(self):
@@ -560,26 +462,6 @@ class TestEditSection:
 
     @pytest.mark.unit
     @patch("chal.cli.wizard.questionary.select")
-    def test_shows_moderator_when_flagged(self, mock_select):
-        mock_select.return_value.ask.return_value = "moderator"
-        result = ask_edit_section(show_moderator=True)
-        assert result == "moderator"
-        # Verify moderator was in the choices
-        _, kwargs = mock_select.call_args
-        choice_values = [c.value for c in kwargs["choices"]]
-        assert "moderator" in choice_values
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.select")
-    def test_hides_moderator_when_not_flagged(self, mock_select):
-        mock_select.return_value.ask.return_value = "topic"
-        ask_edit_section(show_moderator=False)
-        _, kwargs = mock_select.call_args
-        choice_values = [c.value for c in kwargs["choices"]]
-        assert "moderator" not in choice_values
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.select")
     def test_parallelization_in_choices(self, mock_select):
         """Edit section includes parallelization option."""
         mock_select.return_value.ask.return_value = "parallelization"
@@ -696,7 +578,6 @@ class TestRunWizard:
             assert config.agents[0].persona == "EMPIRICIST"
             assert config.agents[1].persona == "SKEPTIC"
             assert config.agents[1].provider == "anthropic"
-            assert config.stage2_mode == "open"
             assert config.stage3_mode == "rebuttal"
             assert config.max_rounds == 3
             assert config.outputs.save_transcript is True

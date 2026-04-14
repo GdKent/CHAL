@@ -209,59 +209,6 @@ class DebateDisplay:
                 f"  [dim]Convergence: {score:.2f}[/dim]"
             )
 
-    def _on_roadmap_generated(self, data: Dict[str, Any]) -> None:
-        subtopics = data.get("subtopics", [])
-        sufficiency = data.get("sufficiency_note", "")
-        self._show_roadmap(subtopics, sufficiency)
-
-    def _on_roadmap_revised(self, data: Dict[str, Any]) -> None:
-        new_subtopics = data.get("new_subtopics", [])
-        rationale = data.get("rationale", "")
-        round_num = data.get("round_num", "?")
-
-        # Build panel body with rationale
-        body = "[yellow]The moderator has revised the remaining roadmap.[/yellow]"
-        if rationale:
-            body += f"\n[dim]Rationale: {rationale}[/dim]"
-
-        self.console.print(
-            Panel(
-                body,
-                title=f"[bold yellow]Roadmap Revised (after round {round_num})[/bold yellow]",
-                border_style="yellow",
-                expand=False,
-            )
-        )
-
-        # Show the revised sub-topics as a table
-        if new_subtopics:
-            table = Table(
-                show_header=True,
-                header_style="bold",
-                expand=False,
-                padding=(0, 1),
-            )
-            table.add_column("#", justify="center", style="bold")
-            table.add_column("Sub-topic", style="#A82545")
-            table.add_column("Description")
-
-            for i, st in enumerate(new_subtopics, 1):
-                desc = st.get("description", "")
-                table.add_row(
-                    str(i),
-                    st.get("title", ""),
-                    desc[:60] + ("..." if len(desc) > 60 else ""),
-                )
-            self.console.print(table)
-
-        # Interactive pause so the user can read the revision
-        if self._interactive:
-            self.console.print("[dim]Press Enter to continue...[/dim]")
-            try:
-                input()
-            except (EOFError, KeyboardInterrupt):
-                pass
-
     def _on_debate_complete(self, data: Dict[str, Any]) -> None:
         # Stop progress bar
         if self._progress:
@@ -370,49 +317,6 @@ class DebateDisplay:
             )
 
         self.console.print(table)
-
-    def _show_roadmap(
-        self, subtopics: List[Dict[str, Any]], sufficiency: str
-    ) -> None:
-        """Render the moderator roadmap as a table inside a panel."""
-        table = Table(
-            show_header=True,
-            header_style="bold",
-            expand=False,
-            padding=(0, 1),
-        )
-        table.add_column("Round", justify="center", style="bold")
-        table.add_column("Sub-topic", style="#A82545")
-        table.add_column("Description")
-
-        for st in subtopics:
-            table.add_row(
-                str(st.get("round", "?")),
-                st.get("title", ""),
-                st.get("description", "")[:60] + ("..." if len(st.get("description", "")) > 60 else ""),
-            )
-
-        panel_content = table
-        if sufficiency:
-            # We render the table first, then append sufficiency text
-            self.console.print(
-                Panel(
-                    table,
-                    title="[bold]Moderator Roadmap[/bold]",
-                    subtitle=f"[dim]{sufficiency[:120]}[/dim]",
-                    border_style="#9B1B30",
-                    expand=False,
-                )
-            )
-        else:
-            self.console.print(
-                Panel(
-                    table,
-                    title="[bold]Moderator Roadmap[/bold]",
-                    border_style="#9B1B30",
-                    expand=False,
-                )
-            )
 
     # ── Error handler ────────────────────────────────────────────────
 

@@ -10,9 +10,7 @@ Also tests that validate_stage2_questions() accepts/rejects definitional attacks
 import pytest
 from chal.agents.prompts import (
     build_stage_2_prompt,
-    build_stage_2_bloodsport_prompt,
     build_stage_3_structured_rebuttal_prompt,
-    build_stage_3_bloodsport_prompt,
     build_adjudicator_per_pair_prompt,
     build_adjudicator_prompt,
 )
@@ -30,24 +28,10 @@ def _stage2(topic="test topic", agent="A1", opponent="B1",
     )
 
 
-def _stage2_bloodsport(topic="test topic", agent="A1", opponent="B1",
-                        agent_belief='{}', opponent_belief='{}'):
-    return build_stage_2_bloodsport_prompt(
-        topic, agent, opponent, agent_belief, opponent_belief,
-    )
-
-
 def _stage3(topic="test topic", agent="A1", opponent="B1",
             questions='[]', belief='{}'):
     return build_stage_3_structured_rebuttal_prompt(
         topic, agent, opponent, questions, belief,
-    )
-
-
-def _stage3_bloodsport(topic="test topic", agent="A1", opponent="B1",
-                        agent_belief='{}', opponent_belief='{}'):
-    return build_stage_3_bloodsport_prompt(
-        topic, agent, opponent, agent_belief, opponent_belief,
     )
 
 
@@ -164,37 +148,7 @@ class TestStage2Definitional:
 
 
 # ========================================
-# 2. Stage 2 Bloodsport: Definitional attacks
-# ========================================
-
-class TestStage2BloodsportDefinitional:
-    """Stage 2 Bloodsport includes definition-targeting attack strategies."""
-
-    @pytest.mark.unit
-    def test_definition_strategies_redistributed(self):
-        """Definition strategies appear under UNDERMINING and UNDERCUTTING."""
-        prompt = _stage2_bloodsport()
-        assert "over_extension" in prompt
-        assert "under_extension" in prompt
-        assert "circularity" in prompt
-        assert "stipulative_bias" in prompt
-        assert "conceptual_conflation" in prompt
-
-    @pytest.mark.unit
-    def test_high_impact_guidance(self):
-        """Bloodsport emphasizes definition attacks as high-impact."""
-        prompt = _stage2_bloodsport()
-        assert "high-impact" in prompt
-
-    @pytest.mark.unit
-    def test_output_format_three_types(self):
-        """Output format JSON template lists 3 attack types."""
-        prompt = _stage2_bloodsport()
-        assert "undermining | rebutting | undercutting" in prompt
-
-
-# ========================================
-# 3. Stage 3: D# defense and patch ops
+# 2. Stage 3: D# defense and patch ops
 # ========================================
 
 class TestStage3Definitional:
@@ -262,41 +216,7 @@ class TestStage3Definitional:
 
 
 # ========================================
-# 4. Stage 3 Bloodsport: D# attack & defense
-# ========================================
-
-class TestStage3BloodsportDefinitional:
-    """Stage 3 Bloodsport includes definitional attack and defense guidance."""
-
-    @pytest.mark.unit
-    def test_definitional_attack_guidance(self):
-        """Definitional attack strategies mentioned."""
-        prompt = _stage3_bloodsport()
-        assert "D# nodes" in prompt or "definitional" in prompt.lower()
-
-    @pytest.mark.unit
-    def test_high_impact_mentioned(self):
-        """Definitional attacks described as high-impact."""
-        prompt = _stage3_bloodsport()
-        assert "high-impact" in prompt
-
-    @pytest.mark.unit
-    def test_definitional_strategies_listed(self):
-        """Definitional strategies are listed."""
-        prompt = _stage3_bloodsport()
-        for strategy in ("circularity", "over_extension", "under_extension",
-                         "stipulative_bias", "conceptual_conflation"):
-            assert strategy in prompt, f"Missing strategy: {strategy}"
-
-    @pytest.mark.unit
-    def test_defense_guidance_present(self):
-        """Defense guidance for challenged D# nodes present."""
-        prompt = _stage3_bloodsport()
-        assert "definitions" in prompt.lower() and "challenged" in prompt.lower()
-
-
-# ========================================
-# 5. Stage 4 Per-Pair: Definitional evaluation
+# 3. Stage 4 Per-Pair: Definitional evaluation
 # ========================================
 
 class TestAdjudicatorPerPairDefinitional:
@@ -346,7 +266,7 @@ class TestAdjudicatorPerPairDefinitional:
 
 
 # ========================================
-# 6. Stage 4 System: Definition-targeting recognition
+# 4. Stage 4 System: Definition-targeting recognition
 # ========================================
 
 class TestAdjudicatorSystemDefinitional:
@@ -372,7 +292,7 @@ class TestAdjudicatorSystemDefinitional:
 
 
 # ========================================
-# 7. validate_stage2_questions: definition-targeting strategies
+# 5. validate_stage2_questions: definition-targeting strategies
 # ========================================
 
 class TestValidateStage2QuestionsDefinitional:

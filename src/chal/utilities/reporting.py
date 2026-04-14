@@ -1,16 +1,14 @@
 """
 reporting.py
 
-Mode-agnostic post-debate analysis report generator.
+Post-debate analysis report generator.
 
 Produces a structured Markdown report and/or JSON analysis from debate results.
-Works with all stage3_mode options: rebuttal, collaborative, bloodsport.
 """
 
 import json
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List
 
 
 def generate_analysis_report(
@@ -20,8 +18,6 @@ def generate_analysis_report(
     agent_stats: dict,
     convergence_history: list = None,
     opening_positions: list = None,
-    roadmap: dict = None,
-    roadmap_revisions: list = None,
 ) -> str:
     """
     Generate a Markdown analysis report for a completed debate.
@@ -33,16 +29,12 @@ def generate_analysis_report(
         agent_stats: Final agent statistics dict.
         convergence_history: Optional list of per-round convergence snapshots.
         opening_positions: Optional list of initial belief strings.
-        roadmap: Optional roadmap dict with sub_topics, overall_rationale, sufficiency_note.
-        roadmap_revisions: Optional list of revision dicts with round_num,
-            revision_rationale, new_subtopics.
 
     Returns:
         str: Complete Markdown report.
     """
     sections: List[str] = []
     mode = config.stage3_mode if config else "rebuttal"
-    stage2_mode = config.stage2_mode if config and hasattr(config, 'stage2_mode') else "open"
     topic = config.topic if config else "Unknown"
 
     # === Header ===
@@ -52,7 +44,6 @@ def generate_analysis_report(
     # === 1. Metadata ===
     sections.append("## 1. Debate Metadata\n")
     sections.append(f"- **Topic**: {topic}")
-    sections.append(f"- **Stage 2 Mode**: {stage2_mode}")
     sections.append(f"- **Stage 3 Mode**: {mode}")
     sections.append(f"- **Rounds**: {config.max_rounds if config else 'N/A'}")
     sections.append(f"- **Agents**: {len(agents)}")
@@ -68,65 +59,10 @@ def generate_analysis_report(
         sections.append(f"- **Adjudicator**: {adj.model} ({adj.provider})")
         sections.append(f"  - Logic weight: {adj.logic_weight}, Ethics weight: {adj.ethics_weight}")
 
-    # Mode-specific metadata
-    if mode == "bloodsport" and config:
-        sections.append(f"- **Blood Sport Intensity**: {config.bloodsport.intensity}")
-        sections.append(f"- **Max Exchanges**: {config.bloodsport.max_exchanges}")
-    elif mode == "collaborative" and config:
-        sections.append(f"- **Max Turns/Question**: {config.collaborative.max_turns_per_question}")
-        sections.append(f"- **Early Termination**: {config.collaborative.early_termination_on_agreement}")
-
     sections.append("")
 
-    # === Debate Roadmap (moderated mode only) ===
-    if roadmap and stage2_mode == "moderated":
-        sections.append("## 2. Debate Roadmap\n")
-        sub_topics = roadmap.get("sub_topics", [])
-        if roadmap.get("overall_rationale"):
-            sections.append(f"**Overall Rationale:** {roadmap['overall_rationale']}\n")
-        if roadmap.get("sufficiency_note"):
-            sections.append(f"**Sufficiency Assessment:** {roadmap['sufficiency_note']}\n")
-
-        sections.append("| Round | Sub-Topic | Description |")
-        sections.append("|-------|-----------|-------------|")
-        for i, st in enumerate(sub_topics, 1):
-            title = st.get("title", "Untitled")
-            desc = st.get("description", "")[:200]
-            sections.append(f"| {i} | {title} | {desc} |")
-        sections.append("")
-
-        for i, st in enumerate(sub_topics, 1):
-            sections.append(f"### Round {i}: {st.get('title', 'Untitled')}")
-            sections.append(f"{st.get('description', '')}")
-            if st.get("rationale"):
-                sections.append(f"- **Rationale**: {st['rationale']}")
-            guiding_qs = st.get("guiding_questions", [])
-            if guiding_qs:
-                sections.append("- **Guiding Questions**:")
-                for gq in guiding_qs:
-                    sections.append(f"  - {gq}")
-            sections.append("")
-
-        # Roadmap revisions sub-section (adaptive moderator)
-        moderator_mode = "static"
-        if config and hasattr(config, "moderator"):
-            moderator_mode = getattr(config.moderator, "moderator_mode", "static")
-
-        if roadmap_revisions and moderator_mode == "adaptive":
-            sections.append("### Roadmap Revisions\n")
-            for rev in roadmap_revisions:
-                rnd = rev.get("round_num", "?")
-                rationale = rev.get("revision_rationale", "")
-                new_sts = rev.get("new_subtopics", [])
-                sections.append(f"**After round {rnd}:** {rationale}\n")
-                if new_sts:
-                    for st in new_sts:
-                        sections.append(f"- **{st.get('title', 'Untitled')}**: {st.get('description', '')}")
-                sections.append("")
-
     # === Verdict Distribution ===
-    # Section number shifts if roadmap section is present
-    s = 3 if (roadmap and stage2_mode == "moderated") else 2
+    s = 2
     sections.append(f"## {s}. Adjudicator Verdict Distribution\n")
     verdict_counts = {"critique_valid": 0, "rebuttal_valid": 0, "unresolved": 0}
     for entry in challenge_rebuttal_pairs:
@@ -181,21 +117,6 @@ def generate_analysis_report(
             f"| {stats.get('unresolved_arguments', 0)} |"
         )
     sections.append("")
-
-    # Mode-specific performance details
-    if mode == "bloodsport":
-        bs_agents = [(n, st) for n, st in sorted_agents if st.get('bloodsport_exchanges', 0) > 0]
-        if bs_agents:
-            sections.append("### Blood Sport Statistics\n")
-            sections.append("| Agent | Exchanges | Turns |")
-            sections.append("|-------|-----------|-------|")
-            for agent_name, stats in bs_agents:
-                sections.append(
-                    f"| {agent_name} "
-                    f"| {stats.get('bloodsport_exchanges', 0)} "
-                    f"| {stats.get('bloodsport_turns', 0)} |"
-                )
-            sections.append("")
 
     # === Belief Evolution ===
     sections.append(f"## {s+3}. Belief Evolution Summary\n")
@@ -267,8 +188,6 @@ def generate_analysis_json(
     challenge_rebuttal_pairs: list,
     agent_stats: dict,
     convergence_history: list = None,
-    roadmap: dict = None,
-    roadmap_revisions: list = None,
 ) -> dict:
     """
     Generate a structured JSON analysis report.
@@ -279,15 +198,11 @@ def generate_analysis_json(
         challenge_rebuttal_pairs: All challenge-rebuttal exchange records.
         agent_stats: Final agent statistics dict.
         convergence_history: Optional list of per-round convergence snapshots.
-        roadmap: Optional roadmap dict with sub_topics, overall_rationale, sufficiency_note.
-        roadmap_revisions: Optional list of revision dicts with round_num,
-            revision_rationale, new_subtopics.
 
     Returns:
         dict: Machine-readable analysis data.
     """
     mode = config.stage3_mode if config else "rebuttal"
-    stage2_mode = config.stage2_mode if config and hasattr(config, 'stage2_mode') else "open"
 
     # Verdict distribution
     verdict_counts = {"critique_valid": 0, "rebuttal_valid": 0, "unresolved": 0}
@@ -314,10 +229,6 @@ def generate_analysis_json(
             "final_claim_count": len(final_belief.get("claims", [])) if final_belief else None,
         }
 
-        if mode == "bloodsport":
-            summary["bloodsport_exchanges"] = stats.get("bloodsport_exchanges", 0)
-            summary["bloodsport_turns"] = stats.get("bloodsport_turns", 0)
-
         agent_summaries[name] = summary
 
     # Exchange details
@@ -339,7 +250,6 @@ def generate_analysis_json(
         "generated_at": datetime.now().isoformat(),
         "metadata": {
             "topic": config.topic if config else "Unknown",
-            "stage2_mode": stage2_mode,
             "stage3_mode": mode,
             "max_rounds": config.max_rounds if config else None,
             "num_agents": len(agents),
@@ -349,17 +259,7 @@ def generate_analysis_json(
         "exchanges": exchanges,
     }
 
-    if roadmap and stage2_mode == "moderated":
-        report["roadmap"] = roadmap
-
-    if roadmap_revisions:
-        report["roadmap_revisions"] = roadmap_revisions
-
     if convergence_history:
         report["convergence_history"] = convergence_history
-
-    if mode == "bloodsport" and config:
-        report["metadata"]["bloodsport_intensity"] = config.bloodsport.intensity
-        report["metadata"]["bloodsport_max_exchanges"] = config.bloodsport.max_exchanges
 
     return report

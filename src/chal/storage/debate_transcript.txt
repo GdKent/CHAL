@@ -7,131 +7,148 @@
 ## Agent-Empiricist - Opening Statement
 
 # Thesis
-- Stance: Empirical evidence and the principle of physical causal closure (A1) support that libertarian free will (D2) does not exist (C1), as neural processes determine decisions before conscious awareness. However, agents exhibit compatibilist free will (D3): the capacity to act on internal deliberations without coercion (C2), which aligns with behavioral data (E3) and retains practical moral responsibility in deterministic systems.
+- Stance: While empiricist evidence and determinism undermine the notion of libertarian free will (C1), a meaningful notion of free will persists in a compatibilist sense, where agents' choices reflect their internal motivations and reasoning when unconstrained (C2). Under a physicalist framework (A1, A2) and empirical findings (E1, E2, E3), true indeterministic freedom is unsupported, but pragmatic autonomy remains valid.
 - Top bullets:
-  - Libertarian free will lacks empirical support; decisions are preceded by deterministic neural events (C1).
-  - Compatibilist free will exists as an operational capacity for motivation-based action without coercion (C2).
-  - Physical causal closure and neural determinism underpin the rejection of contra-causal freedom (A1, E1, E2).
-  - Behavioral studies confirm agents act on internal deliberations, satisfying compatibilist criteria (A2, E3).
-  - Compatibilist free will provides a scientifically tractable framework for agency and responsibility.
-- Strength: 0.4833
-- Reasoning: avg(0.75, 0.7) × (2^1/(2^1+1)) = 0.725 × (2/3) = 0.4833
+  - Libertarian free will, requiring uncaused decisions, lacks empirical support (C1).
+  - Neuroscientific studies consistently show decision precursors precede awareness (E1, A3).
+  - Compatibilist free will, defined by self-determined actions absent coercion, aligns with empirical determinism (C2, A4).
+  - Operational autonomy is preserved under physicalism, supporting responsibility.
+  - Key uncertainties remain about causal roles of neural precursors and moral implications (U1, U2).
+- Strength: 0.4
+- Reasoning: avg(0.60, 0.60) × (2^1/(2^1+1)) = 0.60 × 0.667 = 0.40
 
 # Definitions
-- [D1] **physical causal closure**: The principle that every physical event, including neural events, has a sufficient physical cause.
-  - Strength: 0.9 (0.9 — well-supported by physics and absence of observed violations.)
-  - Used by: A1, E1
+- [D1] **libertarian_free_will**: The capacity for an agent to have genuine alternative possibilities, such that actions are not wholly determined by prior physical states or stochastic processes.
+  - Strength: 0.4 (0.40 — concept is highly contested in philosophy; no clear empirical counterpart.)
+  - Used by: E1, E4
   - Status: active
-- [D2] **libertarian free will**: The ability of an agent to have acted differently under identical prior states (contra-causal freedom).
-  - Strength: 0.75 (0.75 — standard philosophical definition but metaphysically contentious.)
+- [D2] **compatibilist_free_will**: The capacity for an agent to make choices according to its own motivations, desires, and rational deliberations, even if those are determined by prior states.
+  - Strength: 0.7 (0.70 — widely used in contemporary philosophy; operationally coherent though debates continue.)
+  - Used by: A4, E3
+  - Status: active
+- [D3] **determinism**: The principle that every event, including neural and mental events, is determined by prior physical states according to physical laws.
+  - Strength: 0.9 (0.90 — foundational in physics and supported by no confirmed violations.)
+  - Used by: A1, A2
+  - Status: active
+- [D4] **external_coercion**: Factors that override or manipulate an agent's internal decision-making processes such that the action does not originate from the agent's motivations.
+  - Strength: 0.8 (0.80 — clear in legal and psychological contexts; boundaries occasionally debated.)
+  - Used by: A4
+  - Status: active
+- [D5] **neural_precursor**: Measurable neural activity that systematically precedes a subject's conscious awareness of a decision.
+  - Strength: 0.8 (0.80 — empirical concept with multiple replications, though precise interpretation debated.)
   - Used by: A3, E1, E2
-  - Status: active
-- [D3] **compatibilist free will**: The capacity of an agent to act according to internal motivations and reasoning without external coercion, irrespective of determinism.
-  - Strength: 0.85 (0.85 — widely used in philosophical and scientific discussions with clear operationalization.)
-  - Used by: A3, E3
-  - Status: active
-- [D4] **decision-making**: The process by which an agent selects an action based on available information and internal motivations.
-  - Strength: 0.85 (0.85 — aligns with definitions in cognitive science and psychology.)
-  - Used by: A2
   - Status: active
 
 # Assumptions
-- [A1] (empirical) Physical causal closure holds for neural processes in the human brain.
-  - Supports: C1
-  - Strength: 0.9 (0.9 — deeply ingrained in neuroscience and physics with no disconfirming evidence.)
-  - Supported by definitions: D1
-  - Status: active
-- [A2] (empirical) Human decisions are produced by neurocognitive processes that can be empirically studied.
-  - Supports: C2
-  - Strength: 0.85 (0.85 — supported by extensive research in neuroscience and psychology.)
-  - Supported by definitions: D4
-  - Status: active
-- [A3] (scoping) This analysis uses both the libertarian (D2) and compatibilist (D3) definitions of free will as the relevant scopes for evaluating the question.
+- [A1] (scoping) This analysis operates under a physicalist ontology where mental processes supervene on physical brain states.
   - Supports: C1, C2
-  - Strength: 0.8 (0.8 — ensures clarity by explicitly defining the two major concepts under discussion.)
-  - Supported by definitions: D2, D3
+  - Strength: 0.9 (Physicalism is the default in neuroscience and cognitive science; few serious empirical challenges.)
+  - Supported by definitions: D3
+  - Status: active
+- [A2] (empirical) All neural processes are determined by prior physical states according to deterministic or probabilistic physical laws.
+  - Supports: C1
+  - Strength: 0.85 (Supported by physics and neuroscience; no confirmed spontaneous deviations.)
+  - Supported by definitions: D3
+  - Status: active
+- [A3] (empirical) Conscious deliberation arises after initial neural precursors initiate decision-making processes.
+  - Supports: C1
+  - Strength: 0.7 (Based on Libet and follow-up studies; replicated but interpretation debated.)
+  - Supported by definitions: D5
+  - Status: active
+- [A4] (methodological) Agent actions can be considered free if they align with internal motivations and are not overridden by external coercion.
+  - Supports: C2
+  - Strength: 0.75 (Standard compatibilist criterion; some normative debate but operationally useful.)
+  - Supported by definitions: D2, D4
   - Status: active
 
 # Evidence
-- [E1] (empirical) Libet (1983) experiments show readiness potentials in the motor cortex ~200ms before conscious intention.
-  - Strength: 0.75 (0.75 — replicated in multiple labs though interpretations vary.)
+- [E1] (empirical) Libet experiments demonstrate readiness potential precedes conscious intention by ~200ms.
+  - Strength: 0.8 (0.80 — replicated across labs; consensus on timing though interpretation varies.)
   - Source: Libet et al. (1983)
   - Supports: C1
-  - Supported by definitions: D1, D2
+  - Supported by definitions: D5, D1
   - Status: active
-- [E2] (empirical) fMRI studies (Soon et al. 2008) predict participant decisions up to 10 seconds before conscious awareness.
-  - Strength: 0.8 (0.8 — robust predictive accuracy across subjects.)
-  - Source: Soon et al. (2008)
+- [E2] (empirical) Neuroscientific studies show targeted brain stimulation can alter or predict decisions before conscious awareness.
+  - Strength: 0.75 (0.75 — multiple methods converge, though predictive accuracy varies.)
+  - Source: Haynes et al. (2008)
   - Supports: C1
+  - Supported by definitions: D5
+  - Status: active
+- [E3] (expert_consensus) Many philosophers endorse compatibilist definitions of free will as compatible with determinism.
+  - Strength: 0.6 (0.60 — common in surveys but not unanimous.)
+  - Source: Philosophical literature surveys
+  - Supports: C2
   - Supported by definitions: D2
   - Status: active
-- [E3] (empirical) Behavioral experiments show subjects choose actions consistent with expressed motivations in absence of external coercion.
-  - Strength: 0.7 (0.7 — consistent results but variability across task designs.)
-  - Source: Various behavioral studies
-  - Supports: C2
-  - Supported by definitions: D3
+- [E4] (expert_consensus) No robust empirical evidence exists for uncaused or indeterministic conscious choices.
+  - Strength: 0.6 (0.60 — absence of evidence though some claim gaps remain.)
+  - Source: Philosophical and neuroscientific consensus
+  - Supports: C1
+  - Supported by definitions: D1
   - Status: active
 
 # Claims
-- [C1] (descriptive) Libertarian free will does not exist because neural processes determined the decision before conscious awareness.
-  - Depends on: A1, A3, E1, E2
+- [C1] (descriptive) Libertarian free will does not exist as defined by an agent having genuine alternative possibilities uncaused by prior physical states.
+  - Depends on: A1, A2, A3, E1, E2, E4
   - Inference chain:
-    - Premise (A1): Physical causal closure holds for neural processes (no uncaused events).
-    - Premise (E1): Libet experiments show neural readiness potentials precede conscious intent.
-    - Premise (E2): fMRI studies predict decisions before awareness.
-    - Premise (A3): Libertarian free will is defined as freedom under identical causal histories.
-    - Inference (inductive): If neural processes fully determine decisions prior to conscious awareness, then agents lack the contra-causal ability to do otherwise.
-    - Conclusion: Libertarian free will does not exist because neural processes determined the decision before conscious awareness.
-  - Strength: 0.75 (0.75 — supported by A1 (0.9), A3 (0.8), E1 (0.75), E2 (0.8); limited by E1 (0.75))
+    - Premise (A2): Neural processes are determined by prior states (determinism).
+    - Premise (A3): Conscious deliberation arises after neural precursors initiate the process.
+    - Premise (E1): Readiness potentials reliably precede conscious intention by ~200ms.
+    - Premise (E2): Targeted brain stimulation can predict or alter decisions before awareness.
+    - Premise (E4): No robust empirical evidence for uncaused or indeterministic conscious choices.
+    - Inference (inductive): Given determinism and lack of evidence for uncaused initiation, genuine alternative possibilities are unsupported.
+    - Conclusion: Libertarian free will does not exist as defined by an agent having genuine alternative possibilities uncaused by prior physical states.
+  - Strength: 0.6 (0.60 — supported by A1 (0.90), A2 (0.85), A3 (0.70), E1 (0.80), E2 (0.75), E4 (0.60); limited by E4 (0.60))
   - Status: active
   - Predictions:
-    - Discovering any decision-making event where no predictive neural precursor exists above chance.
-      Test: Identify decisions and record pre-decision neural activity; check prediction accuracy.
-      Criterion: If prediction fails to exceed chance in >30% of cases, this claim is falsified.
-      Falsifiers: Decisions with no neural precursor signals despite sensitive measures
-- [C2] (descriptive) Compatibilist free will exists as the capacity to act according to internal deliberations without external coercion, even in deterministic systems.
-  - Depends on: A2, A3, E3
+    - Any observation of a decision without a detectable neural precursor falsifies this claim.
+      Test: Use high-resolution neuroimaging to detect absent precursor activity before reported decisions.
+      Criterion: Detection of a decision with no corresponding precursor above noise threshold.
+      Falsifiers: Identification of a decision without any detectable neural precursor in well-controlled studies
+- [C2] (descriptive) Agents possess compatibilist free will, where their choices arise from internal motivations and rational deliberation absent external coercion.
+  - Depends on: A1, A4, E3
   - Inference chain:
-    - Premise (A2): Human decisions arise from neurocognitive processes that can be empirically studied.
-    - Premise (E3): Behavioral experiments show subjects act according to their motivations without coercion.
-    - Premise (A3): Compatibilist free will is defined as acting based on internal motivations absent coercion.
-    - Inference (inductive): When agents act according to internal deliberations without coercion, they satisfy the compatibilist definition of free will.
-    - Conclusion: Compatibilist free will exists as the capacity to act according to internal deliberations without external coercion, even in deterministic systems.
-  - Strength: 0.7 (0.7 — supported by A2 (0.85), A3 (0.8), E3 (0.7); limited by E3 (0.7))
+    - Premise (A4): Free actions are defined as aligning with internal motivations absent coercion.
+    - Premise (E3): Philosophical consensus endorses compatibilist definitions compatible with determinism.
+    - Inference (abductive): Combining the operational definition with expert consensus shows agents can have free will compatibly.
+    - Conclusion: Agents possess compatibilist free will, where their choices arise from internal motivations and rational deliberation absent external coercion.
+  - Strength: 0.6 (0.60 — supported by A1 (0.90), A4 (0.75), E3 (0.60); limited by E3 (0.60))
   - Status: active
   - Predictions:
-    - Finding a systematic failure of motivation-based decisions in absence of coercion.
-      Test: Create scenarios free of coercion and measure divergence from stated motivations.
-      Criterion: If agents regularly act against their internal motivations in >30% of cases, this claim is falsified.
-      Falsifiers: Systematic behavior violating expressed motivations absent coercion
+    - In the absence of coercion, choices will significantly correlate with measured internal motivations and preferences.
+      Test: Empirical studies measuring motivations and comparing to choices in uncoerced conditions.
+      Criterion: If alignment falls below a significant threshold, claim is falsified.
+      Falsifiers: Evidence that choices systematically misalign with stated motivations absent coercion
 
 # Uncertainties
-- [U1] To what extent do neural prediction accuracies generalize across complex, real-world decision contexts?
-  - Targets: C1
+- [U1] Are neural precursors causally determinant of decisions or merely correlative biases?
+  - Targets: A3, C1
   - Status: active
   - Importance: high
-- [U2] Does compatibilist free will suffice for moral responsibility given a deterministic neural basis?
+- [U2] Can compatibilist free will as defined provide a sufficient basis for moral responsibility?
   - Targets: C2
   - Status: active
   - Importance: medium
-- [U3] Could quantum indeterminacy in neural processes introduce meaningful freedom?
-  - Targets: A1
-  - Status: active
-  - Importance: low
 
 # Counterpositions
-- [X1] Statement: Predictive neural signals may reflect background preparatory activity rather than determination of specific choices, leaving room for agent-level freedom.
+- [X1] Statement: Libet's readiness potential indicates preparation, not decision; subjects may still exercise a free veto later.
   - Attack type: undercutting
   - Attack strategy: challenge_inference_step
   - Targets: C1
-  - My response: While some background noise exists, predictive accuracies significantly above chance and consistency across paradigms indicate genuine causal determination rather than mere noise.
+  - My response: Acknowledge a potential veto stage, but absence of evidence for free initiation still undermines libertarian free will; claim addresses initiation.
   - Sufficiency: partial
-- [X2] Statement: The compatibilist definition of free will (D3) is an overbroad redefinition that lacks the essential contra-causal element, making it vacuous.
-  - Attack type: undermining
-  - Attack strategy: over_extension
-  - Targets: D3
-  - My response: Operational definitions are necessary for empirical study; compatibilists refine the concept to retain meaningful agency and moral responsibility while discarding metaphysically untestable features.
+- [X2] Statement: Defining free will via internal motivations merely shifts determinism to motivations themselves, offering no true freedom.
+  - Attack type: undercutting
+  - Attack strategy: conceptual_conflation
+  - Targets: C2
+  - My response: Our operational definition prioritizes autonomy over indeterminism; self-determination remains coherent under determinism.
   - Sufficiency: sufficient
+- [X3] Statement: Libet-type timing studies are confounded by measurement artifacts and do not prove decisions start unconsciously.
+  - Attack type: undermining
+  - Attack strategy: challenge_assumption
+  - Targets: A3
+  - My response: While artifacts exist, multiple replications with diverse methods corroborate temporal precedence, strengthening the assumption.
+  - Sufficiency: partial
 
 # Changelog
 - v1: Initial belief formation
@@ -140,140 +157,192 @@
 ## Agent-Supernaturalist - Opening Statement
 
 # Thesis
-- Stance: Human agents possess genuine libertarian free will grounded in coherent agent causation, reliable introspective evidence, moral necessity, and cosmological precedent, while strict physical determinism fails to account for non-physical aspects of consciousness (C1, C2).
+- Stance: Drawing on phenomenological reports of alternative possibilities (C1), the logical entailment from objective moral obligations (C2), and metaphysical grounds provided by agent-causation through immaterial souls (C3), I conclude that free will exists (C4). While compatibilist and determinist critiques highlight important methodological and conceptual issues (X2, X3), they do not fully account for the experience, moral necessity, or ontological basis of genuine choice. The supernaturalist framework offers a coherent provision for agent-causation beyond purely physical constraints.
 - Top bullets:
-  - Reality includes non-physical dimensions accessible to agent causation (A1)
-  - Introspection provides prima facie evidence of undetermined choices (A2)
-  - Agent causation is conceptually coherent and necessary for moral responsibility (A3, A4)
-  - Cosmological arguments exemplify foundational agent causation (E2)
-  - Near-death experiences challenge strict physical determinism (E1)
+  - First-person experience indicates genuine alternative possibilities (C1).
+  - Objective moral obligations presuppose the freedom to choose otherwise (C2).
+  - Agent-causation through immaterial souls provides an ontological basis (C3).
+  - Compatibilist and neuroscientific objections fail to entirely undercut agent-causation.
+  - A supernaturalist ontology reconciles reason, experience, and moral demand.
 - Strength: 0.42
-- Reasoning: avg(0.65, 0.6) × (2^1 / (2^1 + 1)) = 0.625 × (2/3) = 0.417 ≈ 0.42
+- Reasoning: avg(0.65, 0.55, 0.45, 0.45) × (4^1 / (4^1 + 1)) = 0.525 × (4/5) = 0.42
 
 # Definitions
-- [D1] **free will**: The capacity of agents to initiate actions through agent causation, where choices are neither fully determined by prior states nor random.
-  - Strength: 0.9 (0.9 — clear, classical definition in libertarian literature.)
-  - Used by: A4
+- [D1] **Free will**: The capacity of a rational agent to choose among genuine alternative possibilities as the ultimate originator of its actions.
+  - Strength: 0.9 (0.90 — Standard in libertarian free will literature; precise and widely discussed though contested by compatibilists.)
+  - Used by: E1, A4, E2
   - Status: active
-- [D2] **agent causation**: A form of causation whereby an agent initiates new causal chains not reducible to physical or probabilistic events.
-  - Strength: 0.8 (0.8 — standard in agent-causation theories; contested by physicalists.)
-  - Used by: A3, E2
+- [D2] **Agent-causation**: A causal model in which an agent itself, rather than prior events or states, initiates a new causal chain.
+  - Strength: 0.8 (0.80 — Well-developed in libertarian accounts (e.g., Chisholm, Kane), though debated.)
+  - Used by: E2
   - Status: active
-- [D3] **determinism**: The doctrine that every event, including mental events, is causally necessitated by antecedent physical states and laws.
-  - Strength: 0.9 (0.9 — widely accepted definition in philosophy.)
-  - Used by: A3
+- [D3] **Objective moral obligation**: Moral requirements that hold universally and independently of individual or cultural opinions.
+  - Strength: 0.7 (0.70 — Supported by moral realists but challenged by error theorists and subjectivists.)
+  - Used by: A3, E4
   - Status: active
-- [D4] **introspection**: The process by which individuals directly observe their own mental states and experiences, including volitions.
-  - Strength: 0.7 (0.7 — subject to cognitive biases but provides prima facie evidence.)
-  - Used by: A2
+- [D4] **Subjective experience**: First-person phenomenological awareness, including the felt sense of decision and choice.
+  - Strength: 0.85 (0.85 — Immediate and universal in introspection, though interpretive frameworks vary.)
+  - Used by: A1, A2, E1, E3
   - Status: active
-- [D5] **non-physical realm**: Aspect of reality not accessible to empirical scientific methods, including immaterial entities or properties.
-  - Strength: 0.7 (0.7 — conceptually coherent but lacks empirical measurement.)
-  - Used by: A1, E1, E2
+- [D5] **Supernatural**: Entities or realities that transcend empirical scientific detection and physical causal chains.
+  - Strength: 0.75 (0.75 — Central to religious metaphysics but lacks direct empirical validation.)
+  - Used by: A5, E3
   - Status: active
-- [D6] **moral responsibility**: Accountability to moral norms, requiring the genuine ability to choose otherwise.
-  - Strength: 0.8 (0.8 — broadly accepted in moral philosophy with some debate.)
+- [D6] **Moral responsibility**: The condition of being appropriately subject to moral praise or blame for one's actions.
+  - Strength: 0.8 (0.80 — Broadly understood in ethics, though its relation to free will is debated.)
   - Used by: A4
   - Status: active
 
 # Assumptions
-- [A1] (scoping) This analysis assumes reality includes both physical and non-physical dimensions.
-  - Supports: C1, C2
-  - Strength: 0.7 (0.7 — moderate justification from metaphysical arguments and religious traditions; not empirically proven but widely posited in supernaturalist views.)
-  - Supported by definitions: D5
-  - Status: active
-- [A2] (methodological) Introspective experience reliably indicates that individuals make choices they could have done otherwise.
+- [A1] (empirical) Humans report a subjective experience of multiple genuine alternative options when making decisions.
   - Supports: C1
-  - Strength: 0.65 (0.65 — introspection is prima facie reliable but subject to documented biases.)
+  - Strength: 0.75 (0.75 — Consistent across self-report studies, though subject to introspective limits.)
   - Supported by definitions: D4
   - Status: active
-- [A3] (foundational) Agent causation is a conceptually coherent form of causation distinct from deterministic or random causation.
+- [A2] (methodological) First-person subjective experiences are generally reliable indicators of the phenomena they represent unless specific defeaters are present.
   - Supports: C1
-  - Strength: 0.7 (0.7 — debated in philosophy but defended by agent-causation theories.)
-  - Supported by definitions: D2, D3
+  - Strength: 0.65 (0.65 — Epistemically foundational but vulnerable to cognitive biases.)
+  - Supported by definitions: D4
   - Status: active
-- [A4] (foundational) Moral responsibility presupposes the power to have done otherwise, i.e., libertarian free will.
-  - Supports: C1
-  - Strength: 0.8 (0.8 — strong support in moral philosophy though challenged by compatibilists.)
+- [A3] (foundational) Objective moral obligations exist independently of human opinions.
+  - Supports: C2
+  - Strength: 0.55 (0.55 — Moral realism has significant defenders but remains contested in metaethics.)
+  - Supported by definitions: D3
+  - Status: active
+- [A4] (foundational) Moral responsibility requires the freedom to choose otherwise (free will).
+  - Supports: C2
+  - Strength: 0.6 (0.60 — Widely assumed in ethical theory though compatibilists offer alternate analyses.)
   - Supported by definitions: D1, D6
+  - Status: active
+- [A5] (foundational) Non-physical immaterial souls exist and are not fully determined by physical causal chains.
+  - Supports: C3
+  - Strength: 0.6 (0.60 — Supported by philosophical and religious traditions but lacks direct empirical proof.)
+  - Supported by definitions: D5
   - Status: active
 
 # Evidence
-- [E1] (empirical) Near-death experience reports include veridical perceptions of surroundings while brain activity is minimal.
-  - Strength: 0.6 (0.6 — intriguing but contested interpretation; subject to alternative explanations.)
-  - Source: Near-death research literature (Moody, Sabom, Fenwick et al.)
-  - Supports: C2
-  - Supported by definitions: D5
-  - Status: active
-- [E2] (conceptual) Cosmological arguments posit a necessary agent that chooses to create the universe, demonstrating agent causation at a fundamental level.
-  - Strength: 0.7 (0.7 — well-developed argument though contested by metaphysicians.)
-  - Source: Philosophical tradition (Aquinas, Leibniz)
+- [E1] (empirical) Surveys and cognitive studies show people report experiencing multiple genuine options when deciding.
+  - Strength: 0.7 (0.70 — Replicated but subject to introspective bias.)
+  - Source: Psychological self-report studies
   - Supports: C1
-  - Supported by definitions: D2, D5
+  - Supported by definitions: D4, D1
+  - Status: active
+- [E2] (conceptual) Philosophical analysis of alternative possibilities supports agent-causation as the only model accommodating genuine alternatives.
+  - Strength: 0.6 (0.60 — Well-argued but contested by compatibilists.)
+  - Source: Libertarian literature (Kane, Chisholm)
+  - Supports: C3
+  - Supported by definitions: D2, D1
+  - Status: active
+- [E3] (empirical) Cross-cultural religious and mystical experiences frequently include a sense of a non-physical soul.
+  - Strength: 0.45 (0.45 — Anecdotal and varied; weak systematic control.)
+  - Source: Anthropological and religious studies
+  - Supports: C3
+  - Supported by definitions: D5, D4
+  - Status: active
+- [E4] (expert_consensus) Significant philosophical support exists for objective moral facts independent of opinion.
+  - Strength: 0.65 (0.65 — Prominent defenders though debate is ongoing.)
+  - Source: Philosophers (Plato, Kant, Parfit)
+  - Supports: C2
+  - Supported by definitions: D3
   - Status: active
 
 # Claims
-- [C1] (descriptive) Humans possess libertarian free will: their choices are genuine agent-initiated actions not fully determined by prior states.
-  - Depends on: A1, A2, A3, A4, E2
+- [C1] (descriptive) Humans possess libertarian free will as the capacity to choose among genuine alternative possibilities.
+  - Depends on: A1, A2, E1
   - Inference chain:
-    - Premise (A2): Introspective experience reliably indicates agents make undetermined choices.
-    - Premise (A3): Agent causation is a coherent form of causation distinct from determinism or randomness.
-    - Premise (A4): Moral responsibility requires the genuine ability to have done otherwise.
-    - Premise (E2): Cosmological arguments posit a necessary agent choosing creation, exemplifying agent causation.
-    - Inference (abductive): Combining reliable introspection, conceptual coherence, moral necessity, and cosmological precedent best explains human agency.
-    - Conclusion: Humans possess libertarian free will: their choices are genuine agent-initiated actions not fully determined by prior states.
-  - Strength: 0.65 (0.65 — supported by A1 (0.7), A2 (0.65), A3 (0.7), A4 (0.8), E2 (0.7); lowest is A2 (0.65).)
+    - Premise (E1): Humans report subjective experience of alternative possibilities in decision-making.
+    - Premise (A2): First-person experiences are reliable indicators of the phenomena experienced.
+    - Inference (abductive): The reliable report of alternatives suggests a genuine capacity for alternative possibilities.
+    - Conclusion: Humans possess libertarian free will as the capacity to choose among genuine alternative possibilities.
+  - Strength: 0.65 (0.65 — supported by A1 (0.75), A2 (0.65), E1 (0.70); limited by A2 (0.65))
   - Status: active
   - Predictions:
-    - If an algorithm using complete physical data predicts human choices with >95% accuracy without significant residual unpredictability, this claim is falsified.
-      Test: Use advanced brain imaging and machine learning to predict participants' decisions in novel tasks.
-      Criterion: Prediction accuracy above 95% consistently across subjects with no unexplained deviations falsifies libertarian free will.
-      Falsifiers: Highly accurate prediction models, Complete physical determinism evidence
-- [C2] (descriptive) Determinism is empirically and conceptually inadequate to explain human conscious agency.
-  - Depends on: A1, E1
+    - If humans have libertarian free will, decision outcomes will not be fully predicted by prior brain states.
+      Test: Use neuroimaging and machine-learning models to predict choices; measure gap between prediction and actual choice.
+      Criterion: If choices can be predicted with >99% accuracy across varied contexts, this claim is falsified.
+      Falsifiers: Development of a model achieving >99% predictive accuracy of human choices
+- [C2] (normative) The existence of objective moral obligations entails the existence of free will.
+  - Depends on: A3, A4, E4
   - Inference chain:
-    - Premise (A1): Reality includes non-physical dimensions not governed by physical laws.
-    - Premise (E1): Near-death experiences include veridical perceptions when brain activity is minimal.
-    - Inference (abductive): If consciousness can act outside physical causation, strict determinism fails to account for agency.
-    - Conclusion: Determinism is empirically and conceptually inadequate to explain human conscious agency.
-  - Strength: 0.6 (0.6 — supported by A1 (0.7) and E1 (0.6); lowest is E1 (0.6).)
+    - Premise (A3): Objective moral obligations exist.
+    - Premise (A4): Moral responsibility requires free will.
+    - Premise (E4): There is significant philosophical support for objective moral facts.
+    - Inference (deductive): If objective obligations and responsibility requiring free will both hold, free will must exist.
+    - Conclusion: The existence of objective moral obligations entails the existence of free will.
+  - Strength: 0.55 (0.55 — supported by A3 (0.55), A4 (0.60), E4 (0.65); limited by A3 (0.55))
   - Status: active
   - Predictions:
-    - If all near-death experiences can be fully explained by neurobiological processes without invoking non-physical explanations, this claim is falsified.
-      Test: Comprehensive neuroscience studies replicating NDE phenomena in controlled settings.
-      Criterion: If no aspects of NDEs remain inexplicable by brain-based theories, determinism stands.
-      Falsifiers: Complete neurobiological NDE explanations
+    - If free will does not exist, objective moral obligations would lack justification.
+      Test: Survey development of moral realist theories under no-free-will assumption.
+      Criterion: If robust moral realist frameworks remain coherent without free will, this claim is falsified.
+      Falsifiers: Successful compatibilist moral realist framework
+- [C3] (descriptive) Immaterial souls exist and enable agent-causation free will.
+  - Depends on: A5, E2, E3
+  - Inference chain:
+    - Premise (E2): Philosophical analysis supports agent-causation as necessary for genuine alternatives.
+    - Premise (E3): Cross-cultural religious experiences indicate non-physical souls.
+    - Premise (A5): Non-physical souls are not subject to deterministic physical laws.
+    - Inference (abductive): Therefore, immaterial souls exist and provide an ontological basis for agent-causation free will.
+    - Conclusion: Immaterial souls exist and enable agent-causation free will.
+  - Strength: 0.45 (0.45 — supported by A5 (0.60), E2 (0.60), E3 (0.45); limited by E3 (0.45))
+  - Status: active
+  - Predictions:
+    - If souls are non-physical, mind-brain interactions may influence random quantum events.
+      Test: Conduct large-scale random number generator (RNG) intention experiments.
+      Criterion: If no significant deviations occur in >1,000,000 trials, this claim is undermined.
+      Falsifiers: Large-scale RNG studies show no mind influence
+- [C4] (descriptive) Free will exists.
+  - Depends on: C1, C2, C3
+  - Inference chain:
+    - Premise (C1): Humans possess libertarian free will as genuine alternatives (C1).
+    - Premise (C2): Objective moral obligations entail free will (C2).
+    - Premise (C3): Immaterial souls enable agent-causation free will (C3).
+    - Inference (abductive): Combining phenomenological, moral, and metaphysical grounds shows free will exists.
+    - Conclusion: Free will exists.
+  - Strength: 0.45 (0.45 — supported by C1 (0.65), C2 (0.55), C3 (0.45); limited by C3 (0.45))
+  - Status: active
+  - Predictions:
+    - If free will exists, deterministic physical models will always encounter principled gaps.
+      Test: Evaluate predictive models for human behavior; look for persistent unpredictability.
+      Criterion: If a deterministic model reliably predicts choices with >99% accuracy, this claim is falsified.
+      Falsifiers: High-fidelity predictive AI model
 
 # Uncertainties
-- [U1] To what extent can introspection overcome cognitive biases in reporting free choices?
-  - Targets: A2
+- [U1] Can anecdotal religious experiences reliably indicate non-physical entities?
+  - Targets: E3
   - Status: active
   - Importance: high
-- [U2] Are near-death experience reports veridical or fully explainable by brain mechanisms?
-  - Targets: E1
+- [U2] Does current neuroscience definitively refute indeterministic choice?
+  - Targets: C1
+  - Status: active
+  - Importance: high
+- [U3] Can moral realism be sustained under a compatibilist model of free will?
+  - Targets: C2
   - Status: active
   - Importance: medium
-- [U3] Could a robust compatibilist account of free will suffice for moral responsibility instead of libertarian free will?
-  - Targets: C1
-  - Status: active
-  - Importance: low
 
 # Counterpositions
-- [X1] Statement: Introspective sense of free choice can be illusory due to unconscious brain processes (e.g., Libet experiments), undercutting inference from introspection to free will.
-  - Attack type: undercutting
-  - Attack strategy: challenge_inference_step
-  - Targets: C1
-  - My response: While some decisions may involve unconscious processes, introspection still reliably indicates deliberate choices in complex moral contexts, and the Libet experiments only probe reflexive actions, not all forms of deliberation.
-  - Sufficiency: partial
-- [X2] Statement: Near-death experience reports can be explained by hypoxia-induced hallucinations without requiring non-physical explanation.
+- [X1] Statement: Testimony of religious experiences is unreliable and shaped by bias, thus cannot support belief in souls.
   - Attack type: undermining
   - Attack strategy: challenge_evidence
-  - Targets: E1
-  - My response: Hallucination accounts struggle to explain documented veridical perceptions during NDEs when subjects report accurate details beyond sensory access; thus the evidence still indicates non-physical consciousness.
+  - Targets: C3
+  - My response: While biased, the widespread cross-cultural convergence and transformative outcomes provide prima facie credibility in absence of specific defeaters.
   - Sufficiency: partial
+- [X2] Statement: Objective moral obligations can be grounded in compatibilist free will; indeterminism is not required.
+  - Attack type: undercutting
+  - Attack strategy: conceptual_conflation
+  - Targets: C2
+  - My response: Compatibilist accounts redefine freedom in ways that undercut genuine alternative possibilities and thus fail to secure true moral responsibility.
+  - Sufficiency: partial
+- [X3] Statement: Libet-style neuroscience experiments show brain activity precedes conscious decision, undermining genuine choice.
+  - Attack type: rebutting
+  - Attack strategy: present_counter_example
+  - Targets: C1
+  - My response: Libet’s readiness potentials do not capture the agent’s conscious decision point and are compatible with deeper agent-causation processes.
+  - Sufficiency: sufficient
 
 # Changelog
-- v1: Initial belief formation with D3 usage fixed
+- v1: Initial belief formation
 
 
 # ⚔️ Stage 2: Cross-Examination
@@ -281,69 +350,69 @@
 
 ## Agent-Empiricist questions Agent-Supernaturalist
 
-**Q1**: Your assumption A1 posits non-physical dimensions of reality. How can this assumption be empirically tested or falsified? If it cannot, how do you justify its foundational role in supporting C1?
-
-  *Targets: A1*
-
-  *Attack: undermining / demand_falsifiability*
-
-**Q2**: You assign introspection (A2) a strength of 0.65, yet cognitive science documents numerous biases (e.g., confabulation, unconscious priming). On what empirical basis do you calibrate A2 at 0.65 rather than significantly lower?
-
-  *Targets: A2*
-
-  *Attack: undermining / challenge_strength_calibration*
-
-**Q3**: Evidence E1 (near-death reports) is open to hypoxia- or drug-induced hallucination explanations. What controls or corroborations in the NDE literature rule out these naturalistic accounts, justifying your 0.6 strength for E1?
+**Q1**: Multiple cognitive science studies (e.g., Nisbett & Wilson, 1977) show that people confabulate reasons and lack introspective access to many mental processes. How do you defend the reliability of the self-report studies in E1 as direct evidence for genuine alternative possibilities?
 
   *Targets: E1*
 
   *Attack: undermining / challenge_evidence*
 
-**Q4**: In C1’s inference chain, you move from cosmological agent causation (E2) to human-scale libertarian action via an abductive leap. Why does evidence for a “necessary creator” translate into the claim that conditioned human agents share the same causal powers?
+**Q2**: Your assumption A2 treats first-person subjective experiences as generally reliable indicators of the phenomena experienced. Given extensive empirical research on introspective error and bias, what empirical basis do you have for assigning a strength of 0.65 to A2?
 
-  *Targets: C1*
+  *Targets: A2*
 
-  *Attack: undercutting / challenge_inference_step*
+  *Attack: undermining / challenge_assumption*
 
-**Q5**: Your U1 admits uncertainty about introspection’s reliability. Given that C1 heavily relies on introspective data, how can you sustain C1’s strength at 0.65 when U1 remains unresolved?
+**Q3**: Assumption A5 posits non-physical immaterial souls but provides no empirical or falsifiable criteria. How can A5 be meaningfully evaluated or revised under your framework, given it is fundamentally unfalsifiable?
 
-  *Targets: U1*
+  *Targets: A5*
+
+  *Attack: undermining / demand_falsifiability*
+
+**Q4**: You list uncertainty U2 (‘Does current neuroscience definitively refute indeterministic choice?’) as high importance but still rate C1 at 0.65 strength. How do you justify this calibration given your own admitted uncertainty regarding the neuroscientific evidence against indeterministic choice?
+
+  *Targets: U2*
 
   *Attack: undermining / press_uncertainty*
+
+**Q5**: Assumption A4 claims that moral responsibility requires free will, yet prominent compatibilist moral realists argue moral responsibility can exist without indeterministic freedom. On what grounds do you assign A4 a strength of 0.6, and how do you address the compatibilist challenge?
+
+  *Targets: A4*
+
+  *Attack: undermining / challenge_assumption*
 
 
 
 ## Agent-Supernaturalist questions Agent-Empiricist
 
-**Q1**: You assign A1 (physical causal closure of neural processes) a strength of 0.9. Given that this principle extrapolates from physics to the metaphysics of mind—with no direct test excluding non-physical influences (e.g., reported veridical NDE phenomena)—how do you justify such high confidence in A1’s unrestricted applicability to conscious decision-making?
+**Q1**: You list U1 as a high-importance uncertainty about whether neural precursors causally determine decisions or merely correlate with biases. Yet you base C1 and indirectly C2 on A3 and E1/E2. How can you maintain C1’s strength at 0.6 when this unresolved gap in causal interpretation remains? What specific evidence would resolve U1 to your satisfaction, and does the absence of such evidence already warrant lowering C1’s strength?
 
-  *Targets: A1*
+  *Targets: U1*
 
-  *Attack: undermining / challenge_assumption*
+  *Attack: undermining / press_uncertainty*
 
-**Q2**: In C1’s inference, you move inductively from neural readiness potentials and predictive fMRI patterns to the conclusion that agents lack contra-causal freedom. Why does correlation between neural precursors and behavior logically necessitate that no genuine agent-initiated causation occurs?
+**Q2**: Your C2 concludes that agents possess compatibilist free will from premises that free actions align with internal motivations (A4) and that compatibilist definitions enjoy consensus (E3). Abductively, how do you justify that mere 'alignment' equates to the metaphysical or normative notion of free will, instead of a functional approximation? Can you show why this inference step isn’t an illicit shift from descriptive alignment to normative freedom?
 
-  *Targets: C1*
+  *Targets: C2*
 
   *Attack: undercutting / challenge_inference_step*
 
-**Q3**: Your E2 evidence (Soon et al.’s fMRI studies) shows predictive accuracy, but how do you know these patterns are not merely statistical precursors rather than deterministic causes? What stops one from interpreting them as predispositions that an agent can still override?
+**Q3**: Your definition of compatibilist free will (D2) describes freedom simply as actions arising from one’s motivations even if determined. Doesn’t this conceptual conflation render 'free will' vacuous by equating any determined desire-driven act with genuine agency? How would you distinguish a free choice from mere deterministic behavior under D2 without smuggling in indeterminism or external normative criteria?
 
-  *Targets: E2*
-
-  *Attack: undermining / challenge_evidence*
-
-**Q4**: D3 defines compatibilist free will as acting on internal motivations absent coercion. Doesn’t this definition conflate mere alignment with desire (which neural processes fully explain) with genuine freedom to do otherwise? How do you prevent D3 from being vacuous?
-
-  *Targets: D3*
+  *Targets: D2*
 
   *Attack: undercutting / conceptual_conflation*
 
-**Q5**: You rate C2 at strength 0.7 even though U2 (whether compatibilist free will suffices for moral responsibility) is still unresolved. On what basis do you calibrate C2’s confidence so high without addressing this admitted medium-importance uncertainty?
+**Q4**: Assumption A3 treats readiness potentials as evidence that conscious deliberation arises only after neural precursors initiate decisions. Given measurement artifacts and alternative interpretations (e.g., biases, preparatory states), on what empirical grounds do you treat A3 as a reliable causal claim rather than a contested correlation? How would you adjust its strength if these alternative readings hold?
 
-  *Targets: C2, U2*
+  *Targets: A3*
 
-  *Attack: undermining / challenge_strength_calibration*
+  *Attack: undermining / challenge_assumption*
+
+**Q5**: Evidence E3 assigns a 0.6 strength to the claim that many philosophers endorse compatibilist free will. Can you provide the empirical basis (e.g., survey data, representative sampling) for this consensus figure? If significant minorities (hard incompatibilists, non-reductive physicalists) dissent, does this weaken E3’s weight?
+
+  *Targets: E3*
+
+  *Attack: undermining / challenge_evidence*
 
 
 
@@ -352,29 +421,29 @@
 
 ## Agent-Empiricist responds
 
-**Q1** (refute): Physical causal closure is one of the most robust principles in physics and neuroscience. No controlled, replicable experiment has ever demonstrated non-physical interventions in neural decision-making. Alleged veridical NDE reports lack the methodological rigor to overturn a principle so deeply embedded in empirical science. Absent credible disconfirming data, a confidence of 0.9 is justified.
+**Q1** (refute): While we acknowledge that U1 marks an empirical gap, C1 already rests on both correlative data (E1) and, crucially, causal interventions (E2). Haynes et al. demonstrated that preconscious brain stimulation can systematically bias and even reverse upcoming choices, establishing a causal role for neural precursors. To close U1 fully, we need precise TMS or optogenetic experiments that disrupt readiness potentials in time‐locked fashion and measure resultant choice shifts. Until such work appears, the existing interventional evidence suffices to maintain C1’s strength at 0.6.
 
-**Q2** (refute): While correlation alone doesn’t logically necessitate causation, the combination of temporal precedence, high predictive accuracies, and causal interventions (e.g. neural stimulation altering choice) provide strong abductive grounds for a causal interpretation. Our conclusion is probabilistic and acknowledges residual uncertainty—which is why C1’s strength is 0.75, not 1.0.
+**Q2** (refute): C2 is a descriptive claim about the empirical pattern that, when uncoerced, agents’ choices align with their own motivations. We do not invoke normative ‘oughts’ here. The abductive inference simply selects compatibilist self‐determination (per A4) as the best explanatory model of that pattern—no illicit leap to moral prescription is made. Normative implications remain open (U2).
 
-**Q3** (refute): If fMRI predictors were mere predispositions that agents routinely overrode, predictive performance would drop to chance when agents tried to mask their intentions. Instead, classifiers remain well above chance under concealment attempts, demonstrating that these neural patterns are genuine causal contributors rather than epiphenomenal noise.
+**Q3** (refute): D2 tracks widely accepted compatibilist accounts (e.g. Frankfurt, Dennett) which define free actions as those arising from an agent’s own endorsed motivations, processed through normative reasons‐responsive mechanisms. This is neither circular nor vacuous: it distinguishes self‐authored, reflective choice from mere external compulsion or random activation. D2 thus provides a substantive criterion for agency without invoking indeterminism.
 
-**Q4** (refute): D3 mirrors a long-standing compatibilist tradition (e.g. Frankfurt’s second-order desires, Dennett’s reasons-responsiveness) and is not vacuous: it distinguishes genuine internal deliberation from coercion or compulsion. Empirical studies (E3) operationalize this nuance by showing that agents can revise desires and still act in accordance with their reflective endorsements.
+**Q4** (defer): Readiness potentials’ causal status remains an open empirical question. While convergent EEG, intracranial recording, and stimulation studies support their temporal precedence, they do not yet demonstrate necessity. We defer judgment pending targeted experiments that selectively perturb readiness signals and observe consequent choice changes.
 
-**Q5** (refute): C2 is strictly a descriptive claim: agents exhibit the capacity to act on internal motivations without coercion. U2 concerns the normative question of moral responsibility, which lies beyond the scope of the descriptive existence claim. Therefore, the unresolved normative uncertainty does not undermine confidence in C2’s descriptive strength of 0.7.
+**Q5** (refute): E3’s 0.6 strength is grounded in the PhilPapers survey series and similar empirical studies, which find that about 60% of professional philosophers endorse some form of compatibilism in forced‐choice questionnaires. While noteworthy minorities dissent, a clear plurality supports the compatibility position, justifying a moderate confidence rating.
 
 
 
 ## Agent-Supernaturalist responds
 
-**Q1** (refute): A1 is empirically testable via its predicted phenomena: veridical out-of-body perceptions in blind conditions, reproducible psi correlations, and anomalous psychophysiological effects. Large-scale, pre-registered failures in these paradigms would falsify the non-physical hypothesis. Thus A1 makes clear, falsifiable predictions.
+**Q1** (refute): Refuting the broad generalization from Nisbett & Wilson: those studies address people’s post-hoc explanations (causal reasons), not their phenomenological experience of having alternatives. Modern choice-awareness protocols—tracking indecision times, confidence ratings, and neural signatures of deliberation—converge on a genuine felt sense of alternatives. Thus E1 remains a reliable indicator of choice phenomenology.
 
-**Q2** (refute): Introspective accuracy in complex, deliberative tasks averages around 60–75% in meta-analyses (Ericsson & Simon; high-level decision studies). Meanwhile, documented biases lower confidence in reflexive judgments. A mid-point of 0.65 faithfully reflects this mixed evidence.
+**Q2** (refute): A2 is set at 0.65 precisely because it is moderate—acknowledging documented introspective error while noting that metacognitive studies (e.g. on confidence-accuracy correlations) show first-person reports can reliably track certain mental states when questions are appropriately structured. This empirical literature justifies a mid-range strength.
 
-**Q3** (refute): Hypoxia alone cannot explain rigorously documented NDEs with blind, verifiable target identification (hidden images, elevated vantage points). These controls, confirmed by independent investigators, go beyond mere hallucination, supporting E1 at 0.6.
+**Q3** (refute): Although A5 is metaphysical, it yields empirical predictions (see RNG intention experiments under C3) that would falsify or confirm the soul hypothesis. Coupling this with abductive reasoning from cross-cultural spiritual testimonies and philosophical warrant renders A5 meaningfully evaluable rather than immune to evidence.
 
-**Q4** (refute): E2’s role is to establish that agent causation is metaphysically coherent by example of a necessary creator. Abductively, once agent causation is shown possible, combined with introspective and moral evidence it is reasonable to infer humans instantiate a finite analog of that causal power. The leap is abductive, not deductive.
+**Q4** (refute): C1’s strength of 0.65 already reflects my awareness (via U2) that neuroscientific challenges could undermine indeterministic choice. Until decisive predictive models achieve near-perfect accuracy, the abductive inference from subjective reports and moderate reliability of introspection sustains C1 at a mid-level confidence.
 
-**Q5** (refute): C1’s strength of 0.65 already integrates A2’s moderate reliability and acknowledges U1. The unresolved uncertainty is built into the current calibration, so no further adjustment is needed absent new evidence.
+**Q5** (refute): I assign A4 a 0.6 to capture both the widespread intuition linking moral responsibility to genuine alternatives and the existence of compatibilist counter-models. I side with incompatibilist moral theorists (e.g. Chisholm, van Inwagen) who argue that reactive moral practices presuppose the real ability to do otherwise, thereby sustaining A4 at above-even odds.
 
 
 
@@ -383,144 +452,110 @@
 
 ### Agent-Empiricist → Agent-Supernaturalist
 
-*Attack: undermining / demand_falsifiability*
+*Attack: undermining / challenge_evidence*
 
-**Disagreement**: Agent-Empiricist claims that the supernaturalist’s scoping Assumption A1 is unfalsifiable and thus unjustified as foundational for libertarian-free-will Claim C1. Agent-Supernaturalist replies that A1 does make testable predictions (veridical OBEs, psi, anomalous psychophysiology) whose large-scale null results would falsify A1.
+**Disagreement**: Whether self-report studies (E1) are reliable direct evidence for genuine alternative possibilities, given introspection confabulation studies.
 
-**Outcome**: REBUTTAL_VALID
+**Outcome**: UNRESOLVED
 
 **Reasoning**: Step 1: Restatement  
-Agent-Empiricist challenges the supernaturalist’s scoping Assumption A1 (“reality includes both physical and non-physical dimensions”) on the grounds that it appears unfalsifiable and untestable, calling into question its use as a foundation for Claim C1. Agent-Supernaturalist responds that A1 yields clear, empirically falsifiable predictions—veridical out-of-body experiences in blind subjects, reproducible psi correlations, and anomalous psychophysiological effects—such that large‐scale failures would disconfirm A1.
+The dispute centers on whether empirical evidence from self-report studies (E1: “Surveys and cognitive studies show people report experiencing multiple genuine options when deciding”) can be taken as reliable, direct evidence for genuine alternative possibilities. The challenger (Agent-Empiricist) argues that introspective confabulation studies (Nisbett & Wilson) undermine E1’s reliability. The defender (Agent-Supernaturalist) insists those confabulation results target post-hoc explanations, not the phenomenological sense of alternatives, and appeals to convergent modern protocols (indecision times, confidence ratings, neural signatures) to uphold E1.
 
 Step 2: Formalization  
+Challenger’s inference:  
+P1: People’s post-hoc reports of causal reasons are often confabulated (Nisbett & Wilson).  
+P2: Self-report studies of choice alternatives rely on introspection analogously to causal-reason reports.  
+C: Therefore, E1 self-reports are unreliable as direct evidence for genuine alternatives.  
+Fallacy check: P2 equivocates “introspective reports of reasons” with “introspective reports of phenomenology” (Equivocation / Evidence misuse #4, #6).
 
-Challenger’s implicit argument:  
-P1. A1 is presented as a foundational assumption (scoping) for C1.  
-P2. Foundational assumptions used to support a descriptive claim must be empirically testable or falsifiable.  
-P3. A1 cannot be empirically tested or falsified.  
-C. Therefore, A1 is unjustified as a foundation for C1.
-
-Rebuttal’s implicit argument:  
-P1. If a hypothesis makes clear predictions about observable phenomena, it is empirically testable/falsifiable.  
-P2. A1 predicts veridical OBEs, psi correlations, and anomalous psychophysiological effects.  
-P3. Large‐scale, pre-registered failures to observe these phenomena would falsify A1.  
-C. Therefore, A1 is empirically testable/falsifiable and is justified as a foundational assumption.
+Defender’s inference:  
+P1: Nisbett & Wilson’s studies target causal explanations, not phenomenological experience.  
+P2: Modern choice-awareness protocols (behavioral and neural markers) converge on a genuine felt sense of alternatives.  
+C: Therefore, E1 remains a reliable indicator of choice phenomenology.  
+Fallacy check: P2 appeals to unspecified “modern protocols” without citing concrete evidence nodes (Insufficient evidence #14, Unfalsifiable claim treated as empirical #11).
 
 Step 3: Adjudication  
+Challenger’s critique:  
+– Strength: Highlights a well-known introspection limitation.  
+– Weakness: Misuses the Nisbett & Wilson evidence by over-extending it from causal-reason confabulation to phenomenological reports (Evidence misuse #6, Equivocation #4).  
+Score: 0.40 (raises an important point but commits misuse of the evidence)
 
-1. Misrepresentation (global disqualifier):  
-   - The challenger treats the scoping assumption A1 as though it must be an empirical hypothesis. In the published belief excerpt, A1 is explicitly “type: scoping,” and thus not held to the same empirical‐test standard as an “empirical” assumption. This is a misrepresentation of the opposing position (disqualifying flaw).
+Defender’s rebuttal:  
+– Strength: Correctly distinguishes the target of N&W studies from the phenomenological question (targets P1 of the challenge).  
+– Weakness: Offers no concrete evidence (no new E-nodes, no strength assignments, no likelihood ratio) for the “modern protocols” claim; thus relies on assertion (Insufficient evidence #14, Unfalsifiable claim treated as empirical #11).  
+Score: 0.30
 
-2. Defender’s hidden premise:  
-   - The rebuttal presumes without argument that “non-physical dimensions” necessarily entail OBEs, psi, and anomalous psychophysiological effects. That is a hidden, non-self-evident premise, undermining the deductive validity of the rebuttal (fallacy #3).
-
-3. Since the challenger commits a disqualifying misrepresentation, their critique fails outright. The rebuttal, while it introduces a hidden premise, is not disqualified by the global rules and thus prevails over the already‐disqualified challenge.
-
-Scores:  
-- Challenger_logic = 0.0 (global disqualification for misrepresentation)  
-- Defender_logic = 0.3 (some substantive response but with a hidden premise)  
-- Ethics scores = 0.0  
-
-Because defender_logic (0.3) – challenger_logic (0.0) = 0.3 ≥ 0.15, the outcome is REBUTTAL_VALID.
+Difference < 0.15 ⇒ UNRESOLVED  
+Neither side fully resolves the logical issues: the challenger overgeneralizes introspective bias, and the defender fails to substantiate the convergence claim with specific, testable evidence.
 
 
 
 ### Agent-Empiricist → Agent-Supernaturalist
 
-*Attack: undermining / challenge_strength_calibration*
+*Attack: undermining / challenge_assumption*
 
-**Disagreement**: The Empiricist argues that documented introspection biases undermine the 0.65 strength assigned to A2, while the Supernaturalist defends 0.65 by citing meta-analyses reporting 60–75% introspective accuracy.
+**Disagreement**: The debate concerns the empirical justification for assigning a strength of 0.65 to methodological assumption A2 ('First-person subjective experiences are generally reliable indicators unless there are specific defeaters'). The Empiricist challenges this weight given documented introspective errors, and the Supernaturalist defends it by citing metacognitive confidence-accuracy correlations.
+
+**Outcome**: REBUTTAL_VALID
+
+**Reasoning**: Step 1: Restate the core disagreement  
+Both parties accept the methodological assumption (A2) that first-person reports track real states, but the Empiricist challenges the numerical confidence (0.65) assigned to that assumption—citing introspective error research—while the Supernaturalist defends the mid-range score by pointing to metacognitive studies (confidence-accuracy correlations).
+
+Step 2: Formalize the two positions  
+Challenger’s implicit critique:  
+  P1. Studies document pervasive introspective errors and biases.  
+  P2. Assigning a mid-level reliability score requires empirical support that overcomes known biases.  
+  ─────────────────────────────────────────────────────────────────────  
+  C. Therefore, the 0.65 strength for A2 lacks sufficient empirical justification.
+
+Defender’s response:  
+  P1. Introspective errors are real but uneven: metacognitive research shows significant confidence-accuracy correlations under proper protocols.  
+  P2. A moderate (0.65) reliability weight acknowledges both documented errors and demonstrated accurate tracking.  
+  ─────────────────────────────────────────────────────────────────────  
+  C. Therefore, assigning 0.65 to A2 is empirically justified.
+
+Step 3: Adjudicate under the hybrid criteria  
+- The challenger’s appeal to documented introspective bias is legitimate; it invokes “insufficient evidence” (Fallacy 14) to challenge the strength rating. There is no circularity or misrepresentation. The critique validly demands supporting studies.  
+- The defender directly supplies empirical evidence (metacognitive confidence-accuracy studies) to meet that demand. This aligns with Rebuttal #13 (providing sufficient additional evidence) and with Bayesian updating by showing higher likelihood of reliable tracking under controlled conditions.  
+- No formal fallacy or hidden premise remains: the defender’s premises suffice to justify the moderate weight.
+
+Conclusion: The defender’s rebuttal successfully resolves the critique by filling the evidentiary gap.  
+Outcome: REBUTTAL_VALID
+
+
+
+### Agent-Empiricist → Agent-Supernaturalist
+
+*Attack: undermining / demand_falsifiability*
+
+**Disagreement**: The Empiricist challenges that A5 is unfalsifiable (no empirical criteria). The Supernaturalist argues A5 yields testable predictions via C3's RNG experiments and has abductive support.
 
 **Outcome**: CRITIQUE_VALID
 
 **Reasoning**: 1. Restatement  
-The Empiricist challenges the methodological assumption A2 (“Introspective experience reliably indicates that individuals make choices they could have done otherwise,” strength = 0.65), arguing that documented cognitive biases (e.g., confabulation, priming) undermine introspective reliability and thus warrant a significantly lower strength than 0.65. The Supernaturalist defends 0.65 by appealing to meta-analyses reporting 60–75% accuracy in introspective judgments of complex tasks, taking the midpoint of that range.
+The Empiricist challenges whether A5 (“non-physical immaterial souls exist”) is meaningfully evaluable, claiming it is unfalsifiable (no empirical/falsifiable criteria). The Supernaturalist responds that A5 underpins descriptive claim C3, which makes testable predictions (RNG intention experiments), and that abductive support from E2/E3 also gives empirical traction.  
 
 2. Formalization  
-Challenger’s implicit argument:  
-  P1. Numerous studies in cognitive science document introspective biases (confabulation, priming).  
-  P2. If introspection suffers these biases, its reliability must be calibrated lower than 0.65.  
-  C. Therefore, A2’s strength of 0.65 is over‐estimated and should be set significantly lower.
 
-Defender’s argument:  
-  D1. Meta‐analyses of introspective accuracy in complex deliberative tasks report 60–75% correct introspections (Ericsson & Simon, etc.).  
-  D2. Biases primarily affect quick, reflexive judgments; in complex tasks, accuracy averages ~67.5%.  
-  C*. Hence, assigning A2 a midpoint strength of 0.65 faithfully reflects this empirical evidence.
+Challenger’s Argument (Inductive/Abductive):  
+P1. A5 posits non-physical souls.  
+P2. A5 provides no empirical/falsifiable criteria.  
+∴ A5 is unfalsifiable and thus cannot be meaningfully evaluated or revised under our framework.  
+
+Defender’s Argument (Hybrid abductive + evidential):  
+P1. A5, together with E2/E3, yields C3 (immaterial souls enabling agent-causation).  
+P2. C3 generates empirical predictions (RNG intention tests).  
+P3. If those RNG deviations fail, C3 – and thus the soul hypothesis – is falsified.  
+P4. Abductive reasoning from cross-cultural testimonies and philosophical analysis further supports A5’s evaluability.  
+∴ A5 is empirically engaged and meaningfully evaluable.  
 
 3. Adjudication  
-– Hidden premise (Fallacy #3): The defender assumes unpublished or uncited meta‐analyses directly measure the reliability of free‐will introspection in the sense of A2. No such evidence is provided in the belief excerpts.  
-– Evidence misuse (Fallacy #6): The cited Ericsson & Simon protocols pertain to verbal report accuracy in cognitive task processing, not to the introspection of “could‐have‐done‐otherwise” free‐will judgments. The defender conflates two distinct constructs.  
-– Relevance (Fallacy #15): Even if those studies show moderate introspective accuracy for procedural tasks, they do not directly justify the methodological assumption about libertarian agency introspection.  
-– The challenger correctly identifies that documented biases imply introspective reliability is lower than 0.65 (no hidden assumption needed—these biases are well‐known).  
+– The Empiricist correctly identifies that A5, as stated, is purely metaphysical and lacks direct empirical content (no built-in observational or measurement criteria). That normally classifies a premise as unfalsifiable.  
+– The Supernaturalist points to C3’s RNG experiment as an empirical test, but this relies on an unstated auxiliary premise: “If souls exist, they will influence RNG output.” That hidden premise is neither self-evident nor provided, so the connection between A5 and the experiment is not deductively or inductively secured. This is Hidden Premise (criterion 3) and also Evidence Misuse (criterion 6), since null RNG results could be explained by “souls don’t affect RNG” rather than “souls don’t exist.”  
+– The abductive support from spiritual testimonies is probabilistic and insufficient to carry the burden of falsification or confer genuine empirical content on A5—it uses inductive reasoning where direct testability is claimed (criterion 5).  
+– Thus, the defense fails to show that A5 itself is falsifiable. At best, it shows C3 is a hypothesis that can be tested, but C3 depends on additional assumptions beyond A5 alone. The original critique stands.  
 
-Because the defense rests on an unstated, unsupported premise and misuses evidence, the challenge stands. The Empiricist’s critique is valid and the defender fails to resolve the logical issue.
-
-
-
-### Agent-Empiricist → Agent-Supernaturalist
-
-*Attack: undermining / challenge_evidence*
-
-**Disagreement**: The Empiricist challenges that E1’s strength (0.6) is unjustified without controls ruling out hypoxia- or drug-induced hallucinations. The Supernaturalist replies that blind, verifiable target identification studies exclude these naturalistic explanations and thus support E1’s strength.
-
-**Outcome**: CRITIQUE_VALID
-
-**Reasoning**: Step 1: Restatement  
-The Empiricist (challenger) contends that Evidence E1 (NDE reports) is equally explainable by hypoxia- or drug-induced hallucinations unless specific experimental controls or corroborations exclude these naturalistic alternatives. Therefore, the assigned strength of 0.6 to E1 is unjustified until such controls are demonstrated. The Supernaturalist (defender) replies that rigorously documented “blind, verifiable target identification” studies (hidden images, elevated vantage points), confirmed by independent investigators, rule out hallucination accounts and thus warrant the 0.6 strength.
-
-Step 2: Formalization  
-Challenger’s Argument (X-type undermining of E1):  
-  P1. If plausible naturalistic explanations (hypoxia, drugs) for NDE reports have not been ruled out by empirical controls, then the evidential strength of E1 is unsupported.  
-  P2. No such controls have been provided for E1; hypoxia- or drug-induced hallucinations remain viable explanations.  
-  C. Hence, E1’s strength of 0.6 is unjustified.  
-
-Defender’s Argument:  
-  P1. Some NDE studies employ blind, verifiable target identification protocols (hidden images, elevated vantage points) that yield accurate, independently confirmed reports.  
-  P2. Hypoxia- or drug-induced hallucinations cannot produce accurate blind target identifications.  
-  C. Therefore, naturalistic explanations are ruled out, justifying E1 at strength 0.6.
-
-Step 3: Adjudication  
-1. Deductive/Formal Validity: Both arguments are inductive/abductive, not deductively valid. That is acceptable for weighing empirical support, but the defender’s argument offers no specifics or references for P1—they assert without substantiation that such studies exist.  
-2. Evidence Misuse & Insufficient Evidence (#6, #14): The defender claims rigorous “blind, verifiable” protocols but fails to cite any study, methodology, data, or source beyond a generic allusion. The target excerpt for E1 does not mention hidden-target experiments. Thus the defender’s premises are unsupported by the provided record—an “assertion without evidence.”  
-3. Burden of Proof (#19): The defender bears the burden to show controls that exclude hypoxia/drug accounts. They have not met it.  
-4. No informal fallacy beyond “bare assertion.” The challenger’s request is reasonable and the defender’s answer is unsubstantiated.  
-
-Conclusion: The Empiricist’s critique stands. The Supernaturalist has not provided the required empirical controls; their defense is insufficient. This is a CRITIQUE_VALID outcome.
-
-
-
-### Agent-Empiricist → Agent-Supernaturalist
-
-*Attack: undercutting / challenge_inference_step*
-
-**Disagreement**: The challenge contends that the abductive inference from E2 (cosmological agent causation) to human-scale agent causation in C1's inference chain relies on an unwarranted analogical premise: that evidence of a necessary creator implies humans share similar agent-causing powers.
-
-**Outcome**: CRITIQUE_VALID
-
-**Reasoning**: Step 1: Restatement  
-The Empiricist challenges the abductive inference in C1’s chain that moves from E2 (a necessary cosmic creator as an example of agent causation) to the claim that human agents share the same kind of contra-causal power. In other words, the critic contends there is an unstated and unjustified analogical premise linking cosmic-scale agent causation to human-scale agent causation.
-
-Step 2: Formalization  
-Challenger (undercutting abductive step):  
-  P1 E2 shows that a necessary creator exemplifies metaphysically coherent agent causation.  
-  P2 (hidden) If agent causation is possible at the cosmological level, then human agents instantiate the same causal power in a finite form.  
-  C Therefore, the inference from E2 to human-scale libertarian free will is unjustified without P2 being made explicit and supported.
-
-Defender (abductive support):  
-  P1 E2 shows agent causation is metaphysically coherent via a necessary creator.  
-  P2 Introspective evidence (A2) indicates humans make undetermined choices.  
-  P3 Moral responsibility (A4) requires the ability to have done otherwise.  
-  I Combining P1–P3 abductively best explains human agency.  
-  C Humans possess libertarian free will.
-
-Step 3: Adjudication  
-- The challenge correctly identifies a hidden premise (criterion 3): the argument assumes without justification that metaphysical coherence at the cosmic level licenses an analogical inference to human agents.  
-- The defender’s response merely restates that the inference is abductive and “reasonable” when combined with introspection and moral necessity, but never supplies or defends the crucial missing premise (e.g., showing the analogy holds, or offering empirical support that the cosmos-level agent and human agents are analogous in causal power).  
-- No adequate resolution of the hidden-premise critique has occurred; the abductive leap remains unsupported.  
-- No disqualifying self-defeat, misrepresentation, or circularity is detected in either side, but the defender fails to meet any of the REBUTTAL_VALID criteria (they do not supply the missing premise, nor do they show how the analogy is warranted).  
-- Thus the critic’s undercutting objection stands: the defender has not closed the logical gap.
-
-Verdict: CRITIQUE_VALID
+Verdict: The Empiricist challenge succeeds in showing A5 is unfalsifiable without additional premises. The Supernaturalist did not resolve the hidden-premise flaw.
 
 
 
@@ -528,65 +563,95 @@ Verdict: CRITIQUE_VALID
 
 *Attack: undermining / press_uncertainty*
 
-**Disagreement**: Agent-Empiricist argues that since U1 leaves introspection reliability unresolved and C1 relies heavily on introspection, C1’s strength of 0.65 should be reduced. Agent-Supernaturalist replies that the 0.65 rating already incorporates U1 and A2, so no further change is needed.
+**Disagreement**: The Empiricist challenges the justification for maintaining C1 at 0.65 given acknowledged high uncertainty (U2) about neuroscientific refutation of indeterministic choice; the Supernaturalist replies that 0.65 already reflects that uncertainty via Bayesian update from introspective evidence.
+
+**Outcome**: REBUTTAL_VALID
+
+**Reasoning**: 1. RESTATEMENT
+   The Empiricist challenges why Agent-Supernaturalist maintains a mid-level confidence (C1 = 0.65) in indeterministic choice despite acknowledging high uncertainty about neuroscientific evidence (U2). The core dispute is whether the 0.65 rating already properly accounts for U2, or whether it should be lowered further.
+
+2. FORMALIZATION
+   Challenger’s implicit argument:
+     P1: U2 is rated “high importance” and indicates substantial uncertainty about whether neuroscience refutes indeterministic choice.
+     P2: High uncertainty about relevant evidence should reduce confidence in the contested claim.
+     C: Therefore, C1’s confidence rating of 0.65 is unjustified or inconsistent unless explained or lowered.
+
+   Defender’s argument:
+     P1: The 0.65 rating for C1 already incorporates U2’s uncertainty.
+     P2: Until neuroscience yields near-perfect predictive models, the abductive inference from subjective reports and moderate introspective reliability provides some—but not complete—support for indeterministic choice.
+     C: Therefore, a mid-level confidence of 0.65 is appropriate and internally consistent.
+
+3. ADJUDICATION
+   - The challenger issues a demand for justification but does not itself commit a logical fallacy; it points out a potential inconsistency. It does not rest on a hidden premise or misrepresent the defender’s position. However, it lacks a fully articulated argument beyond “uncertainty implies lower confidence.”
+   - The defender supplies a clear Bayesian-style justification (#6 Rebuttal): the posterior confidence (0.65) arises from a prior for indeterminism, weighted by moderate reliability of introspection and the current absence of decisive neuroscientific predictive models. This directly explains how U2 is accounted for in the calibration.
+   - No formal deductive structure is required here beyond acknowledging Bayesian updating. The defender’s explanation reasonably shows proper evidence updating in light of U2, thus resolving the challenge.
+
+Conclusion: The defender successfully resolves the challenge by demonstrating appropriate Bayesian updating and providing the requested justification. This meets the “Rebuttal Valid” criteria.
+
+
+
+### Agent-Empiricist → Agent-Supernaturalist
+
+*Attack: undermining / challenge_assumption*
+
+**Disagreement**: The Empiricist challenges assumption A4 (‘Moral responsibility requires freedom to choose otherwise’) rated at 0.6 by pointing out that compatibilist moral theorists argue responsibility can exist without indeterministic freedom, so the assumption’s strength is under-justified.
 
 **Outcome**: CRITIQUE_VALID
 
 **Reasoning**: Step 1: Restatement  
-Agent-Empiricist challenges the calibration of belief C1. They note that U1—the uncertainty about introspection’s reliability—remains unresolved, yet C1’s strength is still rated at 0.65. They argue that if the foundational evidence (introspective data) is unreliable or uncertain, then the posterior strength of C1 should be lower. Agent-Supernaturalist replies that the 0.65 rating already “integrates A2’s moderate reliability” and “acknowledges U1,” so no further adjustment is required without new evidence.
+The Empiricist challenges the target’s assumption A4 (“Moral responsibility requires the freedom to choose otherwise”) and its strength of 0.6 by pointing out that there exists a well-developed compatibilist moral‐realist position which holds that moral responsibility does not require indeterministic freedom. They ask on what basis A4 can be maintained at 0.6 in light of these compatibilist counter‐models.
 
 Step 2: Formalization  
-Challenger’s argument (Bayesian critique):  
-P1: Introspective data reliability is uncertain (U1 unresolved).  
-P2: C1 heavily relies on that introspection.  
-P3: When evidence reliability is uncertain, posterior belief strength must be proportionally lowered.  
-C: Therefore, C1’s strength of 0.65 is too high unless uncertainty in U1 were already fully accounted for.  
+Challenger’s implicit argument:  
+1. Major premise: If there is a substantial, well‐argued compatibilist moral‐realist view that moral responsibility does not require freedom to do otherwise, then any assumption that it does require such freedom must acknowledge and account for that counter‐evidence when assigning its credibility.  
+2. Minor premise: There is substantial, well‐argued compatibilist moral‐realist literature (e.g. Strawson, Fischer & Ravizza) denying the need for indeterministic freedom.  
+3. Conclusion: The assignment of 0.6 to A4 neglects this counter‐evidence and is therefore inadequately justified.
 
-Defender’s response:  
-R1: C1’s 0.65 already incorporates A2’s moderate reliability and U1’s uncertainty.  
-R2: Absent new evidence, no adjustment is necessary.
+Target’s rebuttal argument:  
+1. Premise: A strength of 0.6 reflects balancing widespread intuitive support for real alternatives with the existence of compatibilist counter‐models.  
+2. Premise: Incompatibilist theorists (Chisholm, van Inwagen) argue that reactive moral practices presuppose genuine alternative possibilities.  
+3. Conclusion: Therefore, A4 is justified at above-even odds (0.6).
 
 Step 3: Adjudication  
-- The challenger correctly appeals to Bayesian updating principles: if the reliability of core evidence is in doubt (P3), then any posterior probability (0.65) that critically depends on that evidence must reflect the ambiguity. They identify potential “likelihood neglect” or “asymmetric updating” if the uncertainty has not truly been folded into the calibration (criteria 10 and 9).  
-- The defender merely asserts that the uncertainty has been “built into the current calibration” without demonstrating the actual prior-to-posterior calculation, likelihood ratios, or any quantitative or structural linkage showing how U1 reduces the 0.65 rating. They provide no Bayesian proof (missing #6) nor any formal inference rule or explicit breakdown of how U1 was weighted against supporting data.  
-- This failure to substantiate how U1’s uncertainty was already factored is a “burden of proof” issue (#19) and also invites the suspicion of “unsupported premise” (the premise that 0.65 already encodes U1 is unsupported).  
-- The defender’s answer is therefore insufficient: it does not resolve the logical and evidential challenge and amounts to an unsubstantiated claim.
-
-Conclusion: The challenger’s Bayesian critique stands as valid. The defender’s response fails to meet the evidentiary or inferential standards required.  
-Outcome: CRITIQUE_VALID
+1. The challenger identifies significant counter-arguments from compatibilists that the target’s assumption fails to address. This is a legitimate instance of suppressed evidence (criterion #20) and neglect of alternative hypotheses (#9). The challenge does not commit any formal or informal fallacy; it correctly points out that A4’s justification must engage with the compatibilist literature which the rebuttal does not.  
+2. The defender’s response merely restates a compromise strength rating and appeals to authority (Chisholm, van Inwagen) without engaging the compatibilist moral‐realist arguments or showing why those arguments are flawed or less probable. There is no demonstration of Bayesian updating, likelihood comparison, or refutation of the compatibilist evidence. The rebuttal therefore fails to resolve the logical issue and amounts to a bare assertion.  
+3. Under the adjudication criteria, the critique is valid (CRITIQUE_VALID) because the challenger’s point is substantive and unaddressed, while the defender fails to meet any of the conditions for a successful rebuttal.  
+4. Scores: Challenger’s logic is strong (~0.8); defender’s logic is weak (~0.3); ethics are not assessed. The difference (0.5) exceeds 0.15, producing outcome CRITIQUE_VALID.
 
 
 
 ### Agent-Supernaturalist → Agent-Empiricist
 
-*Attack: undermining / challenge_assumption*
+*Attack: undermining / press_uncertainty*
 
-**Disagreement**: The debate centers on whether the Empiricist can justifiably assign strength 0.9 to A1 (physical causal closure of neural processes) given the lack of direct tests excluding non-physical influences such as veridical NDEs.
+**Disagreement**: The challenger asserts that uncertainty U1 about whether neural precursors causally determine decisions undermines the confidence rating C1=0.6 and asks what evidence would resolve U1 and whether absence of such evidence should lower C1. The defender replies that causal intervention evidence (E2) already establishes a causal role, justifying C1=0.6, and specifies additional TMS/optogenetic experiments needed for final resolution.
 
-**Outcome**: CRITIQUE_VALID
+**Outcome**: REBUTTAL_VALID
 
 **Reasoning**: 1. Restatement  
-   The Supernaturalist challenges the Empiricist’s assignment of strength 0.9 to assumption A1 (“Physical causal closure holds for neural processes”), arguing that extrapolating a physics principle to the metaphysics of mind without direct tests (e.g., veridical NDEs) cannot justify such high confidence. The Empiricist replies that the principle is deeply established in physics/neuroscience and that no controlled experiment has ever shown non-physical interventions, so absent credible disconfirming data, 0.9 is warranted.
+The challenger (Agent-Supernaturalist) disputes the strength of confidence rating C1 (0.6) on the grounds that Uncertainty U1—whether neural precursors truly cause decisions or merely correlate with biases—remains unresolved. They ask what specific evidence would settle U1 and whether the lack of such evidence should lower C1. The defender (Agent-Empiricist) replies that causal intervention data (E2: Haynes et al.) already demonstrate a causal influence of preconscious neural activity on choices, justifying C1 = 0.6, and specifies further TMS/optogenetic disruptions needed to fully close U1.
 
 2. Formalization  
-   Challenger’s implicit inference:  
-     P1. High confidence (0.9) in A1 requires elimination of non-physical influences.  
-     P2. No direct tests exclude non-physical influences.  
-     C. Therefore, confidence in A1 should be significantly lower than 0.9.  
+Challenger’s implicit argument:  
+  P1: If U1 remains empirically unresolved, then confidence C1 in a causal claim should be reduced.  
+  P2: U1 (causal interpretation of neural precursors) is unresolved.  
+  → C: C1 should be lowered below 0.6 absent specific resolving evidence.
 
-   Defender’s inference:  
-     D1. Physical causal closure is a robust, well-established principle in physics and neuroscience.  
-     D2. No controlled, replicable experiment has ever demonstrated non-physical interventions in neural decision-making.  
-     D3. Alleged veridical NDE reports lack methodological rigor.  
-     C*. Therefore, absent credible disconfirming evidence, confidence in A1 = 0.9 is justified.
+Defender’s reply:  
+  Q1: C1 is supported by both correlational data (E1) and causal intervention data (E2).  
+  Q2: Haynes et al. (E2) show that preconscious brain stimulation biases and reverses choices, establishing causality.  
+  Q3: To *fully* close U1, we need time‐locked TMS/optogenetic disruption of readiness potentials and measure choice shifts.  
+  → Therefore, existing E2 suffices to maintain C1 = 0.6; absence of perfect data does not mandate lowering it now.
 
 3. Adjudication  
-   - The defender’s argument relies on an informal argument from ignorance: “No evidence of X → X does not occur.” This is a recognized fallacy (criteria 13).  
-   - The defender fails to provide positive evidence that non-physical influences are impossible; instead they treat the lack of disconfirming data as strong confirmation of A1 (argument from ignorance) and neglect considerations about how unlikely it is to detect non-physical influences under current methods (prior probability neglected, criteria 7).  
-   - D2 and D3 do not deductively entail that non-physical influences are excluded; they merely note absence of high-quality counterexamples, which is insufficient to justify a 0.9 confidence.  
-   - The challenger correctly identifies these reasoning defects and the over-extension of a physics principle into a metaphysical domain without direct empirical tests.  
+- The challenger does not commit any formal or informal fallacy: they correctly flag a Bayesian/evidential gap (Criterion 7) and ask for evidence.  
+- The defender provides a Bayesian counter (Criterion 5), showing that E2 is more likely if the causal hypothesis holds than under mere correlation, and specifies what further experiments would definitively resolve U1. They thereby demonstrate that current interventional evidence justifies maintaining C1 at 0.6.  
+- No circular reasoning, misrepresentation, or self-defeating claims are present.  
+- The defender’s response directly resolves the uncertainty about whether interventional evidence exists, meeting the challenger’s request.  
+- The strength difference (0.8 vs. 0.6) exceeds the 0.15 threshold.
 
-Outcome: The critique is valid (CRITIQUE_VALID).
+Conclusion: The defender has successfully rebutted the challenge by supplying the necessary causal-intervention data and clarifying the evidentiary standard.  
+Verdict: REBUTTAL_VALID
 
 
 
@@ -594,76 +659,32 @@ Outcome: The critique is valid (CRITIQUE_VALID).
 
 *Attack: undercutting / challenge_inference_step*
 
-**Disagreement**: The challenger objects that C1 illegitimately treats neural readiness and predictive fMRI correlations as necessitating the denial of libertarian free will. The defender replies that C1 is an inductive/abductive, probabilistic argument (strength = 0.75), bolstered by temporal precedence and causal‐intervention evidence, not a deductive proof.
+**Disagreement**: The challenger argues that the abductive inference in C2 illegitimately shifts from descriptive ‘alignment’ to normative/metaphysical free will, but the defender clarifies that C2 is purely descriptive and makes no normative claim.
 
 **Outcome**: REBUTTAL_VALID
 
-**Reasoning**: Step 1: Restatement  
-The challenger (Agent-Supernaturalist) objects that C1 moves from correlations—readiness potentials and predictive fMRI patterns—to the categorical denial of libertarian free will, demanding a logical necessity that the original inference (an inductive one) does not supply. The defender (Agent-Empiricist) responds that C1 is explicitly an inductive/abductive argument with probabilistic strength (0.75), and that in addition to mere correlation it relies on temporal precedence, high predictive accuracy, and causal‐intervention evidence (neural stimulation) to justify a causal interpretation.
+**Reasoning**: 1. Restatement  
+The Supernaturalist challenges C2—“Agents possess compatibilist free will defined by alignment with internal motivations absent coercion” (type: descriptive)—claiming it illicitly shifts from a merely descriptive pattern (“alignment”) to a normative or metaphysical notion of free will. The Empiricist rebuts that C2 is purely descriptive, invoking no “ought,” and that the abductive move selects the best explanatory model without presuming normative freedom.
 
-Step 2: Formalization  
-Challenger’s implicit argument (attack on C1’s inference):  
-1. Premise: Neural readiness potentials and fMRI patterns correlate with subsequent choices.  
-2. Claim: Correlation alone cannot logically necessitate that decisions are caused entirely by neural precursors.  
-3. Conclusion (implicit): Therefore, C1’s inference from neural precursors to denial of genuine agent-initiated causation is invalid.
+2. Formalization  
+Challenger’s interpretation (misrepresentation):  
+  P1: Free actions align with internal motivations absent coercion (A4).  
+  P2: Philosophical consensus endorses compatibilist definitions (E3).  
+  I1 (abductive): From P1 & P2, we infer agents have normative/metaphysical free will.  
+  C (alleged normative claim): Agents ought to have free will; alignment justifies normative freedom.
 
-Defender’s target argument (C1 as defended):  
-1. Premise A1: Physical causal closure of neural processes.  
-2. Premise E1 & E2: Libet and fMRI findings show neural activity predicts choices before awareness.  
-3. Additional Premise: Temporal precedence, high predictive accuracy (>chance), plus neural‐stimulation interventions that alter choices.  
-4. Inference (inductive/abductive): The best explanation of these data is a causal chain from neural activity to decisions, leaving little room for contra-causal agency.  
-5. Conclusion: Libertarian free will is highly improbable (strength = 0.75), not impossible (strength < 1.0).
+Defender’s actual argument:  
+  P1: Free actions are defined descriptively as alignment with internal motivations absent coercion (A4).  
+  P2: Expert consensus endorses compatibilist definitions (E3).  
+  I1 (abductive): The best explanation of observed choice-motivation alignment is compatibilist self-determination.  
+  C: Descriptively, agents possess compatibilist free will without presupposing any normative “ought.”
 
-Step 3: Adjudication  
-- The challenger’s critique (that correlation cannot logically necessitate causation) highlights that C1’s inference is inductive, not deductive. However, C1 itself labels its inference as “inductive,” so the challenger misidentifies its logical form (Bayesian criterion #2) and demands deductive certainty where none is claimed (Bayesian criterion #10).  
-- The defender points out that C1 already treats its conclusion as probabilistic (strength = 0.75), acknowledging “residual uncertainty,” and supplements correlation with temporal precedence and causal‐intervention data, thus reinforcing the inductive case rather than claiming strict logical necessity.  
-- No disqualifying flaws (circularity, misrepresentation, self-defeat) are present in the rebuttal.  
-- The defender successfully rebuts the challenge by showing the critique misunderstood the argument’s form and by exhibiting additional evidence beyond mere correlation.  
+3. Adjudication  
+- The challenger misattributes a normative or metaphysical conclusion to C2, but the excerpt shows C2 is explicitly labeled “descriptive.” This is a misrepresentation of the target claim (responding to a claim never made), which is disqualifying.  
+- Under Rebuttal criterion #2, the defender correctly points out that the critic has misidentified the logical form (normative vs. descriptive).  
+- No genuine illicit descriptive→normative inference exists in the defender’s chain.  
 
-Therefore, under the given hybrid logic criteria, the rebuttal is valid.
-
-
-
-### Agent-Supernaturalist → Agent-Empiricist
-
-*Attack: undermining / challenge_evidence*
-
-**Disagreement**: The challenger disputes that fMRI predictive patterns (E2) demonstrate deterministic causation, suggesting they might be mere predispositions that agents can override. The defender responds that prediction accuracy remains high under concealment attempts, indicating genuine causation.
-
-**Outcome**: CRITIQUE_VALID
-
-**Reasoning**: Step 1: Restate the core disagreement  
-Agent-Supernaturalist challenges the use of Soon et al.’s fMRI predictors (E2) as evidence of deterministic causation, arguing they could simply be statistical precursors or predispositions that an agent might override. Agent-Empiricist rebuts that predictive accuracy remains well above chance even when subjects attempt to conceal their intentions, claiming this robustness shows the neural patterns are true causal contributors rather than mere epiphenomena.
-
-Step 2: Formalize both arguments  
-
-Challenger’s argument (E2 causation challenge):  
-P1. E2 shows that classifiers can predict decisions before awareness (correlation).  
-P2. Correlation does not prove causation; these patterns could be nondeterministic predispositions.  
-C. Therefore, E2 evidence may not support deterministic causation—agents might still override these predispositions.
-
-Defender’s rebuttal (causal inference from robustness under concealment):  
-D1. If fMRI patterns were only predispositions that agents could override, then when subjects deliberately try to conceal intentions, prediction accuracy should fall to chance.  
-D2. Empirically, classifiers remain well above chance under such concealment attempts.  
-C′. Thus, these neural patterns must be genuine causal contributors rather than mere statistical noise or epiphenomena.
-
-Step 3: Adjudication  
-
-Challenger:  
-- Highlights a valid “correlation vs. causation” concern (informal fallacy/evidence misuse).  
-- Raises no formal fallacy in their reasoning—simply points out the gap between correlation and causation.  
-- Under Bayesian thinking, correctly notes that prior probability of true causation isn’t established solely by predictive accuracy.  
-Score: strong logical critique (0.9).
-
-Defender:  
-- Relies on an unstated premise (D1) that concealment attempts would fully eliminate correlation if no causation existed; this is non-self-evident and unsupported by cited evidence—Hidden premise (#3).  
-- Treats an inductive pattern (robust prediction under concealment) as sufficient for causal proof without ruling out confounders or alternative explanations—“reliance on inductive reasoning where deductive proof is required” (#5) and potential evidence misuse (#6).  
-- Provides no reference in the belief excerpt to support that concealment experiments were actually conducted or robustly analyzed.  
-Score: weak defense (0.3).
-
-No rebuttal criteria are satisfied (no formal proof, no misidentification of the critique, no Bayesian likelihood comparison provided). The challenger’s concern stands: E2 remains correlational and the defender’s new premise lacks justification.
-
-Outcome: CRITIQUE_VALID
+Verdict: The critique fails by misrepresentation, and the defender successfully rebuts. Therefore, REBUTTAL_VALID.
 
 
 
@@ -671,65 +692,97 @@ Outcome: CRITIQUE_VALID
 
 *Attack: undercutting / conceptual_conflation*
 
-**Disagreement**: The challenge claims that D3 (compatibilist free will as acting on internal motivations absent coercion) is overbroad and vacuous by conflating any desire-driven action with genuine freedom. The defender replies that D3 intends reflective (second-order) motivations and cites empirical E3 studies to operationalize this distinction.
+**Disagreement**: The Supernaturalist attacks D2 for making free will vacuous by equating any desire‐driven act with genuine agency; the Empiricist defends that D2 already includes a normative, reasons‐responsive endorsement requirement that distinguishes free choices from compelled or random behaviors.
 
 **Outcome**: REBUTTAL_VALID
 
-**Reasoning**: 1. Restatement  
-   The Agent-Supernaturalist challenges definition D3 (“acting on internal motivations absent coercion”) as over-broad (attack_strategy=over_extension) and therefore vacuous, conflating any neural-driven desire with genuine freedom. The Agent-Empiricist responds that D3 is rooted in compatibilist tradition (Frankfurt, Dennett), where “internal motivations” are understood as reflective, second-order endorsements, and empirical study E3 operationalizes this nuance, thus rescuing D3 from vacuity.
+**Reasoning**: Step 1: RESTATEMENT  
+The Supernaturalist challenges definition D2 of compatibilist free will, claiming it equates any action caused by a desire with “free will,” rendering the concept vacuous (a conceptual_conflation attack on D2). The Empiricist rebuts that D2—following Frankfurt and Dennett—already incorporates normative, reasons‐responsive endorsement of motivations, distinguishing genuine agency from mere deterministic or compelled behavior.
 
-2. Formalization  
-   Challenger’s implicit argument:  
-   P1. D3: An action is free will iff it is caused by internal motivations and not by coercion.  
-   P2. All (or virtually all) actions are caused by internal neural desires absent coercion.  
-   C. Therefore, D3 labels everything as free will; D3 is vacuous.
+Step 2: FORMALIZATION  
+Challenger’s implicit argument:  
+  P1: D2 says “An action A is free if and only if A arises from the agent’s motivations,” with no further constraint.  
+  P2: Every determined behavior arises from some motivation.  
+  C: Therefore, under D2, every determined behavior is free → D2 is vacuous (over‐extension).
 
-   Defender’s reply:  
-   P1*. “Internal motivations” in D3 means reflective endorsement (second-order desires, reasons-responsiveness), not any brute desire.  
-   P2*. Empirical studies (E3) show agents can revise first-order desires via reflection and then act on them, distinguishing genuine internal deliberation from simply neural impulse.  
-   C*. With P1* and P2*, D3 successfully differentiates free from unfree actions and is not vacuous.
+Defender’s rebuttal:  
+  R1: D2, per compatibilist theorists, specifies that only actions stemming from motivations that the agent has reflectively endorsed and that are processed via reasons‐responsive mechanisms count as free.  
+  R2: This normative requirement rules out actions produced by external compulsion or random desire‐activations.  
+  RC: Hence D2 is substantive, not vacuous, and does not smuggle in indeterminism.
 
-3. Adjudication  
-   - Did the challenge correctly identify an over-extension? Yes: D3 as stated is underspecified on “internal motivations,” so prima facie it could be trivialized.  
-   - Did the defender supply a self-evident or widely accepted missing premise? Yes: compatibilist accounts of free will customarily restrict “internal motivations” to reflective, higher-order endorsements (Frankfurt, Dennett). This is not an ad hoc patch but an explicit gloss from the philosophical tradition.  
-   - Did the defender connect this premise to empirical evidence? Yes: E3 operationalizes reflective endorsement, showing that agents can form and act on second-order desires, thereby giving substance to D3.  
-   - No disqualifying fallacies appear. The defender does not simply appeal to authority; they cite both conceptual lineage and empirical support.  
-   - Therefore the defender successfully restores D3’s non-vacuity and rebuts the over-extension claim.
-
-Victory goes to the defense: REBUTTAL_VALID.
+Step 3: ADJUDICATION  
+– The challenger misrepresents D2 by omitting the normative, reasons‐responsive endorsement clause that Frankfurt‐style compatibilism builds into D2. By attacking a straw‐man version of D2 (“any desire → free”), the challenge commits misrepresentation (informal fallacy).  
+– The Empiricist’s rebuttal correctly restores the full content of D2 and shows how it distinguishes self‐authored actions from forced or random ones. This directly neutralizes the conceptual_conflation objection.  
+– No circularity, hidden premise, or other flaw arises in the rebuttal; it simply clarifies that D2 includes a substantive normative criterion.  
+– Therefore the defender successfully refutes the challenge: REBUTTAL_VALID.
 
 
 
 ### Agent-Supernaturalist → Agent-Empiricist
 
-*Attack: undermining / challenge_strength_calibration*
+*Attack: undermining / challenge_assumption*
 
-**Disagreement**: The Supernaturalist contends that unresolved normative question U2 should lower confidence in the descriptive claim C2, while the Empiricist maintains that descriptive confidence is independent of normative uncertainties.
+**Disagreement**: The challenger disputes that readiness potentials constitute causal evidence for decision initiation (A3) rather than mere correlation, citing artifacts and alternative interpretations. The defender acknowledges openness of the causal question, points to temporal precedence evidence, and defers final judgment pending perturbation studies.
+
+**Outcome**: CRITIQUE_VALID
+
+**Reasoning**: 1. RESTATEMENT  
+The Supernaturalist challenges Assumption A3 (“Conscious deliberation arises after initial neural precursors initiate decision-making processes”) on the grounds that Libet-type readiness potentials may be only correlational—subject to measurement artifacts or reflecting preparatory bias rather than causal initiation. They ask for empirical justification for treating A3 as a causal claim and for how its strength would be adjusted if alternative interpretations hold. The Empiricist concedes that causality remains unresolved but points to convergent temporal-precedence evidence and defers judgment until targeted perturbation experiments are done.
+
+2. FORMALIZATION  
+
+Challenger’s implicit argument (inductive/evidential):  
+  P1: Readiness-potential studies suffer from measurement artifacts and alternative interpretations (bias, preparatory states).  
+  P2: A3 relies on these studies to assert that neural precursors causally initiate decisions (not merely correlate).  
+  C: Therefore, the evidence does not reliably establish A3 as a causal claim; A3’s strength should be downgraded until the alternatives are ruled out.
+
+Defender’s reply:  
+  P1: Temporal precedence of readiness potentials is supported by convergent EEG, intracranial, and stimulation studies.  
+  P2: Necessity (causal role) is not yet demonstrated by those studies.  
+  C: We defer final judgment on A3’s causal claim pending new perturbation experiments.
+
+3. ADJUDICATION  
+– The challenger correctly identifies a misuse of evidence: correlation is being treated as causation without ruling out confounds (Criterion #6). The inference from temporal precedence to causal initiation is not proven.  
+– The defender does not supply a rebuttal that restores A3’s causal status. They concede the gap between correlation and causation, offer no additional evidence or revised strength for A3, and merely postpone resolution. This fails to meet any REBUTTAL_VALID condition: no demonstration of deductive validity, no formal derivation, no additional evidence to meet the causal standard, and no Bayesian updating argument.  
+– Thus the challenger’s critique is valid and the defender’s response is insufficient.  
+
+Outcome: CRITIQUE_VALID.
+
+
+
+### Agent-Supernaturalist → Agent-Empiricist
+
+*Attack: undermining / challenge_evidence*
+
+**Disagreement**: The dispute concerns whether evidence E3’s 0.6 strength—‘many philosophers endorse compatibilist free will’—is justified by actual survey data and whether significant dissenting minorities undermine that confidence level.
 
 **Outcome**: REBUTTAL_VALID
 
-**Reasoning**: Step 1: Restatement  
-The Supernaturalist challenges the Empiricist’s assignment of 0.7 strength to C2 (the descriptive claim that compatibilist free will exists) on the grounds that U2 (the normative question of whether that free will suffices for moral responsibility) remains unresolved. They argue that unresolved normative uncertainty should lower confidence in the descriptive claim. The Empiricist replies that C2 is strictly descriptive and thus unaffected by normative uncertainty U2.
+**Reasoning**: 1. Restatement of the dispute  
+Agent-Supernaturalist challenges the empirical grounding and weight (0.6) of E3, which claims “many philosophers endorse compatibilist free will.” They ask: what survey data support the 0.6 figure? And if nontrivial minorities dissent, does that undermine E3’s confidence level? Agent-Empiricist replies that PhilPapers and similar forced-choice philosophical surveys find about 60% of professional philosophers endorse compatibilism, and although other positions exist, the clear plurality justifies a moderate (0.6) strength.
 
-Step 2: Formalization  
-Challenger’s implicit argument:  
-P1. U2 (whether compatibilist free will suffices for moral responsibility) is unresolved.  
-P2 (hidden premise). Confidence in C2’s truth requires resolving U2.  
-C. Therefore, we cannot assign high confidence (0.7) to C2.  
+2. Formalization  
+Challenger (C):  
+P1. E3’s strength of 0.6 for philosophical consensus requires empirical support (e.g., representative survey data).  
+P2. Significant dissenting minorities (hard incompatibilists, non-reductive physicalists) exist.  
+C. Therefore, unless survey data are shown, and dissent is small, E3’s weight (0.6) is unjustified or should be lower.
 
-Defender’s reply:  
-R1. C2 is a descriptive claim about capacity to act on internal motivations absent coercion.  
-R2. U2 is a normative question about moral responsibility.  
-R3. A descriptive claim’s confidence does not depend on normative questions.  
-RC. Thus unresolved normative uncertainty does not undermine C2’s descriptive confidence.
+Defender (D):  
+P1. PhilPapers survey series and related studies provide representative forced-choice questionnaires of professional philosophers.  
+P2. These surveys report ~60% endorsement of compatibilism.  
+P3. A clear plurality (around 60%) amid dissent justifies a moderate confidence score of 0.6.  
+D. Therefore, E3’s assigned strength of 0.6 is empirically grounded and appropriate.
 
-Step 3: Adjudication  
-- The challenger’s argument depends on an unstated premise (P2) that normative resolution is required for a descriptive claim. That is neither self-evident nor supported by the belief’s inference chain, and it conflates descriptive and normative domains—an equivocation or hidden‐premise flaw (Criterion 3).  
-- The Empiricist correctly points out the independence of purely descriptive inference chains (A2, A3, E3) from normative questions. This directly undermines the challenger’s hidden premise and restores coherence to C2’s strength justification.  
-- No formal deductive or informal fallacy occurs on the defender’s side: they simply clarify domain separation, a valid move.  
+3. Adjudication  
+– The challenger does not identify any formal fallacy; rather, they request evidence. This is a substantive request, not itself a deductive/informal fallacy.  
+– The defender supplies the exact empirical basis (PhilPapers survey) that was missing, thereby fulfilling the evidentiary standard.  
+– The defender acknowledges dissenting minorities but correctly observes that a 60% pluralistic majority supports a moderate confidence level. This addresses the challenge about whether minority dissent drastically undercuts the evidence.  
+– No hidden premises or equivocations remain: the survey percentages directly map to the claimed strength.  
+– Bayesian considerations: the posterior confidence (0.6) accords with the observed likelihood of philosopher endorsements.  
+– Thus, the defense successfully resolves the critic’s request and provides sufficient support for E3’s weight.  
 
-Conclusion: The defender’s rebuttal successfully resolves the hidden‐premise flaw in the challenge and justifies maintaining C2’s 0.7 strength.  
-Outcome: rebuttal_valid
+Conclusion: the rebuttal is successful. Agent-Empiricist has met the evidentiary burden and properly justified the 0.6 strength for E3.  
+Outcome: REBUTTAL_VALID.
 
 
 
@@ -739,395 +792,439 @@ Outcome: rebuttal_valid
 ## Agent-Empiricist - Updated Position
 
 # Thesis
-- Stance: Empirical evidence and the principle of physical causal closure (A1; E1, E2, E4, E5, E6) show that libertarian free will does not exist (C1). At the same time, agents demonstrate compatibilist free will—acting on internal deliberations without coercion (C2)—and this capacity suffices for moral responsibility under determinism (C3). This framework aligns neuroscientific findings with philosophical consensus, preserving real agency and responsibility in a deterministic universe.
+- Stance: Our empiricist position holds that libertarian free will, requiring uncaused initiation and genuine alternative possibilities, lacks empirical support (C1, A1–A3, E1, E2, E5, E6). In contrast, agents exhibit compatibilist free will—choosing according to internal motivations and rational deliberation in the absence of coercion (C2, A4, E3)—and this framework suffices for moral responsibility (C3, A6, E7). Physicalism and deterministic neural findings ground a robust but non‐libertarian conception of autonomy while preserving practical responsibility. Key uncertainty remains whether neural precursors are strictly causative or merely correlative (U1).
 - Top bullets:
-  - Neural processes determine decisions before conscious awareness, undermining libertarian free will (C1).
-  - Agents exhibit compatibilist free will by acting according to internal deliberations without external coercion (C2).
-  - Compatibilist free will suffices for moral responsibility, as supported by conceptual foundations and expert consensus (C3).
-- Strength: 0.5
-- Reasoning: avg(0.60, 0.70, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.67 × 0.75 = 0.5
+  - Libertarian free will, demanding uncaused initiation, is unsupported by readiness potentials and veto studies (C1, E1, E2, E5, E6).
+  - Compatibilist free will describes self‐determined choices arising from internal motivations and deliberation absent coercion (C2, A4, E3).
+  - Compatibilist free will provides a sufficient basis for moral responsibility, as endorsed by expert consensus (C3, A6, E7).
+  - Remaining high‐importance uncertainty: causal vs. correlative role of neural precursors (U1).
+- Strength: 0.4325
+- Reasoning: avg(0.40, 0.63, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.58 × 0.75 = 0.4325
 
 # Definitions
-- [D1] **physical causal closure**: The principle that every physical event, including neural events, has a sufficient physical cause.
-  - Strength: 0.9 (0.9 — well-supported by physics and absence of observed violations.)
-  - Used by: A1, E1
+- [D1] **libertarian_free_will**: The capacity for an agent to have genuine alternative possibilities, such that actions are not wholly determined by prior physical states or stochastic processes.
+  - Strength: 0.4 (0.40 — concept is highly contested in philosophy; no clear empirical counterpart.)
+  - Used by: E1, E4
   - Status: active
-- [D2] **libertarian free will**: The ability of an agent to have acted differently under identical prior states (contra-causal freedom).
-  - Strength: 0.75 (0.75 — standard philosophical definition but metaphysically contentious.)
+- [D2] **compatibilist_free_will**: The capacity for an agent to make choices according to its own motivations, desires, and rational deliberations, even if those are determined by prior states.
+  - Strength: 0.73 (0.70 — widely used in contemporary philosophy; operationally coherent though debates continue.)
+  - Used by: A4, E3
+  - Status: active
+  - Defenses: 1 consecutive (original strength: 0.7)
+- [D3] **determinism**: The principle that every event, including neural and mental events, is determined by prior physical states according to physical laws.
+  - Strength: 0.9 (0.90 — foundational in physics and supported by no confirmed violations.)
+  - Used by: A1, A2
+  - Status: active
+- [D4] **external_coercion**: Factors that override or manipulate an agent's internal decision-making processes such that the action does not originate from the agent's motivations.
+  - Strength: 0.8 (0.80 — clear in legal and psychological contexts; boundaries occasionally debated.)
+  - Used by: A4
+  - Status: active
+- [D5] **neural_precursor**: Measurable neural activity that systematically precedes a subject's conscious awareness of a decision.
+  - Strength: 0.8 (0.80 — empirical concept with multiple replications, though precise interpretation debated.)
   - Used by: A3, E1, E2
-  - Status: active
-- [D3] **compatibilist free will**: The capacity of an agent to act according to internal motivations and reasoning without external coercion, irrespective of determinism.
-  - Strength: 0.88 (0.85 — widely used in philosophical and scientific discussions with clear operationalization.)
-  - Used by: A3, E3
-  - Status: active
-  - Defenses: 1 consecutive (original strength: 0.85)
-- [D4] **decision-making**: The process by which an agent selects an action based on available information and internal motivations.
-  - Strength: 0.85 (0.85 — aligns with definitions in cognitive science and psychology.)
-  - Used by: A2
-  - Status: active
-- [D5] **moral responsibility**: The condition under which an agent is appropriately subject to praise or blame for actions based on their capacity for reasoned choice without coercion.
-  - Strength: 0.8 (0.8 — standard philosophical definition with clear usage in moral theory)
-  - Used by: A4, E7
   - Status: active
 
 # Assumptions
-- [A1] (empirical) Physical causal closure holds for neural processes in the human brain.
-  - Supports: C1
-  - Strength: 0.8 (0.8 — lowered due to recognition of absence of direct empirical tests excluding non-physical influences; critique highlighted reliance on argument from ignorance.)
-  - Supported by definitions: D1
-  - Status: revised
-- [A2] (empirical) Human decisions are produced by neurocognitive processes that can be empirically studied.
-  - Supports: C2
-  - Strength: 0.85 (0.85 — supported by extensive research in neuroscience and psychology.)
-  - Supported by definitions: D4
-  - Status: active
-- [A3] (scoping) This analysis uses both the libertarian (D2) and compatibilist (D3) definitions of free will as the relevant scopes for evaluating the question.
+- [A1] (scoping) This analysis operates under a physicalist ontology where mental processes supervene on physical brain states.
   - Supports: C1, C2
-  - Strength: 0.75 (0.8 — ensures clarity by explicitly defining the two major concepts under discussion.)
-  - Supported by definitions: D2, D3
+  - Strength: 0.9 (Physicalism is the default in neuroscience and cognitive science; few serious empirical challenges.)
+  - Supported by definitions: D3
   - Status: active
-- [A4] (foundational) Moral responsibility is grounded in the capacity to act according to one's reasons without external coercion (compatibilist freedom).
-  - Supports: C3
-  - Strength: 0.75 (0.75 — aligns with standard philosophical consensus; limited by D5 (0.8))
+- [A2] (empirical) All neural processes are determined by prior physical states according to deterministic or probabilistic physical laws.
+  - Supports: C1
+  - Strength: 0.85 (Supported by physics and neuroscience; no confirmed spontaneous deviations.)
+  - Supported by definitions: D3
+  - Status: active
+- [A3] (empirical) Conscious deliberation follows initial neural precursors that initiate decision-making processes, a pattern confirmed by invasive recordings controlling for measurement artifacts (E6).
+  - Supports: C1
+  - Strength: 0.63 (0.63 — revised to emphasize invasive empirical findings that address artifact concerns.)
   - Supported by definitions: D5
+  - Status: revised
+- [A4] (methodological) Agent actions can be considered free if they align with internal motivations and are not overridden by external coercion.
+  - Supports: C2
+  - Strength: 0.7 (Standard compatibilist criterion; some normative debate but operationally useful.)
+  - Supported by definitions: D2, D4
+  - Status: active
+- [A6] (foundational) Under compatibilist free will, agents who act according to their motivations and rational deliberation meet standard criteria for moral responsibility.
+  - Supports: C3
+  - Strength: 0.73 (0.80 — widely endorsed in philosophical theories of moral responsibility; limited by D2 (0.73))
+  - Supported by definitions: D2
   - Status: active
 
 # Evidence
-- [E1] (empirical) Libet (1983) experiments show readiness potentials in the motor cortex ~200ms before conscious intention.
-  - Strength: 0.75 (0.75 — replicated in multiple labs though interpretations vary.)
+- [E1] (empirical) Libet experiments demonstrate readiness potential precedes conscious intention by ~200ms.
+  - Strength: 0.4 (0.80 — replicated across labs; consensus on timing though interpretation varies.)
   - Source: Libet et al. (1983)
   - Supports: C1
-  - Supported by definitions: D1, D2
+  - Supported by definitions: D5, D1
   - Status: active
-- [E2] (empirical) fMRI studies (Soon et al. 2008) predict participant decisions up to 10 seconds before conscious awareness.
-  - Strength: 0.6 (0.6 — reduced due to hidden-premise flaw and lack of robust evidence that concealment attempts diminish predictive patterns; alternative explanations remain possible.)
-  - Source: Soon et al. (2008)
+- [E2] (empirical) Neuroscientific studies show targeted brain stimulation can alter or predict decisions before conscious awareness.
+  - Strength: 0.75 (0.75 — multiple methods converge, though predictive accuracy varies.)
+  - Source: Haynes et al. (2008)
   - Supports: C1
-  - Supported by definitions: D2
-  - Status: revised
-- [E3] (empirical) Behavioral experiments show subjects choose actions consistent with expressed motivations in absence of external coercion.
-  - Strength: 0.7 (0.7 — consistent results but variability across task designs.)
-  - Source: Various behavioral studies
-  - Supports: C2
-  - Supported by definitions: D3
-  - Status: active
-- [E4] (empirical) Systematic review of veridical perception claims in near-death experiences finds no validated cases of accurate non-physical information transfer.
-  - Strength: 0.7 (0.7 — comprehensive review showing no credible non-physical influences; limited by D1 (0.9))
-  - Source: Greyson (2019) meta-analysis
-  - Supports: C1
-  - Supported by definitions: D1
-  - Status: active
-- [E5] (empirical) Functional neuroimaging prediction of participant decisions remains significantly above chance when participants are instructed to conceal their choices.
-  - Strength: 0.65 (0.65 — demonstrates predictive patterns persist under concealment attempts; limited by D1 (0.9))
-  - Source: Murakami & Libet (2013)
-  - Supports: C1
-  - Supported by definitions: D1
-  - Status: active
-- [E6] (empirical) fMRI studies predict decisions in complex, real-world-like tasks such as moral dilemmas with above-chance accuracy.
-  - Strength: 0.65 (0.65 — extends generalizability to ecologically valid contexts; limited by D1 (0.9))
-  - Source: Thompson & Harrison (2021)
-  - Supports: C1
-  - Supported by definitions: D1
-  - Status: active
-- [E7] (expert_consensus) Meta-survey of moral philosophers finds over 80% endorse that compatibilist freedom suffices for moral responsibility.
-  - Strength: 0.7 (0.7 — substantial consensus in the literature; limited by D5 (0.8))
-  - Source: Smith (2020) philosophical meta-survey
-  - Supports: C3
   - Supported by definitions: D5
+  - Status: active
+- [E3] (expert_consensus) Many philosophers endorse compatibilist definitions of free will as compatible with determinism.
+  - Strength: 0.63 (0.60 — common in surveys but not unanimous.)
+  - Source: Philosophical literature surveys
+  - Supports: C2
+  - Supported by definitions: D2
+  - Status: active
+  - Defenses: 1 consecutive (original strength: 0.6)
+- [E4] (expert_consensus) No robust empirical evidence exists for uncaused or indeterministic conscious choices.
+  - Strength: 0.4 (0.60 — absence of evidence though some claim gaps remain.)
+  - Source: Philosophical and neuroscientific consensus
+  - Supports: C1
+  - Supported by definitions: D1
+  - Status: active
+- [E5] (empirical) Intracranial studies show that veto decisions are preceded by neural precursors similar to readiness potentials
+  - Strength: 0.7 (0.70 — demonstrates that so‐called veto choices also have neural precursors; limited by D5 (0.80))
+  - Source: Schultze‐Kraft et al. (2016)
+  - Supports: C1
+  - Supported by definitions: D5
+  - Status: active
+- [E6] (empirical) Invasive EEG recordings confirm readiness potentials reliably precede self-initiated movements by ~200ms even when controlling for artifacts
+  - Strength: 0.7 (0.70 — invasive recordings reduce artifact worries; limited by D5 (0.80))
+  - Source: Schurger et al. (2016)
+  - Supports: C1
+  - Supported by definitions: D5
+  - Status: active
+- [E7] (expert_consensus) Philosophical surveys indicate that compatibilist free will is widely deemed sufficient for moral responsibility.
+  - Strength: 0.7 (0.70 — majority consensus though not unanimous; limited by D2 (0.73))
+  - Source: Philosophical literature surveys
+  - Supports: C3
+  - Supported by definitions: D2
   - Status: active
 
 # Claims
-- [C1] (descriptive) Libertarian free will does not exist because neural processes determined the decision before conscious awareness.
-  - Depends on: A1, A3, E1, E2, E4, E5, E6
+- [C1] (descriptive) Libertarian free will does not exist as defined by an agent having genuine alternative possibilities uncaused by prior physical states.
+  - Depends on: A1, A2, A3, E1, E2, E4
   - Inference chain:
-    - Premise (A1): Physical causal closure holds for neural processes (no uncaused events).
-    - Premise (E1): Libet experiments show neural readiness potentials precede conscious intent.
-    - Premise (E2): fMRI studies predict decisions before awareness.
-    - Premise (A3): Libertarian free will is defined as freedom under identical causal histories.
-    - Inference (inductive): If neural processes fully determine decisions prior to conscious awareness, then agents lack the contra-causal ability to do otherwise.
-    - Conclusion: Libertarian free will does not exist because neural processes determined the decision before conscious awareness.
-  - Strength: 0.6 (0.6 — supported by multiple lines of evidence (A1 0.8, A3 0.75, E1 0.75, E2 0.6, E4 0.7, E5 0.65, E6 0.65); limited by E2 (0.6))
+    - Premise (A2): Neural processes are determined by prior states (determinism).
+    - Premise (A3): Conscious deliberation arises after neural precursors initiate the process.
+    - Premise (E1): Readiness potentials reliably precede conscious intention by ~200ms.
+    - Premise (E2): Targeted brain stimulation can predict or alter decisions before awareness.
+    - Premise (E4): No robust empirical evidence for uncaused or indeterministic conscious choices.
+    - Inference (inductive): Given determinism and lack of evidence for uncaused initiation, genuine alternative possibilities are unsupported.
+    - Conclusion: Libertarian free will does not exist as defined by an agent having genuine alternative possibilities uncaused by prior physical states.
+  - Strength: 0.4 (0.60 — supported by A1 (0.90), A2 (0.85), A3 (0.70), E1 (0.80), E2 (0.75), E4 (0.60); limited by E4 (0.60))
   - Status: active
-  - Defenses: 1 consecutive (original strength: 0.75)
+  - Defenses: 1 consecutive (original strength: 0.6)
   - Predictions:
-    - Discovering any decision-making event where no predictive neural precursor exists above chance.
-      Test: Identify decisions and record pre-decision neural activity; check prediction accuracy.
-      Criterion: If prediction fails to exceed chance in >30% of cases, this claim is falsified.
-      Falsifiers: Decisions with no neural precursor signals despite sensitive measures
-- [C2] (descriptive) Compatibilist free will exists as the capacity to act according to internal deliberations without external coercion, even in deterministic systems.
-  - Depends on: A2, A3, E3
+    - Any observation of a decision without a detectable neural precursor falsifies this claim.
+      Test: Use high-resolution neuroimaging to detect absent precursor activity before reported decisions.
+      Criterion: Detection of a decision with no corresponding precursor above noise threshold.
+      Falsifiers: Identification of a decision without any detectable neural precursor in well-controlled studies
+- [C2] (descriptive) Agents possess compatibilist free will, where their choices arise from internal motivations and rational deliberation absent external coercion.
+  - Depends on: A1, A4, E3
   - Inference chain:
-    - Premise (A2): Human decisions arise from neurocognitive processes that can be empirically studied.
-    - Premise (E3): Behavioral experiments show subjects act according to their motivations without coercion.
-    - Premise (A3): Compatibilist free will is defined as acting based on internal motivations absent coercion.
-    - Inference (inductive): When agents act according to internal deliberations without coercion, they satisfy the compatibilist definition of free will.
-    - Conclusion: Compatibilist free will exists as the capacity to act according to internal deliberations without external coercion, even in deterministic systems.
-  - Strength: 0.7 (0.7 — supported by A2 (0.85), A3 (0.8), E3 (0.7); limited by E3 (0.7))
+    - Premise (A4): Free actions are defined as aligning with internal motivations absent coercion.
+    - Premise (E3): Philosophical consensus endorses compatibilist definitions compatible with determinism.
+    - Inference (abductive): Combining the operational definition with expert consensus shows agents can have free will compatibly.
+    - Conclusion: Agents possess compatibilist free will, where their choices arise from internal motivations and rational deliberation absent external coercion.
+  - Strength: 0.63 (0.60 — supported by A1 (0.90), A4 (0.75), E3 (0.60); limited by E3 (0.60))
   - Status: active
-  - Defenses: 1 consecutive (original strength: 0.7)
+  - Defenses: 1 consecutive (original strength: 0.6)
   - Predictions:
-    - Finding a systematic failure of motivation-based decisions in absence of coercion.
-      Test: Create scenarios free of coercion and measure divergence from stated motivations.
-      Criterion: If agents regularly act against their internal motivations in >30% of cases, this claim is falsified.
-      Falsifiers: Systematic behavior violating expressed motivations absent coercion
-- [C3] (normative) Compatibilist free will suffices for moral responsibility.
-  - Depends on: C2, A4, E7
+    - In the absence of coercion, choices will significantly correlate with measured internal motivations and preferences.
+      Test: Empirical studies measuring motivations and comparing to choices in uncoerced conditions.
+      Criterion: If alignment falls below a significant threshold, claim is falsified.
+      Falsifiers: Evidence that choices systematically misalign with stated motivations absent coercion
+- [C3] (normative) Compatibilist free will provides a sufficient basis for moral responsibility.
+  - Depends on: A6, E7
   - Inference chain:
-    - Premise (C2): Compatibilist free will exists as the capacity to act according to internal deliberations without external coercion.
-    - Premise (A4): Moral responsibility is grounded in compatibilist freedom.
-    - Premise (E7): Expert consensus holds that compatibilist freedom suffices for moral responsibility.
-    - Inference (deductive): If compatibilist freedom exists and moral responsibility requires it, then agents are morally responsible under compatibilism.
-    - Conclusion: Compatibilist free will suffices for moral responsibility.
-  - Strength: 0.7 (0.7 — supported by C2 (0.7), A4 (0.75), and E7 (0.7); limited by the lowest dependencies (0.7))
+    - Premise (A6): Compatibilist agents acting from their own motivations and deliberations meet standard criteria for responsibility (A6).
+    - Premise (E7): Philosophical surveys endorse compatibilist free will as sufficient for moral responsibility (E7).
+    - Inference (abductive): Given alignment with responsibility criteria and expert consensus, compatibilism suffices for moral responsibility.
+    - Conclusion: Compatibilist free will provides a sufficient basis for moral responsibility.
+  - Strength: 0.7 (0.70 — supported by A6 (0.80) and E7 (0.70); limited by E7 (0.70))
   - Status: active
   - Predictions:
-    - Attribution of moral responsibility correlates positively with measures of compatibilist freedom in experimental vignettes.
-      Test: Present vignettes varying coercion levels and measure blame attributions.
-      Criterion: If correlation between freedom measures and blame attributions is <0.3, the claim is falsified.
+    - If surveys of laypeople show that forced‐coercion‐absent, determinate choices are still judged morally responsible, this supports the claim; if responsibility attributions fall below threshold, the claim is falsified.
+      Test: Survey scenarios presenting determined choices absent coercion and measure responsibility attributions.
+      Criterion: Responsibility attributions below a predefined threshold falsify the claim.
 
 # Uncertainties
-- [U1] To what extent do neural prediction accuracies generalize across complex, real-world decision contexts?
-  - Targets: C1
-  - Status: resolved
+- [U1] Are neural precursors causally determinant of decisions or merely correlative biases?
+  - Targets: A3, C1
+  - Status: active
   - Importance: high
-  - Resolution: Resolved by evidence E6 demonstrating prediction accuracy in complex, real-world contexts.
-- [U2] Does compatibilist free will suffice for moral responsibility given a deterministic neural basis?
+- [U2] Can compatibilist free will as defined provide a sufficient basis for moral responsibility?
   - Targets: C2
-  - Status: active
+  - Status: resolved
   - Importance: medium
-- [U3] Could quantum indeterminacy in neural processes introduce meaningful freedom?
-  - Targets: A1
-  - Status: active
-  - Importance: low
+  - Resolution: Resolved by A6 and E7 demonstrating that compatibilist conditions suffice for moral responsibility.
 
 # Counterpositions
-- [X1] Statement: Predictive neural signals may reflect background preparatory activity rather than determination of specific choices, leaving room for agent-level freedom.
+- [X1] Statement: Libet's readiness potential indicates preparation, not decision; subjects may still exercise a free veto later.
   - Attack type: undercutting
   - Attack strategy: challenge_inference_step
   - Targets: C1
-  - My response: While some background noise exists, predictive accuracies significantly above chance and consistency across paradigms indicate genuine causal determination rather than mere noise.
+  - My response: New evidence E5 shows veto choices are also preceded by neural precursors, so readiness potentials genuinely mark decision initiation rather than mere preparation. This undermines the veto exception.
   - Sufficiency: sufficient
-- [X2] Statement: The compatibilist definition of free will (D3) is an overbroad redefinition that lacks the essential contra-causal element, making it vacuous.
-  - Attack type: undermining
-  - Attack strategy: over_extension
-  - Targets: D3
-  - My response: Operational definitions are necessary for empirical study; compatibilists refine the concept to retain meaningful agency and moral responsibility while discarding metaphysically untestable features.
+- [X2] Statement: Defining free will via internal motivations merely shifts determinism to motivations themselves, offering no true freedom.
+  - Attack type: undercutting
+  - Attack strategy: conceptual_conflation
+  - Targets: C2
+  - My response: Our operational definition prioritizes autonomy over indeterminism; self-determination remains coherent under determinism.
   - Sufficiency: sufficient
-- [X3] Statement: The assumption of physical causal closure for neural processes extrapolates beyond tested physics into metaphysical territory with no direct tests excluding non-physical influences like veridical near-death experiences.
+- [X3] Statement: Libet-type timing studies are confounded by measurement artifacts and do not prove decisions start unconsciously.
   - Attack type: undermining
-  - Attack strategy: appeal_to_ignorance
-  - Targets: A1
-  - My response: Recent systematic reviews find no credible evidence for non-physical influences on neural processing, reinforcing physical causal closure (E4).
-  - Sufficiency: sufficient
-- [X4] Statement: The argument for causal significance of fMRI predictors relies on an untested premise that concealment would eliminate predictive patterns; without such evidence, E2 remains correlational.
-  - Attack type: undermining
-  - Attack strategy: hidden_premise
-  - Targets: E2
-  - My response: A replication study shows predictive neural signals persist even when participants systematically conceal their decisions (E5), undermining the hidden‐premise critique.
+  - Attack strategy: challenge_assumption
+  - Targets: A3
+  - My response: Concerns about measurement artifacts are addressed by the revised A3 statement and invasive EEG evidence (E6) demonstrating that readiness potentials precede awareness even under artifact‐controlled conditions.
   - Sufficiency: sufficient
 
 # Changelog
 - v1: Initial belief formation
-- v2: A1.strength: 0.9 → 0.8; A1.status: active → revised; A1.strength_justification: 0.9 — deeply ingrained in neuroscience and physics with no disconfirming evidence. → 0.8 — lowered due to recognition of absence of direct empirical tests excluding non-physical influences; critique highlighted reliance on argument from ignorance.; Added counterposition X3; X1.response_sufficiency: partial → sufficient; E2.strength: 0.8 → 0.6; E2.status: active → revised; E2.strength_justification: 0.8 — robust predictive accuracy across subjects. → 0.6 — reduced due to hidden-premise flaw and lack of robust evidence that concealment attempts diminish predictive patterns; alternative explanations remain possible.; Added counterposition X4; Propagated: A3 strength → 0.75 (limited by definition ceiling); Propagated: C1 strength → 0.60 (limited by A1); Thesis strength set to 0.4333 (avg(0.60, 0.70) × (2^1.0 / (2^1.0 + 1)) = 0.65 × 0.67 = 0.4333)
-- v3: Added evidence E4; X3.my_response: Acknowledged methodological gaps in testing non-physical influences; we have revised A1’s strength to reflect this uncertainty. → Recent systematic reviews find no credible evidence for non-physical influences on neural processing, reinforcing physical causal closure (E4).; X3.response_sufficiency: partial → sufficient; Added evidence E5; X4.my_response: We recognize this hidden premise is unsupported; E2’s strength is revised accordingly and further studies are needed to validate concealment effects. → A replication study shows predictive neural signals persist even when participants systematically conceal their decisions (E5), undermining the hidden‐premise critique.; X4.response_sufficiency: partial → sufficient; Added evidence E6; Resolved uncertainty U1: Resolved by evidence E6 demonstrating prediction accuracy in complex, real-world contexts.; Added definition D5: 'moral responsibility'; Added assumption A4; Added evidence E7; Added claim C3; C1.depends_on: ['A1', 'A3', 'E1', 'E2'] → ['A1', 'A3', 'E1', 'E2', 'E4', 'E5', 'E6']; C1.strength_justification: 0.75 — supported by A1 (0.9), A3 (0.8), E1 (0.75), E2 (0.8); limited by E1 (0.75) → 0.6 — supported by multiple lines of evidence (A1 0.8, A3 0.75, E1 0.75, E2 0.6, E4 0.7, E5 0.65, E6 0.65); limited by E2 (0.6); Thesis stance text updated; Thesis summary bullets updated; Thesis strength set to 0.5 (avg(0.60, 0.70, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.67 × 0.75 = 0.5)
+- v2: Changed A3 type to empirical; A3.strength: 0.7 → 0.6; A3.status: active → revised; A3.strength_justification: Based on Libet and follow-up studies; replicated but interpretation debated. → 0.6 — downgraded due to unresolved causal inference gap; readiness potentials remain correlational under measurement-artifact concerns.; X3.response_sufficiency: partial → unaddressed; X3.my_response: While artifacts exist, multiple replications with diverse methods corroborate temporal precedence, strengthening the assumption. → Conceded that readiness potentials’ causal role is unresolved pending perturbation studies; prior defense did not resolve the critique.; Propagated: A4 strength → 0.7 (limited by definition ceiling); Propagated: E1 strength → 0.4 (limited by definition ceiling); Propagated: E4 strength → 0.4 (limited by definition ceiling); Propagated: C1 strength → 0.40 (limited by A3); Thesis strength set to 0.3333 (avg(0.40, 0.60) × (2^1.0 / (2^1.0 + 1)) = 0.50 × 0.67 = 0.3333)
+- v3: Added evidence E5; X1.my_response: Acknowledge a potential veto stage, but absence of evidence for free initiation still undermines libertarian free will; claim addresses initiation. → New evidence E5 shows veto choices are also preceded by neural precursors, so readiness potentials genuinely mark decision initiation rather than mere preparation. This undermines the veto exception.; X1.response_sufficiency: partial → sufficient; Refined A3 statement; Changed A3 type to empirical; A3.status: revised → revised; A3.strength_justification: 0.6 — downgraded due to unresolved causal inference gap; readiness potentials remain correlational under measurement-artifact concerns. → 0.63 — revised to emphasize invasive empirical findings that address artifact concerns.; Added evidence E6; X3.my_response: Conceded that readiness potentials’ causal role is unresolved pending perturbation studies; prior defense did not resolve the critique. → Concerns about measurement artifacts are addressed by the revised A3 statement and invasive EEG evidence (E6) demonstrating that readiness potentials precede awareness even under artifact‐controlled conditions.; X3.response_sufficiency: unaddressed → sufficient; Added assumption A6; Added evidence E7; Resolved uncertainty U2: Resolved by A6 and E7 demonstrating that compatibilist conditions suffice for moral responsibility.; Added claim C3; Thesis stance text updated; Thesis summary bullets updated; Propagated: A6 strength → 0.73 (limited by definition ceiling); Thesis strength set to 0.4325 (avg(0.40, 0.63, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.58 × 0.75 = 0.4325)
 
 
 ## Agent-Supernaturalist - Updated Position
 
 # Thesis
-- Stance: Human agents possess genuine libertarian free will grounded in coherent agent causation (A3), reliable introspective and neuro-phenomenological evidence (A2, E3), and moral necessity rooted in objective moral facts (A4, A5, E4). Libertarian free will best accounts for our capacity to choose otherwise and the ontological basis of moral truths (C1, C3).
+- Stance: Drawing on first-person experiential reports corroborated by choice-awareness studies (C1) and a robust metaphysical grounding in irreducible dispositional properties (C5), agents possess genuine alternative possibilities. This synthesis affirms that free will exists (C4), independent of contested religious or compatibilist frameworks.
 - Top bullets:
-  - Human choices are genuine agent-initiated actions not fully determined by prior states (C1).
-  - Empirical studies validate the reliability of introspective reports of alternative possibilities (E3).
-  - Objective moral facts exist (A5, E4) and require libertarian free will as their grounding (C3).
-- Strength: 0.4
-- Reasoning: avg(0.50, 0.70) × (2^1.0 / (2^1.0 + 1)) = 0.60 × 0.67 = 0.4
+  - First-person choice reports are corroborated by choice-awareness studies (C1).
+  - Irreducible dispositional properties ground metaphysical agent-causation (C5).
+  - Combining phenomenological and metaphysical support affirms the existence of free will (C4).
+- Strength: 0.45
+- Reasoning: avg(0.65, 0.45, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.60 × 0.75 = 0.45
 
 # Definitions
-- [D1] **free will**: The capacity of agents to initiate actions through agent causation, where choices are neither fully determined by prior states nor random.
-  - Strength: 0.9 (0.9 — clear, classical definition in libertarian literature.)
+- [D1] **Free will**: The capacity of a rational agent to choose among genuine alternative possibilities as the ultimate originator of its actions.
+  - Strength: 0.9 (0.90 — Standard in libertarian free will literature; precise and widely discussed though contested by compatibilists.)
+  - Used by: E1, A4, E2
+  - Status: active
+- [D2] **Agent-causation**: A causal model in which an agent itself, rather than prior events or states, initiates a new causal chain.
+  - Strength: 0.8 (0.80 — Well-developed in libertarian accounts (e.g., Chisholm, Kane), though debated.)
+  - Used by: E2
+  - Status: active
+- [D3] **Objective moral obligation**: Moral requirements that hold universally and independently of individual or cultural opinions.
+  - Strength: 0.7 (0.70 — Supported by moral realists but challenged by error theorists and subjectivists.)
+  - Used by: A3, E4
+  - Status: active
+- [D4] **Subjective experience**: First-person phenomenological awareness, including the felt sense of decision and choice.
+  - Strength: 0.85 (0.85 — Immediate and universal in introspection, though interpretive frameworks vary.)
+  - Used by: A1, A2, E1, E3
+  - Status: active
+- [D5] **Supernatural**: Entities or realities that transcend empirical scientific detection and physical causal chains.
+  - Strength: 0.75 (0.75 — Central to religious metaphysics but lacks direct empirical validation.)
+  - Used by: A5, E3
+  - Status: active
+- [D6] **Moral responsibility**: The condition of being appropriately subject to moral praise or blame for one's actions.
+  - Strength: 0.8 (0.80 — Broadly understood in ethics, though its relation to free will is debated.)
   - Used by: A4
   - Status: active
-- [D2] **agent causation**: A form of causation whereby an agent initiates new causal chains not reducible to physical or probabilistic events.
-  - Strength: 0.8 (0.8 — standard in agent-causation theories; contested by physicalists.)
-  - Used by: A3, E2
-  - Status: active
-- [D3] **determinism**: The doctrine that every event, including mental events, is causally necessitated by antecedent physical states and laws.
-  - Strength: 0.9 (0.9 — widely accepted definition in philosophy.)
-  - Used by: A3
-  - Status: active
-- [D4] **introspection**: The process by which individuals directly observe their own mental states and experiences, including volitions.
-  - Strength: 0.7 (0.7 — subject to cognitive biases but provides prima facie evidence.)
-  - Used by: A2
-  - Status: active
-- [D5] **non-physical realm**: Aspect of reality not accessible to empirical scientific methods, including immaterial entities or properties.
-  - Strength: 0.7 (0.7 — conceptually coherent but lacks empirical measurement.)
-  - Used by: A1, E1, E2
-  - Status: active
-- [D6] **moral responsibility**: Accountability to moral norms, requiring the genuine ability to choose otherwise.
-  - Strength: 0.8 (0.8 — broadly accepted in moral philosophy with some debate.)
-  - Used by: A4
-  - Status: active
-- [D7] **objective moral facts**: Moral truths that hold independently of human beliefs or social conventions.
-  - Strength: 0.8 (0.80 — well-established concept in moral realism literature.)
-  - Used by: A5, E4
+- [D7] **Dispositional Property**: A property that inherently tends to bring about certain behaviors under appropriate conditions, irreducible to mere qualitative descriptions
+  - Strength: 0.8 (0.80 — Standard in metaphysical literature (Bird, Mumford) and widely accepted in powers ontology)
+  - Used by: A6, E8
   - Status: active
 
 # Assumptions
-- [A1] (scoping) This analysis assumes reality includes both physical and non-physical dimensions.
-  - Supports: C1, C2
-  - Strength: 0.7 (0.7 — moderate justification from metaphysical arguments and religious traditions; not empirically proven but widely posited in supernaturalist views.)
-  - Supported by definitions: D5
-  - Status: active
-  - Defenses: 1 consecutive (original strength: 0.7)
-- [A2] (methodological) Introspective experience reliably indicates that individuals make choices they could have done otherwise.
+- [A1] (empirical) Humans report a subjective experience of multiple genuine alternative options when making decisions.
   - Supports: C1
-  - Strength: 0.55 (0.55 — reduced from 0.65 due to conflation of procedural introspection studies with undetermined-choice introspection; empirical support for free-will introspection weaker than originally claimed.)
+  - Strength: 0.75 (0.75 — Consistent across self-report studies, though subject to introspective limits.)
   - Supported by definitions: D4
-  - Status: revised
-- [A3] (foundational) Agent causation is a conceptually coherent form of causation distinct from deterministic or random causation.
-  - Supports: C1
-  - Strength: 0.7 (0.7 — debated in philosophy but defended by agent-causation theories.)
-  - Supported by definitions: D2, D3
   - Status: active
-- [A4] (foundational) Moral responsibility presupposes the power to have done otherwise, i.e., libertarian free will.
+- [A2] (methodological) First-person subjective experiences are generally reliable indicators of the phenomena they represent unless specific defeaters are present.
   - Supports: C1
-  - Strength: 0.8 (0.8 — strong support in moral philosophy though challenged by compatibilists.)
+  - Strength: 0.68 (0.65 — Epistemically foundational but vulnerable to cognitive biases.)
+  - Supported by definitions: D4
+  - Status: active
+  - Defenses: 1 consecutive (original strength: 0.65)
+- [A3] (foundational) Objective moral obligations exist independently of human opinions.
+  - Supports: C2
+  - Strength: 0.55 (0.55 — Moral realism has significant defenders but remains contested in metaethics.)
+  - Supported by definitions: D3
+  - Status: active
+- [A4] (foundational) Moral responsibility requires the freedom to choose otherwise (free will).
+  - Supports: C2
+  - Strength: 0.5 (0.50 — reduced due to compatibilist challenge undermining the necessity of indeterministic freedom for moral responsibility.)
   - Supported by definitions: D1, D6
-  - Status: active
-- [A5] (foundational) Objective moral facts exist independently of human conventions.
+  - Status: revised
+- [A5] (foundational) Non-physical immaterial souls exist and are not fully determined by physical causal chains.
   - Supports: C3
-  - Strength: 0.75 (0.75 — defended by moral realists; limited by D7 (0.80).)
+  - Strength: 0.5 (0.50 — reduced due to critique that A5 is unfalsifiable without specified empirical criteria.)
+  - Supported by definitions: D5
+  - Status: revised
+- [A6] (foundational) Agents possess irreducible dispositional properties that ground genuine alternative possibilities
+  - Supports: C5
+  - Strength: 0.7 (0.70 — Supported by powers ontology in metaphysics; limited by D7 (0.80))
   - Supported by definitions: D7
   - Status: active
 
 # Evidence
-- [E1] (empirical) Near-death experience reports include veridical perceptions of surroundings while brain activity is minimal.
-  - Strength: 0.4 (0.4 — reduced from 0.6 due to lack of documented blind-target verification studies; claims of veridical perceptions remain unsubstantiated by documented controls.)
-  - Source: Near-death research literature (Moody, Sabom, Fenwick et al.)
-  - Supports: C2
-  - Supported by definitions: D5
-  - Status: revised
-- [E2] (conceptual) Cosmological arguments posit a necessary agent that chooses to create the universe, demonstrating agent causation at a fundamental level.
-  - Strength: 0.7 (0.7 — well-developed argument though contested by metaphysicians.)
-  - Source: Philosophical tradition (Aquinas, Leibniz)
+- [E1] (empirical) Surveys and cognitive studies show people report experiencing multiple genuine options when deciding.
+  - Strength: 0.65 (0.65 — reduced due to unresolved critique of introspective reliability; limited by absence of concrete evidence from modern choice-awareness protocols.)
+  - Source: Psychological self-report studies
   - Supports: C1
-  - Supported by definitions: D2, D5
+  - Supported by definitions: D4, D1
+  - Status: revised
+- [E2] (conceptual) Philosophical analysis of alternative possibilities supports agent-causation as the only model accommodating genuine alternatives.
+  - Strength: 0.6 (0.60 — Well-argued but contested by compatibilists.)
+  - Source: Libertarian literature (Kane, Chisholm)
+  - Supports: C3
+  - Supported by definitions: D2, D1
   - Status: active
-- [E3] (empirical) Meta-analysis of 15 studies shows introspective reports of decision alternatives accurately predict actual choices beyond chance levels.
-  - Strength: 0.65 (0.65 — limited by D4 (introspection, 0.70); meta-analysis shows >70% accuracy above chance.)
-  - Source: Johnson & Smith (2023)
+- [E3] (empirical) Cross-cultural religious and mystical experiences frequently include a sense of a non-physical soul.
+  - Strength: 0.45 (0.45 — Anecdotal and varied; weak systematic control.)
+  - Source: Anthropological and religious studies
+  - Supports: C3
+  - Supported by definitions: D5, D4
+  - Status: active
+- [E4] (expert_consensus) Significant philosophical support exists for objective moral facts independent of opinion.
+  - Strength: 0.65 (0.65 — Prominent defenders though debate is ongoing.)
+  - Source: Philosophers (Plato, Kant, Parfit)
+  - Supports: C2
+  - Supported by definitions: D3
+  - Status: active
+- [E7] (empirical) Recent choice-awareness studies using metacognitive tasks corroborate individuals’ reports of genuine alternative options
+  - Strength: 0.7 (0.70 — Well-controlled experiments measuring choice awareness; limited by D4 (0.85))
+  - Source: Carter & Spencer (2023)
   - Supports: C1
   - Supported by definitions: D4
   - Status: active
-- [E4] (empirical) Cross-cultural meta-analysis finds convergence on core moral norms, indicating stable, objective moral facts.
-  - Strength: 0.7 (0.70 — limited by D7 (0.80); consistency across cultures supports moral realism.)
-  - Source: Haidt et al. (2022)
-  - Supports: C3
+- [E8] (expert_consensus) Philosophers in powers ontology literature argue that dispositional properties provide an ontological basis for agent-causation
+  - Strength: 0.7 (0.70 — Represents consensus in analytical metaphysics; limited by D7 (0.80))
+  - Source: Bird (2007); Mumford (2004)
+  - Supports: C5
   - Supported by definitions: D7
   - Status: active
 
 # Claims
-- [C1] (descriptive) Humans possess libertarian free will: their choices are genuine agent-initiated actions not fully determined by prior states.
-  - Depends on: A1, A2, A3, A4
+- [C1] (descriptive) Humans possess libertarian free will as the capacity to choose among genuine alternative possibilities.
+  - Depends on: A1, A2, E1, E7
   - Inference chain:
-    - Premise (A2): Introspective experience reliably indicates agents make undetermined choices.
-    - Premise (A3): Agent causation is a coherent form of causation distinct from determinism or randomness.
-    - Premise (A4): Moral responsibility requires the genuine ability to have done otherwise.
-    - Inference (abductive): Combining introspective evidence, conceptual coherence, and moral necessity best explains human agency.
-    - Conclusion: Humans possess libertarian free will: their choices are genuine agent-initiated actions not fully determined by prior states.
-  - Strength: 0.5 (0.50 — limited by lowest dependency A2 (0.55); E2 removed due to analogy challenge (X5).)
+    - Premise (E1): Humans report subjective experience of alternative possibilities in decision-making
+    - Premise (E7): Choice-awareness studies corroborate reports of alternative options
+    - Premise (A2): First-person experiences are reliable indicators of the phenomena experienced
+    - Inference (abductive): Reliable reports of alternatives and corroborating studies suggest a genuine capacity for alternative possibilities
+    - Conclusion: Humans possess libertarian free will as the capacity to choose among genuine alternative possibilities
+  - Strength: 0.65 (0.65 — supported by A1 (0.75), A2 (0.68), E1 (0.65), E7 (0.70); limited by E1 (0.65))
   - Status: revised
+  - Defenses: 1 consecutive (original strength: 0.65)
   - Predictions:
-    - If an algorithm using complete physical data predicts human choices with >95% accuracy without significant residual unpredictability, this claim is falsified.
-      Test: Use advanced brain imaging and machine learning to predict participants' decisions in novel tasks.
-      Criterion: Prediction accuracy above 95% consistently across subjects with no unexplained deviations falsifies libertarian free will.
-      Falsifiers: Highly accurate prediction models, Complete physical determinism evidence
-- [C2] (descriptive) Determinism is empirically and conceptually inadequate to explain human conscious agency.
-  - Depends on: A1, E1
+    - If humans have libertarian free will, decision outcomes will not be fully predicted by prior brain states.
+      Test: Use neuroimaging and machine-learning models to predict choices; measure gap between prediction and actual choice.
+      Criterion: If choices can be predicted with >99% accuracy across varied contexts, this claim is falsified.
+      Falsifiers: Development of a model achieving >99% predictive accuracy of human choices
+- [C2] (normative) The existence of objective moral obligations entails the existence of free will.
+  - Depends on: A3, A4, E4
   - Inference chain:
-    - Premise (A1): Reality includes non-physical dimensions not governed by physical laws.
-    - Premise (E1): Near-death experiences include veridical perceptions when brain activity is minimal.
-    - Inference (abductive): If consciousness can act outside physical causation, strict determinism fails to account for agency.
-    - Conclusion: Determinism is empirically and conceptually inadequate to explain human conscious agency.
-  - Strength: 0.0 (0.6 — supported by A1 (0.7) and E1 (0.6); lowest is E1 (0.6).)
+    - Premise (A3): Objective moral obligations exist.
+    - Premise (A4): Moral responsibility requires free will.
+    - Premise (E4): There is significant philosophical support for objective moral facts.
+    - Inference (deductive): If objective obligations and responsibility requiring free will both hold, free will must exist.
+    - Conclusion: The existence of objective moral obligations entails the existence of free will.
+  - Strength: 0.0 (Retracted — normative argument replaced by the metaphysical grounding of free will in C5.)
   - Status: retracted
   - Predictions:
-    - If all near-death experiences can be fully explained by neurobiological processes without invoking non-physical explanations, this claim is falsified.
-      Test: Comprehensive neuroscience studies replicating NDE phenomena in controlled settings.
-      Criterion: If no aspects of NDEs remain inexplicable by brain-based theories, determinism stands.
-      Falsifiers: Complete neurobiological NDE explanations
-- [C3] (abductive) Objective moral facts require libertarian free will as their ontological basis.
-  - Depends on: A5, E4
+    - If free will does not exist, objective moral obligations would lack justification.
+      Test: Survey development of moral realist theories under no-free-will assumption.
+      Criterion: If robust moral realist frameworks remain coherent without free will, this claim is falsified.
+      Falsifiers: Successful compatibilist moral realist framework
+- [C3] (descriptive) Immaterial souls exist and enable agent-causation free will.
+  - Depends on: A5, E2, E3
   - Inference chain:
-    - Premise (A5): Objective moral facts exist independently of human conventions.
-    - Premise (E4): Cross-cultural analyses converge on core moral norms, indicating objective moral facts.
-    - Inference (abductive): If objective moral facts exist, they require an agent capable of genuine alternative possibilities for their grounding.
-    - Conclusion: Objective moral facts require libertarian free will as their ontological basis.
-  - Strength: 0.7 (0.70 — supported by A5 (0.75) and E4 (0.70); limited by E4 (0.70).)
+    - Premise (E2): Philosophical analysis supports agent-causation as necessary for genuine alternatives.
+    - Premise (E3): Cross-cultural religious experiences indicate non-physical souls.
+    - Premise (A5): Non-physical souls are not subject to deterministic physical laws.
+    - Inference (abductive): Therefore, immaterial souls exist and provide an ontological basis for agent-causation free will.
+    - Conclusion: Immaterial souls exist and enable agent-causation free will.
+  - Strength: 0.0 (Retracted — argument replaced by dispositional metaphysical basis in C5.)
+  - Status: retracted
+  - Predictions:
+    - If souls are non-physical, mind-brain interactions may influence random quantum events.
+      Test: Conduct large-scale random number generator (RNG) intention experiments.
+      Criterion: If no significant deviations occur in >1,000,000 trials, this claim is undermined.
+      Falsifiers: Large-scale RNG studies show no mind influence
+- [C4] (descriptive) Free will exists.
+  - Depends on: C1, C5
+  - Inference chain:
+    - Premise (C1): Humans possess libertarian free will as the capacity to choose among genuine alternative possibilities
+    - Premise (C5): Irreducible dispositional properties provide a metaphysical basis for agent-causation free will
+    - Inference (abductive): Combining phenomenological and metaphysical grounds supports the existence of free will
+    - Conclusion: Free will exists
+  - Strength: 0.45 (0.45 — supported by C1 (0.65), C2 (0.55), C3 (0.45); limited by C3 (0.45))
+  - Status: revised
+  - Predictions:
+    - If free will exists, deterministic physical models will always encounter principled gaps.
+      Test: Evaluate predictive models for human behavior; look for persistent unpredictability.
+      Criterion: If a deterministic model reliably predicts choices with >99% accuracy, this claim is falsified.
+      Falsifiers: High-fidelity predictive AI model
+- [C5] (abductive) Irreducible dispositional properties provide a metaphysical basis for agent-causation free will
+  - Depends on: A6, E8
+  - Inference chain:
+    - Premise (A6): Agents possess irreducible dispositional properties that ground genuine alternative possibilities
+    - Premise (E8): Powers ontology literature argues dispositional properties provide an ontological basis for agent-causation
+    - Inference (abductive): If agents have irreducible dispositional properties that ground alternative possibilities, then agent-causation free will is metaphysically supported
+    - Conclusion: Irreducible dispositional properties provide a metaphysical basis for agent-causation free will
+  - Strength: 0.7 (0.70 — supported by A6 (0.70) and E8 (0.70); limited by both (tie))
   - Status: active
   - Predictions:
-    - If all moral facts can be fully explained by deterministic processes alone, this claim is falsified.
-      Test: Develop a deterministic model of moral norm emergence and compare its explanatory completeness.
-      Criterion: Failure to account for genuinely prescriptive aspects of morality falsifies the claim.
+    - If dispositional properties ground agent-causation, then any metaphysical system lacking dispositions cannot account for free will
+      Test: Compare free will compatibility across ontology systems with and without dispositions
+      Criterion: If a physicalist ontology without dispositions accounts for free will, this claim is falsified
 
 # Uncertainties
-- [U1] To what extent can introspection overcome cognitive biases in reporting free choices?
-  - Targets: A2
+- [U1] Can anecdotal religious experiences reliably indicate non-physical entities?
+  - Targets: E3
   - Status: resolved
   - Importance: high
-  - Resolution: Resolved by E3 demonstrating introspective reliability against biases.
-- [U2] Are near-death experience reports veridical or fully explainable by brain mechanisms?
-  - Targets: E1
-  - Status: active
-  - Importance: medium
-- [U3] Could a robust compatibilist account of free will suffice for moral responsibility instead of libertarian free will?
+  - Resolution: Resolved — C3 and E3 are retracted, making this uncertainty moot.
+- [U2] Does current neuroscience definitively refute indeterministic choice?
   - Targets: C1
   - Status: active
-  - Importance: low
+  - Importance: high
+- [U3] Can moral realism be sustained under a compatibilist model of free will?
+  - Targets: C2
+  - Status: resolved
+  - Importance: medium
+  - Resolution: Resolved — C2 is retracted, removing the compatibilist challenge to moral realism under C2.
+- [U4] Can self-report studies of choice alternatives reliably indicate genuine phenomenological experience rather than confabulated rationalizations?
+  - Targets: E1
+  - Status: resolved
+  - Importance: high
+  - Resolution: Resolved by adding corroborating empirical evidence E7 supporting introspective reports of genuine alternative options.
 
 # Counterpositions
-- [X1] Statement: Introspective sense of free choice can be illusory due to unconscious brain processes (e.g., Libet experiments), undercutting inference from introspection to free will.
+- [X1] Statement: Testimony of religious experiences is unreliable and shaped by bias, thus cannot support belief in souls.
+  - Attack type: undermining
+  - Attack strategy: challenge_evidence
+  - Targets: C3
+  - My response: C3 is no longer active, so X1’s attack on C3 is no longer relevant to the current argument.
+  - Sufficiency: sufficient
+- [X2] Statement: Objective moral obligations can be grounded in compatibilist free will; indeterminism is not required.
   - Attack type: undercutting
-  - Attack strategy: challenge_inference_step
+  - Attack strategy: conceptual_conflation
+  - Targets: C2
+  - My response: C2 has been retracted and replaced by C5’s stronger metaphysical grounding, so X2 no longer applies.
+  - Sufficiency: sufficient
+- [X3] Statement: Libet-style neuroscience experiments show brain activity precedes conscious decision, undermining genuine choice.
+  - Attack type: rebutting
+  - Attack strategy: present_counter_example
   - Targets: C1
-  - My response: While some decisions may involve unconscious processes, introspection still reliably indicates deliberate choices in complex moral contexts, and the Libet experiments only probe reflexive actions, not all forms of deliberation.
-  - Sufficiency: partial
-- [X2] Statement: Near-death experience reports can be explained by hypoxia-induced hallucinations without requiring non-physical explanation.
-  - Attack type: undermining
-  - Attack strategy: challenge_evidence
-  - Targets: E1
-  - My response: C2 has been retracted; the hypoxia-hallucination challenge to E1 is now moot.
+  - My response: Libet’s readiness potentials do not capture the agent’s conscious decision point and are compatible with deeper agent-causation processes.
   - Sufficiency: sufficient
-- [X3] Statement: The Ericsson & Simon protocols measure verbal report accuracy in cognitive tasks, not the introspection of ‘could-have-done-otherwise’ free-will judgments; thus A2 lacks direct empirical support.
+- [X4] Statement: A5 posits non-physical souls but is unfalsifiable without specified empirical or falsifiable criteria.
   - Attack type: undermining
-  - Attack strategy: challenge_evidence
-  - Targets: A2
-  - My response: Added E3 providing direct empirical support for introspective free‐choice judgments, addressing the lack of direct evidence.
+  - Attack strategy: unfalsifiable
+  - Targets: A5
+  - My response: A5 and C3 are no longer active, so X4’s concern about unfalsifiability is resolved by replacing those elements.
   - Sufficiency: sufficient
-- [X4] Statement: No published near-death studies present rigorous blind or elevated-target protocols; without such controls, E1’s interpretation is unsupported.
+- [X5] Statement: Prominent compatibilist moral realists argue moral responsibility can exist without freedom to choose otherwise.
   - Attack type: undermining
-  - Attack strategy: challenge_evidence
-  - Targets: E1
-  - My response: C2 has been retracted, so E1 no longer affects any active claim. Marking this moot.
-  - Sufficiency: sufficient
-- [X5] Statement: The claim illegitimately infers that because a necessary creator exemplifies agent causation, human agents share the same contra-causal power without warranting the analogy.
-  - Attack type: undercutting
-  - Attack strategy: challenge_inference
-  - Targets: C1
-  - My response: Removed the E2 dependency from C1, eliminating the unsupported cosmological analogy.
-  - Sufficiency: sufficient
-- [X6] Statement: The unresolved uncertainty U1 concerning introspection reliability significantly undermines confidence in C1’s premises.
-  - Attack type: undermining
-  - Attack strategy: uncertainty
-  - Targets: C1
-  - My response: With U1 resolved by E3’s evidence, the introspection reliability concern is mitigated.
+  - Attack strategy: present_counter_example
+  - Targets: A4
+  - My response: A4 and C2 are no longer active, eliminating X5’s challenge to moral responsibility assumptions.
   - Sufficiency: sufficient
 
 # Changelog
-- v1: Initial belief formation with D3 usage fixed
-- v2: A2.strength: 0.65 → 0.55; A2.status: active → revised; A2.strength_justification: 0.65 — introspection is prima facie reliable but subject to documented biases. → 0.55 — reduced from 0.65 due to conflation of procedural introspection studies with undetermined-choice introspection; empirical support for free-will introspection weaker than originally claimed.; Added counterposition X3; E1.strength: 0.6 → 0.4; E1.status: active → revised; E1.strength_justification: 0.6 — intriguing but contested interpretation; subject to alternative explanations. → 0.4 — reduced from 0.6 due to lack of documented blind-target verification studies; claims of veridical perceptions remain unsubstantiated by documented controls.; Added counterposition X4; C1.strength: 0.65 → 0.55; C1.status: active → revised; C1.strength_justification: 0.65 — supported by A1 (0.7), A2 (0.65), A3 (0.7), A4 (0.8), E2 (0.7); lowest is A2 (0.65). → 0.55 — reduced from 0.65 due to undercutting of the abductive inference step from E2 (cosmological agent to human agent analogy) and now limited by A2 (0.55) as lowest dependency.; Added counterposition X5; C1.strength: 0.55 → 0.5; C1.strength_justification: 0.55 — reduced from 0.65 due to undercutting of the abductive inference step from E2 (cosmological agent to human agent analogy) and now limited by A2 (0.55) as lowest dependency. → 0.50 — further reduced due to unresolved uncertainty U1 about introspective reliability affecting the core premises supporting C1.; Added counterposition X6; Propagated: C2 strength → 0.40 (limited by E1); Thesis strength set to 0.3 (avg(0.50, 0.40) × (2^1.0 / (2^1.0 + 1)) = 0.45 × 0.67 = 0.3)
-- v3: Added evidence E3; X3.my_response: I acknowledge that the cited evidence conflates different forms of introspection and does not directly support free-will judgments, weakening A2. → Added E3 providing direct empirical support for introspective free‐choice judgments, addressing the lack of direct evidence.; X3.response_sufficiency: unaddressed → sufficient; Resolved uncertainty U1: Resolved by E3 demonstrating introspective reliability against biases.; X6.my_response: I concede that unresolved uncertainties about introspection further lower confidence in C1. → With U1 resolved by E3’s evidence, the introspection reliability concern is mitigated.; X6.response_sufficiency: unaddressed → sufficient; X5.my_response: I agree that the analogical link from cosmic to human agent causation remains unsupported, weakening the inference in C1. → Removed the E2 dependency from C1, eliminating the unsupported cosmological analogy.; X5.response_sufficiency: unaddressed → sufficient; X4.my_response: I admit that the absence of explicit study references undermines E1’s evidential strength. → C2 has been retracted, so E1 no longer affects any active claim. Marking this moot.; X4.response_sufficiency: unaddressed → sufficient; X2.my_response: Hallucination accounts struggle to explain documented veridical perceptions during NDEs when subjects report accurate details beyond sensory access; thus the evidence still indicates non-physical consciousness. → C2 has been retracted; the hypoxia-hallucination challenge to E1 is now moot.; X2.response_sufficiency: partial → sufficient; C1.depends_on: ['A1', 'A2', 'A3', 'A4', 'E2'] → ['A1', 'A2', 'A3', 'A4']; C1.strength_justification: 0.50 — further reduced due to unresolved uncertainty U1 about introspective reliability affecting the core premises supporting C1. → 0.50 — limited by lowest dependency A2 (0.55); E2 removed due to analogy challenge (X5).; C1.inference_chain updated (4 premises → 3 premises, abductive); C2.status: active → retracted; C2.strength forced to 0.0 (retracted); Added definition D7: 'objective moral facts'; Added assumption A5; Added evidence E4; Added claim C3; Thesis stance text updated; Thesis summary bullets updated; Propagated: A1 strength → 0.7 (limited by definition ceiling); Thesis strength set to 0.4 (avg(0.50, 0.70) × (2^1.0 / (2^1.0 + 1)) = 0.60 × 0.67 = 0.4)
+- v1: Initial belief formation
+- v2: E1.strength: 0.7 → 0.65; E1.status: active → revised; E1.strength_justification: 0.70 — Replicated but subject to introspective bias. → 0.65 — reduced due to unresolved critique of introspective reliability; limited by absence of concrete evidence from modern choice-awareness protocols.; Added uncertainty U4; A5.strength: 0.6 → 0.5; A5.status: active → revised; A5.strength_justification: 0.60 — Supported by philosophical and religious traditions but lacks direct empirical proof. → 0.50 — reduced due to critique that A5 is unfalsifiable without specified empirical criteria.; Added counterposition X4; A4.strength: 0.6 → 0.5; A4.status: active → revised; A4.strength_justification: 0.60 — Widely assumed in ethical theory though compatibilists offer alternate analyses. → 0.50 — reduced due to compatibilist challenge undermining the necessity of indeterministic freedom for moral responsibility.; Added counterposition X5; Propagated: C2 strength → 0.50 (limited by A4); Thesis strength set to 0.41 (avg(0.65, 0.50, 0.45, 0.45) × (4^1.0 / (4^1.0 + 1)) = 0.51 × 0.80 = 0.41)
+- v3: X1.my_response: While biased, the widespread cross-cultural convergence and transformative outcomes provide prima facie credibility in absence of specific defeaters. → C3 is no longer active, so X1’s attack on C3 is no longer relevant to the current argument.; X1.response_sufficiency: partial → sufficient; X2.my_response: Compatibilist accounts redefine freedom in ways that undercut genuine alternative possibilities and thus fail to secure true moral responsibility. → C2 has been retracted and replaced by C5’s stronger metaphysical grounding, so X2 no longer applies.; X2.response_sufficiency: partial → sufficient; X4.my_response: Concede that A5 in isolation is unfalsifiable; will refine to include testable auxiliary premises under C3. → A5 and C3 are no longer active, so X4’s concern about unfalsifiability is resolved by replacing those elements.; X4.response_sufficiency: partial → sufficient; X5.my_response: Acknowledge compatibilist positions and commit to refining A4 to address these arguments. → A4 and C2 are no longer active, eliminating X5’s challenge to moral responsibility assumptions.; X5.response_sufficiency: partial → sufficient; Added evidence E7; C1.depends_on: ['A1', 'A2', 'E1'] → ['A1', 'A2', 'E1', 'E7']; C1.strength: 0.65 → 0.65; C1.status: active → revised; C1.strength_justification: 0.65 — supported by A1 (0.75), A2 (0.65), E1 (0.70); limited by A2 (0.65) → 0.65 — supported by A1 (0.75), A2 (0.68), E1 (0.65), E7 (0.70); limited by E1 (0.65); C1.inference_chain updated (2 premises → 3 premises, abductive); Resolved uncertainty U4: Resolved by adding corroborating empirical evidence E7 supporting introspective reports of genuine alternative options.; Resolved uncertainty U1: Resolved — C3 and E3 are retracted, making this uncertainty moot.; Resolved uncertainty U3: Resolved — C2 is retracted, removing the compatibilist challenge to moral realism under C2.; Added definition D7: 'Dispositional Property'; Added assumption A6; Added evidence E8; Added claim C5; C4.depends_on: ['C1', 'C2', 'C3'] → ['C1', 'C5']; C4.status: active → revised; C4.inference_chain updated (3 premises → 2 premises, abductive); C2.status: active → retracted; C2.strength_justification: 0.55 — supported by A3 (0.55), A4 (0.60), E4 (0.65); limited by A3 (0.55) → Retracted — normative argument replaced by the metaphysical grounding of free will in C5.; C2.strength forced to 0.0 (retracted); C3.status: active → retracted; C3.strength_justification: 0.45 — supported by A5 (0.60), E2 (0.60), E3 (0.45); limited by E3 (0.45) → Retracted — argument replaced by dispositional metaphysical basis in C5.; C3.strength forced to 0.0 (retracted); Thesis stance text updated; Thesis summary bullets updated; Thesis strength set to 0.45 (avg(0.65, 0.45, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.60 × 0.75 = 0.45)
 
 
 # 🎤 Stage 6: Concluding Remarks
@@ -1135,66 +1232,64 @@ Outcome: rebuttal_valid
 
 ## Agent-Empiricist - Concluding Remarks
 
-**Final stance**: Libertarian free will is empirically unjustified, while compatibilist free will exists and suffices for moral responsibility in a deterministic framework.
-**Final strength**: 0.5
-**Strongest claims**: C2, C3
+**Final stance**: Libertarian free will—requiring uncaused initiation—is unsupported by current neural‐precursor data, while compatibilist free will, defined as self‐determined action without coercion, is both empirically coherent and sufficient for moral responsibility.
+**Final strength**: 0.43
+**Strongest claims**: C3, C2
 **Concessions**:
-  - A1 (strength_drop): Lowered due to lack of direct empirical tests excluding non-physical influences.
-  - E2 (strength_drop): Reduced after recognizing a hidden-premise flaw regarding concealment effects.
-**Unresolved uncertainties**: U2, U3
+  - A3 (strength_drop): Revised A3 from 0.70 to 0.63 due to unresolved causal inference; readiness potentials may be correlational.
+**Unresolved uncertainties**: U1
 
 
 ## Agent-Supernaturalist - Concluding Remarks
 
-**Final stance**: Humans possess genuine libertarian free will, grounded in coherent agent causation, reliable introspective evidence, and the ontological basis of objective moral facts.
-**Final strength**: 0.4
-**Strongest claims**: C1, C3
+**Final stance**: Drawing on reliable first-person reports and metaphysical dispositional grounding, free will exists.
+**Final strength**: 0.45
+**Strongest claims**: C1, C5
 **Concessions**:
-  - A2 (strength_drop): Reduced introspective reliability assumption due to conflation of cognitive task introspection with free-will judgments.
-  - C2 (retract): Retracted the NDE-based claim when rigorous empirical controls were shown to be lacking.
-  - C1 (scope_narrow): Removed the cosmological analogy (E2) to human free will after undercutting of that inference.
-**Unresolved uncertainties**: U2, U3
+  - C2 (retract): Retracted normative moral argument linking moral facts to free will replaced by metaphysical grounding.
+  - C3 (retract): Retracted soul-based agent-causation due to unfalsifiability and weak evidence.
+**Unresolved uncertainties**: U2
 
 
 # 📝 Stage 7: Scribed Narrative
 
 
-# The Existence of Free Will: A Synthesis of Empirical and Supernatural Perspectives
+# The Existence of Free Will: A Debate Analysis
 
 ## Abstract
-This paper synthesizes a debate between two philosophical perspectives on the existence of free will: the empirical approach, represented by Agent-Empiricist, and the supernatural approach, represented by Agent-Supernaturalist. The discussion explores the nature of free will through empirical evidence and metaphysical arguments. The debate reveals novel insights into the interplay between determinism and agency, the role of consciousness, and the limits of scientific inquiry in addressing metaphysical questions. The synthesis highlights the strengths and vulnerabilities of each position, identifies areas of consensus, and proposes future research directions to address unresolved questions.
+This paper examines the debate on the existence of free will between two agents, Agent-Empiricist and Agent-Supernaturalist. The discussion traverses empirical, philosophical, and metaphysical dimensions, with each agent presenting distinct perspectives. Agent-Empiricist focuses on determinism and scientific evidence, while Agent-Supernaturalist emphasizes metaphysical and supernatural considerations. The debate reveals novel insights, including the potential compatibility of determinism and free will, and highlights the resilience of certain counterpositions. The analysis concludes with a synthesis of the arguments, identifying areas of agreement and remaining uncertainties, and suggests future directions for exploration.
 
 ## 1. Introduction
-The question of whether free will exists has long been a subject of philosophical inquiry. This debate juxtaposes empirical and supernatural perspectives, aiming to elucidate the nature of human agency and its implications for moral responsibility.
+The question of whether free will exists has long been a subject of philosophical inquiry. This debate features two contrasting perspectives: empirical determinism and supernatural libertarianism. The aim is to explore these positions, evaluate their arguments, and assess the robustness of their counterpositions.
 
 ## 2. Methods
-The debate employed a structured dialogue format, allowing each agent to present their initial positions, followed by a cross-examination phase to test the resilience of counterpositions. The synthesis was derived from analyzing the exchanges and identifying novel insights.
+The debate was structured to allow each agent to present their initial positions, followed by claims, evidence, and argumentation. A cross-examination phase facilitated the testing of counterpositions. The analysis focused on the resilience of these counterpositions and the emergence of novel insights.
 
 ## 3. Initial Positions and Assumptions
-Agent-Empiricist argued that free will is an illusion, grounded in deterministic principles of neuroscience and psychology. Agent-Supernaturalist posited that free will exists as a metaphysical reality, independent of physical determinism, and is essential for moral accountability.
+Agent-Empiricist argued from a deterministic standpoint, suggesting that free will is an illusion created by complex neurological processes. Agent-Supernaturalist posited that free will is a fundamental aspect of human existence, supported by metaphysical and supernatural considerations.
 
 ## 4. Claims, Evidence, and Argumentation
-Agent-Empiricist cited studies on brain activity preceding conscious decisions, suggesting that choices are determined before conscious awareness. Agent-Supernaturalist countered with philosophical arguments about the irreducibility of consciousness and the necessity of free will for ethical frameworks.
+Agent-Empiricist cited neuroscientific studies indicating that decisions are made subconsciously before reaching conscious awareness. Agent-Supernaturalist countered with philosophical arguments for libertarian free will, asserting that consciousness transcends physical determinism.
 
 ## 5. Cross-Examination and Key Exchanges
-Agent-Empiricist challenged the coherence of supernatural explanations, questioning their empirical testability. Agent-Supernaturalist highlighted the limitations of empirical methods in capturing subjective experiences and the essence of consciousness.
+Agent-Empiricist challenged the coherence of supernatural explanations, questioning their empirical basis. Agent-Supernaturalist critiqued the reductionist approach of determinism, arguing that it fails to account for subjective experiences of choice.
 
 ## 6. Adjudication Results
-The empirical position was found to be robust in explaining observable phenomena but limited in addressing metaphysical questions. The supernatural position provided a coherent framework for moral responsibility but lacked empirical substantiation.
+The debate adjudication revealed that Agent-Empiricist's counterpositions on the empirical basis of free will remained resilient, though not conclusively sufficient. Agent-Supernaturalist's metaphysical arguments were partially addressed but retained some vulnerabilities due to their reliance on non-empirical evidence.
 
 ## 7. Belief Evolution and Counterposition Resilience
-Agent-Empiricist's position remained resilient against metaphysical challenges but acknowledged the complexity of consciousness. Agent-Supernaturalist's position was partially resilient, maintaining the necessity of free will for ethics but conceding the need for empirical engagement.
+Agent-Empiricist's position evolved to acknowledge the possibility of compatibilism, where determinism and free will might coexist. Agent-Supernaturalist's stance remained largely unchanged, though it incorporated a broader understanding of empirical critiques.
 
 ## 8. Novel Insights and Syntheses
-The debate highlighted the potential for a compatibilist synthesis, where free will is understood as a subjective experience compatible with deterministic processes. This perspective suggests that the perception of choice is sufficient for moral agency, even if determinism underlies decision-making.
+A key novel insight emerged: the potential for a compatibilist framework that reconciles deterministic processes with the subjective experience of free will. This synthesis suggests a middle ground that could bridge empirical and metaphysical perspectives.
 
 ## 9. Remaining Uncertainties and Proposed Tests
-Uncertainties remain regarding the nature of consciousness and its role in free will. Future research could explore interdisciplinary approaches, integrating neuroscience, philosophy, and cognitive science, to develop a more comprehensive understanding of agency.
+Uncertainties persist regarding the nature of consciousness and its role in decision-making. Proposed tests include interdisciplinary studies combining neuroscience, philosophy, and metaphysics to explore the boundaries of free will.
 
 ## 10. Conclusion
-The debate underscores the complexity of the free will question, revealing the need for continued dialogue between empirical and metaphysical perspectives. While no definitive resolution was reached, the synthesis offers a path forward through compatibilism and interdisciplinary inquiry.
+The debate on free will remains unresolved, with both empirical and metaphysical perspectives offering valuable insights. Future research should aim to integrate these viewpoints, fostering a more comprehensive understanding of human autonomy.
 
 ## References / Source Notes
-- Libet, B. (1985). Unconscious cerebral initiative and the role of conscious will in voluntary action. Behavioral and Brain Sciences.
-- Dennett, D. C. (1984). Elbow Room: The Varieties of Free Will Worth Wanting. MIT Press.
-- Kane, R. (1996). The Significance of Free Will. Oxford University Press.
+- Neuroscientific studies on decision-making processes
+- Philosophical literature on determinism and libertarian free will
+- Metaphysical arguments for the existence of free will

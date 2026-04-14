@@ -20,11 +20,10 @@ from tests.utils import create_sample_belief
 # Helpers
 # ========================================
 
-def _make_mock_config(mode="rebuttal", topic="Free will", max_rounds=2, stage2_mode="open"):
+def _make_mock_config(mode="rebuttal", topic="Free will", max_rounds=2):
     """Create a mock config for reporting tests."""
     config = Mock()
     config.stage3_mode = mode
-    config.stage2_mode = stage2_mode
     config.topic = topic
     config.max_rounds = max_rounds
     config.adjudication = Mock()
@@ -32,15 +31,6 @@ def _make_mock_config(mode="rebuttal", topic="Free will", max_rounds=2, stage2_m
     config.adjudication.provider = "openai"
     config.adjudication.logic_weight = 1.0
     config.adjudication.ethics_weight = 0.0
-
-    if mode == "bloodsport":
-        config.bloodsport = Mock()
-        config.bloodsport.intensity = "moderate"
-        config.bloodsport.max_exchanges = 5
-    if mode == "collaborative":
-        config.collaborative = Mock()
-        config.collaborative.max_turns_per_question = 10
-        config.collaborative.early_termination_on_agreement = True
 
     return config
 
@@ -187,28 +177,11 @@ class TestGenerateAnalysisReport:
         assert "Convergence Trajectory" not in report
 
     @pytest.mark.unit
-    def test_bloodsport_mode_shows_intensity(self):
-        config = _make_mock_config(mode="bloodsport")
-        agents = [_make_mock_agent("Agent-A"), _make_mock_agent("Agent-B")]
-        report = generate_analysis_report(config, agents, [], _make_agent_stats())
-
-        assert "Blood Sport" in report or "Intensity" in report
-
-    @pytest.mark.unit
-    def test_collaborative_mode_shows_settings(self):
-        config = _make_mock_config(mode="collaborative")
-        agents = [_make_mock_agent("Agent-A"), _make_mock_agent("Agent-B")]
-        report = generate_analysis_report(config, agents, [], _make_agent_stats())
-
-        assert "Max Turns" in report or "Early Termination" in report
-
-    @pytest.mark.unit
     def test_rebuttal_mode_no_mode_specific_sections(self):
         config = _make_mock_config(mode="rebuttal")
         agents = [_make_mock_agent("Agent-A")]
         report = generate_analysis_report(config, agents, [], _make_agent_stats())
 
-        assert "Blood Sport" not in report
         assert "Max Turns/Question" not in report
 
     @pytest.mark.unit
@@ -261,12 +234,12 @@ class TestGenerateAnalysisJSON:
 
     @pytest.mark.unit
     def test_metadata_fields(self):
-        config = _make_mock_config(topic="Test Topic", mode="bloodsport")
+        config = _make_mock_config(topic="Test Topic", mode="rebuttal")
         agents = [_make_mock_agent("Agent-A")]
         result = generate_analysis_json(config, agents, [], _make_agent_stats())
 
         assert result["metadata"]["topic"] == "Test Topic"
-        assert result["metadata"]["stage3_mode"] == "bloodsport"
+        assert result["metadata"]["stage3_mode"] == "rebuttal"
         assert result["metadata"]["num_agents"] == 1
 
     @pytest.mark.unit
@@ -290,15 +263,6 @@ class TestGenerateAnalysisJSON:
 
         assert "Agent-A" in result["agent_summaries"]
         assert result["agent_summaries"]["Agent-A"]["performance_score"] == 5.0
-
-    @pytest.mark.unit
-    def test_bloodsport_metadata_included(self):
-        config = _make_mock_config(mode="bloodsport")
-        agents = [_make_mock_agent("Agent-A")]
-        result = generate_analysis_json(config, agents, [], _make_agent_stats())
-
-        assert "bloodsport_intensity" in result["metadata"]
-        assert result["metadata"]["bloodsport_intensity"] == "moderate"
 
     @pytest.mark.unit
     def test_convergence_history_included_when_provided(self):

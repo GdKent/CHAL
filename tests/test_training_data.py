@@ -17,7 +17,6 @@ import json
 from pathlib import Path
 from unittest.mock import Mock
 from chal.utilities.training_data import DebateRecorder
-from chal.config import BloodSportConfig, CollaborativeConfig
 from tests.utils import create_sample_belief
 
 
@@ -25,26 +24,14 @@ from tests.utils import create_sample_belief
 # Helpers
 # ========================================
 
-def _make_mock_config(mode="rebuttal", max_rounds=2, stage2_mode="open"):
+def _make_mock_config(mode="rebuttal", max_rounds=2):
     """Create a mock config for recorder tests."""
     config = Mock()
     config.stage3_mode = mode
-    config.stage2_mode = stage2_mode
     config.max_rounds = max_rounds
     config.adjudication = Mock()
     config.adjudication.model = "gpt-4o"
     config.adjudication.provider = "openai"
-
-    if mode == "bloodsport":
-        config.bloodsport = Mock()
-        config.bloodsport.intensity = "moderate"
-        config.bloodsport.max_exchanges = 5
-    elif mode == "collaborative":
-        config.collaborative = Mock()
-        config.collaborative.max_turns_per_question = 10
-        config.collaborative.min_turns_per_question = 3
-        config.collaborative.adjudicator_check_interval = 2
-        config.collaborative.early_termination_on_agreement = True
 
     return config
 
@@ -122,11 +109,6 @@ class TestDebateRecorderInit:
         assert adj["provider"] == "openai"
 
     @pytest.mark.unit
-    def test_bloodsport_metadata(self):
-        recorder = _make_recorder(mode="bloodsport")
-        assert recorder.metadata.get("bloodsport_intensity") == "moderate"
-
-    @pytest.mark.unit
     def test_config_snapshot(self):
         recorder = _make_recorder()
         snapshot = recorder.metadata["config_snapshot"]
@@ -194,43 +176,6 @@ class TestRecordMethods:
         assert event["type"] == "rebuttal"
         assert event["stage"] == 3
         assert event["challenger_agent_id"] == "Agent-A"
-
-    @pytest.mark.unit
-    def test_record_collaborative_exchange(self):
-        recorder = _make_recorder(mode="collaborative")
-        recorder.record_collaborative_exchange(
-            agent_ids=["Agent-A", "Agent-B"],
-            inputs={"agent_beliefs": {}},
-            turns=[{"turn": 1, "speaker": "Agent-A", "message": "Hi"}],
-            num_turns=1,
-            terminated_early=False,
-        )
-
-        event = recorder.timeline[0]
-        assert event["type"] == "collaborative_exchange"
-        assert event["stage"] == 3
-        assert event["agent_ids"] == ["Agent-A", "Agent-B"]
-        assert event["outputs"]["num_turns"] == 1
-
-    @pytest.mark.unit
-    def test_record_bloodsport_exchange(self):
-        recorder = _make_recorder(mode="bloodsport")
-        turns = [
-            {"turn": 1, "agent_id": "Agent-A", "attack": "Attack!", "defense": None},
-            {"turn": 2, "agent_id": "Agent-B", "attack": "Counter!", "defense": "Defend"},
-        ]
-        recorder.record_bloodsport_exchange(
-            agent_ids=["Agent-A", "Agent-B"],
-            intensity="extreme",
-            inputs={"agent_beliefs": {}},
-            turns=turns,
-        )
-
-        event = recorder.timeline[0]
-        assert event["type"] == "bloodsport_exchange"
-        assert event["stage"] == 3
-        assert event["intensity"] == "extreme"
-        assert event["outputs"]["num_turns"] == 2
 
     @pytest.mark.unit
     def test_record_adjudication(self):

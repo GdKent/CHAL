@@ -374,30 +374,6 @@ class TestTableHelpers:
         assert "Agent-B" in output
         assert "6.0" in output
 
-    @pytest.mark.unit
-    def test_roadmap_display_renders_subtopics(self):
-        """_show_roadmap renders subtopic titles and descriptions."""
-        display, buf = _make_display()
-        subtopics = [
-            {"round": 1, "title": "Nature of Evidence", "description": "Examine empirical methods"},
-            {"round": 2, "title": "Limits of Reason", "description": "A priori arguments and their boundaries"},
-        ]
-        display._show_roadmap(subtopics, "Covers major facets")
-        output = _get_output(buf)
-        assert "Nature of Evidence" in output
-        assert "Limits of Reason" in output
-        assert "Moderator Roadmap" in output
-
-    @pytest.mark.unit
-    def test_roadmap_display_without_sufficiency(self):
-        """_show_roadmap works without sufficiency note."""
-        display, buf = _make_display()
-        subtopics = [
-            {"round": 1, "title": "Topic A", "description": "Desc A"},
-        ]
-        display._show_roadmap(subtopics, "")
-        output = _get_output(buf)
-        assert "Topic A" in output
 
 
 # =========================================================================
@@ -561,36 +537,3 @@ class TestErrorHandler:
         assert action == "abort"
 
 
-# =========================================================================
-# 13. Roadmap Revised Display
-# =========================================================================
-
-class TestRoadmapRevised:
-
-    @pytest.mark.unit
-    def test_roadmap_revised_renders_panel(self):
-        """_on_roadmap_revised() shows panel with revision info."""
-        display, buf = _make_display(interactive=False)
-        display.handle_event("roadmap_revised", {
-            "round_num": 2,
-            "new_subtopics": [
-                {"title": "New Evidence Review", "description": "Examine new evidence"},
-            ],
-            "rationale": "The agents uncovered a new dimension.",
-        })
-        output = _get_output(buf)
-        assert "Roadmap Revised" in output
-        assert "round 2" in output
-        assert "New Evidence Review" in output
-
-    @pytest.mark.unit
-    def test_roadmap_revised_shows_rationale(self):
-        """Rationale text appears in output."""
-        display, buf = _make_display(interactive=False)
-        display.handle_event("roadmap_revised", {
-            "round_num": 1,
-            "new_subtopics": [],
-            "rationale": "Agents converged on key issue early",
-        })
-        output = _get_output(buf)
-        assert "Agents converged on key issue early" in output

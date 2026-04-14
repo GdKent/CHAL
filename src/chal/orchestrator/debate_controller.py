@@ -33,7 +33,6 @@ from chal.agents.factory import create_agent
 from chal.agents.logic_systems import get_logic_system, get_logic_system_description
 from chal.agents.ethics_systems import get_ethics_system, get_ethics_system_description
 from chal.orchestrator.adjudicator import Adjudicator
-from chal.orchestrator.moderator import Moderator
 from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary, validate_stage2_questions
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
 from chal.convergence import calculate_claim_agreement, calculate_definitional_alignment, format_convergence_summary, get_convergence_trajectory_summary
@@ -151,14 +150,6 @@ class DebateController:
 
         # Initialize convergence tracking
         self.convergence_history = []
-
-        # Initialize moderator (if stage2_mode == "moderated")
-        self.stage2_mode = config.stage2_mode if config else "open"
-        self.moderator: Optional[Moderator] = None
-        self.roadmap = None
-        self.roadmap_revisions: List[Dict[str, Any]] = []
-        if self.stage2_mode == "moderated" and config:
-            self.moderator = Moderator(config.moderator)
 
         # Training data recorder (initialized in run() if save_training_data is enabled)
         self.recorder: Optional[DebateRecorder] = None
@@ -357,113 +348,6 @@ class DebateController:
         # TODO: In future, this could compare current_positions via embeddings or heuristics
         return False
 
-    def _build_round_summary(
-        self,
-        round_num: int,
-        round_idx: int,
-        focus_subtopic: Optional[Dict[str, Any]],
-        convergence_data: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """Build a structured summary of a completed round for the adaptive moderator.
-
-        Args:
-            round_num: 1-based round number.
-            round_idx: 0-based round index.
-            focus_subtopic: The sub-topic dict for this round (or None in open mode).
-            convergence_data: Convergence metrics dict from this round (or None).
-
-        Returns:
-            A dict with keys: round_num, focus_subtopic, adjudication,
-            belief_changes, convergence, key_arguments, remaining_rounds,
-            completed_subtopics.
-        """
-        # --- Adjudication summary ---
-        # Collect verdicts from this round's challenge_rebuttal_pairs
-        verdict_counts: Dict[str, int] = {}
-        key_arguments: list[str] = []
-        for entry in self.challenge_rebuttal_pairs:
-            resolution = entry.get("resolution")
-            if resolution and isinstance(resolution, dict):
-                status = resolution.get("status", "unknown")
-                verdict_counts[status] = verdict_counts.get(status, 0) + 1
-                # Extract a brief key argument from each pair
-                challenger = entry.get("challenger", "?")
-                challenge_text = entry.get("challenge", "")
-                if challenge_text:
-                    truncated = challenge_text[:200]
-                    key_arguments.append(f"{challenger} challenged: {truncated}")
-
-        # Determine round winner from adjudication results
-        winner = None
-        if verdict_counts:
-            # critique_valid means the challenger won; rebuttal_valid means the target defended
-            critique_wins = verdict_counts.get("critique_valid", 0)
-            rebuttal_wins = verdict_counts.get("rebuttal_valid", 0)
-            if critique_wins > rebuttal_wins:
-                winner = "challengers"
-            elif rebuttal_wins > critique_wins:
-                winner = "defenders"
-
-        adjudication_summary = {
-            "verdict_counts": verdict_counts,
-            "winner": winner,
-        }
-
-        # --- Belief changes ---
-        belief_changes: list[Dict[str, Any]] = []
-        for agent in self.agents:
-            beliefs_held = getattr(agent, "all_beliefs_held", [])
-            changed = len(beliefs_held) > 1  # More than one belief snapshot = changed
-            change_summary = ""
-            if changed and len(beliefs_held) >= 2:
-                change_summary = f"Updated belief after round {round_num}"
-            belief_changes.append({
-                "agent": agent.name,
-                "changed": changed,
-                "change_summary": change_summary,
-            })
-
-        # --- Convergence ---
-        convergence_summary: Optional[Dict[str, Any]] = None
-        if convergence_data is not None:
-            score = convergence_data.get("convergence_score", 0.0)
-            # Determine trend from history
-            trend = "stable"
-            if len(self.convergence_history) >= 2:
-                prev_score = self.convergence_history[-2].get("convergence_score", 0.0)
-                curr_score = self.convergence_history[-1].get("convergence_score", 0.0)
-                if curr_score > prev_score + 0.05:
-                    trend = "converging"
-                elif curr_score < prev_score - 0.05:
-                    trend = "diverging"
-            convergence_summary = {
-                "score": score,
-                "trend": trend,
-            }
-
-        # --- Completed subtopics ---
-        completed_subtopics: list[str] = []
-        if self.roadmap:
-            for i in range(min(round_num, len(self.roadmap.sub_topics))):
-                completed_subtopics.append(self.roadmap.sub_topics[i].title)
-
-        # --- Remaining rounds ---
-        remaining_rounds = self.max_rounds - round_num
-
-        # Truncate key_arguments to avoid bloating the prompt
-        key_arguments = key_arguments[:6]
-
-        return {
-            "round_num": round_num,
-            "focus_subtopic": focus_subtopic,
-            "adjudication": adjudication_summary,
-            "belief_changes": belief_changes,
-            "convergence": convergence_summary,
-            "key_arguments": key_arguments,
-            "remaining_rounds": remaining_rounds,
-            "completed_subtopics": completed_subtopics,
-        }
-
     def run_stage_0_briefing(self, topic: str, personas: dict) -> None:
         """
         Stage 0: Briefing
@@ -636,7 +520,7 @@ class DebateController:
 
         return
 
-    def run_stage_2_cross_examination(self, only_if_disagree: bool = False, focus_subtopic: dict = None) -> list:
+    def run_stage_2_cross_examination(self, only_if_disagree: bool = False) -> list:
         """
         Stage 2: Cross-Examination
 
@@ -654,8 +538,6 @@ class DebateController:
 
         Args:
             only_if_disagree (bool): Skip challenge generation if agents broadly agree.
-            focus_subtopic (dict, optional): Sub-topic dict with 'title', 'description',
-                'guiding_questions' for moderated mode. None for open mode.
 
         Returns:
             list[dict]: A flat list of critique records, one per challenge.
@@ -695,7 +577,6 @@ class DebateController:
                 callable=lambda c=c, t=t: _generate_cross_examination(
                     challenger=c, target=t, topic=topic, config=self.config,
                     previous_challenges=self.previous_rounds_challenges.get(f"{c.name}→{t.name}", []),
-                    focus_subtopic=focus_subtopic,
                     max_retries=s2_max_retries,
                     log_fn=self._log,
                 ),
@@ -940,546 +821,12 @@ class DebateController:
 
         return self.challenge_rebuttal_pairs
 
-    def run_stage_3_collaborative(self) -> list:
-        """
-        Stage 3B: Collaborative Truth-Seeking Dialogue.
-
-        For each question in self.challenge_rebuttal_pairs, runs a multi-turn
-        dialogue between challenger and defender with periodic adjudicator checks.
-
-        Updates each entry with:
-            - "rebuttal": defender's final message from the dialogue
-            - "resolution": adjudication dict (same format as Stage 4)
-            - "collaborative_transcript": list of exchange turn dicts
-            - "adjudicator_checks": list of intermediate check dicts
-
-        Returns:
-            list[dict]: Updated self.challenge_rebuttal_pairs
-        """
-        # === DEBUG LOG ===
-        self._log_header("STAGE 3B: COLLABORATIVE TRUTH-SEEKING DIALOGUE")
-        self._log("Starting collaborative dialogue phase", "INFO")
-
-        # === MARKDOWN TRANSCRIPT ===
-        markdown_header = "\n# 🤝 Stage 3B: Collaborative Truth-Seeking Dialogue\n"
-        self._add_to_markdown(markdown_header)
-        self._notify("stage_start", {"stage": 3, "name": "Collaborative Truth-Seeking Dialogue"})
-
-        # Read config values
-        max_turns = self.config.collaborative.max_turns_per_question if self.config else 10
-        min_turns = self.config.collaborative.min_turns_per_question if self.config else 3
-        check_interval = self.config.collaborative.adjudicator_check_interval if self.config else 2
-        early_term = self.config.collaborative.early_termination_on_agreement if self.config else True
-
-        self._log(f"Config: max_turns={max_turns}, min_turns={min_turns}, "
-                  f"check_interval={check_interval}, early_termination={early_term}", "INFO")
-
-        # Build agent lookup by name
-        agent_by_name = {agent.name: agent for agent in self.agents}
-
-        # Get adjudication weights from config
-        logic_weight = self.config.adjudication.logic_weight if self.config else 1.0
-        ethics_weight = self.config.adjudication.ethics_weight if self.config else 0.0
-
-        self.last_rebuttals = {}
-
-        for entry_idx, entry in enumerate(self.challenge_rebuttal_pairs):
-            challenger_name = entry["challenger"]
-            defender_name = entry["target"]
-            question_text = entry["challenge"]
-            qid = entry.get("qid", f"Q{entry_idx + 1}")
-
-            self._log(f"\n--- Collaborative dialogue #{entry_idx + 1}: "
-                      f"{challenger_name} → {defender_name} (QID: {qid}) ---", "INFO")
-            self._log(f"Question: {question_text[:150]}...", "DEBUG")
-
-            challenger_agent = agent_by_name.get(challenger_name)
-            defender_agent = agent_by_name.get(defender_name)
-
-            if not challenger_agent or not defender_agent:
-                self._log(f"ERROR: Could not find agents: challenger={challenger_name}, "
-                          f"defender={defender_name}", "ERROR")
-                continue
-
-            # Get belief JSONs
-            ch_belief_obj = challenger_agent.get_internal_belief_obj()
-            df_belief_obj = defender_agent.get_internal_belief_obj()
-            ch_belief_json = json.dumps(ch_belief_obj, ensure_ascii=False, indent=2) if ch_belief_obj else ""
-            df_belief_json = json.dumps(df_belief_obj, ensure_ascii=False, indent=2) if df_belief_obj else ""
-
-            # Initialize dialogue tracking
-            entry["collaborative_transcript"] = []
-            entry["adjudicator_checks"] = []
-            dialogue_history = []
-
-            # Markdown for this exchange
-            markdown_section = f"\n## {challenger_name} ↔ {defender_name} — {qid}\n\n"
-            markdown_section += f"**Original question**: {question_text}\n\n"
-            entry_attack_type = entry.get("attack_type", "")
-            entry_attack_strategy = entry.get("attack_strategy", "")
-            if entry_attack_type:
-                markdown_section += f"*Attack: {entry_attack_type} / {entry_attack_strategy}*\n\n"
-
-            max_rebuttal_length = self.config.stages.max_rebuttal_length_chars if self.config else 500
-            topic = self.topic if hasattr(self, "topic") else "<topic>"
-
-            for turn_num in range(1, max_turns + 1):
-                if turn_num % 2 == 1:
-                    # Odd turn: defender speaks
-                    speaker = defender_agent
-                    prompt = prompts.build_collaborative_defender_prompt(
-                        topic=topic,
-                        defender_name=defender_name,
-                        challenger_name=challenger_name,
-                        defender_belief_json=df_belief_json,
-                        question_text=question_text,
-                        dialogue_history=dialogue_history,
-                        max_response_length_chars=max_rebuttal_length
-                    )
-                else:
-                    # Even turn: challenger follows up
-                    speaker = challenger_agent
-                    prompt = prompts.build_collaborative_challenger_followup_prompt(
-                        topic=topic,
-                        challenger_name=challenger_name,
-                        defender_name=defender_name,
-                        challenger_belief_json=ch_belief_json,
-                        question_text=question_text,
-                        dialogue_history=dialogue_history,
-                        max_response_length_chars=max_rebuttal_length
-                    )
-
-                # Log and generate
-                self._log_prompt(speaker.name, prompt, f"Stage 3B - Turn {turn_num}")
-                response = speaker.generate([Message(role="user", content=prompt)])
-                self._log(f"Turn {turn_num} from {speaker.name} ({len(response.content)} chars)", "INFO")
-                self._log_response(speaker.name, response.content, f"Stage 3B - Turn {turn_num}")
-
-                turn_dict = {
-                    "turn_number": turn_num,
-                    "speaker": speaker.name,
-                    "message": response.content
-                }
-                dialogue_history.append(turn_dict)
-                entry["collaborative_transcript"].append(turn_dict)
-
-                # Add turn to markdown
-                markdown_section += f"**Turn {turn_num} [{speaker.name}]**: {response.content}\n\n"
-
-                # Periodic adjudicator check
-                if turn_num % check_interval == 0:
-                    self._log(f"Running adjudicator check at turn {turn_num}...", "INFO")
-                    check_prompt = prompts.build_collaborative_adjudicator_check_prompt(
-                        dialogue_history=dialogue_history,
-                        challenger_name=challenger_name,
-                        defender_name=defender_name
-                    )
-                    self._log_prompt("Adjudicator", check_prompt, f"Stage 3B - Check at turn {turn_num}")
-                    check_response = self.adjudicator.agent.generate(
-                        [Message(role="user", content=check_prompt)]
-                    )
-                    self._log_response("Adjudicator", check_response.content, f"Stage 3B - Check at turn {turn_num}")
-
-                    # Parse check result
-                    check_result = _extract_first_json_block(check_response.content)
-                    if not check_result:
-                        self._log("Failed to parse adjudicator check JSON, using defaults", "WARN")
-                        check_result = {
-                            "fallacies_detected": [],
-                            "deflection_detected": False,
-                            "progress_assessment": "unknown",
-                            "convergence_detected": False
-                        }
-
-                    self._log(f"Check result: progress={check_result.get('progress_assessment')}, "
-                              f"convergence={check_result.get('convergence_detected')}", "INFO")
-                    self.debug_log.append(
-                        f"\n--- ADJUDICATOR CHECK AT TURN {turn_num} ({qid}) ---\n"
-                        f"{json.dumps(check_result, ensure_ascii=False, indent=2)}\n"
-                        f"--- END CHECK ---\n"
-                    )
-
-                    entry["adjudicator_checks"].append(check_result)
-                    markdown_section += (
-                        f"*[Adjudicator check — progress: {check_result.get('progress_assessment', '?')}, "
-                        f"convergence: {check_result.get('convergence_detected', False)}]*\n\n"
-                    )
-
-                    # Early termination (only after min_turns)
-                    if early_term and turn_num >= min_turns:
-                        if check_result.get("convergence_detected", False):
-                            self._log(f"Convergence detected at turn {turn_num} — terminating early", "INFO")
-                            markdown_section += f"*Early termination: convergence detected at turn {turn_num}*\n\n"
-                            break
-
-            self._log(f"Dialogue completed after {len(dialogue_history)} turn(s)", "INFO")
-
-            # Final adjudication — extract targeted beliefs for context
-            self._log("Running final adjudication...", "INFO")
-            collab_target_ids = entry.get("target_ids", [])
-            defender_targeted_claims_json = ""
-            challenger_targeted_claims_json = ""
-            if collab_target_ids:
-                if df_belief_obj:
-                    excerpt = _extract_belief_excerpt(df_belief_obj, collab_target_ids)
-                    if excerpt:
-                        defender_targeted_claims_json = json.dumps(excerpt, ensure_ascii=False, indent=2)
-                if ch_belief_obj:
-                    excerpt = _extract_belief_excerpt(ch_belief_obj, collab_target_ids)
-                    if excerpt:
-                        challenger_targeted_claims_json = json.dumps(excerpt, ensure_ascii=False, indent=2)
-
-            final_prompt = prompts.build_collaborative_final_adjudication_prompt(
-                topic=topic,
-                challenger_name=challenger_name,
-                defender_name=defender_name,
-                question_text=question_text,
-                target_ids=collab_target_ids,
-                dialogue_transcript=entry["collaborative_transcript"],
-                adjudicator_checks=entry["adjudicator_checks"],
-                logic_weight=logic_weight,
-                ethics_weight=ethics_weight,
-                defender_targeted_claims_json=defender_targeted_claims_json,
-                challenger_targeted_claims_json=challenger_targeted_claims_json
-            )
-            self._log_prompt("Adjudicator", final_prompt, f"Stage 3B - Final Adjudication ({qid})")
-            final_response = self.adjudicator.agent.generate(
-                [Message(role="user", content=final_prompt)]
-            )
-            self._log_response("Adjudicator", final_response.content, f"Stage 3B - Final Adjudication ({qid})")
-
-            # Parse final adjudication JSON
-            result = _extract_first_json_block(final_response.content)
-            if result:
-                resolution = {
-                    "status": _normalize_collab_verdict(result.get("outcome", "")),
-                    "reasoning": result.get("reasoning", ""),
-                    "restatement": result.get("restatement", ""),
-                    "formalizations": {
-                        "challenger": result.get("formalization_challenger", ""),
-                        "target": result.get("formalization_target", "")
-                    }
-                }
-            else:
-                self._log("Failed to parse final adjudication JSON, marking as unresolved", "WARN")
-                resolution = {
-                    "status": "unresolved",
-                    "reasoning": final_response.content.strip(),
-                    "restatement": "Unable to parse adjudication",
-                    "formalizations": {"challenger": "", "target": ""}
-                }
-
-            entry["resolution"] = resolution
-
-            # Set rebuttal to defender's final message
-            defender_messages = [t for t in dialogue_history if t["speaker"] == defender_name]
-            entry["rebuttal"] = defender_messages[-1]["message"] if defender_messages else ""
-
-            self._log(f"Final outcome: {resolution['status'].upper()}", "INFO")
-            self.debug_log.append(
-                f"\n--- FINAL ADJUDICATION ({qid}: {challenger_name} → {defender_name}) ---\n"
-                f"{json.dumps(resolution, ensure_ascii=False, indent=2)}\n"
-                f"--- END ADJUDICATION ---\n"
-            )
-
-            # Update agent stats
-            self.agent_stats = update_agent_stats(self.agent_stats, entry)
-
-            # Finalize markdown for this exchange
-            markdown_section += f"**Outcome**: {resolution['status'].upper()}\n\n"
-            markdown_section += f"**Reasoning**: {resolution.get('reasoning', 'N/A')}\n\n"
-            self._add_to_markdown(markdown_section)
-            self._notify("adjudication_result", {
-                "challenger": challenger_name, "target": defender_name,
-                "outcome": resolution['status'].upper(), "qid": qid,
-                "turns": len(dialogue_history),
-            })
-
-        # Anti-repetition tracking (same format as Stage 4)
-        for entry in self.challenge_rebuttal_pairs:
-            prev_key = f"{entry['challenger']}→{entry['target']}"
-            self.previous_rounds_challenges.setdefault(prev_key, []).append({
-                "qid": entry.get("qid"),
-                "target_ids": entry.get("target_ids", []),
-                "attack_type": entry.get("attack_type", ""),
-                "attack_strategy": entry.get("attack_strategy", ""),
-                "outcome": entry.get("resolution", {}).get("status", "unknown")
-            })
-
-        self._log(f"Stage 3B complete - processed {len(self.challenge_rebuttal_pairs)} exchange(s)", "INFO")
-
-        return self.challenge_rebuttal_pairs
-
-    def run_stage_3_bloodsport(self) -> list:
-        """
-        Stage 3C: Blood Sport Adversarial Exchange.
-
-        For each agent pair, runs a multi-turn adversarial exchange where agents
-        attack each other's positions with escalating rhetorical intensity.
-        Standard adjudication evaluates the exchanges unchanged.
-
-        Flow per agent pair:
-            1. Agent A delivers opening attack targeting Agent B's claims
-            2. Agent B responds with counter-attack + defense
-            3. Continue for max_exchanges turns
-            4. Standard adjudicator evaluates the exchange
-
-        Updates each entry with:
-            - "rebuttal": summary of defender's arguments
-            - "resolution": adjudication dict (same format as Stage 4)
-            - "bloodsport_transcript": list of exchange turn dicts
-            - "bloodsport_stats": exchange metadata
-
-        Returns:
-            list[dict]: Updated self.challenge_rebuttal_pairs
-        """
-        # === DEBUG LOG ===
-        self._log_header("STAGE 3C: BLOOD SPORT ADVERSARIAL EXCHANGE")
-        self._log("Starting blood sport adversarial exchange phase", "INFO")
-
-        # === MARKDOWN TRANSCRIPT ===
-        intensity = self.config.bloodsport.intensity if self.config else "moderate"
-        max_exchanges = self.config.bloodsport.max_exchanges if self.config else 5
-
-        markdown_header = f"\n# ⚔️ Stage 3C: Blood Sport Exchange (Intensity: {intensity})\n"
-        self._add_to_markdown(markdown_header)
-        self._notify("stage_start", {"stage": 3, "name": f"Blood Sport Exchange (Intensity: {intensity})"})
-
-        self._log(f"Config: intensity={intensity}, max_exchanges={max_exchanges}", "INFO")
-
-        # Build agent lookup by name
-        agent_by_name = {agent.name: agent for agent in self.agents}
-
-        # Get adjudication weights from config
-        logic_weight = self.config.adjudication.logic_weight if self.config else 1.0
-        ethics_weight = self.config.adjudication.ethics_weight if self.config else 0.0
-
-        self.last_rebuttals = {}
-
-        # Group challenges by agent pair to run one multi-turn exchange per pair
-        pair_entries = {}
-        for entry in self.challenge_rebuttal_pairs:
-            pair_key = f"{entry['challenger']}→{entry['target']}"
-            pair_entries.setdefault(pair_key, []).append(entry)
-
-        for pair_key, entries in pair_entries.items():
-            challenger_name = entries[0]["challenger"]
-            defender_name = entries[0]["target"]
-
-            self._log(f"\n--- Blood sport exchange: {challenger_name} vs {defender_name} ---", "INFO")
-
-            challenger_agent = agent_by_name.get(challenger_name)
-            defender_agent = agent_by_name.get(defender_name)
-
-            if not challenger_agent or not defender_agent:
-                self._log(f"ERROR: Could not find agents: {challenger_name}, {defender_name}", "ERROR")
-                continue
-
-            # Get belief JSONs
-            ch_belief_obj = challenger_agent.get_internal_belief_obj()
-            df_belief_obj = defender_agent.get_internal_belief_obj()
-            ch_belief_json = json.dumps(ch_belief_obj, ensure_ascii=False, indent=2) if ch_belief_obj else ""
-            df_belief_json = json.dumps(df_belief_obj, ensure_ascii=False, indent=2) if df_belief_obj else ""
-
-            # Initialize exchange tracking
-            dialogue_history = []
-            topic = self.topic if hasattr(self, "topic") else "<topic>"
-
-            # Markdown for this exchange
-            markdown_section = f"\n## {challenger_name} vs {defender_name}\n\n"
-
-            max_rebuttal_length = self.config.stages.max_rebuttal_length_chars if self.config else 1000
-
-            # Multi-turn adversarial exchange
-            for turn_num in range(1, max_exchanges + 1):
-                # Alternate: odd turns = challenger attacks, even turns = defender attacks
-                if turn_num % 2 == 1:
-                    speaker = challenger_agent
-                    opponent = defender_agent
-                    speaker_belief_json = ch_belief_json
-                    opponent_belief_json = df_belief_json
-                else:
-                    speaker = defender_agent
-                    opponent = challenger_agent
-                    speaker_belief_json = df_belief_json
-                    opponent_belief_json = ch_belief_json
-
-                prompt = prompts.build_stage_3_bloodsport_prompt(
-                    topic=topic,
-                    agent_name=speaker.name,
-                    opponent_name=opponent.name,
-                    agent_belief_json=speaker_belief_json,
-                    opponent_belief_json=opponent_belief_json,
-                    intensity=intensity,
-                    dialogue_history=dialogue_history if dialogue_history else None,
-                    max_response_length_chars=max_rebuttal_length
-                )
-
-                # Log and generate
-                self._log_prompt(speaker.name, prompt, f"Stage 3C - Turn {turn_num}")
-                generation_temp = self.config.stages.generation_temperature if self.config else 0.2
-                response = speaker.generate([Message(role="user", content=prompt)], temperature=generation_temp)
-                self._log(f"Turn {turn_num} from {speaker.name} ({len(response.content)} chars)", "INFO")
-                self._log_response(speaker.name, response.content, f"Stage 3C - Turn {turn_num}")
-
-                # Parse JSON response
-                turn_data = _extract_first_json_block(response.content)
-                if turn_data:
-                    attack = turn_data.get("attack", "")
-                    defense = turn_data.get("defense")
-                    target_claims = turn_data.get("target_claims", [])
-                    self._log_parse_result(True, f"Parsed attack/defense for turn {turn_num}")
-                else:
-                    self._log_parse_result(False, f"Failed to parse JSON for turn {turn_num}, using raw text")
-                    attack = response.content.strip()
-                    defense = None
-                    target_claims = []
-
-                turn_dict = {
-                    "turn_number": turn_num,
-                    "speaker": speaker.name,
-                    "attack": attack,
-                    "defense": defense,
-                    "target_claims": target_claims,
-                    "raw_response": response.content
-                }
-                dialogue_history.append(turn_dict)
-
-                # Add turn to markdown
-                markdown_section += f"**Turn {turn_num} [{speaker.name}]**\n\n"
-                if defense:
-                    markdown_section += f"*Defense*: {defense}\n\n"
-                markdown_section += f"*Attack*: {attack}\n\n"
-                if target_claims:
-                    markdown_section += f"*Targets*: {', '.join(target_claims)}\n\n"
-
-            self._log(f"Exchange completed after {len(dialogue_history)} turn(s)", "INFO")
-
-            # Record training data for bloodsport exchange
-            if self.recorder:
-                self.recorder.record_bloodsport_exchange(
-                    agent_ids=[challenger_name, defender_name],
-                    intensity=intensity,
-                    inputs={
-                        "agent_beliefs": {
-                            challenger_name: ch_belief_obj,
-                            defender_name: df_belief_obj,
-                        },
-                    },
-                    turns=[
-                        {
-                            "turn": t["turn_number"],
-                            "agent_id": t["speaker"],
-                            "attack": t["attack"],
-                            "defense": t["defense"],
-                            "target_claims": t["target_claims"],
-                            "raw_response": t["raw_response"],
-                        }
-                        for t in dialogue_history
-                    ],
-                )
-
-            # Build a combined summary of each side's attacks for adjudication
-            challenger_attacks = [t for t in dialogue_history if t["speaker"] == challenger_name]
-            defender_attacks = [t for t in dialogue_history if t["speaker"] == defender_name]
-
-            challenger_summary = " ".join([t["attack"] for t in challenger_attacks if t["attack"]])
-            defender_summary = " ".join([t["attack"] for t in defender_attacks if t["attack"]])
-            defender_defenses = " ".join([t["defense"] for t in defender_attacks if t.get("defense")])
-
-            # Adjudicate each original challenge entry using exchange context
-            for entry in entries:
-                qid = entry.get("qid", "Q?")
-                self._log(f"Adjudicating {qid}: {challenger_name} → {defender_name}...", "INFO")
-
-                # Frame as: challenger's challenges + attacks vs defender's defenses
-                combined_challenge = entry["challenge"]
-                if challenger_summary:
-                    combined_challenge += f"\n\n[Blood Sport Attacks]: {challenger_summary}"
-
-                combined_rebuttal = defender_defenses if defender_defenses else defender_summary
-                if not combined_rebuttal:
-                    combined_rebuttal = "(No defense provided)"
-
-                resolution = self.adjudicator.run(
-                    challenge=combined_challenge,
-                    rebuttal=combined_rebuttal,
-                    challenger=challenger_name,
-                    target=defender_name,
-                    max_retries=self.config.stages.parse_retries if self.config else 3,
-                    log_fn=self._log,
-                )
-
-                # Log the per-pair prompt and raw response for debugging
-                bs_label = f"Stage 3C - Blood Sport Adjudication ({qid}: {challenger_name} → {defender_name})"
-                if resolution.get("_debug_prompt"):
-                    self._log_prompt("Adjudicator", resolution["_debug_prompt"], bs_label)
-                if resolution.get("_debug_raw_response"):
-                    self._log_response("Adjudicator", resolution["_debug_raw_response"], bs_label)
-
-                # Strip debug keys before storing
-                resolution.pop("_debug_prompt", None)
-                resolution.pop("_debug_raw_response", None)
-
-                entry["resolution"] = resolution
-                entry["rebuttal"] = combined_rebuttal
-                entry["bloodsport_transcript"] = dialogue_history
-                entry["bloodsport_stats"] = {
-                    "intensity": intensity,
-                    "num_turns": len(dialogue_history),
-                    "challenger_attacks": len(challenger_attacks),
-                    "defender_attacks": len(defender_attacks)
-                }
-
-                self._log(f"Adjudication outcome for {qid}: {resolution.get('status', 'unknown').upper()}", "INFO")
-                self.debug_log.append(
-                    f"\n--- BLOODSPORT ADJUDICATION ({qid}: {challenger_name} → {defender_name}) ---\n"
-                    f"{json.dumps(resolution, ensure_ascii=False, indent=2)}\n"
-                    f"--- END ADJUDICATION ---\n"
-                )
-
-                # Update agent stats
-                self.agent_stats = update_agent_stats(self.agent_stats, entry)
-
-                # Update bloodsport-specific stats
-                for agent_name in [challenger_name, defender_name]:
-                    if agent_name in self.agent_stats:
-                        stats = self.agent_stats[agent_name]
-                        stats['bloodsport_exchanges'] = stats.get('bloodsport_exchanges', 0) + 1
-                        agent_turns = len([t for t in dialogue_history if t["speaker"] == agent_name])
-                        stats['bloodsport_turns'] = stats.get('bloodsport_turns', 0) + agent_turns
-
-                markdown_section += f"**{qid} Outcome**: {resolution['status'].upper()}\n\n"
-                markdown_section += f"**Reasoning**: {resolution.get('reasoning', 'N/A')}\n\n"
-                self._notify("adjudication_result", {
-                    "challenger": challenger_name, "target": defender_name,
-                    "outcome": resolution['status'].upper(), "qid": qid,
-                    "turns": len(dialogue_history),
-                })
-
-            self._add_to_markdown(markdown_section)
-
-        # Anti-repetition tracking
-        for entry in self.challenge_rebuttal_pairs:
-            prev_key = f"{entry['challenger']}→{entry['target']}"
-            self.previous_rounds_challenges.setdefault(prev_key, []).append({
-                "qid": entry.get("qid"),
-                "target_ids": entry.get("target_ids", []),
-                "attack_type": entry.get("attack_type", ""),
-                "attack_strategy": entry.get("attack_strategy", ""),
-                "outcome": entry.get("resolution", {}).get("status", "unknown")
-            })
-
-        self._log(f"Stage 3C complete - processed {len(pair_entries)} exchange pair(s)", "INFO")
-
-        return self.challenge_rebuttal_pairs
-
     def run_stage_4_conflict_resolution(self) -> list:
         """
         Stage 4: Rigorous Conflict Resolution
 
         Iterates through all challenge-rebuttal pairs and uses the Adjudicator
-        to run a structured truth-seeking protocol consisting of:
+        to run a structured resolution protocol consisting of:
             1. Restatement of disagreement
             2. Formalization of both arguments
             3. Third-party adjudication
@@ -1644,7 +991,7 @@ class DebateController:
         Uses this to synthesize an updated version of their beliefs and claims.
 
         Uses the gather-then-apply pattern: each agent's full Stage 5 pipeline
-        (Phase 1 → Phase 2 for CBS, single-phase for bloodsport/legacy) runs
+        (Phase 1 → Phase 2 for CBS, single-phase for legacy) runs
         concurrently via ParallelDispatcher.  Shared-state mutations happen in
         the sequential APPLY phase.
 
@@ -1672,7 +1019,6 @@ class DebateController:
         self._log(f"Grouped adjudication results for {len(grouped_by_target)} agent(s)", "INFO")
 
         # Extract config values for the gather function (avoid self.* in threads)
-        stage3_mode = self.config.stage3_mode if self.config else "rebuttal"
         generation_temp = self.config.stages.generation_temperature if self.config else 0.2
         max_retries = self.config.stages.parse_retries if self.config else 3
         defense_boost_config = self.config.defense_boost if self.config else None
@@ -1684,7 +1030,6 @@ class DebateController:
                 callable=lambda a=agent, re=grouped_by_target[agent.name]: _run_stage5_for_agent(
                     agent=a,
                     relevant_entries=re,
-                    stage3_mode=stage3_mode,
                     last_rebuttals_patches=self.last_rebuttals_patches.get(a.name, []),
                     generation_temp=generation_temp,
                     max_retries=max_retries,
@@ -2101,76 +1446,6 @@ class DebateController:
                 persona = personas.get(agent.name, "")
                 self._log(f"Loaded persona for {agent.name}: {persona[:80]}...", "DEBUG")
 
-            # Moderator: Generate roadmap (if stage2_mode == "moderated")
-            if self.stage2_mode == "moderated" and self.moderator:
-                self._log_header("MODERATOR: ROADMAP GENERATION")
-                self._notify("agent_start", {"agent_name": "Moderator", "stage": "roadmap", "action": "Generating debate roadmap"})
-
-                agent_personas = [
-                    personas.get(agent.name, "").split(".")[0][:50]  # Short persona label
-                    for agent in self.agents
-                ]
-                # Use persona_label if available (cleaner than extracting from prompt text)
-                agent_persona_labels = [
-                    getattr(agent, 'persona_label', agent_personas[i])
-                    for i, agent in enumerate(self.agents)
-                ]
-
-                self.roadmap = self.moderator.generate_roadmap(
-                    topic=topic,
-                    num_rounds=self.max_rounds,
-                    agent_personas=agent_persona_labels,
-                )
-
-                # Log the roadmap
-                self._log(f"Roadmap generated with {len(self.roadmap.sub_topics)} sub-topics", "INFO")
-                self._log(f"Overall rationale: {self.roadmap.overall_rationale}", "INFO")
-                self._log(f"Sufficiency note: {self.roadmap.sufficiency_note}", "INFO")
-                self._log_response("Moderator", self.roadmap.raw_response, "Roadmap Generation")
-
-                # Add roadmap to markdown transcript
-                roadmap_md = "\n# 📋 Debate Roadmap (Moderated)\n\n"
-                roadmap_md += f"*Generated by the moderator agent*\n\n"
-                roadmap_md += f"**Overall Rationale:** {self.roadmap.overall_rationale}\n\n"
-                roadmap_md += f"**Sufficiency Assessment:** {self.roadmap.sufficiency_note}\n\n"
-                for i, st in enumerate(self.roadmap.sub_topics, 1):
-                    roadmap_md += f"### Round {i}: {st.title}\n"
-                    roadmap_md += f"{st.description}\n"
-                    if st.guiding_questions:
-                        roadmap_md += "\n**Guiding questions:**\n"
-                        for gq in st.guiding_questions:
-                            roadmap_md += f"- {gq}\n"
-                    roadmap_md += "\n"
-                self._add_to_markdown(roadmap_md)
-
-                # Notify: roadmap generated
-                self._notify("roadmap_generated", {
-                    "subtopics": [
-                        {"round": i, "title": st.title, "description": st.description,
-                         "guiding_questions": st.guiding_questions}
-                        for i, st in enumerate(self.roadmap.sub_topics, 1)
-                    ],
-                    "sufficiency_note": self.roadmap.sufficiency_note,
-                })
-
-                # Record roadmap in training data
-                if self.recorder:
-                    self.recorder.record_roadmap_generation(
-                        roadmap={
-                            "sub_topics": [
-                                {"title": st.title, "description": st.description,
-                                 "rationale": st.rationale, "guiding_questions": st.guiding_questions}
-                                for st in self.roadmap.sub_topics
-                            ],
-                            "overall_rationale": self.roadmap.overall_rationale,
-                            "sufficiency_note": self.roadmap.sufficiency_note,
-                        },
-                        raw_response=self.roadmap.raw_response,
-                    )
-                    self.recorder.metadata["roadmap_user_modified"] = getattr(
-                        self, "roadmap_user_modified", False
-                    )
-
             # Stage 1: Opening Positions
             self.run_stage_1_opening_positions(topic)
 
@@ -2194,41 +1469,16 @@ class DebateController:
                         embedding_tracker.embed_belief(text_for_embedding, agent_name=agent.name, round_num=round_num)
 
                 # Stage 2: Cross-Examination
-                # Determine focus subtopic for moderated mode
-                current_focus_subtopic = None
-                if self.stage2_mode == "moderated" and self.roadmap:
-                    st = self.moderator.get_subtopic_for_round(round_idx)
-                    if st:
-                        current_focus_subtopic = {
-                            "title": st.title,
-                            "description": st.description,
-                            "guiding_questions": st.guiding_questions,
-                        }
-                        self._log(f"Round {round_num} focus sub-topic: {st.title}", "INFO")
-
                 self.run_stage_2_cross_examination(
                     only_if_disagree=False,
-                    focus_subtopic=current_focus_subtopic,
                 )
 
-                # Stage 3: Response Phase (mode-dependent)
-                stage3_mode = self.config.stage3_mode if self.config else "rebuttal"
+                # Stage 3: Rebuttals
+                self.run_stage_3_rebuttals()
+                # Stage 4: Conflict Resolution
+                self.run_stage_4_conflict_resolution()
 
-                if stage3_mode == "collaborative":
-                    # Stage 3B: Collaborative truth-seeking dialogue (includes embedded adjudication)
-                    self.run_stage_3_collaborative()
-                    # Stage 4: SKIP — adjudication already embedded in Stage 3B
-                elif stage3_mode == "bloodsport":
-                    # Stage 3C: Blood sport adversarial exchange (includes embedded adjudication)
-                    self.run_stage_3_bloodsport()
-                    # Stage 4: SKIP — adjudication already embedded in Stage 3C
-                else:
-                    # Stage 3: Single-shot rebuttals (default)
-                    self.run_stage_3_rebuttals()
-                    # Stage 4: Conflict Resolution
-                    self.run_stage_4_conflict_resolution()
-
-                # Stage 5: Belief Update (unified — works with both modes)
+                # Stage 5: Belief Update
                 self.run_stage_5_update_positions()
 
                 # Calculate performance scores after each round
@@ -2285,69 +1535,7 @@ class DebateController:
                     "round": round_num,
                     "scores": self.agent_stats,
                     "convergence": convergence_data,
-                    "focus_subtopic": current_focus_subtopic,
                 })
-
-                # Adaptive moderator: review round and optionally revise roadmap
-                if (self.stage2_mode == "moderated"
-                        and self.moderator is not None
-                        and self.moderator.config.moderator_mode == "adaptive"):
-
-                    round_summary = self._build_round_summary(
-                        round_num=round_num,
-                        round_idx=round_idx,
-                        focus_subtopic=current_focus_subtopic,
-                        convergence_data=convergence_data,
-                    )
-
-                    revision = self.moderator.review_round(round_num, round_summary)
-
-                    if revision is not None:
-                        # Replace remaining sub-topics in the roadmap
-                        completed = self.roadmap.sub_topics[:round_num]
-                        self.roadmap.sub_topics = completed + revision.revised_sub_topics
-
-                        self._log(
-                            f"Roadmap revised after round {round_num}: "
-                            f"{revision.revision_rationale}",
-                            "INFO",
-                        )
-
-                        # Add revision to markdown transcript
-                        revision_md = f"\n---\n\n**Roadmap Revised** (after round {round_num})\n\n"
-                        revision_md += f"*Rationale:* {revision.revision_rationale}\n\n"
-                        for i, st in enumerate(revision.revised_sub_topics, round_num + 1):
-                            revision_md += f"- **Round {i}: {st.title}** — {st.description}\n"
-                        revision_md += "\n"
-                        self._add_to_markdown(revision_md)
-
-                        # Fire display event
-                        self._notify("roadmap_revised", {
-                            "round_num": round_num,
-                            "new_subtopics": [
-                                {"title": st.title, "description": st.description}
-                                for st in revision.revised_sub_topics
-                            ],
-                            "rationale": revision.revision_rationale,
-                        })
-
-                        # Record in training data
-                        revision_record = {
-                            "round_num": round_num,
-                            "revision_rationale": revision.revision_rationale,
-                            "new_subtopics": [
-                                {"title": st.title, "description": st.description,
-                                 "rationale": st.rationale,
-                                 "guiding_questions": st.guiding_questions}
-                                for st in revision.revised_sub_topics
-                            ],
-                        }
-                        self.roadmap_revisions.append(revision_record)
-
-                        if self.recorder:
-                            self.recorder.record_event(
-                                "roadmap_revision", revision_record,
-                            )
 
             # Track the final beliefs of the agents
             for agent in self.agents:
@@ -2425,19 +1613,6 @@ class DebateController:
 
                 report_path = storage_dir / self.config.outputs.analysis_report_file
 
-                # Build roadmap dict for reporting (if moderated mode was used)
-                roadmap_dict = None
-                if self.roadmap:
-                    roadmap_dict = {
-                        "sub_topics": [
-                            {"title": st.title, "description": st.description,
-                             "rationale": st.rationale, "guiding_questions": st.guiding_questions}
-                            for st in self.roadmap.sub_topics
-                        ],
-                        "overall_rationale": self.roadmap.overall_rationale,
-                        "sufficiency_note": self.roadmap.sufficiency_note,
-                    }
-
                 try:
                     report_md = generate_analysis_report(
                         config=self.config,
@@ -2446,8 +1621,6 @@ class DebateController:
                         agent_stats=self.agent_stats,
                         convergence_history=self.convergence_history if self.convergence_history else None,
                         opening_positions=self.opening_positions,
-                        roadmap=roadmap_dict,
-                        roadmap_revisions=self.roadmap_revisions if self.roadmap_revisions else None,
                     )
                     with open(report_path, 'w', encoding='utf-8') as f:
                         f.write(report_md)
@@ -2461,8 +1634,6 @@ class DebateController:
                         challenge_rebuttal_pairs=self.challenge_rebuttal_pairs,
                         agent_stats=self.agent_stats,
                         convergence_history=self.convergence_history if self.convergence_history else None,
-                        roadmap=roadmap_dict,
-                        roadmap_revisions=self.roadmap_revisions if self.roadmap_revisions else None,
                     )
                     with open(json_report_path, 'w', encoding='utf-8') as f:
                         json.dump(report_json, f, ensure_ascii=False, indent=2)
@@ -2619,7 +1790,7 @@ def _generate_opening_position(agent, topic: str, max_retries: int = 3,
 
 
 def _generate_cross_examination(challenger, target, topic, config, previous_challenges,
-                                 focus_subtopic, max_retries=3, log_fn=None) -> dict:
+                                 max_retries=3, log_fn=None) -> dict:
     """Pure function: generate cross-examination questions from challenger to target.
 
     Returns a dict of results for the sequential apply step.
@@ -2636,32 +1807,16 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
     tg_belief_json = json.dumps(tg_belief_obj, ensure_ascii=False, indent=2) if tg_belief_obj else ""
 
     max_questions = config.stages.max_questions_per_cross_exam if config else 5
-    stage3_mode = config.stage3_mode if config else "rebuttal"
 
-    if stage3_mode == "bloodsport":
-        intensity = config.bloodsport.intensity if config else "moderate"
-        prompt = prompts.build_stage_2_bloodsport_prompt(
-            topic=topic,
-            agent_name=challenger_name,
-            opponent_name=target_name,
-            agent_belief_json=ch_belief_json,
-            opponent_belief_json=tg_belief_json,
-            intensity=intensity,
-            max_questions=max_questions,
-            previous_challenges=previous_challenges if previous_challenges else None,
-            focus_subtopic=focus_subtopic,
-        )
-    else:
-        prompt = prompts.build_stage_2_prompt(
-            topic=topic,
-            agent_name=challenger_name,
-            opponent_name=target_name,
-            agent_belief_json=ch_belief_json,
-            opponent_belief_json=tg_belief_json,
-            max_questions=max_questions,
-            previous_challenges=previous_challenges if previous_challenges else None,
-            focus_subtopic=focus_subtopic,
-        )
+    prompt = prompts.build_stage_2_prompt(
+        topic=topic,
+        agent_name=challenger_name,
+        opponent_name=target_name,
+        agent_belief_json=ch_belief_json,
+        opponent_belief_json=tg_belief_json,
+        max_questions=max_questions,
+        previous_challenges=previous_challenges if previous_challenges else None,
+    )
 
     stage_request = [Message(role="user", content=prompt)]
     generation_temp = config.stages.generation_temperature if config else 0.2
@@ -2879,7 +2034,7 @@ def _apply_patches_and_validate(
     """Parse patches from response, apply to belief, validate graph.
 
     Pure function — no agent or controller mutations.
-    Used by the bloodsport and legacy flows within _run_stage5_for_agent.
+    Used by the legacy flow within _run_stage5_for_agent.
 
     Returns:
         dict with keys: patches, final_belief, md_view, reverted,
@@ -3026,7 +2181,6 @@ def _apply_patches_and_validate(
 def _run_stage5_for_agent(
     agent,
     relevant_entries: list,
-    stage3_mode: str,
     last_rebuttals_patches: list,
     generation_temp: float,
     max_retries: int,
@@ -3034,7 +2188,7 @@ def _run_stage5_for_agent(
 ) -> dict:
     """Pure function: run full Stage 5 belief update for one agent.
 
-    Handles all three flow types (bloodsport, CBS two-phase, legacy).
+    Handles CBS two-phase and legacy flows.
     Returns a dict of results for the sequential apply step.
 
     This function is safe to call from a worker thread because it only
@@ -3052,15 +2206,7 @@ def _run_stage5_for_agent(
     log_entries.append((f"\n--- Updating belief for: {name} ---", "INFO"))
     log_entries.append((f"Agent received {len(relevant_entries)} adjudication result(s)", "INFO"))
 
-    if prior_json is not None and stage3_mode == "bloodsport":
-        return _run_stage5_bloodsport(
-            agent, name, prior_json, md_view_fallback,
-            relevant_entries, last_rebuttals_patches,
-            generation_temp, max_retries,
-            api_calls, log_entries, debug_entries,
-        )
-
-    elif prior_json is not None:
+    if prior_json is not None:
         return _run_stage5_cbs_two_phase(
             agent, name, prior_json, md_view_fallback,
             relevant_entries, last_rebuttals_patches,
@@ -3076,77 +2222,6 @@ def _run_stage5_for_agent(
             generation_temp, max_retries,
             api_calls, log_entries, debug_entries,
         )
-
-
-def _run_stage5_bloodsport(
-    agent, name, prior_json, md_view_fallback,
-    relevant_entries, last_rebuttals_patches,
-    generation_temp, max_retries,
-    api_calls, log_entries, debug_entries,
-) -> dict:
-    """Bloodsport single-phase flow for _run_stage5_for_agent."""
-    log_entries.append((f"Using bloodsport belief update prompt for {name}", "DEBUG"))
-
-    bloodsport_exchanges = []
-    for e in relevant_entries:
-        if "bloodsport_transcript" in e:
-            bloodsport_exchanges.extend(e["bloodsport_transcript"])
-
-    stage_3_patches_json = (
-        json.dumps(last_rebuttals_patches, ensure_ascii=False, indent=2)
-        if last_rebuttals_patches else ""
-    )
-
-    prompt = prompts.build_stage_5_bloodsport_prompt(
-        agent_name=agent.name,
-        challenge_rebuttal_pairs=relevant_entries,
-        prior_belief_json=json.dumps(prior_json, ensure_ascii=False, indent=2),
-        bloodsport_exchanges=bloodsport_exchanges if bloodsport_exchanges else None,
-        stage_3_patches_json=stage_3_patches_json,
-    )
-
-    label = "Stage 5 - Belief Update (Bloodsport)"
-    stage_request = [Message(role="user", content=prompt)]
-    log_entries.append((f"Calling model for {name} belief update (bloodsport)...", "INFO"))
-
-    from functools import partial
-    from chal.utilities.retry import generate_with_retry
-    from chal.utilities.validators import validate_stage5_phase1_output, STAGE5_PHASE1_REMEDIATION_HINTS
-
-    critique_valid_count = sum(
-        1 for entry in relevant_entries
-        if (entry.get("resolution") or {}).get("status") == "critique_valid"
-    )
-    validator = partial(validate_stage5_phase1_output, critique_valid_count=critique_valid_count)
-    response, retry_records = generate_with_retry(
-        agent=agent,
-        messages=stage_request,
-        validator_fn=validator,
-        max_retries=max_retries,
-        stage_label="Stage 5 Bloodsport",
-        log_fn=lambda msg, lvl: log_entries.append((msg, lvl)),
-        temperature=generation_temp,
-        remediation_hints=STAGE5_PHASE1_REMEDIATION_HINTS,
-    )
-    api_calls.append({"prompt": prompt, "response": response, "label": label, "is_retry": False})
-
-    patch_result = _apply_patches_and_validate(
-        name, response.content, prior_json, relevant_entries, md_view_fallback
-    )
-
-    return {
-        "flow": "bloodsport",
-        "api_calls": api_calls,
-        "prior_json": prior_json,
-        "final_belief": patch_result["final_belief"],
-        "md_view": patch_result["md_view"],
-        "patches": patch_result["patches"],
-        "phase1_patches": None,
-        "phase2_patches": None,
-        "reverted": patch_result["reverted"],
-        "log_entries": log_entries + patch_result["log_entries"],
-        "debug_entries": debug_entries + patch_result["debug_entries"],
-    }
 
 
 def _run_stage5_cbs_two_phase(
@@ -3485,13 +2560,6 @@ def _extract_belief_excerpt(belief: dict, target_ids: list) -> dict:
         if items:
             excerpt[section] = items
     return excerpt
-
-def _normalize_collab_verdict(raw: str) -> str:
-    """Normalize a collaborative-mode verdict to a valid value."""
-    _VALID = {"critique_valid", "rebuttal_valid", "unresolved"}
-    cleaned = raw.strip().lower()
-    return cleaned if cleaned in _VALID else "unresolved"
-
 
 def _extract_first_json_block(text: str) -> Optional[Dict[str, Any]]:
     # Try fenced block first, then fall back to raw JSON object

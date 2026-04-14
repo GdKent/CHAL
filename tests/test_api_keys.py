@@ -20,7 +20,6 @@ from chal.config import (
     AgentConfig,
     AdjudicationConfig,
     DebateConfig,
-    ModeratorConfig,
 )
 from chal.cli.api_keys import (
     _collect_providers,
@@ -81,25 +80,6 @@ class TestCollectProviders:
         providers = _collect_providers(config)
         assert "anthropic" in providers
 
-    @pytest.mark.unit
-    def test_collects_moderator_provider_when_moderated(self):
-        """The moderator provider is included when stage2_mode is 'moderated'."""
-        config = _minimal_config(
-            stage2_mode="moderated",
-            moderator=ModeratorConfig(provider="google"),
-        )
-        providers = _collect_providers(config)
-        assert "google" in providers
-
-    @pytest.mark.unit
-    def test_excludes_moderator_when_not_moderated(self):
-        """The moderator provider is excluded when stage2_mode is not 'moderated'."""
-        config = _minimal_config(
-            stage2_mode="open",
-            moderator=ModeratorConfig(provider="google"),
-        )
-        providers = _collect_providers(config)
-        assert "google" not in providers
 
 
 # =========================================================================

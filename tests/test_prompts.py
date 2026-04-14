@@ -35,9 +35,6 @@ from chal.agents.prompts import (
     build_stage_5_phase1_enforcement_prompt,
     build_stage_5_phase2_introspection_prompt,
     build_stage_6_conclusion_prompt,
-    build_stage_2_bloodsport_prompt,
-    build_stage_3_bloodsport_prompt,
-    build_stage_5_bloodsport_prompt,
     build_adjudicator_per_pair_prompt,
 )
 
@@ -1298,35 +1295,6 @@ def test_debate_context_in_standard_prompts(builder, kwargs, expected_descriptio
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("builder,kwargs,expected_description", [
-    (
-        build_stage_2_bloodsport_prompt,
-        {"topic": "Test", "agent_name": "A", "opponent_name": "B",
-         "agent_belief_json": "{}", "opponent_belief_json": "{}"},
-        "Cross-examination — challenging your opponent",
-    ),
-    (
-        build_stage_3_bloodsport_prompt,
-        {"topic": "Test", "agent_name": "A", "opponent_name": "B",
-         "agent_belief_json": "{}", "opponent_belief_json": "{}"},
-        "Rebuttal — defending against your opponent's challenges",
-    ),
-    (
-        build_stage_5_bloodsport_prompt,
-        {"agent_name": "A", "challenge_rebuttal_pairs": [],
-         "prior_belief_json": "{}"},
-        "Belief update (enforcement) — incorporating adjudication outcomes",
-    ),
-])
-def test_debate_context_in_bloodsport_prompts(builder, kwargs, expected_description):
-    """Each bloodsport stage prompt contains <debate_context> with the correct stage description."""
-    prompt = builder(**kwargs)
-    assert "<debate_context>" in prompt
-    assert "</debate_context>" in prompt
-    assert f"You are currently in: {expected_description}" in prompt
-
-
-@pytest.mark.unit
 def test_adjudicator_prompt_no_debate_context():
     """Adjudicator prompt should NOT contain <debate_context> — it's not a debate participant."""
     prompt = build_adjudicator_prompt(
@@ -1978,17 +1946,6 @@ def test_stage_2_prompt_no_max_question_length():
         agent_belief_json='{}', opponent_belief_json='{}'
     )
     assert "max_question_length" not in prompt
-
-
-@pytest.mark.unit
-def test_stage_2_bloodsport_prompt_has_attack_fields():
-    """Bloodsport prompt includes attack_type and attack_strategy in its output format."""
-    prompt = build_stage_2_bloodsport_prompt(
-        topic="Test", agent_name="A", opponent_name="B",
-        agent_belief_json='{}', opponent_belief_json='{}'
-    )
-    assert "attack_type" in prompt
-    assert "attack_strategy" in prompt
 
 
 # ==============================================

@@ -300,12 +300,6 @@ def display_agent_stats(agent_stats: dict, show_performance_ranking: bool = True
         print(f"  Unresolved Arguments: {stats['unresolved_arguments']}")
         print(f"  Total Arguments: {stats['total_arguments']}")
 
-        # Show bloodsport-specific stats if present
-        if stats.get('bloodsport_exchanges', 0) > 0:
-            print(f"  --- Blood Sport ---")
-            print(f"  Exchanges: {stats['bloodsport_exchanges']}")
-            print(f"  Turns: {stats['bloodsport_turns']}")
-
     # Show performance gap if multiple agents
     if show_performance_ranking and len(sorted_agents) > 1:
         leader = sorted_agents[0]

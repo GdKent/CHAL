@@ -35,8 +35,6 @@ def _collect_providers(config: DebateConfig) -> Set[str]:
     for agent in config.agents:
         providers.add(agent.provider)
     providers.add(config.adjudication.provider)
-    if config.stage2_mode == "moderated":
-        providers.add(config.moderator.provider)
     return providers
 
 

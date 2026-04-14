@@ -256,8 +256,7 @@ def test_to_dict_returns_dict():
     assert isinstance(d, dict)
     expected_keys = {
         "metadata", "debate", "agents", "adjudication",
-        "stages", "outputs", "scribe", "collaborative",
-        "bloodsport", "moderator", "parallel", "defense_boost",
+        "stages", "outputs", "scribe", "parallel", "defense_boost",
     }
     assert set(d.keys()) == expected_keys
 
@@ -289,7 +288,6 @@ def test_to_dict_round_trip():
         assert reloaded.name == original.name
         assert reloaded.topic == original.topic
         assert reloaded.max_rounds == original.max_rounds
-        assert reloaded.stage2_mode == original.stage2_mode
         assert reloaded.stage3_mode == original.stage3_mode
         assert len(reloaded.agents) == len(original.agents)
         for a_orig, a_new in zip(original.agents, reloaded.agents):
@@ -312,7 +310,6 @@ def test_to_yaml_writes_loadable_file(tmp_path):
         name="Wizard Test",
         topic="Is consciousness real?",
         max_rounds=2,
-        stage2_mode="moderated",
         stage3_mode="rebuttal",
         agents=[
             AgentConfig(name="A1", persona="EMPIRICIST", model="gpt-4o", provider="openai"),
@@ -330,7 +327,6 @@ def test_to_yaml_writes_loadable_file(tmp_path):
     assert reloaded.name == "Wizard Test"
     assert reloaded.topic == "Is consciousness real?"
     assert reloaded.max_rounds == 2
-    assert reloaded.stage2_mode == "moderated"
     assert len(reloaded.agents) == 2
     assert reloaded.agents[0].persona == "EMPIRICIST"
     assert reloaded.agents[1].persona == "SKEPTIC"

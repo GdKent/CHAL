@@ -11,9 +11,8 @@ as training data in two formats:
 
 import json
 import uuid
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 class DebateRecorder:
@@ -59,37 +58,18 @@ class DebateRecorder:
             "provider": adj.provider if adj else "unknown",
         } if adj else {}
 
-        stage2_mode = debate_config.stage2_mode if debate_config else "open"
-
         self.metadata = {
             "topic": topic,
             "mode": mode,
-            "stage2_mode": stage2_mode,
             "num_rounds": debate_config.max_rounds if debate_config else 1,
             "num_agents": len(agents),
             "agents": agent_meta,
             "adjudicator": adjudicator_meta,
             "config_snapshot": {
-                "stage2_mode": stage2_mode,
                 "stage3_mode": mode,
                 "max_rounds": debate_config.max_rounds if debate_config else 1,
             },
         }
-
-        # Add mode-specific config to snapshot
-        if mode == "bloodsport" and debate_config:
-            self.metadata["bloodsport_intensity"] = debate_config.bloodsport.intensity
-            self.metadata["config_snapshot"]["bloodsport"] = {
-                "intensity": debate_config.bloodsport.intensity,
-                "max_exchanges": debate_config.bloodsport.max_exchanges,
-            }
-        elif mode == "collaborative" and debate_config:
-            self.metadata["config_snapshot"]["collaborative"] = {
-                "max_turns_per_question": debate_config.collaborative.max_turns_per_question,
-                "min_turns_per_question": debate_config.collaborative.min_turns_per_question,
-                "adjudicator_check_interval": debate_config.collaborative.adjudicator_check_interval,
-                "early_termination_on_agreement": debate_config.collaborative.early_termination_on_agreement,
-            }
 
     def set_round(self, round_num: int):
         """Update the current round number."""
@@ -156,51 +136,6 @@ class DebateRecorder:
             "outputs": {
                 "rebuttals": rebuttals,
                 "raw_response": raw_response,
-            },
-        })
-
-    def record_collaborative_exchange(
-        self,
-        agent_ids: list,
-        inputs: dict,
-        turns: list,
-        num_turns: int = 0,
-        terminated_early: bool = False,
-        termination_reason: Optional[str] = None,
-    ):
-        """Record a Stage 3 collaborative exchange."""
-        self.timeline.append({
-            "type": "collaborative_exchange",
-            "round": self.current_round,
-            "stage": 3,
-            "agent_ids": agent_ids,
-            "inputs": inputs,
-            "outputs": {
-                "turns": turns,
-                "num_turns": num_turns or len(turns),
-                "terminated_early": terminated_early,
-                "termination_reason": termination_reason,
-            },
-        })
-
-    def record_bloodsport_exchange(
-        self,
-        agent_ids: list,
-        intensity: str,
-        inputs: dict,
-        turns: list,
-    ):
-        """Record a Stage 3 bloodsport exchange."""
-        self.timeline.append({
-            "type": "bloodsport_exchange",
-            "round": self.current_round,
-            "stage": 3,
-            "agent_ids": agent_ids,
-            "intensity": intensity,
-            "inputs": inputs,
-            "outputs": {
-                "turns": turns,
-                "num_turns": len(turns),
             },
         })
 
@@ -279,11 +214,10 @@ class DebateRecorder:
     def record_event(self, event_type: str, data: Dict[str, Any]):
         """Record a generic event in the timeline.
 
-        Used for events that don't have a dedicated method, such as
-        roadmap revisions.
+        Used for events that don't have a dedicated method.
 
         Args:
-            event_type: The event type string (e.g. "roadmap_revision").
+            event_type: The event type string.
             data: Arbitrary event data dict.
         """
         self.timeline.append({
@@ -291,28 +225,6 @@ class DebateRecorder:
             "round": self.current_round,
             "data": data,
         })
-
-    def record_roadmap_generation(
-        self,
-        roadmap: dict,
-        raw_response: str,
-    ):
-        """Record a moderator roadmap generation event."""
-        self.timeline.append({
-            "type": "roadmap_generation",
-            "round": None,
-            "stage": 0,
-            "inputs": {
-                "topic": self.topic,
-                "num_rounds": self.metadata.get("num_rounds", 1),
-            },
-            "outputs": {
-                "roadmap": roadmap,
-                "raw_response": raw_response,
-            },
-        })
-        # Also store roadmap in metadata
-        self.metadata["roadmap"] = roadmap
 
     def get_debate_record(self) -> dict:
         """Return the full DebateRecord as a dict."""

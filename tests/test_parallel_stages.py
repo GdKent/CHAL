@@ -379,20 +379,9 @@ def _make_stage5_phase2_response():
     )
 
 
-def _make_stage5_bloodsport_response():
-    """Mock single-phase bloodsport response with patches."""
-    return (
-        '```json\n'
-        '{"patches": [{"op": "update_claim", "target_id": "C1", '
-        '"changes": {"strength": 0.60}}]}\n'
-        '```'
-    )
-
-
 def _setup_stage5_controller(
     agent_names,
     parallel_enabled,
-    stage3_mode="rebuttal",
     agents_with_entries=None,
 ):
     """Create a controller wired up for Stage 5 parallel testing.
@@ -400,7 +389,6 @@ def _setup_stage5_controller(
     Args:
         agent_names: List of agent name strings.
         parallel_enabled: Whether to enable parallel dispatch.
-        stage3_mode: "rebuttal" for CBS two-phase, "bloodsport" for single-phase.
         agents_with_entries: Set of agent names that have adjudication entries.
             Defaults to all agents.
 
@@ -416,7 +404,7 @@ def _setup_stage5_controller(
         name="Stage 5 Parallel Test",
         topic="Test topic",
         max_rounds=1,
-        stage3_mode=stage3_mode,
+        stage3_mode="rebuttal",
         agents=[AgentConfig(name=n, persona="EMPIRICIST") for n in agent_names],
         adjudication=AdjudicationConfig(),
         outputs=OutputConfig(storage_dir=Path(tmpdir)),
@@ -426,13 +414,10 @@ def _setup_stage5_controller(
     agents = []
     agents_dict = {}
     for name in agent_names:
-        if stage3_mode == "bloodsport":
-            responses = [_make_stage5_bloodsport_response()] * 10
-        else:
-            responses = [
-                _make_stage5_phase1_response(),
-                _make_stage5_phase2_response(),
-            ] * 10
+        responses = [
+            _make_stage5_phase1_response(),
+            _make_stage5_phase2_response(),
+        ] * 10
         agent = create_mock_agent(name, responses=responses)
         belief = create_sample_belief(
             belief_id=f"BELIEF-{name}",
@@ -541,26 +526,6 @@ class TestStage5Parallel:
         assert pos_a < pos_b < pos_c, (
             f"Expected deterministic order A < B < C, got {pos_a}, {pos_b}, {pos_c}"
         )
-
-    def test_stage_5_parallel_bloodsport_flow(self, mock_openai_responses):
-        """Bloodsport single-phase path works through parallel dispatcher."""
-        controller, agents = _setup_stage5_controller(
-            ["Agent-A", "Agent-B"],
-            parallel_enabled=True,
-            stage3_mode="bloodsport",
-        )
-
-        controller.run_stage_5_update_positions()
-
-        # Both agents should have beliefs committed
-        for name in ["Agent-A", "Agent-B"]:
-            assert agents[name].set_internal_belief_obj.called, f"{name} belief not committed"
-
-        # Each agent should have generate called exactly once (single-phase)
-        for name in ["Agent-A", "Agent-B"]:
-            assert agents[name].generate.call_count == 1, (
-                f"{name} expected 1 generate call, got {agents[name].generate.call_count}"
-            )
 
     def test_stage_5_parallel_no_entries_skipped(self, mock_openai_responses):
         """Agents with no adjudication results are not dispatched."""
