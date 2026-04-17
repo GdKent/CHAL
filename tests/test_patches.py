@@ -3130,6 +3130,68 @@ def test_validate_add_counterposition_targets_nonempty():
     assert any("targets" in e.lower() for e in errors)
 
 
+@pytest.mark.unit
+def test_validate_add_counterposition_unaddressed_allows_empty_response():
+    """my_response can be empty when response_sufficiency is 'unaddressed'."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test counterposition",
+            "my_response": "",
+            "response_sufficiency": "unaddressed"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0, f"Unaddressed counterposition with empty my_response should be valid, got: {errors}"
+
+
+@pytest.mark.unit
+def test_validate_add_counterposition_partial_requires_response():
+    """my_response must be non-empty when response_sufficiency is 'partial'."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test counterposition",
+            "my_response": "",
+            "response_sufficiency": "partial"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("my_response" in e for e in errors)
+
+
+@pytest.mark.unit
+def test_validate_add_counterposition_sufficient_requires_response():
+    """my_response must be non-empty when response_sufficiency is 'sufficient'."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test counterposition",
+            "my_response": "",
+            "response_sufficiency": "sufficient"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) > 0
+    assert any("my_response" in e for e in errors)
+
+
 # ==============================================
 # 3F. update_thesis Mutual Exclusivity
 # ==============================================

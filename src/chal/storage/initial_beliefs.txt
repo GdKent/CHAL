@@ -1,335 +1,288 @@
 # Thesis
-- Stance: While empiricist evidence and determinism undermine the notion of libertarian free will (C1), a meaningful notion of free will persists in a compatibilist sense, where agents' choices reflect their internal motivations and reasoning when unconstrained (C2). Under a physicalist framework (A1, A2) and empirical findings (E1, E2, E3), true indeterministic freedom is unsupported, but pragmatic autonomy remains valid.
+- Stance: Grounded in robust empirical findings of unconscious decision initiation (C1) and a clear contra-causal definition of free will (A3), there is no support for agents having the capacity to choose otherwise under identical conditions. While compatibilist accounts may preserve a pragmatic notion of agency, our analysis shows that contra-causal free will does not exist in human agents (C2).
 - Top bullets:
-  - Libertarian free will, requiring uncaused decisions, lacks empirical support (C1).
-  - Neuroscientific studies consistently show decision precursors precede awareness (E1, A3).
-  - Compatibilist free will, defined by self-determined actions absent coercion, aligns with empirical determinism (C2, A4).
-  - Operational autonomy is preserved under physicalism, supporting responsibility.
-  - Key uncertainties remain about causal roles of neural precursors and moral implications (U1, U2).
-- Strength: 0.4
-- Reasoning: avg(0.60, 0.60) × (2^1/(2^1+1)) = 0.60 × 0.667 = 0.40
+  - Decision-making begins unconsciously via neural processes before conscious awareness (C1).
+  - Contra-causal free will, defined as the ability to choose otherwise under identical conditions, lacks empirical support (C2).
+  - Readiness potentials and fMRI predictions consistently predate conscious reports (E1, E2).
+  - Our analysis is scoped to contra-causal free will, excluding compatibilist notions by design (A3).
+  - Empirical methods provide a reliable basis for these conclusions (A2).
+- Strength: 0.47
+- Reasoning: avg(0.70, 0.70) × (2^1/(2^1+1)) = 0.70 × (2/3) ≈ 0.467
 
 # Definitions
-- [D1] **libertarian_free_will**: The capacity for an agent to have genuine alternative possibilities, such that actions are not wholly determined by prior physical states or stochastic processes.
-  - Strength: 0.4 (0.40 — concept is highly contested in philosophy; no clear empirical counterpart.)
-  - Used by: E1, E4
+- [D1] **free will**: The contra-causal capacity of an agent to choose otherwise under identical prior conditions.
+  - Strength: 0.7 (0.70 — common philosophical usage but contested by compatibilists.)
+  - Used by: A3
   - Status: active
-- [D2] **compatibilist_free_will**: The capacity for an agent to make choices according to its own motivations, desires, and rational deliberations, even if those are determined by prior states.
-  - Strength: 0.7 (0.70 — widely used in contemporary philosophy; operationally coherent though debates continue.)
-  - Used by: A4, E3
+- [D2] **physicalism**: The view that all mental phenomena supervene on and arise from physical processes.
+  - Strength: 0.9 (0.90 — widely accepted in scientific contexts, though debated philosophically.)
+  - Used by: A1
   - Status: active
-- [D3] **determinism**: The principle that every event, including neural and mental events, is determined by prior physical states according to physical laws.
-  - Strength: 0.9 (0.90 — foundational in physics and supported by no confirmed violations.)
-  - Used by: A1, A2
+- [D3] **empirical methods**: Third-person observation, controlled experiment, and measurement producing replicable data.
+  - Strength: 0.9 (0.90 — foundational to scientific inquiry.)
+  - Used by: A2
   - Status: active
-- [D4] **external_coercion**: Factors that override or manipulate an agent's internal decision-making processes such that the action does not originate from the agent's motivations.
-  - Strength: 0.8 (0.80 — clear in legal and psychological contexts; boundaries occasionally debated.)
-  - Used by: A4
+- [D4] **readiness potential**: A measurable neural signal (EEG) that precedes voluntary movement initiation.
+  - Strength: 0.8 (0.80 — reliably recorded in neuroscience but interpretation contested.)
+  - Used by: E1, E2
   - Status: active
-- [D5] **neural_precursor**: Measurable neural activity that systematically precedes a subject's conscious awareness of a decision.
-  - Strength: 0.8 (0.80 — empirical concept with multiple replications, though precise interpretation debated.)
-  - Used by: A3, E1, E2
+- [D5] **conscious intention**: The subjective report of the moment when one becomes aware of deciding to act.
+  - Strength: 0.8 (0.80 — operationalized in Libet-style experiments yet subject to report bias.)
+  - Used by: E1, E2
+  - Status: active
+- [D6] **lesion study**: An empirical approach correlating brain damage or stimulation with behavioral changes.
+  - Strength: 0.8 (0.80 — standard neuroscientific method though causal inference can be indirect.)
+  - Used by: E3
   - Status: active
 
 # Assumptions
-- [A1] (scoping) This analysis operates under a physicalist ontology where mental processes supervene on physical brain states.
-  - Supports: C1, C2
-  - Strength: 0.9 (Physicalism is the default in neuroscience and cognitive science; few serious empirical challenges.)
-  - Supported by definitions: D3
-  - Status: active
-- [A2] (empirical) All neural processes are determined by prior physical states according to deterministic or probabilistic physical laws.
+- [A1] (methodological) This analysis assumes physicalism: mental phenomena supervene on physical processes.
   - Supports: C1
-  - Strength: 0.85 (Supported by physics and neuroscience; no confirmed spontaneous deviations.)
-  - Supported by definitions: D3
-  - Status: active
-- [A3] (empirical) Conscious deliberation arises after initial neural precursors initiate decision-making processes.
-  - Supports: C1
-  - Strength: 0.7 (Based on Libet and follow-up studies; replicated but interpretation debated.)
-  - Supported by definitions: D5
-  - Status: active
-- [A4] (methodological) Agent actions can be considered free if they align with internal motivations and are not overridden by external coercion.
-  - Supports: C2
-  - Strength: 0.75 (Standard compatibilist criterion; some normative debate but operationally useful.)
-  - Supported by definitions: D2, D4
-  - Status: active
-
-# Evidence
-- [E1] (empirical) Libet experiments demonstrate readiness potential precedes conscious intention by ~200ms.
-  - Strength: 0.8 (0.80 — replicated across labs; consensus on timing though interpretation varies.)
-  - Source: Libet et al. (1983)
-  - Supports: C1
-  - Supported by definitions: D5, D1
-  - Status: active
-- [E2] (empirical) Neuroscientific studies show targeted brain stimulation can alter or predict decisions before conscious awareness.
-  - Strength: 0.75 (0.75 — multiple methods converge, though predictive accuracy varies.)
-  - Source: Haynes et al. (2008)
-  - Supports: C1
-  - Supported by definitions: D5
-  - Status: active
-- [E3] (expert_consensus) Many philosophers endorse compatibilist definitions of free will as compatible with determinism.
-  - Strength: 0.6 (0.60 — common in surveys but not unanimous.)
-  - Source: Philosophical literature surveys
-  - Supports: C2
+  - Strength: 0.9 (0.90 — aligns with mainstream scientific ontology.)
   - Supported by definitions: D2
   - Status: active
-- [E4] (expert_consensus) No robust empirical evidence exists for uncaused or indeterministic conscious choices.
-  - Strength: 0.6 (0.60 — absence of evidence though some claim gaps remain.)
-  - Source: Philosophical and neuroscientific consensus
+- [A2] (methodological) Third-person empirical methods can reliably capture neural and behavioral data relevant to decision-making.
   - Supports: C1
+  - Strength: 0.85 (0.85 — well-established in neuroscience, though some subjective aspects may elude measurement.)
+  - Supported by definitions: D3
+  - Status: active
+- [A3] (scoping) Free will is defined strictly as contra-causal capacity (the ability to choose otherwise under identical conditions).
+  - Supports: C2
+  - Strength: 0.7 (0.70 — clear but excludes compatibilist notions; somewhat contested.)
   - Supported by definitions: D1
   - Status: active
 
+# Evidence
+- [E1] (empirical) Libet et al. (1983) show readiness potentials precede reported conscious intention by ~200 ms.
+  - Strength: 0.75 (0.75 — replicated but timing interpretation remains debated.)
+  - Source: Libet, B. et al. (1983)
+  - Supports: C1
+  - Supported by definitions: D4, D5
+  - Status: active
+- [E2] (empirical) Soon et al. (2008) demonstrate fMRI patterns predict choices up to 7–10 s before awareness.
+  - Strength: 0.7 (0.70 — robust predictive modeling though coarse spatial/temporal resolution.)
+  - Source: Soon, C. S. et al. (2008)
+  - Supports: C1
+  - Supported by definitions: D4, D5
+  - Status: active
+- [E3] (empirical) Lesion studies of frontal-lobe patients show altered decision patterns and impulsivity.
+  - Strength: 0.6 (0.60 — clear correlation but complexity of behavior limits inference.)
+  - Source: Clinical neuroscience literature
+  - Supports: C1
+  - Supported by definitions: D6
+  - Status: active
+
 # Claims
-- [C1] (descriptive) Libertarian free will does not exist as defined by an agent having genuine alternative possibilities uncaused by prior physical states.
-  - Depends on: A1, A2, A3, E1, E2, E4
+- [C1] (descriptive) Human decision-making is initiated by unconscious neural processes before conscious awareness.
+  - Depends on: A1, A2, E1, E2
   - Inference chain:
-    - Premise (A2): Neural processes are determined by prior states (determinism).
-    - Premise (A3): Conscious deliberation arises after neural precursors initiate the process.
-    - Premise (E1): Readiness potentials reliably precede conscious intention by ~200ms.
-    - Premise (E2): Targeted brain stimulation can predict or alter decisions before awareness.
-    - Premise (E4): No robust empirical evidence for uncaused or indeterministic conscious choices.
-    - Inference (inductive): Given determinism and lack of evidence for uncaused initiation, genuine alternative possibilities are unsupported.
-    - Conclusion: Libertarian free will does not exist as defined by an agent having genuine alternative possibilities uncaused by prior physical states.
-  - Strength: 0.6 (0.60 — supported by A1 (0.90), A2 (0.85), A3 (0.70), E1 (0.80), E2 (0.75), E4 (0.60); limited by E4 (0.60))
+    - Premise (E1): Readiness potentials reliably precede reported conscious intention by ~200 ms.
+    - Premise (E2): fMRI patterns can predict choices several seconds before awareness.
+    - Premise (A2): Empirical methods can capture neural precursors relevant to decision initiation.
+    - Inference (inductive): The consistent presence of neural precursors indicates decisions begin unconsciously.
+    - Conclusion: Human decision-making is initiated by unconscious neural processes before conscious awareness.
+  - Strength: 0.7 (0.70 — supported by A1 (0.90), A2 (0.85), E1 (0.75), E2 (0.70); limited by E2 (0.70))
   - Status: active
   - Predictions:
-    - Any observation of a decision without a detectable neural precursor falsifies this claim.
-      Test: Use high-resolution neuroimaging to detect absent precursor activity before reported decisions.
-      Criterion: Detection of a decision with no corresponding precursor above noise threshold.
-      Falsifiers: Identification of a decision without any detectable neural precursor in well-controlled studies
-- [C2] (descriptive) Agents possess compatibilist free will, where their choices arise from internal motivations and rational deliberation absent external coercion.
-  - Depends on: A1, A4, E3
+    - In further experiments, neural precursors will always precede conscious decision reports.
+      Test: Use high-resolution EEG/fMRI to detect readiness potentials before reported intention.
+      Criterion: If in >10% of trials no precursor is detected before awareness, prediction is falsified.
+      Falsifiers: Decisions without any detectable readiness potential, Cases where conscious intention consistently precedes neural signals
+- [C2] (descriptive) Contra-causal free will does not exist in human agents.
+  - Depends on: C1, A3
   - Inference chain:
-    - Premise (A4): Free actions are defined as aligning with internal motivations absent coercion.
-    - Premise (E3): Philosophical consensus endorses compatibilist definitions compatible with determinism.
-    - Inference (abductive): Combining the operational definition with expert consensus shows agents can have free will compatibly.
-    - Conclusion: Agents possess compatibilist free will, where their choices arise from internal motivations and rational deliberation absent external coercion.
-  - Strength: 0.6 (0.60 — supported by A1 (0.90), A4 (0.75), E3 (0.60); limited by E3 (0.60))
+    - Premise (C1): Decisions are initiated unconsciously by deterministic neural processes.
+    - Premise (A3): Free will is defined as contra-causal capacity to choose otherwise under identical conditions.
+    - Inference (deductive): If all decisions are determined by prior neural states, contra-causal capacity is absent.
+    - Conclusion: Contra-causal free will does not exist in human agents.
+  - Strength: 0.7 (0.70 — supported by C1 (0.70) and A3 (0.70); limited by C1/A3 (0.70))
   - Status: active
   - Predictions:
-    - In the absence of coercion, choices will significantly correlate with measured internal motivations and preferences.
-      Test: Empirical studies measuring motivations and comparing to choices in uncoerced conditions.
-      Criterion: If alignment falls below a significant threshold, claim is falsified.
-      Falsifiers: Evidence that choices systematically misalign with stated motivations absent coercion
+    - No experiment under identical preconditions will yield truly unpredictable choices.
+      Test: Repeat decision tasks under tightly controlled conditions and measure unpredictability.
+      Criterion: If choices vary unpredictably beyond neural prediction in >20% of trials, prediction falsified.
+      Falsifiers: Discovery of genuine undetermined choices, Evidence of decisions without neural precursors
 
 # Uncertainties
-- [U1] Are neural precursors causally determinant of decisions or merely correlative biases?
-  - Targets: A3, C1
+- [U1] Could there be undetected neural or non-neural processes that allow for genuine indeterministic control?
+  - Targets: C1
   - Status: active
   - Importance: high
-- [U2] Can compatibilist free will as defined provide a sufficient basis for moral responsibility?
-  - Targets: C2
+- [U2] Are fMRI predictive signals truly causal precursors or merely correlational markers?
+  - Targets: E2
+  - Status: active
+  - Importance: medium
+- [U3] Does focusing solely on contra-causal free will exclude compatibilist notions that retain significant practical relevance?
+  - Targets: A3
   - Status: active
   - Importance: medium
 
 # Counterpositions
-- [X1] Statement: Libet's readiness potential indicates preparation, not decision; subjects may still exercise a free veto later.
+- [X1] Statement: Observed neural precursors may reflect preparatory or predictive processes rather than actual decision initiation.
   - Attack type: undercutting
   - Attack strategy: challenge_inference_step
   - Targets: C1
-  - My response: Acknowledge a potential veto stage, but absence of evidence for free initiation still undermines libertarian free will; claim addresses initiation.
+  - My response: The timing consistency and predictive accuracy across methods (E2) strengthen the causal interpretation; mere correlation fails to account for multi-second fMRI predictions.
   - Sufficiency: partial
-- [X2] Statement: Defining free will via internal motivations merely shifts determinism to motivations themselves, offering no true freedom.
-  - Attack type: undercutting
-  - Attack strategy: conceptual_conflation
-  - Targets: C2
-  - My response: Our operational definition prioritizes autonomy over indeterminism; self-determination remains coherent under determinism.
-  - Sufficiency: sufficient
-- [X3] Statement: Libet-type timing studies are confounded by measurement artifacts and do not prove decisions start unconsciously.
+- [X2] Statement: Defining free will contra-causally excludes compatibilist notions of meaningful agency within deterministic frameworks.
   - Attack type: undermining
   - Attack strategy: challenge_assumption
   - Targets: A3
-  - My response: While artifacts exist, multiple replications with diverse methods corroborate temporal precedence, strengthening the assumption.
-  - Sufficiency: partial
+  - My response: The scoping assumption is explicit: we analyze contra-causal free will only. Compatibilist concepts are valid but outside this analysis.
+  - Sufficiency: sufficient
+- [X3] Statement: Physicalism cannot be conclusively established by empirical methods; non-physical influences might be intrinsically undetectable.
+  - Attack type: undermining
+  - Attack strategy: challenge_assumption
+  - Targets: A1
+  - My response: Empirical science necessarily focuses on detectable phenomena; metaphysical speculations are bracketed by our methodological commitments.
+  - Sufficiency: sufficient
 
 # Changelog
 - v1: Initial belief formation
 
 
 # Thesis
-- Stance: Drawing on phenomenological reports of alternative possibilities (C1), the logical entailment from objective moral obligations (C2), and metaphysical grounds provided by agent-causation through immaterial souls (C3), I conclude that free will exists (C4). While compatibilist and determinist critiques highlight important methodological and conceptual issues (X2, X3), they do not fully account for the experience, moral necessity, or ontological basis of genuine choice. The supernaturalist framework offers a coherent provision for agent-causation beyond purely physical constraints.
+- Stance: I maintain that free will exists (C1, C2) because humans are non-physical agents (A1, A2) capable of initiating undetermined causal chains, corroborated by widespread subjective experience of choice (A3, E1) and necessitated by moral responsibility (A4, A5).
 - Top bullets:
-  - First-person experience indicates genuine alternative possibilities (C1).
-  - Objective moral obligations presuppose the freedom to choose otherwise (C2).
-  - Agent-causation through immaterial souls provides an ontological basis (C3).
-  - Compatibilist and neuroscientific objections fail to entirely undercut agent-causation.
-  - A supernaturalist ontology reconciles reason, experience, and moral demand.
-- Strength: 0.42
-- Reasoning: avg(0.65, 0.55, 0.45, 0.45) × (4^1 / (4^1 + 1)) = 0.525 × (4/5) = 0.42
+  - A non-physical mind/soul allows agent causation beyond physical determinism.
+  - First-person experience of decision-making strongly suggests undetermined choice.
+  - Moral responsibility presupposes the ability to do otherwise, requiring free will.
+  - Physicalist objections hinge on interaction problems which admit possible supernatural solutions.
+- Strength: 0.43
+- Reasoning: avg(0.60, 0.70) × (2^1 / (2^1 + 1)) = 0.65 × (2/3) = 0.43
 
 # Definitions
-- [D1] **Free will**: The capacity of a rational agent to choose among genuine alternative possibilities as the ultimate originator of its actions.
-  - Strength: 0.9 (0.90 — Standard in libertarian free will literature; precise and widely discussed though contested by compatibilists.)
-  - Used by: E1, A4, E2
+- [D1] **non-physical mind/soul**: A non-extended, immaterial aspect of a person that is not wholly subject to physical laws and can interact with the body.
+  - Strength: 0.6 (0.60 — contested in philosophy of mind, plausible within dualist frameworks but lacks direct empirical proof)
+  - Used by: A1, E2
   - Status: active
-- [D2] **Agent-causation**: A causal model in which an agent itself, rather than prior events or states, initiates a new causal chain.
-  - Strength: 0.8 (0.80 — Well-developed in libertarian accounts (e.g., Chisholm, Kane), though debated.)
-  - Used by: E2
+- [D2] **agent causation**: The capacity of an agent (a person) to originate causal chains such that the agent is not reducible to preceding physical events.
+  - Strength: 0.7 (0.70 — well-developed in agent-causal theories but debated by mechanists)
+  - Used by: A2, E2
   - Status: active
-- [D3] **Objective moral obligation**: Moral requirements that hold universally and independently of individual or cultural opinions.
-  - Strength: 0.7 (0.70 — Supported by moral realists but challenged by error theorists and subjectivists.)
-  - Used by: A3, E4
+- [D3] **free will**: The capacity of a person to make choices that are not wholly determined by prior physical states.
+  - Strength: 0.7 (0.70 — standard incompatibilist definition, contested by compatibilists)
+  - Used by: A3, E1
   - Status: active
-- [D4] **Subjective experience**: First-person phenomenological awareness, including the felt sense of decision and choice.
-  - Strength: 0.85 (0.85 — Immediate and universal in introspection, though interpretive frameworks vary.)
-  - Used by: A1, A2, E1, E3
+- [D4] **subjective experience**: First-person introspective awareness of mental states, including the felt sense of making choices.
+  - Strength: 0.8 (0.80 — phenomenology widely accepted, though its interpretation can vary)
+  - Used by: A3, E1
   - Status: active
-- [D5] **Supernatural**: Entities or realities that transcend empirical scientific detection and physical causal chains.
-  - Strength: 0.75 (0.75 — Central to religious metaphysics but lacks direct empirical validation.)
-  - Used by: A5, E3
-  - Status: active
-- [D6] **Moral responsibility**: The condition of being appropriately subject to moral praise or blame for one's actions.
-  - Strength: 0.8 (0.80 — Broadly understood in ethics, though its relation to free will is debated.)
+- [D5] **objective moral values**: Moral facts that are independent of individual opinions or cultural conventions.
+  - Strength: 0.7 (0.70 — well-argued in moral realist literature, but controversial in metaethics)
   - Used by: A4
+  - Status: active
+- [D6] **moral responsibility**: The status of deserving praise or blame for one’s actions based on having acted freely and knowingly.
+  - Strength: 0.8 (0.80 — central concept in ethics, broad consensus though its grounding is debated)
+  - Used by: A5
   - Status: active
 
 # Assumptions
-- [A1] (empirical) Humans report a subjective experience of multiple genuine alternative options when making decisions.
+- [A1] (scoping) Persons have a non-physical mind/soul that interacts with their physical bodies.
   - Supports: C1
-  - Strength: 0.75 (0.75 — Consistent across self-report studies, though subject to introspective limits.)
-  - Supported by definitions: D4
+  - Strength: 0.6 (0.60 — dualism is a coherent metaphysical position but lacks conclusive empirical support)
+  - Supported by definitions: D1
   - Status: active
-- [A2] (methodological) First-person subjective experiences are generally reliable indicators of the phenomena they represent unless specific defeaters are present.
+- [A2] (methodological) Non-physical agents can originate causal chains not reducible to physical laws (agent causation).
   - Supports: C1
-  - Strength: 0.65 (0.65 — Epistemically foundational but vulnerable to cognitive biases.)
-  - Supported by definitions: D4
+  - Strength: 0.6 (0.60 — agent-causal theories are well-developed but face challenges from causal closure of physics)
+  - Supported by definitions: D2
   - Status: active
-- [A3] (foundational) Objective moral obligations exist independently of human opinions.
+- [A3] (empirical) Subjective experience of choice provides prima facie evidence for free will.
+  - Supports: C1
+  - Strength: 0.7 (0.70 — introspective reports are widespread and consistent, though interpretation varies)
+  - Supported by definitions: D3, D4
+  - Status: active
+- [A4] (foundational) Objective moral values exist independently of human opinion.
   - Supports: C2
-  - Strength: 0.55 (0.55 — Moral realism has significant defenders but remains contested in metaethics.)
-  - Supported by definitions: D3
-  - Status: active
-- [A4] (foundational) Moral responsibility requires the freedom to choose otherwise (free will).
-  - Supports: C2
-  - Strength: 0.6 (0.60 — Widely assumed in ethical theory though compatibilists offer alternate analyses.)
-  - Supported by definitions: D1, D6
-  - Status: active
-- [A5] (foundational) Non-physical immaterial souls exist and are not fully determined by physical causal chains.
-  - Supports: C3
-  - Strength: 0.6 (0.60 — Supported by philosophical and religious traditions but lacks direct empirical proof.)
+  - Strength: 0.7 (0.70 — moral realism is plausible within classical theism but contested by relativists)
   - Supported by definitions: D5
+  - Status: active
+- [A5] (empirical) Humans are held morally responsible for their actions.
+  - Supports: C2
+  - Strength: 0.8 (0.80 — nearly universal social practice and legal systems presume moral responsibility)
+  - Supported by definitions: D6
   - Status: active
 
 # Evidence
-- [E1] (empirical) Surveys and cognitive studies show people report experiencing multiple genuine options when deciding.
-  - Strength: 0.7 (0.70 — Replicated but subject to introspective bias.)
-  - Source: Psychological self-report studies
+- [E1] (empirical) Introspective and psychological studies show people commonly report making undetermined choices.
+  - Strength: 0.7 (0.70 — well-replicated phenomenological data, though predictive brain-studies raise questions)
+  - Source: Psychology experiments on decision-making (e.g., Libet, more recent studies)
   - Supports: C1
-  - Supported by definitions: D4, D1
+  - Supported by definitions: D3, D4
   - Status: active
-- [E2] (conceptual) Philosophical analysis of alternative possibilities supports agent-causation as the only model accommodating genuine alternatives.
-  - Strength: 0.6 (0.60 — Well-argued but contested by compatibilists.)
-  - Source: Libertarian literature (Kane, Chisholm)
-  - Supports: C3
-  - Supported by definitions: D2, D1
-  - Status: active
-- [E3] (empirical) Cross-cultural religious and mystical experiences frequently include a sense of a non-physical soul.
-  - Strength: 0.45 (0.45 — Anecdotal and varied; weak systematic control.)
-  - Source: Anthropological and religious studies
-  - Supports: C3
-  - Supported by definitions: D5, D4
-  - Status: active
-- [E4] (expert_consensus) Significant philosophical support exists for objective moral facts independent of opinion.
-  - Strength: 0.65 (0.65 — Prominent defenders though debate is ongoing.)
-  - Source: Philosophers (Plato, Kant, Parfit)
-  - Supports: C2
-  - Supported by definitions: D3
+- [E2] (conceptual) Philosophical arguments (e.g., by Chisholm, O’Connor) establish the metaphysical possibility of agent causation.
+  - Strength: 0.6 (0.60 — respected arguments exist, but materialists offer strong counterarguments)
+  - Source: Philosophical literature on agent-causal theories
+  - Supports: C1
+  - Supported by definitions: D1, D2
   - Status: active
 
 # Claims
-- [C1] (descriptive) Humans possess libertarian free will as the capacity to choose among genuine alternative possibilities.
-  - Depends on: A1, A2, E1
+- [C1] (descriptive) Free will exists: humans have the capacity to make undetermined, agent-caused choices.
+  - Depends on: A1, A2, A3, E1, E2
   - Inference chain:
-    - Premise (E1): Humans report subjective experience of alternative possibilities in decision-making.
-    - Premise (A2): First-person experiences are reliable indicators of the phenomena experienced.
-    - Inference (abductive): The reliable report of alternatives suggests a genuine capacity for alternative possibilities.
-    - Conclusion: Humans possess libertarian free will as the capacity to choose among genuine alternative possibilities.
-  - Strength: 0.65 (0.65 — supported by A1 (0.75), A2 (0.65), E1 (0.70); limited by A2 (0.65))
+    - Premise (A1): Persons have a non-physical mind/soul interacting with their bodies.
+    - Premise (A2): Non-physical agents can originate causal chains not reducible to physical laws.
+    - Premise (A3): Subjects commonly experience making undetermined choices.
+    - Premise (E2): Philosophical arguments support the metaphysical possibility of agent causation.
+    - Inference (abductive): Given a non-physical agent capable of causation and consistent subjective reports, the best explanation is that free will exists.
+    - Conclusion: Free will exists: humans have the capacity to make undetermined, agent-caused choices.
+  - Strength: 0.6 (0.60 — supported by A1 (0.60), A2 (0.60), A3 (0.70), E1 (0.70), E2 (0.60); limited by A1/A2/E2 (0.60))
   - Status: active
   - Predictions:
-    - If humans have libertarian free will, decision outcomes will not be fully predicted by prior brain states.
-      Test: Use neuroimaging and machine-learning models to predict choices; measure gap between prediction and actual choice.
-      Criterion: If choices can be predicted with >99% accuracy across varied contexts, this claim is falsified.
-      Falsifiers: Development of a model achieving >99% predictive accuracy of human choices
-- [C2] (normative) The existence of objective moral obligations entails the existence of free will.
-  - Depends on: A3, A4, E4
+    - Some decisions should remain unpredictable by physical brain-state measurements before conscious intent.
+      Test: Use high-resolution neural recording to predict choices; check for reliable prediction failures.
+      Criterion: If choices are predicted with >95% accuracy from prior brain states, this claim is falsified.
+      Falsifiers: Consistent high-accuracy prediction of choices before conscious decision
+- [C2] (normative) Free will must exist because humans are morally responsible agents and moral responsibility requires free will.
+  - Depends on: A4, A5
   - Inference chain:
-    - Premise (A3): Objective moral obligations exist.
-    - Premise (A4): Moral responsibility requires free will.
-    - Premise (E4): There is significant philosophical support for objective moral facts.
-    - Inference (deductive): If objective obligations and responsibility requiring free will both hold, free will must exist.
-    - Conclusion: The existence of objective moral obligations entails the existence of free will.
-  - Strength: 0.55 (0.55 — supported by A3 (0.55), A4 (0.60), E4 (0.65); limited by A3 (0.55))
+    - Premise (A4): Objective moral values exist and entail moral responsibility.
+    - Premise (A5): Humans are held morally responsible for their actions.
+    - Inference (deductive): Moral responsibility requires that agents could have done otherwise (free will).
+    - Conclusion: Free will must exist.
+  - Strength: 0.7 (0.70 — supported by A4 (0.70) and A5 (0.80); limited by A4 (0.70))
   - Status: active
   - Predictions:
-    - If free will does not exist, objective moral obligations would lack justification.
-      Test: Survey development of moral realist theories under no-free-will assumption.
-      Criterion: If robust moral realist frameworks remain coherent without free will, this claim is falsified.
-      Falsifiers: Successful compatibilist moral realist framework
-- [C3] (descriptive) Immaterial souls exist and enable agent-causation free will.
-  - Depends on: A5, E2, E3
-  - Inference chain:
-    - Premise (E2): Philosophical analysis supports agent-causation as necessary for genuine alternatives.
-    - Premise (E3): Cross-cultural religious experiences indicate non-physical souls.
-    - Premise (A5): Non-physical souls are not subject to deterministic physical laws.
-    - Inference (abductive): Therefore, immaterial souls exist and provide an ontological basis for agent-causation free will.
-    - Conclusion: Immaterial souls exist and enable agent-causation free will.
-  - Strength: 0.45 (0.45 — supported by A5 (0.60), E2 (0.60), E3 (0.45); limited by E3 (0.45))
-  - Status: active
-  - Predictions:
-    - If souls are non-physical, mind-brain interactions may influence random quantum events.
-      Test: Conduct large-scale random number generator (RNG) intention experiments.
-      Criterion: If no significant deviations occur in >1,000,000 trials, this claim is undermined.
-      Falsifiers: Large-scale RNG studies show no mind influence
-- [C4] (descriptive) Free will exists.
-  - Depends on: C1, C2, C3
-  - Inference chain:
-    - Premise (C1): Humans possess libertarian free will as genuine alternatives (C1).
-    - Premise (C2): Objective moral obligations entail free will (C2).
-    - Premise (C3): Immaterial souls enable agent-causation free will (C3).
-    - Inference (abductive): Combining phenomenological, moral, and metaphysical grounds shows free will exists.
-    - Conclusion: Free will exists.
-  - Strength: 0.45 (0.45 — supported by C1 (0.65), C2 (0.55), C3 (0.45); limited by C3 (0.45))
-  - Status: active
-  - Predictions:
-    - If free will exists, deterministic physical models will always encounter principled gaps.
-      Test: Evaluate predictive models for human behavior; look for persistent unpredictability.
-      Criterion: If a deterministic model reliably predicts choices with >99% accuracy, this claim is falsified.
-      Falsifiers: High-fidelity predictive AI model
+    - If belief in free will is experimentally undermined, judgments of moral responsibility should diminish.
+      Test: Manipulate belief in determinism vs. free will and measure blame attributions.
+      Criterion: If blame attributions remain unchanged under strong determinism priming, this claim is falsified.
+      Falsifiers: Stable blame attribution despite determinism priming
 
 # Uncertainties
-- [U1] Can anecdotal religious experiences reliably indicate non-physical entities?
-  - Targets: E3
+- [U1] How can an immaterial mind/soul causally interact with a physical brain without violating established physical laws?
+  - Targets: A1, A2
   - Status: active
   - Importance: high
-- [U2] Does current neuroscience definitively refute indeterministic choice?
+- [U2] Could a purely physicalist account explain the robust sense of freedom without actual libertarian free will?
   - Targets: C1
   - Status: active
-  - Importance: high
-- [U3] Can moral realism be sustained under a compatibilist model of free will?
-  - Targets: C2
+  - Importance: medium
+- [U3] Can objective moral values be grounded without appealing to a transcendent source?
+  - Targets: A4
   - Status: active
   - Importance: medium
 
 # Counterpositions
-- [X1] Statement: Testimony of religious experiences is unreliable and shaped by bias, thus cannot support belief in souls.
-  - Attack type: undermining
-  - Attack strategy: challenge_evidence
-  - Targets: C3
-  - My response: While biased, the widespread cross-cultural convergence and transformative outcomes provide prima facie credibility in absence of specific defeaters.
-  - Sufficiency: partial
-- [X2] Statement: Objective moral obligations can be grounded in compatibilist free will; indeterminism is not required.
+- [X1] Statement: Even if a non-physical mind exists, there is no coherent account of how it interacts with a closed physical system; the inference to free will is unjustified.
   - Attack type: undercutting
-  - Attack strategy: conceptual_conflation
-  - Targets: C2
-  - My response: Compatibilist accounts redefine freedom in ways that undercut genuine alternative possibilities and thus fail to secure true moral responsibility.
-  - Sufficiency: partial
-- [X3] Statement: Libet-style neuroscience experiments show brain activity precedes conscious decision, undermining genuine choice.
-  - Attack type: rebutting
-  - Attack strategy: present_counter_example
+  - Attack strategy: challenge_inference_step
   - Targets: C1
-  - My response: Libet’s readiness potentials do not capture the agent’s conscious decision point and are compatible with deeper agent-causation processes.
-  - Sufficiency: sufficient
+  - My response: Physical closure may not be absolute—if the brain is open to non-physical causation new laws may apply; agent causation could be a fundamental exception.
+  - Sufficiency: partial
+- [X2] Statement: Agent causation is incoherent: an immaterial agent cannot exert force or energy in the physical world without violating conservation laws.
+  - Attack type: undermining
+  - Attack strategy: challenge_assumption
+  - Targets: A2
+  - My response: Conservation applies to closed physical systems; if interaction with a non-physical realm occurs, new physics beyond current models could permit such causation.
+  - Sufficiency: partial
+- [X3] Statement: Dualistic ontology overextends beyond empirical neuroscience, which consistently links mental functions to brain states.
+  - Attack type: undermining
+  - Attack strategy: over_extension
+  - Targets: A1
+  - My response: Correlation does not entail identity; neural patterns may realize but not exhaust mental phenomena—non-physical aspects can underlie agency.
+  - Sufficiency: partial
 
 # Changelog
 - v1: Initial belief formation

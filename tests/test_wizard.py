@@ -238,7 +238,7 @@ class TestAskOutputToggles:
 
         assert isinstance(result, dict)
         assert result["save_transcript"] is True
-        assert result["save_synthesis"] is False  # not selected
+        assert result["save_debug_log"] is False  # not selected
 
     @pytest.mark.unit
     @patch("chal.cli.wizard.questionary.checkbox")
@@ -565,7 +565,7 @@ class TestRunWizard:
                 "o1-mini",
             ]
             m_checkbox.return_value.ask.return_value = [
-                "save_transcript", "save_synthesis", "save_debug_log",
+                "save_transcript", "save_debug_log",
             ]
             m_confirm.return_value.ask.return_value = True  # parallelization
 

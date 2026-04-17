@@ -6,7 +6,7 @@
   CHAL: Council of Hierarchical Agentic Language
 </h1>
 
-**CHAL** (pronounced "kal") is a framework for orchestrating structured philosophical debates between multiple LLM agents. Each agent embodies a distinct epistemological position, engaging in multi-stage debates with cross-examination, single-shot rebuttals, independent adjudication, and synthesis. The system tracks formal belief structures with dependency graphs, confidence scores, and convergence metrics. CHAL ships with an interactive CLI wizard for configuring and launching debates, debate history tracking with replay, and comprehensive output generation.
+**CHAL** (pronounced "kal") is a framework for orchestrating structured philosophical debates between multiple LLM agents. Each agent embodies a distinct epistemological position, engaging in multi-stage debates with cross-examination, single-shot rebuttals, independent adjudication, and belief revision. The system tracks formal belief structures with dependency graphs, confidence scores, and convergence metrics. CHAL ships with an interactive CLI wizard for configuring and launching debates, debate history tracking with replay, and comprehensive output generation.
 
 ---
 
@@ -30,7 +30,7 @@
 
 ## Overview
 
-CHAL implements a rigorous multi-agent debate framework that orchestrates structured dialectical exchanges between large language model agents representing distinct epistemological positions. The system executes an eight-stage debate pipeline encompassing briefing, opening position formulation, cross-examination, rebuttal generation, independent adjudication, belief revision, concluding remarks, and narrative synthesis. This architecture enables systematic exploration of philosophical questions through structured argumentation, where agents must defend their positions against targeted critique while updating their beliefs in response to valid challenges.
+CHAL implements a rigorous multi-agent debate framework that orchestrates structured dialectical exchanges between large language model agents representing distinct epistemological positions. The system executes a six-stage debate pipeline encompassing briefing, opening position formulation, cross-examination, rebuttal generation, independent adjudication, and belief revision. This architecture enables systematic exploration of philosophical questions through structured argumentation, where agents must defend their positions against targeted critique while updating their beliefs in response to valid challenges.
 
 One of the primary goals of the CHAL pipeline is to refine belief objects so that they are better — more logically coherent, better supported, and more accurately calibrated — by the end of the debate than they were at the beginning. The entire pipeline is designed around this goal: agents start with initial beliefs, those beliefs are challenged through cross-examination, defended or conceded through rebuttals, evaluated by an independent adjudicator, and then deterministically updated through a patch system that propagates confidence changes through the dependency graph.
 
@@ -191,9 +191,7 @@ flowchart TD
         METRICS -.->|"rounds remain"| S2
     end
 
-    LOOP --> S6["<b>Stage 6: Concluding Remarks</b><br/><i>Reflect on belief evolution & key insights</i>"]
-    S6 --> S7["<b>Stage 7: Scribing</b><br/><i>Map-reduce narrative synthesis</i>"]
-    S7 --> OUT["<b>Output Generation</b><br/><i>Transcripts · Visualizations · Metrics · Training Data · Reports</i>"]
+    LOOP --> OUT["<b>Output Generation</b><br/><i>Transcripts · Visualizations · Metrics · Training Data · Reports</i>"]
 
     style S3 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
     style S4 fill:#ffedd5,stroke:#f97316,color:#7c2d12
@@ -212,10 +210,6 @@ In **Stage 3: Rebuttal**, agents receiving challenges provide single-shot struct
 The **Stage 4: Adjudication** process employs an independent neutral agent to evaluate each challenge-rebuttal pair. The adjudicator operates under a configurable logic system (7 options) and ethics system (6 options) with configurable weights. Both sides are scored on each axis (0.0-1.0), combined scores are computed, and the adjudicator renders one of three outcomes: `rebuttal_valid` indicates successful defense, `critique_valid` indicates a legitimate challenge requiring belief revision, and `unresolved` indicates insufficient clarity for definitive judgment.
 
 In **Stage 5: Belief Updates**, agents revise their belief structures based on adjudication outcomes. When `critique_valid` is rendered, the target agent must generate belief patches addressing the identified flaw — this requirement is systemically enforced. Confidence adjustments propagate automatically through belief graph dependencies, maintaining coherence constraints. Nodes that survive challenges (`rebuttal_valid`) receive a formula-driven defense boost. After each round, performance scores and convergence metrics are calculated before proceeding to the next iteration.
-
-**Stage 6: Concluding Remarks.** Upon completing all debate rounds, agents reflect on the evolution of their positions by comparing initial and final belief states, identifying key insights gained through dialectical exchange, acknowledging substantive concessions made, and assessing overall confidence trajectories. Each agent produces a structured conclusion capturing their ultimate stance, strongest claims, best opposing arguments, unresolved counterpositions, and what would change their mind.
-
-**Stage 7: Scribing.** A dedicated scribe agent employs a map-reduce architecture to generate a cohesive narrative synthesis of the complete debate. The map phase processes the full transcript in overlapping chunks, extracting key argumentative developments and maintaining continuity state across segments. The reduce phase integrates these narrative slices into a research-paper-style document with sections for abstract, introduction, methods, initial positions, argumentation, adjudication results, belief evolution, novel insights, remaining uncertainties, and conclusion.
 
 ### CBS Belief Schema
 
@@ -393,14 +387,6 @@ stages:
   short_note_max_chars: 140
   parse_retries: 3
 
-scribe:
-  enabled: true
-  model: "gpt-4o"
-  max_chars_per_chunk: 15000
-  overlap_chars: 1000
-  scribe_temperature: 0.3
-  style_hint: "formal, expository, research-paper tone"
-
 defense_boost:
   enabled: true
   base_boost: 0.02
@@ -428,10 +414,11 @@ convergence:
 
 outputs:
   storage_dir: "src/chal/storage"
-  save_synthesis: true
   save_transcript: true
   save_initial_beliefs: true
   save_final_beliefs: true
+  best_beliefs_json_file: "best_initial_final_beliefs.json"
+  best_beliefs_text_file: "best_initial_final_beliefs.txt"
   generate_embeddings: true
   plot_trajectories: true
   save_agent_stats: true
@@ -449,7 +436,7 @@ outputs:
 
 ### Multi-Provider Support
 
-CHAL supports six LLM providers, configurable independently for agents, adjudicator, and scribe:
+CHAL supports six LLM providers, configurable independently for agents and adjudicator:
 
 | Provider | Key Models | Environment Variable |
 |----------|-----------|---------------------|
@@ -485,7 +472,7 @@ CHAL generates comprehensive output artifacts spanning narrative documentation, 
 
 ### Narrative Documentation
 
-The system produces four primary narrative outputs capturing different temporal phases of the debate. The `debate_synthesis.txt` file contains a flowing expository narrative generated by the Stage 7 scribe agent, presenting the complete dialectical exchange in research-paper style prose with coherent transitions and thematic organization. The `debate_transcript.txt` file provides a chronological markdown-formatted record of all eight stages, preserving the complete sequence of opening positions, cross-examination questions, rebuttals, adjudication outcomes, belief updates, and concluding remarks. To facilitate longitudinal analysis, the system saves `initial_beliefs.txt` containing agent positions before any dialectical engagement, and `final_beliefs.txt` documenting final belief states after all updates have been applied, both rendered in human-readable markdown from the CBS JSON structures.
+The system produces narrative outputs capturing different temporal phases of the debate. The `debate_transcript.txt` file provides a chronological markdown-formatted record of all six stages, preserving the complete sequence of opening positions, cross-examination questions, rebuttals, adjudication outcomes, and belief updates. To facilitate longitudinal analysis, the system saves `initial_beliefs.txt` containing agent positions before any dialectical engagement, and `final_beliefs.txt` documenting final belief states after all updates have been applied, both rendered in human-readable markdown from the CBS JSON structures. The system additionally writes `best_initial_final_beliefs.json` (raw CBS JSON of the initial and final belief for the single highest-performance-scoring agent) and its markdown counterpart `best_initial_final_beliefs.txt`.
 
 ### Quantitative Analysis
 
@@ -658,7 +645,7 @@ CHAL/
 └── .gitignore                      # Git ignore rules
 ```
 
-The architecture centers on four primary components. The [DebateController](src/chal/orchestrator/debate_controller.py) orchestrates the complete eight-stage dialectical pipeline, managing agent interactions, message histories, and belief evolution tracking. The [BeliefGraph](src/chal/beliefs/belief_graph.py) class implements directed acyclic graph structures with comprehensive validation routines for structural integrity checking. The [Adjudicator](src/chal/orchestrator/adjudicator.py) provides independent neutral evaluation of challenge-rebuttal pairs using configurable logical and ethical criteria drawn from the [logic systems](src/chal/agents/logic_systems.py) and [ethics systems](src/chal/agents/ethics_systems.py) modules. The [CLI](src/chal/cli/) package provides an interactive wizard, Rich-powered display, debate history, and both interactive and headless execution modes. Agent implementations support six providers — OpenAI, Anthropic, Google, Ollama, xAI, and Perplexity — via the [agent factory](src/chal/agents/factory.py) with lazy imports so only the required SDK needs to be installed.
+The architecture centers on four primary components. The [DebateController](src/chal/orchestrator/debate_controller.py) orchestrates the complete six-stage dialectical pipeline, managing agent interactions, message histories, and belief evolution tracking. The [BeliefGraph](src/chal/beliefs/belief_graph.py) class implements directed acyclic graph structures with comprehensive validation routines for structural integrity checking. The [Adjudicator](src/chal/orchestrator/adjudicator.py) provides independent neutral evaluation of challenge-rebuttal pairs using configurable logical and ethical criteria drawn from the [logic systems](src/chal/agents/logic_systems.py) and [ethics systems](src/chal/agents/ethics_systems.py) modules. The [CLI](src/chal/cli/) package provides an interactive wizard, Rich-powered display, debate history, and both interactive and headless execution modes. Agent implementations support six providers — OpenAI, Anthropic, Google, Ollama, xAI, and Perplexity — via the [agent factory](src/chal/agents/factory.py) with lazy imports so only the required SDK needs to be installed.
 
 ---
 

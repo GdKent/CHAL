@@ -84,6 +84,9 @@ def log_debate(
     winner = None
     best_score = -float("inf")
     for name, stats in agent_stats.items():
+        # Skip the "_debate_aggregate" sentinel inserted by finalize_agent_stats.
+        if name.startswith("_") or not isinstance(stats, dict):
+            continue
         score = stats.get("performance_score", 0)
         if score > best_score:
             best_score = score

@@ -10,7 +10,6 @@ Tests cover:
 - Stage 2 (Cross-Examination): parallel matches sequential
 - Stage 3 (Rebuttals): parallel matches sequential
 - Stage 4 (Adjudication): parallel matches sequential
-- Stage 6 (Concluding Remarks): parallel matches sequential
 - Error handling: one agent failure doesn't crash others
 """
 
@@ -79,13 +78,12 @@ def _make_config(parallel_enabled: bool, tmpdir: str) -> DebateConfig:
 
 def _make_agents(responses_data):
     """Create a pair of mock agents with predefined responses (deep enough for all stages)."""
-    # Each agent needs responses for: Stage 1, Stage 2, Stage 3, Stage 5, Stage 6
+    # Each agent needs responses for: Stage 1, Stage 2, Stage 3, Stage 5
     responses = [
         responses_data["belief_complete"]["content"],
         responses_data["cross_examination_3"]["content"],
         responses_data["rebuttals_3"]["content"],
         responses_data["belief_update_patches"]["content"],
-        responses_data["concluding_remarks"]["content"],
     ]
 
     agent_a = create_mock_agent("Agent-A", responses=responses)
@@ -118,9 +116,6 @@ def _run_through_stage(mock_openai_responses, parallel_enabled: bool, up_to_stag
 
         if up_to_stage >= 4:
             controller.run_stage_4_conflict_resolution()
-
-        if up_to_stage >= 6:
-            controller.run_stage_6_concluding_remarks()
 
         return controller
 
@@ -286,34 +281,6 @@ class TestStage4Parallel:
             # Some entries should have resolutions (or be marked incomplete)
             total_entries = len(controller.challenge_rebuttal_pairs)
             assert total_entries > 0
-
-
-# ==============================================
-# Stage 6: Concluding Remarks
-# ==============================================
-
-class TestStage6Parallel:
-    """Concluding remarks — parallel vs sequential equivalence."""
-
-    def test_stage6_parallel_matches_sequential(self, mock_openai_responses):
-        """Both modes produce concluding remarks for all agents."""
-        ctrl_seq = _run_through_stage(mock_openai_responses, False, up_to_stage=6)
-        ctrl_par = _run_through_stage(mock_openai_responses, True, up_to_stage=6)
-
-        # Both should have conclusions in the markdown transcript
-        assert "Concluding" in ctrl_seq.markdown_transcript or len(ctrl_seq.markdown_transcript) > 0
-        assert "Concluding" in ctrl_par.markdown_transcript or len(ctrl_par.markdown_transcript) > 0
-
-    def test_stage6_all_agents_conclude(self, mock_openai_responses):
-        """Both modes have each agent generate a conclusion."""
-        ctrl_seq = _run_through_stage(mock_openai_responses, False, up_to_stage=6)
-        ctrl_par = _run_through_stage(mock_openai_responses, True, up_to_stage=6)
-
-        # Each agent's generate should have been called for conclusions
-        for agent in ctrl_seq.agents:
-            assert agent.generate.called
-        for agent in ctrl_par.agents:
-            assert agent.generate.called
 
 
 # ==============================================

@@ -22,6 +22,12 @@ from chal.utilities.utils import (
     display_agent_stats,
     validate_stage2_questions,
     VALID_ATTACK_STRATEGIES,
+    ALL_STRATEGIES,
+    VALID_ADJUDICATION_VERDICTS,
+    compute_attack_histograms,
+    snapshot_belief,
+    finalize_agent_stats,
+    select_best_agent,
 )
 
 
@@ -544,3 +550,371 @@ def test_validate_stage2_questions_all_strategies_accepted():
             assert is_valid is True, (
                 f"({attack_type}, {strategy}) should be valid but got errors: {errors}"
             )
+
+
+# ==============================================
+# 8. Expanded Stats Helpers (Phase 2 roadmap)
+# ==============================================
+
+@pytest.mark.unit
+def test_initialize_agent_stats_has_new_fields():
+    """Expanded schema includes snapshots, per_round, and histogram scaffolding."""
+    stats = initialize_agent_stats(["Agent-A"])
+    agent = stats["Agent-A"]
+
+    # Snapshots / per-round
+    assert agent["initial_snapshot"] is None
+    assert agent["final_snapshot"] is None
+    assert agent["per_round"] == {}
+
+    # Cross-examination histogram has pre-seeded keys for every type + strategy.
+    cea = agent["cross_examination_attacks"]
+    assert cea["total"] == 0
+    assert set(cea["by_type"].keys()) == set(VALID_ATTACK_STRATEGIES.keys())
+    assert all(v == 0 for v in cea["by_type"].values())
+    assert set(cea["by_strategy"].keys()) == set(ALL_STRATEGIES)
+    assert all(v == 0 for v in cea["by_strategy"].values())
+
+    # Adjudication outcomes split by role with zeroed verdict histogram.
+    adj = agent["adjudication_outcomes"]
+    assert set(adj.keys()) == {"as_challenger", "as_target"}
+    for role_hist in adj.values():
+        assert set(role_hist.keys()) == set(VALID_ADJUDICATION_VERDICTS)
+        assert all(v == 0 for v in role_hist.values())
+
+
+@pytest.mark.unit
+def test_update_agent_stats_increments_adjudication_outcomes():
+    """update_agent_stats bumps as_challenger / as_target verdict counts."""
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+
+    update_agent_stats(stats, {
+        "challenger": "Agent-A", "target": "Agent-B",
+        "resolution": {"status": "critique_valid"},
+    })
+    update_agent_stats(stats, {
+        "challenger": "Agent-A", "target": "Agent-B",
+        "resolution": {"status": "rebuttal_valid"},
+    })
+    update_agent_stats(stats, {
+        "challenger": "Agent-B", "target": "Agent-A",
+        "resolution": {"status": "unresolved"},
+    })
+
+    a_chal = stats["Agent-A"]["adjudication_outcomes"]["as_challenger"]
+    assert a_chal["critique_valid"] == 1
+    assert a_chal["rebuttal_valid"] == 1
+    assert a_chal["unresolved"] == 0
+
+    a_tgt = stats["Agent-A"]["adjudication_outcomes"]["as_target"]
+    assert a_tgt["unresolved"] == 1
+    assert a_tgt["critique_valid"] == 0
+
+    b_chal = stats["Agent-B"]["adjudication_outcomes"]["as_challenger"]
+    assert b_chal["unresolved"] == 1
+
+    b_tgt = stats["Agent-B"]["adjudication_outcomes"]["as_target"]
+    assert b_tgt["critique_valid"] == 1
+    assert b_tgt["rebuttal_valid"] == 1
+
+
+@pytest.mark.unit
+def test_update_agent_stats_unknown_verdict_skipped():
+    """Unrecognised verdict label does not blow up the histogram."""
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+    update_agent_stats(stats, {
+        "challenger": "Agent-A", "target": "Agent-B",
+        "resolution": {"status": "weird_new_status"},
+    })
+    # Verdict histograms should remain fully zeroed.
+    for role in ("as_challenger", "as_target"):
+        for name in ("Agent-A", "Agent-B"):
+            assert all(v == 0 for v in stats[name]["adjudication_outcomes"][role].values())
+
+
+@pytest.mark.unit
+def test_compute_attack_histograms_basic():
+    """Three distinct pairs are summed correctly in per-agent + aggregate."""
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undermining", "attack_strategy": "challenge_evidence"},
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "rebutting", "attack_strategy": "present_counter_evidence"},
+        {"challenger": "Agent-B", "target": "Agent-A",
+         "attack_type": "undercutting", "attack_strategy": "identify_circularity"},
+    ]
+
+    aggregate = compute_attack_histograms(stats, pairs, ["Agent-A", "Agent-B"])
+
+    a_cea = stats["Agent-A"]["cross_examination_attacks"]
+    b_cea = stats["Agent-B"]["cross_examination_attacks"]
+
+    assert a_cea["total"] == 2
+    assert a_cea["by_type"]["undermining"] == 1
+    assert a_cea["by_type"]["rebutting"] == 1
+    assert a_cea["by_type"]["undercutting"] == 0
+    assert a_cea["by_strategy"]["challenge_evidence"] == 1
+    assert a_cea["by_strategy"]["present_counter_evidence"] == 1
+
+    assert b_cea["total"] == 1
+    assert b_cea["by_type"]["undercutting"] == 1
+    assert b_cea["by_strategy"]["identify_circularity"] == 1
+
+    assert aggregate["attacks_total"] == 3
+    assert aggregate["attacks_by_type"]["undermining"] == 1
+    assert aggregate["attacks_by_type"]["rebutting"] == 1
+    assert aggregate["attacks_by_type"]["undercutting"] == 1
+    # Invariant: aggregate by_type == sum of per-agent by_type
+    for t in VALID_ATTACK_STRATEGIES:
+        assert aggregate["attacks_by_type"][t] == (
+            a_cea["by_type"][t] + b_cea["by_type"][t]
+        )
+
+
+@pytest.mark.unit
+def test_compute_attack_histograms_unknown_strategy_falls_back():
+    """Unknown attack_type/attack_strategy still counts toward total, no KeyError."""
+    stats = initialize_agent_stats(["Agent-A"])
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "UNKNOWN_TYPE", "attack_strategy": "UNKNOWN_STRAT"},
+        {"challenger": "Agent-A", "target": "Agent-B"},  # no attack fields at all
+    ]
+
+    aggregate = compute_attack_histograms(stats, pairs, ["Agent-A"])
+
+    cea = stats["Agent-A"]["cross_examination_attacks"]
+    assert cea["total"] == 2
+    # None of the known buckets changed.
+    assert all(v == 0 for v in cea["by_type"].values())
+    assert all(v == 0 for v in cea["by_strategy"].values())
+
+    assert aggregate["attacks_total"] == 2
+    assert all(v == 0 for v in aggregate["attacks_by_type"].values())
+    assert all(v == 0 for v in aggregate["attacks_by_strategy"].values())
+
+
+@pytest.mark.unit
+def test_snapshot_belief_counts_only_non_retracted():
+    """D/A/C/E nodes with status='retracted' are excluded; X# / U# counted raw."""
+    belief = {
+        "thesis": {"strength": 0.6},
+        "definitions": [
+            {"id": "D1", "status": "active"},
+            {"id": "D2", "status": "retracted"},
+        ],
+        "assumptions": [
+            {"id": "A1", "status": "active"},
+            {"id": "A2", "status": "revised"},
+            {"id": "A3", "status": "retracted"},
+        ],
+        "claims": [
+            {"id": "C1", "status": "active"},
+            {"id": "C2", "status": "retracted"},
+            {"id": "C3", "status": "retracted"},
+        ],
+        "evidence": [
+            {"id": "E1", "status": "active"},
+            {"id": "E2", "status": "retracted"},
+        ],
+        # X# has no status field at all
+        "counterpositions": [
+            {"id": "X1"},
+            {"id": "X2"},
+        ],
+        # U# status ∈ {"active","resolved"} — both count.
+        "uncertainties": [
+            {"id": "U1", "status": "active"},
+            {"id": "U2", "status": "resolved"},
+        ],
+    }
+
+    snap = snapshot_belief(belief)
+    counts = snap["component_counts"]
+
+    assert counts["definitions"] == 1       # D1 active
+    assert counts["assumptions"] == 2       # A1 active + A2 revised
+    assert counts["claims"] == 1            # C1 active
+    assert counts["evidence"] == 1          # E1 active
+    assert counts["counterpositions"] == 2  # X1, X2 (no status filter)
+    assert counts["uncertainties"] == 2     # U1 active + U2 resolved
+
+
+@pytest.mark.unit
+def test_snapshot_belief_preserves_thesis_strength():
+    """Thesis strength passes through untouched as a float."""
+    belief = {"thesis": {"strength": 0.734}, "claims": []}
+    snap = snapshot_belief(belief)
+    assert snap["thesis_strength"] == pytest.approx(0.734)
+
+
+@pytest.mark.unit
+def test_snapshot_belief_handles_degraded_input():
+    """Non-dict / missing-key beliefs yield a null-valued snapshot rather than raising."""
+    snap_none = snapshot_belief(None)
+    assert snap_none["thesis_strength"] is None
+    assert all(v == 0 for v in snap_none["component_counts"].values())
+
+    snap_bad = snapshot_belief({"thesis": "not a dict"})
+    assert snap_bad["thesis_strength"] is None
+
+
+@pytest.mark.unit
+def test_select_best_agent_by_score():
+    """Highest performance_score wins."""
+    stats = {
+        "Agent-A": {"performance_score": 5.0},
+        "Agent-B": {"performance_score": 9.0},
+        "Agent-C": {"performance_score": 7.5},
+    }
+    assert select_best_agent(stats, ["Agent-A", "Agent-B", "Agent-C"]) == "Agent-B"
+
+
+@pytest.mark.unit
+def test_select_best_agent_tiebreaker_first_in_order():
+    """Ties are broken by earlier position in agent_order."""
+    stats = {
+        "Agent-A": {"performance_score": 10.0},
+        "Agent-B": {"performance_score": 10.0},
+        "Agent-C": {"performance_score": 10.0},
+    }
+    # All three tied — earlier index wins.
+    assert select_best_agent(stats, ["Agent-C", "Agent-A", "Agent-B"]) == "Agent-C"
+    assert select_best_agent(stats, ["Agent-B", "Agent-A", "Agent-C"]) == "Agent-B"
+
+
+@pytest.mark.unit
+def test_select_best_agent_ignores_debate_aggregate_sentinel():
+    """The _debate_aggregate sentinel is never selected as best."""
+    stats = {
+        "Agent-A": {"performance_score": 3.0},
+        "Agent-B": {"performance_score": 5.0},
+        "_debate_aggregate": {"attacks_total": 42},
+    }
+    assert select_best_agent(stats, ["Agent-A", "Agent-B"]) == "Agent-B"
+
+
+@pytest.mark.unit
+def test_select_best_agent_empty_raises():
+    """With no matching agents, select_best_agent raises ValueError."""
+    with pytest.raises(ValueError):
+        select_best_agent({"_debate_aggregate": {}}, ["Agent-A"])
+
+
+@pytest.mark.unit
+def test_finalize_agent_stats_builds_debate_aggregate():
+    """finalize_agent_stats populates _debate_aggregate and final_snapshot."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+
+    # Pre-populate per_round snapshots so finalize uses them as final_snapshot.
+    stats["Agent-A"]["per_round"]["round_2"] = {
+        "thesis_strength": 0.5,
+        "component_counts": {"claims": 3},
+    }
+    stats["Agent-B"]["per_round"]["round_2"] = {
+        "thesis_strength": 0.7,
+        "component_counts": {"claims": 4},
+    }
+
+    # Simulate verdict tallies (as would be populated via update_agent_stats).
+    stats["Agent-A"]["adjudication_outcomes"]["as_challenger"]["critique_valid"] = 2
+    stats["Agent-A"]["adjudication_outcomes"]["as_challenger"]["unresolved"] = 1
+    stats["Agent-B"]["adjudication_outcomes"]["as_challenger"]["rebuttal_valid"] = 1
+
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undermining", "attack_strategy": "challenge_evidence"},
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undermining", "attack_strategy": "challenge_evidence"},
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "rebutting", "attack_strategy": "present_counter_evidence"},
+        {"challenger": "Agent-B", "target": "Agent-A",
+         "attack_type": "undercutting", "attack_strategy": "identify_circularity"},
+    ]
+
+    agent_a = MagicMock(); agent_a.name = "Agent-A"
+    agent_b = MagicMock(); agent_b.name = "Agent-B"
+
+    result = finalize_agent_stats(stats, pairs, [agent_a, agent_b], max_rounds=2)
+
+    # _debate_aggregate should exist with correct totals.
+    assert "_debate_aggregate" in result
+    agg = result["_debate_aggregate"]
+    assert agg["attacks_total"] == 4
+    assert agg["attacks_by_type"]["undermining"] == 2
+    assert agg["attacks_by_type"]["rebutting"] == 1
+    assert agg["attacks_by_type"]["undercutting"] == 1
+
+    # Verdicts aggregate sums as_challenger columns.
+    verdicts = agg["adjudication_verdicts"]
+    assert verdicts["critique_valid"] == 2
+    assert verdicts["rebuttal_valid"] == 1
+    assert verdicts["unresolved"] == 1
+
+    # final_snapshot copied from per_round[round_2].
+    assert result["Agent-A"]["final_snapshot"]["thesis_strength"] == 0.5
+    assert result["Agent-B"]["final_snapshot"]["thesis_strength"] == 0.7
+
+
+@pytest.mark.unit
+def test_finalize_agent_stats_falls_back_to_live_belief_for_final_snapshot():
+    """Missing per_round snapshot triggers live recomputation via agent.get_internal_belief_obj."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A"])
+    # Note: per_round left empty — finalize must call the live-belief fallback.
+
+    agent_a = MagicMock()
+    agent_a.name = "Agent-A"
+    agent_a.get_internal_belief_obj.return_value = {
+        "thesis": {"strength": 0.42},
+        "claims": [{"id": "C1", "status": "active"}],
+    }
+
+    result = finalize_agent_stats(stats, [], [agent_a], max_rounds=1)
+    snap = result["Agent-A"]["final_snapshot"]
+    assert snap["thesis_strength"] == pytest.approx(0.42)
+    assert snap["component_counts"]["claims"] == 1
+
+
+@pytest.mark.unit
+def test_finalize_agent_stats_invariants():
+    """Aggregate by_type and verdicts equal the per-agent column sums."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undermining", "attack_strategy": "challenge_evidence",
+         "resolution": {"status": "critique_valid"}},
+        {"challenger": "Agent-B", "target": "Agent-A",
+         "attack_type": "rebutting", "attack_strategy": "present_counter_evidence",
+         "resolution": {"status": "rebuttal_valid"}},
+    ]
+    for p in pairs:
+        update_agent_stats(stats, p)
+
+    agent_a = MagicMock(); agent_a.name = "Agent-A"; agent_a.get_internal_belief_obj.return_value = {}
+    agent_b = MagicMock(); agent_b.name = "Agent-B"; agent_b.get_internal_belief_obj.return_value = {}
+
+    result = finalize_agent_stats(stats, pairs, [agent_a, agent_b], max_rounds=1)
+    agg = result["_debate_aggregate"]
+
+    # Invariant 1: aggregate by_type = sum of per-agent by_type
+    for t in VALID_ATTACK_STRATEGIES:
+        per_agent_sum = (
+            result["Agent-A"]["cross_examination_attacks"]["by_type"][t]
+            + result["Agent-B"]["cross_examination_attacks"]["by_type"][t]
+        )
+        assert agg["attacks_by_type"][t] == per_agent_sum
+
+    # Invariant 2: aggregate verdicts = sum of per-agent as_challenger verdicts
+    for v in VALID_ADJUDICATION_VERDICTS:
+        per_agent_sum = (
+            result["Agent-A"]["adjudication_outcomes"]["as_challenger"][v]
+            + result["Agent-B"]["adjudication_outcomes"]["as_challenger"][v]
+        )
+        assert agg["adjudication_verdicts"][v] == per_agent_sum

@@ -17,6 +17,7 @@ from chal.agents.epistemic_personas import get_persona
 from chal.orchestrator.debate_controller import DebateController
 from chal.cli.display import DebateDisplay
 from chal.cli.api_keys import validate_api_keys, create_key_pool
+from chal.utilities.utils import select_best_agent
 
 
 def run_debate(
@@ -151,13 +152,6 @@ def save_debate_outputs(
     saved_files: list[str] = []
     console.print("\n[bold]Saving outputs...[/bold]")
 
-    if config.outputs.save_synthesis and config.scribe.enabled:
-        path = config.outputs.storage_dir / config.outputs.synthesis_file
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(results["synthesis"])
-        console.print(f"  [green]>[/green] Synthesis: {path.name}")
-        saved_files.append(path.name)
-
     if config.outputs.save_transcript:
         path = config.outputs.storage_dir / config.outputs.transcript_file
         with open(path, "w", encoding="utf-8") as f:
@@ -192,6 +186,18 @@ def save_debate_outputs(
             json.dump(results["agent_stats"], f, indent=2)
         console.print(f"  [green]>[/green] Agent stats: {path.name}")
         saved_files.append(path.name)
+
+    # Always-on: best-agent initial + final belief outputs (JSON + markdown).
+    # Produced after agent_stats so we can reference the same performance_score.
+    try:
+        best_files = _write_best_agent_beliefs(config, results, controller)
+        for fname in best_files:
+            console.print(f"  [green]>[/green] Best-agent beliefs: {fname}")
+            saved_files.append(fname)
+    except Exception as e:
+        console.print(f"  [yellow]Warning:[/yellow] Could not write best-agent beliefs: {e}")
+        if verbose:
+            console.print(traceback.format_exc())
 
     # Generate embeddings and plot if enabled
     if config.outputs.generate_embeddings or config.outputs.plot_trajectories:
@@ -245,3 +251,112 @@ def save_debate_outputs(
                 console.print(traceback.format_exc())
 
     return saved_files
+
+
+def _write_best_agent_beliefs(config: DebateConfig, results: dict, controller) -> list[str]:
+    """Write ``best_initial_final_beliefs.{json,txt}`` for the top-scoring agent.
+
+    Selection: highest ``performance_score`` in ``results["agent_stats"]``; ties
+    broken by first occurrence in ``config.agents`` order.
+
+    JSON payload: topic, best_agent, performance_score, selection_rule,
+    initial_belief (parsed from ``agent.all_beliefs_held[0]``), and final_belief
+    (from ``agent.get_internal_belief_obj()``). If the initial belief JSON is
+    unparseable, the payload's ``initial_belief`` field falls back to
+    ``{"error": ..., "raw": <string>}`` so downstream tooling still sees a
+    well-shaped document.
+
+    Text payload: reuses the same markdown blocks that populate
+    ``initial_beliefs.txt`` / ``final_beliefs.txt`` (i.e.,
+    ``results["initial_positions"][idx]`` and
+    ``results["final_positions"][idx]``) so the per-agent sections are
+    byte-identical to the relevant slice of those files.
+
+    Returns:
+        List of output filenames written (relative names, not full paths).
+    """
+    agent_stats = results.get("agent_stats", {})
+    agent_order = [a.name for a in config.agents]
+    best_name = select_best_agent(agent_stats, agent_order)
+
+    agents = controller.agents
+    best_agent = next((a for a in agents if a.name == best_name), None)
+    if best_agent is None:
+        raise ValueError(f"best agent '{best_name}' not found among controller.agents")
+
+    # Initial belief: parse the JSON captured immediately after Stage 1.
+    all_beliefs_held = getattr(best_agent, "all_beliefs_held", []) or []
+    if not all_beliefs_held:
+        raise ValueError(f"best_agent '{best_name}' missing initial belief (all_beliefs_held empty)")
+    initial_raw = all_beliefs_held[0]
+    try:
+        initial_belief = json.loads(initial_raw) if isinstance(initial_raw, str) else initial_raw
+    except (json.JSONDecodeError, TypeError):
+        initial_belief = {"error": "initial belief unparseable", "raw": str(initial_raw)}
+
+    # Final belief: already a dict (the controller stores structured JSON).
+    if hasattr(best_agent, "get_internal_belief_obj"):
+        final_belief = best_agent.get_internal_belief_obj()
+    else:
+        final_belief = None
+
+    performance_score = agent_stats.get(best_name, {}).get("performance_score", 0.0)
+
+    json_payload = {
+        "topic": config.topic,
+        "best_agent": best_name,
+        "performance_score": performance_score,
+        "selection_rule": "max performance_score; tiebreaker = config.agents order",
+        "initial_belief": initial_belief,
+        "final_belief": final_belief,
+    }
+
+    storage_dir = config.outputs.storage_dir
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    json_path = storage_dir / config.outputs.best_beliefs_json_file
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(json_payload, f, indent=2, ensure_ascii=False)
+
+    # Markdown rendering: reuse the exact per-agent text blocks saved into
+    # initial_beliefs.txt / final_beliefs.txt (results["initial_positions"][i]
+    # and results["final_positions"][i], respectively).
+    try:
+        best_idx = agent_order.index(best_name)
+    except ValueError:
+        best_idx = None
+
+    def _get_position(positions_key: str) -> str:
+        positions = results.get(positions_key) or []
+        if best_idx is not None and 0 <= best_idx < len(positions):
+            return positions[best_idx]
+        return "(position unavailable)"
+
+    initial_text = _get_position("initial_positions")
+    final_text = _get_position("final_positions")
+
+    md_lines = [
+        "# Best Agent Beliefs: Initial vs Final",
+        "",
+        f"**Topic:** {config.topic}",
+        f"**Best agent:** {best_name}  (performance score: {performance_score})",
+        "",
+        "---",
+        "",
+        "## Initial Belief (Stage 1)",
+        "",
+        initial_text,
+        "",
+        "---",
+        "",
+        f"## Final Belief (after Round {config.max_rounds} Stage 5)",
+        "",
+        final_text,
+        "",
+    ]
+
+    text_path = storage_dir / config.outputs.best_beliefs_text_file
+    with open(text_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(md_lines))
+
+    return [json_path.name, text_path.name]

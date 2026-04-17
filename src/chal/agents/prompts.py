@@ -69,6 +69,41 @@ Accepting and weakening = CRITIQUE_VALID.
 from evidential challenge."""
 
 
+# === Shared Strength Scale ===
+# Canonical semantics for all strength values (0.0-1.0) across thesis, claims,
+# assumptions, and evidence. Injected into every stage prompt that reasons about
+# or evaluates belief strength: Stage 1 (construction), Stage 2 (cross-examination),
+# Stage 3 (rebuttals), Stage 4 (adjudication), and Stage 5 (all belief update phases).
+_STRENGTH_SCALE_BLOCK = """<strength_scale>
+All strength values (thesis, claims, assumptions, evidence) share a common scale:
+| Range | Label | Meaning |
+|---|---|---|
+| 0.0 | Vacuous | No credible support; should be retracted |
+| 0.1-0.3 | Weak | Critical support missing; serious unaddressed challenges |
+| 0.3-0.5 | Contested | More reasons to doubt than believe; needs significant strengthening |
+| 0.5 | Threshold | Could go either way; evenly balanced |
+| 0.5-0.7 | Moderate | More reasons to believe than doubt; some gaps remain |
+| 0.7-0.9 | Strong | Well-supported; minor open questions |
+| 0.9-1.0 | Robust | Near-certain given available evidence and reasoning |
+| 1.0 | Definitive | Established beyond reasonable dispute |
+</strength_scale>"""
+
+_VALID_DEPENDENCIES_BLOCK = """<valid_dependencies>
+These are the ONLY valid connections between components. No other edges are allowed:
+- D#.used_by → A#, E# only (NEVER C#, X#, or U#)
+- A#.supports_claims → C# only
+- A#.supported_by_definitions → D# only
+- E#.supports_claims → C# only
+- E#.supported_by_definitions → D# only
+- C#.depends_on → A#, E#, C# only (NEVER D#)
+- X#.targets → A#, E#, C#, D#
+- U#.targets → A#, E#, C#, D#
+- inference_chain references → A#, E#, C# only
+
+Definitions (D#) support claims INDIRECTLY through the A#/E# layer only.
+</valid_dependencies>"""
+
+
 def _determine_mode(logic_weight: float, ethics_weight: float) -> str:
     """Determine evaluation mode from weights."""
     if ethics_weight < 0.01:
@@ -187,6 +222,11 @@ def build_adjudicator_prompt(
         "<criteria>\n"
         f"{criteria_section}\n"
         "</criteria>\n"
+        "\n"
+        # Strength scale is shared with the debating agents so the adjudicator
+        # interprets belief excerpt strengths (0.0-1.0) with the same semantics
+        # used during belief construction and revision.
+        f"{_STRENGTH_SCALE_BLOCK}\n"
         "\n"
         "<anti_bias>\n"
         f"{_ANTI_BIAS}\n"
@@ -581,19 +621,11 @@ Summary bullets should be descriptive prose capturing the key themes of your pos
 
 - "changelog": at least one entry recording initial creation
 
-<strength_scale>
-All strength values (thesis, claims, assumptions, evidence) share a common scale:
-| Range | Label | Meaning |
-|---|---|---|
-| 0.0 | Vacuous | No credible support; should be retracted |
-| 0.1-0.3 | Weak | Critical support missing; serious unaddressed challenges |
-| 0.3-0.5 | Contested | More reasons to doubt than believe; needs significant strengthening |
-| 0.5 | Threshold | Could go either way; evenly balanced |
-| 0.5-0.7 | Moderate | More reasons to believe than doubt; some gaps remain |
-| 0.7-0.9 | Strong | Well-supported; minor open questions |
-| 0.9-1.0 | Robust | Near-certain given available evidence and reasoning |
-| 1.0 | Definitive | Established beyond reasonable dispute |
-</strength_scale>
+"""
+        + f"""\
+{_STRENGTH_SCALE_BLOCK}
+"""
+        + """\
 
 <thesis_strength>
 After building your claims, calculate your thesis strength using this formula:
@@ -606,6 +638,12 @@ Include a "strength_reasoning" field showing the equation with your actual \
 numbers plugged in (e.g., "avg(0.70, 0.55, 0.65) × (3^{p} / (3^{p} + 1)) = 0.63 × {_ex3_breadth} = {_ex3_result}").
 </thesis_strength>
 
+"""
+        + f"""\
+{_VALID_DEPENDENCIES_BLOCK}
+
+"""
+        + """\
 DEPENDENCY RULES:
 - All depends_on entries must reference existing A#, E#, or C# IDs
 - DEFINITION CEILING: A#.strength ≤ min(D.strength for D in supported_by_definitions where D.status == "active")
@@ -792,6 +830,8 @@ def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_
 {previous_questions_section}
 </context>
 
+{_STRENGTH_SCALE_BLOCK}
+
 <instructions>
 You are {agent_name} cross-examining {opponent_name} on: "{topic}"
 
@@ -959,6 +999,8 @@ def build_stage_3_structured_rebuttal_prompt(topic: str, agent_name: str, oppone
 </questions_received>
 </context>
 
+{_STRENGTH_SCALE_BLOCK}
+
 <instructions>
 You are {agent_name} responding to cross-examination from {opponent_name} on: "{topic}"
 
@@ -1109,19 +1151,7 @@ def build_stage_5_belief_update_prompt_cbs(agent_name: str,
 
 {stage_3_section}</context>
 
-<strength_scale>
-All strength values (thesis, claims, assumptions, evidence) share a common scale:
-| Range | Label | Meaning |
-|---|---|---|
-| 0.0 | Vacuous | No credible support; should be retracted |
-| 0.1-0.3 | Weak | Critical support missing; serious unaddressed challenges |
-| 0.3-0.5 | Contested | More reasons to doubt than believe; needs significant strengthening |
-| 0.5 | Threshold | Could go either way; evenly balanced |
-| 0.5-0.7 | Moderate | More reasons to believe than doubt; some gaps remain |
-| 0.7-0.9 | Strong | Well-supported; minor open questions |
-| 0.9-1.0 | Robust | Near-certain given available evidence and reasoning |
-| 1.0 | Definitive | Established beyond reasonable dispute |
-</strength_scale>
+{_STRENGTH_SCALE_BLOCK}
 
 <thesis_strength>
 When revising beliefs, consider how your changes affect thesis strength.
@@ -1311,19 +1341,7 @@ def build_stage_5_phase1_enforcement_prompt(agent_name: str,
 
 {stage_3_section}</context>
 
-<strength_scale>
-All strength values (thesis, claims, assumptions, evidence) share a common scale:
-| Range | Label | Meaning |
-|---|---|---|
-| 0.0 | Vacuous | No credible support; should be retracted |
-| 0.1-0.3 | Weak | Critical support missing; serious unaddressed challenges |
-| 0.3-0.5 | Contested | More reasons to doubt than believe; needs significant strengthening |
-| 0.5 | Threshold | Could go either way; evenly balanced |
-| 0.5-0.7 | Moderate | More reasons to believe than doubt; some gaps remain |
-| 0.7-0.9 | Strong | Well-supported; minor open questions |
-| 0.9-1.0 | Robust | Near-certain given available evidence and reasoning |
-| 1.0 | Definitive | Established beyond reasonable dispute |
-</strength_scale>
+{_STRENGTH_SCALE_BLOCK}
 
 <instructions>
 Agent {agent_name}, this is Phase 1: Adjudication Enforcement.
@@ -1850,19 +1868,7 @@ Changes already made in Phase 1 (adjudication enforcement):
 </phase1_changes>
 </context>
 
-<strength_scale>
-All strength values (thesis, claims, assumptions, evidence) share a common scale:
-| Range | Label | Meaning |
-|---|---|---|
-| 0.0 | Vacuous | No credible support; should be retracted |
-| 0.1-0.3 | Weak | Critical support missing; serious unaddressed challenges |
-| 0.3-0.5 | Contested | More reasons to doubt than believe; needs significant strengthening |
-| 0.5 | Threshold | Could go either way; evenly balanced |
-| 0.5-0.7 | Moderate | More reasons to believe than doubt; some gaps remain |
-| 0.7-0.9 | Strong | Well-supported; minor open questions |
-| 0.9-1.0 | Robust | Near-certain given available evidence and reasoning |
-| 1.0 | Definitive | Established beyond reasonable dispute |
-</strength_scale>
+{_STRENGTH_SCALE_BLOCK}
 
 <thesis_strength_guide>
 THESIS STRENGTH FORMULA
@@ -2107,6 +2113,8 @@ To retract a claim, set {{"status": "retracted"}} in changes — strength is for
 {{"my_response": "...", "response_sufficiency": "..."}}}}
 </instructions>
 
+{_VALID_DEPENDENCIES_BLOCK}
+
 <guardrails>
 - You CANNOT raise the strength of any existing node (D#, A#, E#, or C#). Existing node \
 strengths can only stay the same or decrease. This is enforced mechanically — any strength \
@@ -2289,242 +2297,3 @@ Self-check:
 </output_format>
 """
 
-
-def build_stage_6_conclusion_prompt(topic: str, agent_name: str, agent_belief_json: str,
-                                    belief_changelog_summary: str, num_rounds: int = 1,
-                                    persona_label: str = "") -> str:
-    """
-    Stage 6: Conclusion / Synthesis.
-
-    The agent produces a decision-quality synthesis with explicit concessions, strongest surviving claims,
-    counterposition reflection, and updated strength. Output is ONE JSON block.
-
-    Acronyms expanded:
-    - JSON: JavaScript Object Notation
-    - ID: Identifier (A#, C#, E#, U#, X#)
-
-    Args:
-        topic: The debate topic.
-        agent_name: Name of the agent producing conclusions.
-        agent_belief_json: Agent's final CBS belief as JSON string.
-        belief_changelog_summary: Summary of belief changes across rounds.
-        num_rounds: Number of debate rounds completed.
-        persona_label: Agent's persona/worldview label.
-    """
-    _debate_ctx = build_debate_context("Conclusion — producing your final synthesis")
-    return f"""\
-{_debate_ctx}
-
-<context>
-<final_belief>
-```json
-{agent_belief_json}
-```
-</final_belief>
-
-<belief_evolution>
-Changes across {num_rounds} rounds:
-{belief_changelog_summary}
-</belief_evolution>
-</context>
-
-<instructions>
-You are {agent_name}. Produce your closing statement on: "{topic}"
-
-Inside <reasoning> tags, reflect: What positions did you change and why? What did you LEARN \
-that you didn't appreciate before? Where did your {persona_label or "assigned"} worldview prove \
-most useful and where was it limiting? What were the strongest opposing arguments? Which of \
-your counterpositions (X#) remained "partial" or "unaddressed" — what does that tell you \
-about the remaining vulnerability of your position? What specific evidence or argument would \
-change your core position?
-
-Then produce your conclusion.
-</instructions>
-
-<output_format>
-1. <reasoning>...</reasoning> tags
-2. One fenced JSON code block:
-
-```json
-{{
-  "conclusion": {{
-    "final_thesis": {{"stance": "<1-2 sentences>", "strength": 0.0}},
-    "our_strongest_claims": ["C#", "C#"],
-    "best_opposing_arguments": [
-      {{"from_agent": "", "summary": "", "claim_ids_challenged": ["C#"]}}
-    ],
-    "our_concessions": [
-      {{"target_id": "C#|A#|E#", "type": "scope_narrow|strength_drop|retract", "note": ""}}
-    ],
-    "unresolved_counterpositions": [
-      {{"id": "X#", "response_sufficiency": "partial|unaddressed", "what_would_resolve": ""}}
-    ],
-    "key_learnings": [""],
-    "unresolved_uncertainties": ["U#"],
-    "what_would_change_my_mind": ""
-  }}
-}}
-```
-</output_format>
-"""
-
-def build_stage_7_scribe_prompt_map(
-    *,
-    topic: str,
-    agent_names: list[str],
-    transcript_chunk: str,
-    continuity_state_json: str = "",
-    style_hint: str = "formal, expository, research-paper tone with clear sectioning and didactic explanations",
-    short_note_max_chars: int = 140
-) -> str:
-    """
-    Stage 7 (Map): Convert ONE transcript chunk into:
-      (1) a continuity state UPDATE (JSON = JavaScript Object Notation), and
-      (2) an EXPOSITORY Markdown section that reads like a rigorous research paper/book.
-
-    Voice & purpose:
-    - Explanatory, educational tone (not chatty conversation).
-    - Thoroughly describe positions, assumptions, claims, evidence, and adjudication highlights.
-    - Where IDs (ID = Identifier) like A#/C#/E#/U#/X# appear, reference them parenthetically.
-
-    Inputs:
-    - topic: debate topic/title.
-    - agent_names: ordered list of participant names (use exactly as given).
-    - transcript_chunk: raw slice of the debate transcript for this map step.
-    - continuity_state_json: serialized state from prior map steps (themes, unresolved items, etc.).
-    - style_hint: optional extra guidance on voice.
-
-    Output (STRICT):
-    1) FIRST: a fenced JSON block with { "continuity_update": { ... } }
-    2) SECOND: a fenced Markdown block containing the expository section for THIS chunk only.
-    """
-    agents_str = ", ".join(agent_names)
-    return f"""\
-<context>
-<debate_topic>"{topic}"</debate_topic>
-<participants>{agents_str}</participants>
-
-<continuity_state>
-```json
-{(continuity_state_json.strip() or "{}")}
-```
-</continuity_state>
-
-<transcript_chunk>
-{transcript_chunk.strip()}
-</transcript_chunk>
-</context>
-
-<instructions>
-You are the debate scribe producing an expository research-paper-style account.
-
-STYLE: Formal, precise, neutral. Summarize and explain — don't emulate conversation. \
-Reference structured IDs parenthetically. Do not invent facts.
-
-TASKS:
-1. Update the continuity state: current positions, stance shifts, pivotal claims, \
-adjudication outcomes, unresolved questions, emerging themes, NOVEL INSIGHTS, and \
-COUNTERPOSITION EVOLUTION (which counterpositions were tested, which responses held, \
-which were upgraded or degraded).
-2. Write an expository section for this chunk teaching the reader what happened and changed.
-</instructions>
-
-<output_format>
-1. Fenced JSON code block:
-```json
-{{
-  "positions": {{"": ""}},
-  "stance_shifts": [""],
-  "pivotal_claims": [""],
-  "adjudication_outcomes": [""],
-  "unresolved_questions": [""],
-  "emerging_themes": [""],
-  "novel_insights": [""],
-  "counterposition_evolution": [""]
-}}
-```
-
-2. Fenced Markdown block with the expository section.
-</output_format>
-"""
-
-def build_stage_7_scribe_prompt_reduce(
-    *,
-    topic: str,
-    agent_names: list[str],
-    all_narrative_slices_markdown: list[str],
-    final_continuity_state_json: str = "",
-    style_hint: str = "formal, expository, research-paper tone with clear sectioning and didactic explanations"
-) -> str:
-    """
-    Stage 7 (Reduce): Merge ALL chunk-level expository sections into a single, polished
-    research-paper style narrative (Markdown). The result should read like a rigorous article
-    or book chapter that educates the reader about the entire debate.
-
-    Acronyms:
-    - JSON = JavaScript Object Notation
-    - ID   = Identifier (A#, C#, E#, U#, X#)
-
-    Inputs:
-    - topic: debate topic/title.
-    - agent_names: ordered list of participant names (use exactly as given).
-    - all_narrative_slices_markdown: list of Markdown sections from the map steps.
-    - final_continuity_state_json: aggregated continuity notes to preserve arcs and unresolved items.
-    - style_hint: optional additional style guidance.
-
-    Output (STRICT):
-    - ONE fenced Markdown block with the full expository synthesis.
-    """
-    agents_str = ", ".join(agent_names)
-    slices_joined = "\n\n---\n\n".join(s.strip() for s in all_narrative_slices_markdown if s.strip())
-    return f"""\
-<context>
-<debate_topic>"{topic}"</debate_topic>
-<participants>{agents_str}</participants>
-
-<final_continuity_state>
-```json
-{(final_continuity_state_json.strip() or "{}")}
-```
-</final_continuity_state>
-
-<expository_sections>
-{slices_joined}
-</expository_sections>
-</context>
-
-<instructions>
-Produce the FINAL synthesis as a research-paper-style narrative. Formal, neutral, didactic. \
-Attribute positions by name. Reference IDs for precision. Eliminate redundancy across sections.
-
-Pay special attention to:
-- NOVEL INSIGHTS: conclusions or framings that emerged from the debate and were NOT in any \
-agent's initial position.
-- COUNTERPOSITION RESILIENCE: which agents' counterpositions survived testing, which were \
-upgraded to "sufficient," and which remained "partial" or "unaddressed" — this reveals \
-the genuine remaining vulnerabilities in each position.
-</instructions>
-
-<output_format>
-One fenced Markdown block:
-
-```markdown
-# <Title>
-
-## Abstract
-<150-250 words>
-
-## 1. Introduction
-## 2. Methods
-## 3. Initial Positions and Assumptions
-## 4. Claims, Evidence, and Argumentation
-## 5. Cross-Examination and Key Exchanges
-## 6. Adjudication Results
-## 7. Belief Evolution and Counterposition Resilience
-## 8. Novel Insights and Syntheses
-## 9. Remaining Uncertainties and Proposed Tests
-## 10. Conclusion
-## References / Source Notes
-```
-</output_format>
-"""

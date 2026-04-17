@@ -15,8 +15,8 @@ from io import StringIO
 
 from rich.console import Console
 
-from chal.config import DebateConfig, AgentConfig, OutputConfig, ScribeConfig
-from chal.cli.runner import save_debate_outputs, run_debate
+from chal.config import DebateConfig, AgentConfig, OutputConfig
+from chal.cli.runner import save_debate_outputs, run_debate, _write_best_agent_beliefs
 
 
 # =========================================================================
@@ -31,7 +31,6 @@ def _make_config(tmp_path: Path, **output_overrides) -> DebateConfig:
     """Build a minimal DebateConfig with storage_dir pointing at tmp_path."""
     output_kwargs = {
         "storage_dir": tmp_path,
-        "save_synthesis": False,
         "save_transcript": False,
         "save_debug_log": False,
         "save_initial_beliefs": False,
@@ -53,14 +52,12 @@ def _make_config(tmp_path: Path, **output_overrides) -> DebateConfig:
             AgentConfig(name="Agent-B", persona="RATIONALIST"),
         ],
         outputs=outputs,
-        scribe=ScribeConfig(enabled=True),
     )
 
 
 def _make_results() -> dict:
     """Build a minimal results dict matching controller.run() output."""
     return {
-        "synthesis": "Test synthesis text.",
         "full_transcript": "Full transcript text.",
         "markdown_transcript": "Markdown transcript text.",
         "debug_log": "Debug log text.",
@@ -75,29 +72,6 @@ def _make_results() -> dict:
 # =========================================================================
 
 class TestSaveDebateOutputs:
-
-    @pytest.mark.unit
-    def test_saves_synthesis(self, tmp_path):
-        """Synthesis file is written when save_synthesis is True."""
-        config = _make_config(tmp_path, save_synthesis=True)
-        results = _make_results()
-
-        save_debate_outputs(config, results, MagicMock(), _console())
-
-        path = tmp_path / config.outputs.synthesis_file
-        assert path.exists()
-        assert path.read_text() == "Test synthesis text."
-
-    @pytest.mark.unit
-    def test_skips_synthesis_when_disabled(self, tmp_path):
-        """No synthesis file when save_synthesis is False."""
-        config = _make_config(tmp_path, save_synthesis=False)
-        results = _make_results()
-
-        save_debate_outputs(config, results, MagicMock(), _console())
-
-        path = tmp_path / config.outputs.synthesis_file
-        assert not path.exists()
 
     @pytest.mark.unit
     def test_saves_transcript(self, tmp_path):
@@ -385,7 +359,7 @@ class TestSaveDebateOutputsReturnValue:
     @pytest.mark.unit
     def test_returns_saved_file_names(self, tmp_path):
         """save_debate_outputs returns a list of saved file names."""
-        config = _make_config(tmp_path, save_synthesis=True, save_transcript=True)
+        config = _make_config(tmp_path, save_transcript=True, save_debug_log=True)
         results = _make_results()
 
         saved = save_debate_outputs(config, results, MagicMock(), _console())
@@ -402,3 +376,213 @@ class TestSaveDebateOutputsReturnValue:
         saved = save_debate_outputs(config, results, MagicMock(), _console())
 
         assert saved == []
+
+
+# =========================================================================
+# 8. Best-Agent Beliefs (Phase 3 of stats-expansion roadmap)
+# =========================================================================
+
+def _make_best_belief_results(
+    a_score: float = 12.5,
+    b_score: float = 3.0,
+    a_initial: str = "Initial belief for Agent-A.",
+    a_final: str = "Final belief for Agent-A.",
+    b_initial: str = "Initial belief for Agent-B.",
+    b_final: str = "Final belief for Agent-B.",
+) -> dict:
+    """Build a results dict with the keys _write_best_agent_beliefs reads."""
+    return {
+        "full_transcript": "transcript",
+        "markdown_transcript": "markdown transcript",
+        "debug_log": "log",
+        "initial_positions": [a_initial, b_initial],
+        "final_positions": [a_final, b_final],
+        "agent_stats": {
+            "Agent-A": {"performance_score": a_score},
+            "Agent-B": {"performance_score": b_score},
+        },
+    }
+
+
+def _make_controller_with_agents(best_score: float = 12.5) -> MagicMock:
+    """Build a mock controller with two agents (A and B)."""
+    initial_a = json.dumps({
+        "schema_version": "CBS",
+        "thesis": {"strength": 0.5, "stance": "A initial"},
+        "claims": [{"id": "C1", "status": "active"}],
+    })
+    initial_b = json.dumps({
+        "schema_version": "CBS",
+        "thesis": {"strength": 0.4, "stance": "B initial"},
+        "claims": [],
+    })
+
+    agent_a = MagicMock()
+    agent_a.name = "Agent-A"
+    agent_a.all_beliefs_held = [initial_a]
+    agent_a.get_internal_belief_obj.return_value = {
+        "schema_version": "CBS",
+        "thesis": {"strength": 0.8, "stance": "A final"},
+        "claims": [{"id": "C1", "status": "active"}, {"id": "C2", "status": "active"}],
+    }
+
+    agent_b = MagicMock()
+    agent_b.name = "Agent-B"
+    agent_b.all_beliefs_held = [initial_b]
+    agent_b.get_internal_belief_obj.return_value = {
+        "schema_version": "CBS",
+        "thesis": {"strength": 0.3, "stance": "B final"},
+        "claims": [],
+    }
+
+    controller = MagicMock()
+    controller.agents = [agent_a, agent_b]
+    return controller
+
+
+class TestWriteBestAgentBeliefs:
+
+    @pytest.mark.unit
+    def test_best_initial_final_beliefs_json_is_written(self, tmp_path):
+        """_write_best_agent_beliefs produces a CBS-shaped JSON with correct best_agent."""
+        config = _make_config(tmp_path)
+        results = _make_best_belief_results(a_score=12.5, b_score=3.0)
+        controller = _make_controller_with_agents()
+
+        written = _write_best_agent_beliefs(config, results, controller)
+
+        json_path = tmp_path / config.outputs.best_beliefs_json_file
+        assert json_path.name in written
+        assert json_path.exists()
+
+        payload = json.loads(json_path.read_text(encoding="utf-8"))
+        assert payload["best_agent"] == "Agent-A"
+        assert payload["performance_score"] == pytest.approx(12.5)
+        assert payload["topic"] == config.topic
+        # Initial belief parsed from all_beliefs_held[0]; final from get_internal_belief_obj()
+        assert payload["initial_belief"]["thesis"]["stance"] == "A initial"
+        assert payload["final_belief"]["thesis"]["stance"] == "A final"
+        assert "selection_rule" in payload
+
+    @pytest.mark.unit
+    def test_best_initial_final_beliefs_txt_is_written(self, tmp_path):
+        """The markdown output reuses the results positions for the best agent."""
+        config = _make_config(tmp_path)
+        results = _make_best_belief_results(
+            a_initial="A-INITIAL-MARKDOWN-BLOCK",
+            a_final="A-FINAL-MARKDOWN-BLOCK",
+        )
+        controller = _make_controller_with_agents()
+
+        written = _write_best_agent_beliefs(config, results, controller)
+
+        text_path = tmp_path / config.outputs.best_beliefs_text_file
+        assert text_path.name in written
+        assert text_path.exists()
+
+        text = text_path.read_text(encoding="utf-8")
+        assert "Best Agent Beliefs" in text
+        assert "Agent-A" in text
+        assert "A-INITIAL-MARKDOWN-BLOCK" in text
+        assert "A-FINAL-MARKDOWN-BLOCK" in text
+        # Must NOT leak the loser's markdown block into the best-agent file.
+        assert "Initial belief for Agent-B" not in text
+
+    @pytest.mark.unit
+    def test_best_agent_picks_highest_score(self, tmp_path):
+        """When Agent-B has the higher score, it becomes best_agent."""
+        config = _make_config(tmp_path)
+        results = _make_best_belief_results(a_score=2.0, b_score=9.9)
+        controller = _make_controller_with_agents()
+
+        _write_best_agent_beliefs(config, results, controller)
+
+        payload = json.loads(
+            (tmp_path / config.outputs.best_beliefs_json_file).read_text(encoding="utf-8")
+        )
+        assert payload["best_agent"] == "Agent-B"
+        assert payload["performance_score"] == pytest.approx(9.9)
+
+    @pytest.mark.unit
+    def test_tiebreaker_picks_first_in_config_order(self, tmp_path):
+        """Equal scores resolve via first-in-config.agents order."""
+        config = _make_config(tmp_path)
+        results = _make_best_belief_results(a_score=7.0, b_score=7.0)
+        controller = _make_controller_with_agents()
+
+        _write_best_agent_beliefs(config, results, controller)
+
+        payload = json.loads(
+            (tmp_path / config.outputs.best_beliefs_json_file).read_text(encoding="utf-8")
+        )
+        # Agent-A is earlier in config.agents → wins the tie.
+        assert payload["best_agent"] == "Agent-A"
+
+    @pytest.mark.unit
+    def test_unparseable_initial_belief_falls_back_to_error_payload(self, tmp_path):
+        """Malformed initial JSON produces {'error':..., 'raw':...} in initial_belief."""
+        config = _make_config(tmp_path)
+        results = _make_best_belief_results()
+
+        controller = _make_controller_with_agents()
+        controller.agents[0].all_beliefs_held = ["<<<NOT JSON>>>"]
+
+        _write_best_agent_beliefs(config, results, controller)
+
+        payload = json.loads(
+            (tmp_path / config.outputs.best_beliefs_json_file).read_text(encoding="utf-8")
+        )
+        initial = payload["initial_belief"]
+        assert isinstance(initial, dict)
+        assert "error" in initial
+        assert initial.get("raw") == "<<<NOT JSON>>>"
+
+    @pytest.mark.unit
+    def test_missing_initial_belief_raises(self, tmp_path):
+        """Agent with empty all_beliefs_held raises ValueError (caller should catch)."""
+        config = _make_config(tmp_path)
+        results = _make_best_belief_results()
+        controller = _make_controller_with_agents()
+        controller.agents[0].all_beliefs_held = []  # best agent has no initial snapshot
+
+        with pytest.raises(ValueError):
+            _write_best_agent_beliefs(config, results, controller)
+
+
+# =========================================================================
+# 9. Save-outputs always writes best-agent files (Phase 3 always-on behavior)
+# =========================================================================
+
+class TestSaveOutputsWritesBestAgentFiles:
+
+    @pytest.mark.unit
+    def test_best_beliefs_written_even_when_all_toggles_off(self, tmp_path):
+        """Best-agent beliefs are ALWAYS written (no gating flag)."""
+        config = _make_config(tmp_path)  # every save_* toggle off
+        results = _make_best_belief_results()
+        controller = _make_controller_with_agents()
+
+        saved = save_debate_outputs(config, results, controller, _console())
+
+        json_path = tmp_path / config.outputs.best_beliefs_json_file
+        text_path = tmp_path / config.outputs.best_beliefs_text_file
+        assert json_path.exists()
+        assert text_path.exists()
+        assert json_path.name in saved
+        assert text_path.name in saved
+
+    @pytest.mark.unit
+    def test_best_beliefs_failure_does_not_abort_save(self, tmp_path):
+        """If best-agent writer raises, save_debate_outputs still returns (other files intact)."""
+        config = _make_config(tmp_path, save_transcript=True)
+        results = _make_best_belief_results()
+        # Controller with no matching agent will trigger select-best failure downstream.
+        controller = MagicMock()
+        controller.agents = []  # no agents → writer will raise
+
+        saved = save_debate_outputs(config, results, controller, _console())
+
+        # Transcript still gets written despite best-agent failure.
+        transcript = tmp_path / config.outputs.transcript_file
+        assert transcript.exists()
+        assert transcript.name in saved

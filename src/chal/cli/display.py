@@ -27,8 +27,6 @@ _STAGE_NAMES: Dict[int, str] = {
     3: "Rebuttals",
     4: "Adjudication",
     5: "Belief Updates",
-    6: "Concluding Remarks",
-    7: "Scribed Narrative",
 }
 
 _STAGE_ICONS: Dict[int, str] = {
@@ -38,8 +36,6 @@ _STAGE_ICONS: Dict[int, str] = {
     3: "\U0001f6e1\ufe0f",  # 🛡️
     4: "\u2696\ufe0f",  # ⚖️
     5: "\U0001f504",   # 🔄
-    6: "\U0001f3a4",   # 🎤
-    7: "\U0001f4dd",   # 📝
 }
 
 
@@ -306,6 +302,9 @@ class DebateDisplay:
         table.add_column("Losses", justify="right")
 
         for name, stats in agent_stats.items():
+            # Skip the "_debate_aggregate" sentinel inserted by finalize_agent_stats.
+            if name.startswith("_") or not isinstance(stats, dict):
+                continue
             score = stats.get("performance_score", 0)
             wins = stats.get("sustained", 0)
             losses = stats.get("overruled", 0)

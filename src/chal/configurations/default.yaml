@@ -166,10 +166,6 @@ outputs:
 
   # --- Narrative Outputs ---
 
-  # Scribed narrative synthesis (requires scribe.enabled = true)
-  save_synthesis: true
-  synthesis_file: "debate_synthesis.txt"
-
   # Clean markdown transcript of the debate (human-readable)
   save_transcript: true
   transcript_file: "debate_transcript.txt"
@@ -183,6 +179,11 @@ outputs:
   # Save final agent beliefs after all updates
   save_final_beliefs: true
   final_beliefs_file: "final_beliefs.txt"
+
+  # Best agent beliefs (the agent with the highest performance_score).
+  # Always emitted. The .json is raw CBS; the .txt is markdown.
+  best_beliefs_json_file: "best_initial_final_beliefs.json"
+  best_beliefs_text_file: "best_initial_final_beliefs.txt"
 
   # --- Analysis Outputs ---
 
@@ -213,28 +214,6 @@ outputs:
   debug_log_file: "log.txt"
 
 # ============================================================================
-# SCRIBE CONFIGURATION
-# ============================================================================
-# The scribe generates a flowing narrative synthesis of the entire debate
-scribe:
-  # Enable/disable Stage 7 scribing
-  # (Disable to save time during development)
-  enabled: true
-
-  # Model to use for narrative generation
-  model: "gpt-4o"
-
-  # Chunking parameters for long transcripts
-  max_chars_per_chunk: 15000           # Max characters per chunk (stay within context limits)
-  overlap_chars: 1000                  # Overlap between chunks for continuity
-
-  # Scribe generation settings
-  scribe_temperature: 0.3              # Slightly higher than generation_temperature for natural prose
-
-  # Style guidance for the narrative
-  style_hint: "formal, expository, research-paper tone with clear sectioning and didactic explanations"
-
-# ============================================================================
 # DEFENSE BOOST SETTINGS
 # ============================================================================
 # Mechanical strength increases for nodes that survive adversarial challenges.
@@ -259,7 +238,7 @@ defense_boost:
 # ============================================================================
 # Fire independent API calls concurrently within each stage to reduce latency.
 # Requires no code changes to agents — uses ThreadPoolExecutor internally.
-# Off by default; enable to speed up stages 1, 2, 3 (rebuttal), 4, and 6.
+# Off by default; enable to speed up stages 1, 2, 3 (rebuttal), and 4.
 #
 parallel:
   enabled: true                      # Master switch (default: false)

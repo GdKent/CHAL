@@ -189,28 +189,6 @@ class DebateRecorder:
             },
         })
 
-    def record_concluding_remarks(
-        self,
-        agent_id: str,
-        final_belief: Any,
-        remarks: Any,
-        raw_response: str,
-    ):
-        """Record a Stage 6 concluding remarks event."""
-        self.timeline.append({
-            "type": "concluding_remarks",
-            "round": None,
-            "stage": 6,
-            "agent_id": agent_id,
-            "inputs": {
-                "final_belief": final_belief,
-            },
-            "outputs": {
-                "remarks": remarks,
-                "raw_response": raw_response,
-            },
-        })
-
     def record_event(self, event_type: str, data: Dict[str, Any]):
         """Record a generic event in the timeline.
 

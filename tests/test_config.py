@@ -29,8 +29,7 @@ def test_default_config():
     assert config.agents[0].name == "Agent-Empiricist"
     assert config.agents[1].name == "Agent-Supernaturalist"
     assert config.adjudication.logic_weight == 1.0
-    assert config.outputs.save_synthesis == True
-    assert config.scribe.enabled == True
+    assert config.outputs.save_transcript == True
 
     print(f"✓ Config loaded successfully: {config.name}")
     print(f"  Topic: {config.topic}")
@@ -256,7 +255,7 @@ def test_to_dict_returns_dict():
     assert isinstance(d, dict)
     expected_keys = {
         "metadata", "debate", "agents", "adjudication",
-        "stages", "outputs", "scribe", "parallel", "defense_boost",
+        "stages", "outputs", "parallel", "defense_boost",
     }
     assert set(d.keys()) == expected_keys
 
@@ -297,7 +296,6 @@ def test_to_dict_round_trip():
             assert a_orig.provider == a_new.provider
         assert reloaded.adjudication.model == original.adjudication.model
         assert reloaded.adjudication.logic_weight == original.adjudication.logic_weight
-        assert reloaded.scribe.enabled == original.scribe.enabled
     finally:
         tmp_path.unlink()
 

@@ -3,15 +3,13 @@ debate_controller.py
 
 Orchestrates structured multi-agent philosophical debates using the CHAL Belief Schema.
 
-The DebateController manages a 7-stage debate process:
+The DebateController manages a 6-stage debate process:
 - Stage 0: Briefing - Initialize agents with personas and universal rules
 - Stage 1: Opening Positions - Agents state initial beliefs as structured JSON (CBS)
 - Stage 2: Cross-Examination - Agents ask targeted questions about opponents' claims/assumptions
 - Stage 3: Rebuttals - Agents respond to questions with structured answers and optional belief patches
 - Stage 4: Adjudication - Independent evaluator assesses challenge-rebuttal pairs
 - Stage 5: Belief Updates - Agents revise beliefs based on adjudication outcomes
-- Stage 6: Concluding Remarks - Agents synthesize their positions and concessions
-- Stage 7: Scribing - Generate a flowing narrative synthesis of the entire debate
 
 Features:
 - Structured belief tracking with JSON schemas (CBS)
@@ -33,7 +31,7 @@ from chal.agents.factory import create_agent
 from chal.agents.logic_systems import get_logic_system, get_logic_system_description
 from chal.agents.ethics_systems import get_ethics_system, get_ethics_system_description
 from chal.orchestrator.adjudicator import Adjudicator
-from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary, validate_stage2_questions
+from chal.utilities.utils import parse_challenges, parse_structured_rebuttals_numbered, initialize_agent_stats, update_agent_stats, display_agent_stats, calculate_performance_scores, get_performance_summary, validate_stage2_questions, snapshot_belief, finalize_agent_stats
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
 from chal.convergence import calculate_claim_agreement, calculate_definitional_alignment, format_convergence_summary, get_convergence_trajectory_summary
 from chal.beliefs.io import parse_model_output_to_belief, belief_to_markdown
@@ -57,7 +55,7 @@ class DebateController:
     """
     Orchestrates structured philosophical debates between multiple LLM agents.
 
-    The controller manages the complete debate lifecycle through 7 stages, maintains
+    The controller manages the complete debate lifecycle through 6 stages, maintains
     agent beliefs using the CHAL Belief Schema (CBS), tracks embeddings for
     visualization, and coordinates adjudication of challenge-rebuttal exchanges.
 
@@ -68,7 +66,6 @@ class DebateController:
         opening_positions: Initial belief statements from Stage 1
         full_transcript: Complete debate transcript as list of strings
         round_histories: Message history per round for context management
-        scribe_agent: Optional agent for generating narrative synthesis
     """
     def __init__(self, agents: List[Agent], max_rounds: int = 3, config: Optional[DebateConfig] = None,
                  key_pool=None):
@@ -81,11 +78,11 @@ class DebateController:
             config (Optional[DebateConfig]): Configuration object containing all debate parameters.
                 If None, a default configuration will be created.
             key_pool: Optional KeyPool instance for multi-key API key rotation.
-                When provided, internal agents (adjudicator, scribe) also get the pool.
+                When provided, the adjudicator also gets the pool.
         """
         self.agents = agents
         self.max_rounds = config.max_rounds if config and hasattr(config, 'max_rounds') else max_rounds
-        self.config = config  # Store config for accessing stage and scribe parameters
+        self.config = config  # Store config for accessing stage parameters
         self.topic = config.topic if config else ""
         self.key_pool = key_pool
 
@@ -132,17 +129,6 @@ class DebateController:
             ethics_weight=adj_cfg.ethics_weight,
             logic_sys=get_logic_system_description(adj_cfg.logic_system),
             ethics_sys=get_ethics_system_description(adj_cfg.ethics_system),
-        )
-
-        # Instantiate the scribe agent
-        scribe_model = config.scribe.model if config else "gpt-4o"
-        scribe_provider = config.adjudication.provider if config else "openai"
-        self.scribe_agent = create_agent(
-            name="Scribe",
-            model=scribe_model,
-            provider=scribe_provider,
-            system_prompt="",
-            key_pool=self.key_pool,
         )
 
         # Initialize agent statistics
@@ -517,6 +503,19 @@ class DebateController:
 
         self.opening_positions = [agent.internal_belief for agent in self.agents]
         self._log(f"Stage 1 complete - {len(self.opening_positions)} opening positions captured", "INFO")
+
+        # Capture each agent's initial_snapshot for expanded agent_stats tracking.
+        # Defensive: try/except per agent so a single degraded belief cannot derail
+        # the whole snapshot pass.
+        for agent in self.agents:
+            try:
+                belief_obj = agent.get_internal_belief_obj()
+            except Exception as e:
+                self._log(f"initial_snapshot: failed to read belief for {agent.name}: {e}", "WARNING")
+                belief_obj = None
+            self.agent_stats[agent.name]["initial_snapshot"] = snapshot_belief(
+                belief_obj if isinstance(belief_obj, dict) else {}
+            )
 
         return
 
@@ -1125,278 +1124,6 @@ class DebateController:
 
         return
 
-    def run_stage_6_concluding_remarks(self) -> dict:
-        """
-        Stage 6: Concluding Remarks
-
-        Each agent reflects on the outcome of the debate, what they learned,
-        what they still believe, and any changes in their stance.
-
-        Returns:
-            dict[str, str]: A mapping from agent names to their final concluding remarks.
-        """
-        # === DEBUG LOG ===
-        self._log_header("STAGE 6: CONCLUDING REMARKS")
-        self._log(f"Requesting concluding remarks from {len(self.agents)} agent(s)", "INFO")
-
-        # === MARKDOWN TRANSCRIPT ===
-        markdown_header = "\n# 🎤 Stage 6: Concluding Remarks\n"
-        self._add_to_markdown(markdown_header)
-        self._notify("stage_start", {"stage": 6, "name": "Concluding Remarks"})
-
-        self.conclusions = {}
-
-        # Pre-serialize the adjudicated pairs for context
-        cr_pairs_json = json.dumps(self.challenge_rebuttal_pairs, ensure_ascii=False, indent=2)
-        self._log(f"Challenge-rebuttal pairs JSON size: {len(cr_pairs_json)} chars", "DEBUG")
-
-        topic = self.topic if hasattr(self, "topic") else "<topic>"
-        current_round = self.current_round if hasattr(self, "current_round") else 1
-
-        # --- GATHER: Fire all conclusion calls in parallel ---
-        items = [
-            WorkItem(
-                key=agent.name,
-                callable=lambda a=agent: _generate_conclusion(
-                    agent=a, topic=topic, config=self.config,
-                    cr_pairs_json=cr_pairs_json, current_round=current_round,
-                ),
-                context={"agent": agent},
-            )
-            for agent in self.agents
-        ]
-        results = self.dispatcher.run(items)
-
-        # --- APPLY: Process results sequentially in deterministic agent order ---
-        for agent in self.agents:
-            name = agent.name
-            work_result = results[name]
-
-            self._log(f"\n--- Processing concluding remarks for: {name} ---", "INFO")
-
-            r = self._retry_on_parse_failure(
-                generate_fn=lambda a=agent: _generate_conclusion(
-                    agent=a, topic=topic, config=self.config,
-                    cr_pairs_json=cr_pairs_json, current_round=current_round,
-                ),
-                is_valid_fn=lambda r: True,
-                stage_label="Stage 6",
-                agent_name=name,
-                initial_result=work_result,
-            )
-
-            if r is None:
-                self.conclusions[name] = f"[All retry attempts failed for {name}]"
-                markdown_section = f"\n## {name} - Concluding Remarks\n\n[All retry attempts failed]\n"
-                self._add_to_markdown(markdown_section)
-                self._notify("agent_complete", {"agent_name": name, "stage": 6, "action": "Concluding remarks failed"})
-                continue
-
-            response = r["response"]
-            prompt = r["prompt"]
-            a_belief_obj = r["a_belief_obj"]
-
-            # Replay logs
-            self._log_prompt(name, prompt, "Stage 6 - Concluding Remarks")
-            self._log(f"Received response ({len(response.content)} chars)", "INFO")
-            self._log_response(name, response.content, "Stage 6 - Concluding Remarks")
-
-            self.round_histories[self.current_round_key].append(response)
-
-            # Try to parse {"conclusion": {...}} for structured logging
-            self._log("Parsing conclusion JSON block...", "INFO")
-            concl_obj = _extract_first_json_block(response.content)
-            if concl_obj and "conclusion" in concl_obj:
-                self._log_parse_result(True, f"Successfully parsed structured conclusion for {name}")
-                self.debug_log.append(f"\n--- PARSED CONCLUSION JSON ({name}) ---\n{json.dumps(concl_obj['conclusion'], ensure_ascii=False, indent=2)}\n--- END CONCLUSION ---\n")
-                self.conclusions[name] = concl_obj["conclusion"]
-                c = concl_obj["conclusion"]
-                ft = c.get("final_thesis", {})
-                lines = []
-                if ft.get("stance"):
-                    lines.append(f"**Final stance**: {ft['stance']}")
-                if ft.get("strength") is not None:
-                    lines.append(f"**Final strength**: {ft['strength']}")
-                if c.get("our_strongest_claims"):
-                    lines.append(f"**Strongest claims**: {', '.join(c['our_strongest_claims'])}")
-                if c.get("our_concessions"):
-                    lines.append("**Concessions**:")
-                    for con in c["our_concessions"]:
-                        lines.append(f"  - {con.get('target_id','?')} ({con.get('type','?')}): {con.get('note','')}")
-                if c.get("unresolved_uncertainties"):
-                    lines.append(f"**Unresolved uncertainties**: {', '.join(c['unresolved_uncertainties'])}")
-                markdown_content = "\n".join(lines)
-            else:
-                self._log_parse_result(False, f"No structured conclusion found for {name}, using raw text")
-                markdown_content = re.sub(r"```(?:json)?\s*", "", response.content).replace("```", "").strip()
-                self.conclusions[name] = markdown_content
-
-            # Record training data
-            if self.recorder:
-                self.recorder.record_concluding_remarks(
-                    agent_id=name,
-                    final_belief=a_belief_obj,
-                    remarks=self.conclusions[name],
-                    raw_response=response.content,
-                )
-
-            # Add to markdown transcript
-            markdown_section = f"\n## {name} - Concluding Remarks\n\n{markdown_content}\n"
-            self._add_to_markdown(markdown_section)
-            self._notify("agent_complete", {"agent_name": name, "stage": 6, "action": "Concluding remarks received"})
-
-        return self.conclusions
-
-    def run_stage_7_scribing(self, scribe_agent: Optional[Agent] = None, max_chars_per_chunk: Optional[int] = None, overlap_chars: Optional[int] = None) -> str:
-        """
-        Stage 7: Scribe a single, flowing narrative of the entire debate.
-
-        Parameters:
-        - scribe_agent: the LLM-backed agent to use for scribing. If None, we reuse the first agent.
-        - max_chars_per_chunk: per-chunk size to keep prompts within model context.
-        - overlap_chars: small overlap between chunks for continuity.
-
-        Flow:
-        - Map: for each chunk, call build_stage_7_scribe_prompt_map -> get continuity_update (JSON) + narrative slice (Markdown).
-        - Reduce: combine all slices with build_stage_7_scribe_prompt_reduce -> final Markdown narrative.
-
-        Side effects:
-        - self.scribed_transcript_markdown: final narrative (Markdown)
-        - Appends the final narrative to self.full_transcript for completeness.
-        """
-        # === DEBUG LOG ===
-        self._log_header("STAGE 7: SCRIBING")
-        self._log("Starting scribe synthesis - generating flowing narrative from debate", "INFO")
-
-        # === MARKDOWN TRANSCRIPT ===
-        markdown_header = "\n# 📝 Stage 7: Scribed Narrative\n"
-        self._add_to_markdown(markdown_header)
-        self._notify("stage_start", {"stage": 7, "name": "Scribed Narrative"})
-
-        scribe = scribe_agent
-        if scribe is None:
-            self._log("ERROR: No scribe agent available", "ERROR")
-            raise RuntimeError("No agent available for Stage 7 scribing.")
-
-        self._log(f"Using scribe agent: {scribe.name}", "INFO")
-
-        # Get chunking parameters from config or use defaults
-        if max_chars_per_chunk is None:
-            max_chars_per_chunk = self.config.scribe.max_chars_per_chunk if self.config else 15000
-        if overlap_chars is None:
-            overlap_chars = self.config.scribe.overlap_chars if self.config else 1000
-
-        # 1) Gather source transcript
-        full_text = "\n".join(str(x) for x in self.full_transcript)
-        self._log(f"Source transcript length: {len(full_text)} chars", "INFO")
-
-        # 2) Chunk it
-        chunks = _chunk_text_by_chars(full_text, max_chars=max_chars_per_chunk, overlap=overlap_chars)
-        self._log(f"Split transcript into {len(chunks)} chunk(s) (max={max_chars_per_chunk}, overlap={overlap_chars})", "INFO")
-
-        # 3) Map over chunks, maintaining a continuity state
-        continuity_state = {}  # grows over chunks
-        narrative_slices = []
-        agent_names = [a.name for a in self.agents]
-
-        for idx, ch in enumerate(chunks, start=1):
-            self._log(f"\n--- Processing chunk {idx}/{len(chunks)} ({len(ch)} chars) ---", "INFO")
-
-            short_note_max = self.config.stages.short_note_max_chars if self.config else 140
-            prompt = prompts.build_stage_7_scribe_prompt_map(
-                topic=getattr(self, "topic", "<topic>"),
-                agent_names=agent_names,
-                transcript_chunk=ch,
-                continuity_state_json=json.dumps(continuity_state, ensure_ascii=False, indent=2),
-                short_note_max_chars=short_note_max
-            )
-
-            # Log prompt
-            self._log_prompt(scribe.name, prompt, f"Stage 7 Map - Chunk {idx}/{len(chunks)}")
-
-            stage_request = [Message(role="user", content=prompt)]
-
-            scribe_temp = self.config.scribe.scribe_temperature if self.config else 0.3
-            self._log(f"Calling scribe for chunk {idx}...", "INFO")
-            resp = scribe.generate(stage_request, temperature=scribe_temp)
-            self._log(f"Received response ({len(resp.content)} chars)", "INFO")
-
-            # Log raw response
-            self._log_response(scribe.name, resp.content, f"Stage 7 Map - Chunk {idx}/{len(chunks)}")
-
-            self.round_histories[self.current_round_key].append(resp)
-
-            # Parse continuity JSON + narrative slice
-            self._log("Parsing continuity update and narrative slice...", "INFO")
-            first_json = _extract_first_json_block(resp.content) or {}
-            cont_update = (first_json.get("continuity_update") or {})
-
-            if cont_update:
-                self._log(f"Continuity update keys: {list(cont_update.keys())}", "DEBUG")
-                self.debug_log.append(f"\n--- CONTINUITY UPDATE CHUNK {idx} ---\n{json.dumps(cont_update, ensure_ascii=False, indent=2)}\n--- END CONTINUITY ---\n")
-
-            # Merge continuity updates shallowly
-            for k, v in (cont_update or {}).items():
-                if isinstance(v, dict):
-                    # If target is not a dict yet, replace; else shallow-merge
-                    if not isinstance(continuity_state.get(k), dict):
-                        continuity_state[k] = {}
-                    # Shallow merge is usually enough for our fields
-                    continuity_state[k].update(v)
-                elif isinstance(v, list):
-                    # Ensure target is a list, then dedupe-extend
-                    if not isinstance(continuity_state.get(k), list):
-                        continuity_state[k] = []
-                    _dedupe_extend(continuity_state[k], v)
-                else:
-                    # Scalars: last write wins
-                    continuity_state[k] = v
-
-            narrative_md = _extract_first_markdown_block(resp.content) or ""
-            narrative_slices.append(narrative_md)
-
-            self._log(f"Extracted narrative slice ({len(narrative_md)} chars)", "INFO")
-            self._log(f"Cumulative continuity state keys: {list(continuity_state.keys())}", "DEBUG")
-            self._notify("agent_complete", {"agent_name": "Scribe", "stage": 7, "action": f"Chunk {idx}/{len(chunks)}: {len(narrative_md)} chars"})
-
-        # 4) Reduce: stitch all slices into a single cohesive narrative
-        self._log("\n--- REDUCE PHASE: Synthesizing final narrative ---", "INFO")
-        self._log(f"Combining {len(narrative_slices)} narrative slice(s)", "INFO")
-
-        reduce_prompt = prompts.build_stage_7_scribe_prompt_reduce(
-            topic=getattr(self, "topic", "<topic>"),
-            agent_names=agent_names,
-            all_narrative_slices_markdown=narrative_slices,
-            final_continuity_state_json=json.dumps(continuity_state, ensure_ascii=False, indent=2)
-        )
-
-        # Log prompt
-        self._log_prompt(scribe.name, reduce_prompt, "Stage 7 Reduce - Final Synthesis")
-
-        reduce_request = [Message(role="user", content=reduce_prompt)]
-
-        scribe_temp = self.config.scribe.scribe_temperature if self.config else 0.3
-        self._log("Calling scribe for final synthesis...", "INFO")
-        reduce_resp = scribe.generate(reduce_request, temperature=scribe_temp)
-        self._log(f"Received final synthesis ({len(reduce_resp.content)} chars)", "INFO")
-
-        # Log raw response
-        self._log_response(scribe.name, reduce_resp.content, "Stage 7 Reduce - Final Synthesis")
-
-        self.round_histories[self.current_round_key].append(reduce_resp)
-
-        final_md = _extract_first_markdown_block(reduce_resp.content) or reduce_resp.content.strip()
-        self.scribed_transcript_markdown = final_md
-
-        self._log(f"Final narrative length: {len(final_md)} chars", "INFO")
-        self._log("Stage 7 complete - scribed narrative generated", "INFO")
-
-        # Add to markdown transcript
-        self._add_to_markdown(f"\n{final_md}\n")
-        self._notify("stage_complete", {"stage": 7, "name": "Scribed Narrative"})
-
-        return final_md
-
     def run(self, topic: str, personas: dict[str, str],
             progress_callback: Optional[Callable[[str, Dict[str, Any]], None]] = None,
             on_error: Optional[Callable[[str, Exception, int], str]] = None) -> dict:
@@ -1414,7 +1141,8 @@ class DebateController:
                     If None, errors propagate normally.
 
             Returns:
-                dict: Contains final positions, conclusions, and synthesis.
+                dict: Contains initial positions, final positions, transcript,
+                debug log, and agent statistics.
             """
             self._progress_callback = progress_callback
             self._on_error = on_error
@@ -1483,6 +1211,20 @@ class DebateController:
 
                 # Calculate performance scores after each round
                 self.agent_stats = calculate_performance_scores(self.agent_stats)
+
+                # Capture per-round snapshot (thesis_strength + component counts)
+                # for each agent, after Stage 5 beliefs and this round's performance
+                # scores are settled.
+                round_key = f"round_{round_num}"
+                for agent in self.agents:
+                    try:
+                        belief_obj = agent.get_internal_belief_obj()
+                    except Exception as e:
+                        self._log(f"{round_key} snapshot: failed to read belief for {agent.name}: {e}", "WARNING")
+                        belief_obj = None
+                    self.agent_stats[agent.name]["per_round"][round_key] = snapshot_belief(
+                        belief_obj if isinstance(belief_obj, dict) else {}
+                    )
 
                 # Log performance summary for this round
                 perf_summary = get_performance_summary(self.agent_stats)
@@ -1571,11 +1313,18 @@ class DebateController:
                 except Exception as e:
                     self._log(f"Warning: Failed to generate belief graph visualization: {e}", "WARNING")
 
-            # Stage 6: Concluding Reflections
-            self.run_stage_6_concluding_remarks()
-
             # Calculate final performance scores
             self.agent_stats = calculate_performance_scores(self.agent_stats)
+
+            # Assemble expanded stats: attack histograms, adjudicator verdicts,
+            # final_snapshot per agent, and the top-level "_debate_aggregate"
+            # sentinel summarising debate-wide totals.
+            self.agent_stats = finalize_agent_stats(
+                self.agent_stats,
+                self.challenge_rebuttal_pairs,
+                self.agents,
+                self.max_rounds,
+            )
 
             # Log agent stats (display handled by callback / display layer)
             self._log(f"Final agent stats: {json.dumps(self.agent_stats, default=str)}", "INFO")
@@ -1588,10 +1337,6 @@ class DebateController:
                 if self.config.convergence.display_in_final_summary and self.convergence_history:
                     conv_trajectory = get_convergence_trajectory_summary(self.convergence_history)
                     self._log(f"\n{conv_trajectory}", "INFO")
-
-            # Stage 7: Scribe Summary
-            # Instantiate Scribe with transcript
-            self.final_synthesis = self.run_stage_7_scribing(self.scribe_agent)
 
             # Export training data (if enabled)
             if self.recorder and self.config:
@@ -1643,7 +1388,7 @@ class DebateController:
 
             # Final logging
             self._log_header("DEBATE COMPLETE")
-            self._log(f"Total stages completed: 8 (including briefing)", "INFO")
+            self._log(f"Total stages completed: 6 (including briefing)", "INFO")
             self._log(f"Debug log entries: {len(self.debug_log)}", "INFO")
             self._log(f"Markdown transcript entries: {len(self.markdown_transcript)}", "INFO")
 
@@ -1655,8 +1400,6 @@ class DebateController:
             return {
                 "initial_positions": self.opening_positions,
                 "final_positions": [agent.internal_belief for agent in self.agents],
-                "conclusions": self.conclusions,
-                "synthesis": self.final_synthesis,
                 "full_transcript": "\n".join(self.full_transcript),  # Legacy: markdown transcript
                 "markdown_transcript": "\n".join(self.markdown_transcript),  # New: clean markdown
                 "debug_log": "\n".join(self.debug_log),  # New: comprehensive debug log
@@ -1981,47 +1724,6 @@ def _run_adjudication(adjudicator, entry, agent_by_name, max_retries=3, log_fn=N
     )
 
     return {"resolution": resolution}
-
-
-def _generate_conclusion(agent, topic, config, cr_pairs_json, current_round) -> dict:
-    """Pure function: generate concluding remarks for one agent.
-
-    Returns a dict of results for the sequential apply step.
-    """
-    name = agent.name
-    a_belief_obj = agent.get_internal_belief_obj()
-    a_belief_json = json.dumps(a_belief_obj, ensure_ascii=False, indent=2) if a_belief_obj else ""
-
-    changelog_entries = []
-    for i, belief_json_str in enumerate(agent.all_beliefs_held):
-        try:
-            belief = json.loads(belief_json_str) if isinstance(belief_json_str, str) else belief_json_str
-            for entry in belief.get("changelog", []):
-                changelog_entries.append(
-                    f"v{entry.get('version', i+1)}: {'; '.join(entry.get('changes', []))}"
-                )
-        except Exception:
-            pass
-    belief_changelog_summary = "\n".join(changelog_entries) if changelog_entries else "(no changelog available)"
-
-    prompt = prompts.build_stage_6_conclusion_prompt(
-        topic=topic,
-        agent_name=name,
-        agent_belief_json=a_belief_json,
-        belief_changelog_summary=belief_changelog_summary,
-        num_rounds=current_round,
-        persona_label=agent.persona_label if hasattr(agent, "persona_label") else ""
-    )
-
-    stage_request = [Message(role="user", content=prompt)]
-    generation_temp = config.stages.generation_temperature if config else 0.2
-    response = agent.generate(stage_request, temperature=generation_temp)
-
-    return {
-        "response": response,
-        "prompt": prompt,
-        "a_belief_obj": a_belief_obj,
-    }
 
 
 def _apply_patches_and_validate(
@@ -2642,11 +2344,6 @@ def _extract_all_json_blocks(text: str) -> List[str]:
             i += 1
     return raw_blocks
 
-def _extract_first_markdown_block(text: str) -> Optional[str]:
-    m = re.search(r"```markdown\s*(.*?)\s*```", text, flags=re.DOTALL)
-    return m.group(1).strip() if m else None
-
-
 def summarize_changes(patches: list, before: dict, after: dict) -> str:
     """Produce a human-readable summary of what changed between two belief states.
 
@@ -2968,47 +2665,6 @@ def filter_strength_increases(phase2_patches: list, intermediate_belief: dict) -
             filtered.append(patch)
 
     return filtered
-
-def _key_for_dedupe(x: Any) -> str:
-    """
-    Make a stable, hashable key for heterogeneous items.
-    - dict/list -> JSON string with sorted keys
-    - other     -> str(x)
-    """
-    if isinstance(x, (dict, list)):
-        return json.dumps(x, sort_keys=True, ensure_ascii=False)
-    return str(x)
-
-def _dedupe_extend(base_list: List[Any], new_items: Optional[List[Any]]) -> None:
-    """
-    Extend base_list with new_items, preserving order and removing duplicates
-    using _key_for_dedupe.
-    """
-    seen = {_key_for_dedupe(it) for it in base_list}
-    for it in new_items or []:
-        k = _key_for_dedupe(it)
-        if k not in seen:
-            base_list.append(it)
-            seen.add(k)
-
-# --- Helper: naive chunker by characters (keeps it dependency-free) ---
-def _chunk_text_by_chars(s: str, max_chars: int = 8000, overlap: int = 500) -> list[str]:
-    """
-    Breaks text into chunks of ~max_chars with small overlaps.
-    Overlap preserves context between chunks for coherence.
-    """
-    s = s or ""
-    if len(s) <= max_chars: 
-        return [s]
-    chunks = []
-    i = 0
-    while i < len(s):
-        j = min(i + max_chars, len(s))
-        chunks.append(s[i:j])
-        if j == len(s):
-            break
-        i = max(0, j - overlap)
-    return chunks
 
 def chunk_transcript_by_tokens(text: str, max_tokens: int = 10000, model: str = "gpt-4o") -> list[str]:
     """

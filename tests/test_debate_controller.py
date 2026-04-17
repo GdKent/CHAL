@@ -11,8 +11,6 @@ Tests cover:
 - Stage 3: Rebuttals
 - Stage 4: Adjudication
 - Stage 5: Belief Updates
-- Stage 6: Concluding Remarks
-- Stage 7: Scribing
 - Multi-round workflow
 - Logging and transcripts
 - Error handling
@@ -87,7 +85,6 @@ def mock_agents(mock_openai_responses):
         mock_openai_responses["cross_examination_3"]["content"],
         mock_openai_responses["rebuttals_3"]["content"],
         mock_openai_responses["belief_update_patches"]["content"],
-        mock_openai_responses["concluding_remarks"]["content"]
     ])
 
     agent_b = create_mock_agent("Agent-B", responses=[
@@ -95,7 +92,6 @@ def mock_agents(mock_openai_responses):
         mock_openai_responses["cross_examination_3"]["content"],
         mock_openai_responses["rebuttals_3"]["content"],
         mock_openai_responses["belief_update_patches"]["content"],
-        mock_openai_responses["concluding_remarks"]["content"]
     ])
 
     return [agent_a, agent_b]
@@ -132,15 +128,6 @@ def test_debate_controller_creates_adjudicator(simple_config, mock_agents):
 
     assert hasattr(controller, "adjudicator")
     assert controller.adjudicator is not None
-
-
-@pytest.mark.integration
-def test_debate_controller_creates_scribe(simple_config, mock_agents):
-    """Test that scribe agent is created if enabled."""
-    controller = DebateController(mock_agents, config=simple_config)
-
-    # Scribe creation depends on config
-    assert hasattr(controller, "scribe") or hasattr(controller, "scribe_agent")
 
 
 @pytest.mark.integration
@@ -436,65 +423,7 @@ def test_belief_updates_enforce_critique_valid(simple_config, mock_agents):
 
 
 # ==============================================
-# 8. Stage 6: Concluding Remarks Tests
-# ==============================================
-
-@pytest.mark.integration
-def test_run_stage_6_concluding_remarks(simple_config, mock_agents):
-    """Test that agents generate conclusions."""
-    controller = DebateController(mock_agents, config=simple_config)
-
-    controller.run_stage_1_opening_positions(simple_config.topic)
-    controller.run_stage_6_concluding_remarks()
-
-    # Concluding remarks should be generated
-    assert True
-
-
-@pytest.mark.integration
-def test_concluding_remarks_reflect_evolution(simple_config, mock_agents):
-    """Test that conclusions mention belief changes."""
-    controller = DebateController(mock_agents, config=simple_config)
-
-    controller.run_stage_1_opening_positions(simple_config.topic)
-    controller.run_stage_2_cross_examination()
-    controller.run_stage_3_rebuttals()
-    controller.run_stage_4_conflict_resolution()
-    controller.run_stage_5_update_positions()
-    controller.run_stage_6_concluding_remarks()
-
-    # Should reference evolution
-    assert True
-
-
-# ==============================================
-# 9. Stage 7: Scribing Tests
-# ==============================================
-
-@pytest.mark.integration
-def test_run_stage_7_scribing(simple_config, mock_agents):
-    """Test that scribe generates narrative synthesis."""
-    pytest.skip("Full run() creates real adjudicator/scribe agents that require API keys")
-
-
-@pytest.mark.integration
-def test_scribing_map_reduce(simple_config, mock_agents):
-    """Test that scribing processes in chunks with overlap."""
-    # Long debate transcript
-    controller = DebateController(mock_agents, config=simple_config)
-
-    # Implementation-dependent
-    assert True
-
-
-@pytest.mark.integration
-def test_scribing_disabled(simple_config, mock_agents):
-    """Test that scribing is skipped if scribe.enabled=False."""
-    pytest.skip("Full run() creates real adjudicator/scribe agents that require API keys")
-
-
-# ==============================================
-# 10. Multi-Round Workflow Tests
+# 8. Multi-Round Workflow Tests
 # ==============================================
 
 @pytest.mark.integration
@@ -524,8 +453,8 @@ def test_multi_round_debate():
 
         controller = DebateController(mock_agents, config=config)
 
-        # Full run() creates real adjudicator/scribe agents
-        pytest.skip("Full run() creates real adjudicator/scribe agents that require API keys")
+        # Full run() creates real adjudicator agents
+        pytest.skip("Full run() creates real adjudicator agents that require API keys")
 
 
 @pytest.mark.integration

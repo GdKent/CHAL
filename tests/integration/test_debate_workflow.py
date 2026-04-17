@@ -3,7 +3,7 @@ Integration tests for complete debate workflows.
 
 All tests use mocked agents - no API calls.
 NOTE: Tests that call controller.run() are skipped because the controller
-creates real adjudicator/scribe agents in __init__ that require API keys.
+creates a real adjudicator agent in __init__ that requires API keys.
 
 Tests cover:
 - Single-round debate flow
@@ -22,7 +22,7 @@ from chal.orchestrator.debate_controller import DebateController
 from chal.config import DebateConfig, AgentConfig, AdjudicationConfig, OutputConfig
 from tests.utils import create_mock_agent, create_mock_belief_response, create_sample_belief
 
-SKIP_MSG = "controller.run() creates real adjudicator/scribe agents that require API keys"
+SKIP_MSG = "controller.run() creates a real adjudicator agent that requires API keys"
 
 
 # ==============================================
@@ -31,7 +31,7 @@ SKIP_MSG = "controller.run() creates real adjudicator/scribe agents that require
 
 @pytest.mark.integration
 def test_single_round_debate():
-    """Test complete single-round debate flow (Stages 0-7)."""
+    """Test complete single-round debate flow (Stages 0-5)."""
     mock_agents = [
         create_mock_agent("Agent-A", responses=[
             create_mock_belief_response(create_sample_belief(belief_id="A-R1")),
@@ -189,7 +189,7 @@ def test_output_generation_integration():
             adjudication=AdjudicationConfig(),
             outputs=OutputConfig(
                 storage_dir=storage_dir,
-                save_synthesis=True,
+                save_transcript=True,
                 plot_trajectories=True
             )
         )

@@ -1127,8 +1127,10 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                     if not isinstance(item["statement"], str) or not item["statement"].strip():
                         err(i, "add_counterposition statement must be a non-empty string")
                 if "my_response" in item:
-                    if not isinstance(item["my_response"], str) or not item["my_response"].strip():
-                        err(i, "add_counterposition my_response must be a non-empty string")
+                    sufficiency = item.get("response_sufficiency", "")
+                    if sufficiency != "unaddressed":
+                        if not isinstance(item["my_response"], str) or not item["my_response"].strip():
+                            err(i, "add_counterposition my_response must be a non-empty string (required when response_sufficiency is not 'unaddressed')")
                 # Track new ID for forward references within the batch
                 if i not in errors:
                     counterposition_ids.add(item["id"])

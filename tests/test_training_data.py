@@ -216,23 +216,6 @@ class TestRecordMethods:
         assert len(event["outputs"]["patches_applied"]) == 1
 
     @pytest.mark.unit
-    def test_record_concluding_remarks(self):
-        recorder = _make_recorder()
-        belief = create_sample_belief()
-        recorder.record_concluding_remarks(
-            agent_id="Agent-A",
-            final_belief=belief,
-            remarks="My conclusion",
-            raw_response="raw",
-        )
-
-        event = recorder.timeline[0]
-        assert event["type"] == "concluding_remarks"
-        assert event["stage"] == 6
-        assert event["round"] is None
-        assert event["outputs"]["remarks"] == "My conclusion"
-
-    @pytest.mark.unit
     def test_set_round(self):
         recorder = _make_recorder()
         recorder.set_round(2)

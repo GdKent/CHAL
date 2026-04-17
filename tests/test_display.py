@@ -384,14 +384,14 @@ class TestStageMetadata:
 
     @pytest.mark.unit
     def test_all_stages_have_names(self):
-        """All 8 stages (0-7) have entries in _STAGE_NAMES."""
-        for i in range(8):
+        """All 6 stages (0-5) have entries in _STAGE_NAMES."""
+        for i in range(6):
             assert i in _STAGE_NAMES
 
     @pytest.mark.unit
     def test_all_stages_have_icons(self):
-        """All 8 stages (0-7) have entries in _STAGE_ICONS."""
-        for i in range(8):
+        """All 6 stages (0-5) have entries in _STAGE_ICONS."""
+        for i in range(6):
             assert i in _STAGE_ICONS
 
 
@@ -458,11 +458,11 @@ class TestPostDebateSummary:
         """output_files_saved event shows file names."""
         display, buf = _make_display()
         display.handle_event("output_files_saved", {
-            "files": ["transcript.txt", "synthesis.txt", "stats.json"],
+            "files": ["transcript.txt", "final_beliefs.txt", "stats.json"],
         })
         output = _get_output(buf)
         assert "transcript.txt" in output
-        assert "synthesis.txt" in output
+        assert "final_beliefs.txt" in output
         assert "stats.json" in output
 
 

@@ -34,7 +34,6 @@ from chal.agents.prompts import (
     build_stage_5_belief_update_prompt_cbs,
     build_stage_5_phase1_enforcement_prompt,
     build_stage_5_phase2_introspection_prompt,
-    build_stage_6_conclusion_prompt,
     build_adjudicator_per_pair_prompt,
 )
 
@@ -458,61 +457,6 @@ def test_build_stage_5_belief_update_prompt():
 
     assert isinstance(prompt, str)
     assert "Agent-B" in prompt or "critique" in prompt.lower()
-
-
-@pytest.mark.unit
-def test_build_stage_6_conclusion_prompt():
-    """Test building Stage 6 conclusion prompt."""
-    from chal.agents.prompts import build_stage_6_conclusion_prompt
-
-    belief_changelog_summary = "v1: Initial belief formation\nv2: Lowered C1 confidence to 0.7"
-
-    prompt = build_stage_6_conclusion_prompt(
-        topic="Future of AI",
-        agent_name="Agent-Futurist",
-        agent_belief_json='{"thesis": {"statement": "Final position"}}',
-        belief_changelog_summary=belief_changelog_summary,
-        num_rounds=2,
-        persona_label="EMPIRICIST"
-    )
-
-    assert isinstance(prompt, str)
-    assert "Future of AI" in prompt
-    assert len(prompt) > 100
-
-
-@pytest.mark.unit
-def test_build_stage_7_scribe_prompt_map():
-    """Test building Stage 7 map phase scribe prompt."""
-    from chal.agents.prompts import build_stage_7_scribe_prompt_map
-
-    prompt = build_stage_7_scribe_prompt_map(
-        topic="Technology",
-        agent_names=["Agent-A", "Agent-B"],
-        transcript_chunk="Agent-A said X. Agent-B said Y.",
-        continuity_state_json='{"themes": []}'
-    )
-
-    assert isinstance(prompt, str)
-    assert "Technology" in prompt or "Agent-A" in prompt
-
-
-@pytest.mark.unit
-def test_build_stage_7_scribe_prompt_reduce():
-    """Test building Stage 7 reduce phase scribe prompt."""
-    from chal.agents.prompts import build_stage_7_scribe_prompt_reduce
-
-    narrative_slices = ["## Section 1\nContent 1", "## Section 2\nContent 2"]
-
-    prompt = build_stage_7_scribe_prompt_reduce(
-        topic="Philosophy",
-        agent_names=["Agent-A", "Agent-B"],
-        all_narrative_slices_markdown=narrative_slices,
-        final_continuity_state_json='{"themes": ["theme1"]}'
-    )
-
-    assert isinstance(prompt, str)
-    assert "Philosophy" in prompt or "Section 1" in prompt
 
 
 # ==============================================
@@ -952,18 +896,6 @@ def test_stage_5_self_check_includes_thesis_strength():
 
 
 @pytest.mark.unit
-def test_stage_6_uses_strength():
-    """Stage 6 conclusion prompt should use 'strength' not 'confidence'."""
-    prompt = build_stage_6_conclusion_prompt(
-        topic="Test", agent_name="A",
-        agent_belief_json='{}',
-        belief_changelog_summary="v1: initial"
-    )
-    assert '"strength"' in prompt
-    assert '"confidence"' not in prompt
-
-
-@pytest.mark.unit
 def test_adjudicator_prompt_threshold_in_scoring():
     """Adjudicator prompt scoring section includes the threshold value."""
     prompt = build_adjudicator_prompt(
@@ -1278,12 +1210,6 @@ def test_build_debate_context_helper():
         {"agent_name": "A", "intermediate_belief_json": "{}",
          "phase1_changes_summary": "none"},
         "Belief update (strategic) — strengthening your position",
-    ),
-    (
-        build_stage_6_conclusion_prompt,
-        {"topic": "Test", "agent_name": "A", "agent_belief_json": "{}",
-         "belief_changelog_summary": "none"},
-        "Conclusion — producing your final synthesis",
     ),
 ])
 def test_debate_context_in_standard_prompts(builder, kwargs, expected_description):
@@ -2381,3 +2307,232 @@ def test_adjudicator_prompt_contains_critical_json_warning():
         "Adjudicator prompt should warn that JSON must be outside reasoning tags"
     assert "UNRESOLVED" in prompt, \
         "Adjudicator prompt should warn about UNRESOLVED consequence"
+
+
+# ==============================================
+# Strength Scale Constant Tests (Phase 0)
+# ==============================================
+
+@pytest.mark.unit
+def test_strength_scale_block_constant_shape():
+    """The shared _STRENGTH_SCALE_BLOCK constant must contain every required
+    label, range, and wrapping tag. This test pins the semantics of the scale
+    so that edits require explicit intent."""
+    from chal.agents.prompts import _STRENGTH_SCALE_BLOCK
+
+    # Wrapping tags
+    assert _STRENGTH_SCALE_BLOCK.startswith("<strength_scale>")
+    assert _STRENGTH_SCALE_BLOCK.rstrip().endswith("</strength_scale>")
+
+    # All 8 labels
+    for label in ["Vacuous", "Weak", "Contested", "Threshold",
+                  "Moderate", "Strong", "Robust", "Definitive"]:
+        assert label in _STRENGTH_SCALE_BLOCK, f"Missing label: {label}"
+
+    # Range boundaries
+    for rng in ["0.0", "0.1-0.3", "0.3-0.5", "0.5-0.7",
+                "0.7-0.9", "0.9-1.0", "1.0"]:
+        assert rng in _STRENGTH_SCALE_BLOCK, f"Missing range: {rng}"
+
+    # Shared-semantics preamble
+    assert "All strength values" in _STRENGTH_SCALE_BLOCK
+    assert "common scale" in _STRENGTH_SCALE_BLOCK
+
+
+# ==============================================
+# Stage 2 Strength Scale Injection Tests (Phase 2A)
+# ==============================================
+
+@pytest.mark.unit
+def test_stage_2_includes_strength_scale():
+    """Stage 2 (cross-examination) must expose the shared strength scale so
+    agents can execute challenge_strength_calibration and expose_weak_foundation
+    attacks with consistent semantics."""
+    prompt = build_stage_2_prompt(
+        topic="Does free will exist?",
+        agent_name="A",
+        opponent_name="B",
+        agent_belief_json="{}",
+        opponent_belief_json="{}",
+    )
+    assert "<strength_scale>" in prompt
+    assert "</strength_scale>" in prompt
+    assert "Vacuous" in prompt and "Robust" in prompt
+    # Scale must appear *before* the attack taxonomy so the agent sees it
+    # while composing calibration-targeting attacks.
+    assert prompt.index("<strength_scale>") < prompt.index("<attack_taxonomy>")
+
+
+# ==============================================
+# Stage 3 Strength Scale Injection Tests (Phase 2B)
+# ==============================================
+
+@pytest.mark.unit
+def test_stage_3_includes_strength_scale():
+    """Stage 3 (rebuttals) must expose the shared strength scale so the
+    defender can justify patch-driven strength adjustments against the same
+    calibration semantics as the original beliefs."""
+    prompt = build_stage_3_structured_rebuttal_prompt(
+        topic="Does free will exist?",
+        agent_name="A",
+        opponent_name="B",
+        received_questions_json="{}",
+        agent_belief_json="{}",
+    )
+    assert "<strength_scale>" in prompt
+    assert "</strength_scale>" in prompt
+    assert "Vacuous" in prompt and "Robust" in prompt
+    # Scale must appear before the rebuttal instructions
+    assert prompt.index("<strength_scale>") < prompt.index("<instructions>")
+
+
+# ==============================================
+# Adjudicator Strength Scale Injection Tests (Phase 2C)
+# ==============================================
+
+@pytest.mark.unit
+def test_adjudicator_prompt_includes_strength_scale():
+    """The adjudicator system prompt must carry the shared strength scale so
+    that calibration-targeting challenges (challenge_strength_calibration,
+    expose_weak_foundation) are evaluated against the same semantics agents
+    used when assigning the strengths in the first place."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.5,
+        ethics_weight=0.5,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<strength_scale>" in prompt
+    assert "</strength_scale>" in prompt
+    for label in ["Vacuous", "Weak", "Contested",
+                  "Moderate", "Strong", "Robust", "Definitive"]:
+        assert label in prompt, f"Missing label: {label}"
+    # Scale must appear between </criteria> and <anti_bias>
+    assert prompt.index("</criteria>") < prompt.index("<strength_scale>")
+    assert prompt.index("<strength_scale>") < prompt.index("<anti_bias>")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("logic_weight,ethics_weight", [
+    (1.0, 0.0),  # logic-only
+    (0.0, 1.0),  # ethics-only
+    (0.5, 0.5),  # balanced
+])
+def test_adjudicator_prompt_strength_scale_all_modes(logic_weight, ethics_weight):
+    """Strength scale must be present regardless of adjudication mode."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=logic_weight,
+        ethics_weight=ethics_weight,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<strength_scale>" in prompt
+    assert "Vacuous" in prompt and "Robust" in prompt
+
+
+# ==============================================
+# Cross-Stage Regression Harness & Negative Guards (Phase 3)
+# ==============================================
+
+def _all_scale_bearing_prompts():
+    """Registry of (label, prompt_text) tuples for every prompt that must
+    carry the shared strength scale. If any of these diverge from the
+    canonical constant, something broke."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+
+    _sample_pairs = [{
+        "challenger": "Agent-B",
+        "challenge": "Your C1 is weak because E1 is outdated",
+        "rebuttal": "E1 was replicated in 2025 with consistent results",
+        "resolution": {
+            "status": "critique_valid",
+            "reasoning": "Insufficient replication evidence",
+        },
+    }]
+    _sample_belief_json = (
+        '{"thesis": {"stance": "test", "strength": 0.7}, "claims": []}'
+    )
+    _intermediate_belief_json = (
+        '{"thesis": {"stance": "intermediate", "strength": 0.6}, '
+        '"claims": [{"id": "C1", "strength": 0.5}]}'
+    )
+    _phase1_summary = "- Updated C1: strength->0.5\n- Thesis strength: weaken"
+
+    results = []
+    results.append(("stage_1", build_stage_1_belief_prompt_cbs(
+        topic="T", agent_name="A", persona_label="P",
+    )))
+    results.append(("stage_2", build_stage_2_prompt(
+        topic="T", agent_name="A", opponent_name="B",
+        agent_belief_json="{}", opponent_belief_json="{}",
+    )))
+    results.append(("stage_3", build_stage_3_structured_rebuttal_prompt(
+        topic="T", agent_name="A", opponent_name="B",
+        received_questions_json="{}", agent_belief_json="{}",
+    )))
+    results.append(("stage_4_adjudicator", build_adjudicator_prompt(
+        logic_weight=0.5, ethics_weight=0.5,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )))
+    results.append(("stage_5_main", build_stage_5_belief_update_prompt_cbs(
+        agent_name="A",
+        challenge_rebuttal_pairs=_sample_pairs,
+        prior_belief_json=_sample_belief_json,
+    )))
+    results.append(("stage_5_phase1", build_stage_5_phase1_enforcement_prompt(
+        agent_name="A",
+        challenge_rebuttal_pairs=_sample_pairs,
+        prior_belief_json=_sample_belief_json,
+    )))
+    results.append(("stage_5_phase2", build_stage_5_phase2_introspection_prompt(
+        agent_name="A",
+        intermediate_belief_json=_intermediate_belief_json,
+        phase1_changes_summary=_phase1_summary,
+    )))
+    return results
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("label,prompt", _all_scale_bearing_prompts())
+def test_all_scale_bearing_prompts_contain_exact_constant(label, prompt):
+    """Every stage that must expose the shared scale contains the exact
+    canonical constant. Protects against accidental local edits that
+    would desynchronize the semantics."""
+    from chal.agents.prompts import _STRENGTH_SCALE_BLOCK
+    assert _STRENGTH_SCALE_BLOCK in prompt, (
+        f"{label} prompt is missing the canonical _STRENGTH_SCALE_BLOCK"
+    )
+
+
+@pytest.mark.unit
+def test_universal_prompt_has_calibration_hint_not_full_scale():
+    """The universal (Stage 0) prompt intentionally contains only a brief
+    one-line calibration hint. The full scale is reserved for stage-
+    specific user prompts to avoid bloating the system prompt."""
+    prompt = build_universal_prompt("T")
+    assert "<strength_scale>" not in prompt
+    # But the brief calibration hint remains ("0.9 means ~10% chance...")
+    assert "0.9" in prompt
+
+
+@pytest.mark.unit
+def test_strength_scale_literal_appears_exactly_once_in_prompts_source():
+    """There must be exactly one literal <strength_scale> block in
+    prompts.py — inside _STRENGTH_SCALE_BLOCK. Any additional literal
+    occurrence indicates a local copy-paste that should reuse the constant."""
+    from pathlib import Path
+    import chal.agents.prompts as prompts_mod
+    src = Path(prompts_mod.__file__).read_text(encoding="utf-8")
+    # Exactly one opening tag and one closing tag (both inside the constant).
+    assert src.count("<strength_scale>") == 1, (
+        "Exactly one <strength_scale> opening tag should exist in "
+        "prompts.py source (inside _STRENGTH_SCALE_BLOCK)."
+    )
+    assert src.count("</strength_scale>") == 1

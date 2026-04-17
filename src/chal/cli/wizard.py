@@ -89,7 +89,6 @@ _ETHICS_KEY_ORDER = ["NONE", "BALANCED", "UTILITARIAN", "DEONTOLOGICAL", "VIRTUE
 # (display label, OutputConfig attribute, default value)
 OUTPUT_TOGGLES: list[tuple[str, str, bool]] = [
     ("Debate transcript", "save_transcript", False),
-    ("Narrative synthesis (scribe)", "save_synthesis", False),
     ("Belief trajectories plot", "plot_trajectories", False),
     ("Agent statistics", "save_agent_stats", False),
     ("Initial beliefs", "save_initial_beliefs", False),
@@ -390,7 +389,6 @@ HELP_OUTPUTS = """\
 Select which outputs to generate after the debate:
 
   \u2022 [bold]Debate transcript[/bold] \u2014 Full text of all agent exchanges.
-  \u2022 [bold]Narrative synthesis[/bold] \u2014 Scribe-generated summary of key arguments.
   \u2022 [bold]Belief trajectories[/bold] \u2014 Plot showing how strength scores evolved.
   \u2022 [bold]Agent statistics[/bold] \u2014 Per-agent metrics (claims, evidence, revisions).
   \u2022 [bold]Initial beliefs[/bold] \u2014 Each agent's CBS belief structure before debate.
@@ -432,7 +430,6 @@ calls that can run concurrently:
   \u2022 [bold]Stage 2[/bold] \u2014 Cross-examination (one call per agent pair)
   \u2022 [bold]Stage 3[/bold] \u2014 Rebuttals (one call per agent per challenge)
   \u2022 [bold]Stage 4[/bold] \u2014 Adjudication (one call per challenge-rebuttal pair)
-  \u2022 [bold]Stage 6[/bold] \u2014 Concluding remarks (one call per agent)
 
 With parallelization enabled, these independent calls fire concurrently using \
 a thread pool, significantly reducing wall-clock time.

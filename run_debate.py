@@ -28,6 +28,7 @@ from chal.agents import prompts
 from chal.orchestrator.debate_controller import DebateController
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
 from chal.embeddings.embedding_visualizer import BeliefTrajectoryPlotter
+from chal.cli.runner import _write_best_agent_beliefs
 
 
 def main():
@@ -120,12 +121,6 @@ Examples:
     # Save outputs based on config
     print(f"\n💾 Saving outputs...")
 
-    if config.outputs.save_synthesis and config.scribe.enabled:
-        path = config.outputs.storage_dir / config.outputs.synthesis_file
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(results["synthesis"])
-        print(f"   ✓ Synthesis: {path.name}")
-
     if config.outputs.save_transcript:
         path = config.outputs.storage_dir / config.outputs.transcript_file
         with open(path, "w", encoding="utf-8") as f:
@@ -156,6 +151,16 @@ Examples:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(results["agent_stats"], f, indent=2)
         print(f"   ✓ Agent stats: {path.name}")
+
+    # Always-on: best-agent initial + final belief outputs.
+    try:
+        for fname in _write_best_agent_beliefs(config, results, controller):
+            print(f"   ✓ Best-agent beliefs: {fname}")
+    except Exception as e:
+        print(f"   ⚠️  Could not write best-agent beliefs: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
 
     # Generate embeddings and plot if enabled
     if config.outputs.generate_embeddings or config.outputs.plot_trajectories:

@@ -104,7 +104,12 @@ def generate_analysis_report(
 
     # === Agent Performance ===
     sections.append(f"## {s+2}. Agent Performance Summary\n")
-    sorted_agents = sorted(agent_stats.items(), key=lambda x: x[1].get('performance_score', 0), reverse=True)
+    # Filter out the "_debate_aggregate" sentinel inserted by finalize_agent_stats.
+    per_agent_stats = {
+        name: stats for name, stats in agent_stats.items()
+        if not name.startswith("_") and isinstance(stats, dict)
+    }
+    sorted_agents = sorted(per_agent_stats.items(), key=lambda x: x[1].get('performance_score', 0), reverse=True)
 
     sections.append("| Agent | Score | Critiques Won | Rebuttals Won | Failed | Unresolved |")
     sections.append("|-------|-------|---------------|---------------|--------|------------|")

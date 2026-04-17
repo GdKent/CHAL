@@ -76,9 +76,6 @@ class OutputConfig:
     storage_dir: Path
 
     # Text outputs
-    save_synthesis: bool = True
-    synthesis_file: str = "debate_synthesis.txt"
-
     save_transcript: bool = True
     transcript_file: str = "debate_transcript.txt"
 
@@ -87,6 +84,10 @@ class OutputConfig:
 
     save_final_beliefs: bool = True
     final_beliefs_file: str = "final_beliefs.txt"
+
+    # Best-agent belief outputs (highest-performance_score agent only)
+    best_beliefs_json_file: str = "best_initial_final_beliefs.json"
+    best_beliefs_text_file: str = "best_initial_final_beliefs.txt"
 
     # Analysis outputs
     generate_embeddings: bool = True
@@ -116,17 +117,6 @@ class OutputConfig:
     def ensure_storage_dir(self):
         """Create storage directory if it doesn't exist."""
         self.storage_dir.mkdir(parents=True, exist_ok=True)
-
-
-@dataclass
-class ScribeConfig:
-    """Configuration for the debate scribe/narrator."""
-    enabled: bool = True
-    model: str = "gpt-4o"
-    max_chars_per_chunk: int = 15000
-    overlap_chars: int = 1000
-    scribe_temperature: float = 0.3
-    style_hint: str = "formal, expository, research-paper tone"
 
 
 @dataclass
@@ -175,7 +165,6 @@ class DebateConfig:
     adjudication: AdjudicationConfig = field(default_factory=AdjudicationConfig)
     stages: StageConfig = field(default_factory=StageConfig)
     outputs: OutputConfig = field(default_factory=lambda: OutputConfig(storage_dir=DEFAULT_STORAGE_DIR))
-    scribe: ScribeConfig = field(default_factory=ScribeConfig)
     parallel: ParallelConfig = field(default_factory=ParallelConfig)
     defense_boost: DefenseBoostConfig = field(default_factory=DefenseBoostConfig)
 
@@ -227,14 +216,14 @@ class DebateConfig:
         storage_path = PROJECT_ROOT / out_data.get('storage_dir', 'src/chal/storage')
         outputs = OutputConfig(
             storage_dir=storage_path,
-            save_synthesis=out_data.get('save_synthesis', True),
-            synthesis_file=out_data.get('synthesis_file', 'debate_synthesis.txt'),
             save_transcript=out_data.get('save_transcript', True),
             transcript_file=out_data.get('transcript_file', 'debate_transcript.txt'),
             save_initial_beliefs=out_data.get('save_initial_beliefs', True),
             initial_beliefs_file=out_data.get('initial_beliefs_file', 'initial_beliefs.txt'),
             save_final_beliefs=out_data.get('save_final_beliefs', True),
             final_beliefs_file=out_data.get('final_beliefs_file', 'final_beliefs.txt'),
+            best_beliefs_json_file=out_data.get('best_beliefs_json_file', 'best_initial_final_beliefs.json'),
+            best_beliefs_text_file=out_data.get('best_beliefs_text_file', 'best_initial_final_beliefs.txt'),
             generate_embeddings=out_data.get('generate_embeddings', True),
             embeddings_file=out_data.get('embeddings_file', 'embeddings.npz'),
             plot_trajectories=out_data.get('plot_trajectories', True),
@@ -250,17 +239,6 @@ class DebateConfig:
             save_training_data=out_data.get('save_training_data', False),
             training_data_file=out_data.get('training_data_file', 'debate_training_data.jsonl'),
             belief_pairs_file=out_data.get('belief_pairs_file', 'debate_belief_pairs.jsonl')
-        )
-
-        # Parse scribe
-        scribe_data = data.get('scribe', {})
-        scribe = ScribeConfig(
-            enabled=scribe_data.get('enabled', True),
-            model=scribe_data.get('model', 'gpt-4o'),
-            max_chars_per_chunk=scribe_data.get('max_chars_per_chunk', 15000),
-            overlap_chars=scribe_data.get('overlap_chars', 1000),
-            scribe_temperature=scribe_data.get('scribe_temperature', 0.3),
-            style_hint=scribe_data.get('style_hint', 'formal, expository, research-paper tone')
         )
 
         # Parse parallel config
@@ -294,7 +272,6 @@ class DebateConfig:
             adjudication=adjudication,
             stages=stages,
             outputs=outputs,
-            scribe=scribe,
             parallel=parallel,
             defense_boost=defense_boost,
         )
@@ -355,14 +332,14 @@ class DebateConfig:
             },
             "outputs": {
                 "storage_dir": storage_str,
-                "save_synthesis": self.outputs.save_synthesis,
-                "synthesis_file": self.outputs.synthesis_file,
                 "save_transcript": self.outputs.save_transcript,
                 "transcript_file": self.outputs.transcript_file,
                 "save_initial_beliefs": self.outputs.save_initial_beliefs,
                 "initial_beliefs_file": self.outputs.initial_beliefs_file,
                 "save_final_beliefs": self.outputs.save_final_beliefs,
                 "final_beliefs_file": self.outputs.final_beliefs_file,
+                "best_beliefs_json_file": self.outputs.best_beliefs_json_file,
+                "best_beliefs_text_file": self.outputs.best_beliefs_text_file,
                 "generate_embeddings": self.outputs.generate_embeddings,
                 "embeddings_file": self.outputs.embeddings_file,
                 "plot_trajectories": self.outputs.plot_trajectories,
@@ -378,14 +355,6 @@ class DebateConfig:
                 "save_training_data": self.outputs.save_training_data,
                 "training_data_file": self.outputs.training_data_file,
                 "belief_pairs_file": self.outputs.belief_pairs_file,
-            },
-            "scribe": {
-                "enabled": self.scribe.enabled,
-                "model": self.scribe.model,
-                "max_chars_per_chunk": self.scribe.max_chars_per_chunk,
-                "overlap_chars": self.scribe.overlap_chars,
-                "scribe_temperature": self.scribe.scribe_temperature,
-                "style_hint": self.scribe.style_hint,
             },
             "parallel": {
                 "enabled": self.parallel.enabled,
