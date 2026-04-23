@@ -30,10 +30,11 @@ _MODE_INSTRUCTIONS = {
         "arguments, appeals to consequences, or normative claims."
     ),
     "balanced": (
-        "Evaluate using both logical and ethical criteria. Logical soundness is the "
-        "baseline; ethical concerns can tip the balance when logical arguments are "
-        "close or when adopting a logically valid conclusion would cause significant "
-        "harm under the ethical framework."
+        "Evaluate using both logical and ethical criteria. Assess the logical "
+        "soundness of each argument AND the ethical implications of the position "
+        "it defends — consequences for stakeholders, rights, duties, and moral "
+        "trade-offs under the ethical framework. Both dimensions contribute to "
+        "the final score."
     ),
     "ethics_only": (
         "Evaluate using ONLY the ethical criteria below. A logically sound argument "
@@ -43,20 +44,263 @@ _MODE_INSTRUCTIONS = {
     ),
 }
 
-_MODE_SCORING = {
-    "logic_only": (
-        "Score each side 0.0–1.0 on logic only (0.0 = fails; 0.5 = mixed; "
-        "1.0 = strong). Set ethics scores to 0.0.\ncombined = logic."
-    ),
-    "balanced": (
-        "Score each side 0.0–1.0 on each axis (0.0 = fails; 0.5 = mixed; "
-        "1.0 = strong).\ncombined = 0.5 * logic + 0.5 * ethics."
-    ),
-    "ethics_only": (
-        "Score each side 0.0–1.0 on ethics only (0.0 = fails; 0.5 = mixed; "
-        "1.0 = strong). Set logic scores to 0.0.\ncombined = ethics."
-    ),
-}
+_LOGIC_SCALE_TAG = "<" + "logic_scale>"
+_ETHICS_SCALE_TAG = "<" + "ethics_scale>"
+
+
+def _build_mode_scoring(mode: str, logic_weight: float, ethics_weight: float) -> str:
+    """Return the scoring instructions paragraph for *mode*."""
+    if mode == "logic_only":
+        return (
+            f"Score each side 0.0-1.0 on logic using the {_LOGIC_SCALE_TAG} table above.\n"
+            "Set ethics scores to 0.0.\n"
+            "combined = logic."
+        )
+    if mode == "ethics_only":
+        return (
+            f"Score each side 0.0-1.0 on ethics using the {_ETHICS_SCALE_TAG} table above.\n"
+            "Evaluate the ethical implications of the POSITION each side defends\n"
+            "against the criteria above. Score 0.5 only when the position has no\n"
+            "ethical dimension under any criterion.\n"
+            "If you score ethics above 0.6 or below 0.4, you MUST cite the criterion number.\n"
+            "Set logic scores to 0.0.\n"
+            "combined = ethics."
+        )
+    # balanced
+    return (
+        "Score each side on two axes using the tables above:\n"
+        f"- Logic (0.0-1.0): use the {_LOGIC_SCALE_TAG} table.\n"
+        f"- Ethics (0.0-1.0): use the {_ETHICS_SCALE_TAG} table. Score the ethical\n"
+        "  implications of the POSITION each side defends against the (ethical)\n"
+        "  criteria above. Score 0.5 only when the position has no ethical dimension\n"
+        "  under any criterion. If you score above 0.6 or below 0.4, cite the\n"
+        "  criterion number.\n"
+        f"combined = {logic_weight} * logic + {ethics_weight} * ethics."
+    )
+
+def _format_adjudication_outcomes(challenge_rebuttal_pairs: list[dict]) -> str:
+    """Format adjudication outcomes for injection into Stage 5 prompts."""
+    lines = []
+    for entry in challenge_rebuttal_pairs:
+        challenger = entry.get("challenger", "?")
+        challenge = entry.get("challenge", "?")
+        rebuttal = entry.get("rebuttal", "")
+        res = entry.get("resolution", {}) or {}
+        status = res.get("status", "?")
+        reasoning = res.get("reasoning", "")
+        lines.append(
+            f"- From {challenger}: {challenge}\n"
+            f"  Your rebuttal: {rebuttal}\n"
+            f"  → Outcome: {status} | Reason: {reasoning}"
+        )
+    return "\n".join(lines) if lines else "(no adjudications available)"
+
+
+def _build_supported_ops_block(*, include_thesis: bool = False,
+                                 include_add_claim: bool = False,
+                                 include_add_assumption: bool = False,
+                                 breadth_sensitivity_p: float | None = None) -> str:
+    """Build the SUPPORTED OPERATIONS block for Stage 5 prompts.
+
+    Args:
+        include_thesis: Include update_thesis op (Phase 2 only).
+        include_add_claim: Include add_claim op with inference_chain (Phase 2 only).
+        include_add_assumption: Include add_assumption op (Phase 2 only).
+        breadth_sensitivity_p: The p exponent (needed when include_thesis is True).
+    """
+    ops = []
+
+    if include_thesis:
+        p = breadth_sensitivity_p
+        ops.append(
+            f'- {{"op": "update_thesis", "new_strength": 0.55, "stance": "New stance text...", '
+            f'"summary_bullets": ["bullet 1", "bullet 2", ...], '
+            f'"strength_reasoning": "avg(...) × (n^{p} / (n^{p} + 1)) = ..."}}\n'
+            '  (All fields optional — include whichever you want to change)'
+        )
+
+    # update_claim — Phase 2 omits inference_chain note (covered by add_claim section)
+    update_claim_note = (
+        '  (All fields in changes are optional — include only the ones you want to modify. '
+        'To retract a claim, set {"status": "retracted"} in changes — strength is forced to 0.0 automatically'
+    )
+    if not include_add_claim:
+        update_claim_note += (
+            '. '
+            'Include inference_chain only if the reasoning structure itself needs revision.)'
+        )
+    else:
+        update_claim_note += ')'
+    ops.append(
+        '- {"op": "update_claim", "target_id": "C#", "changes": {"strength": 0.55, "status": "revised", '
+        '"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ...", '
+        '"inference_chain": [...]}}\n'
+        + update_claim_note
+    )
+
+    if include_add_claim:
+        ops.append(
+            '- {"op": "add_claim", "item": {"id": "C#", "type": "deductive|inductive|abductive|...", '
+            '"statement": "...", "depends_on": ["A#", "E#", ...], "strength": 0.65, '
+            '"status": "active", "strength_justification": "0.65 — ...; limited by <ID> (<lowest strength>)", '
+            '"inference_chain": [ '
+            '  {"role": "premise", "text": "<what this premise establishes>", "reference": "A#|E#|C#"}, '
+            '  {"role": "inference", "text": "<the inferential leap>", "inference_type": "deductive|inductive|abductive"}, '
+            '  {"role": "conclusion", "text": "<restate the claim statement>"} '
+            '], '
+            '"predictions": [{"statement": "...", "test": "...", "decision_criterion": "..."}]}}'
+        )
+
+    ops.append(
+        '- {"op": "add_evidence", "item": {"id": "E#", "type": "empirical|conceptual|expert_consensus", '
+        '"summary": "...", "source": "...", "supports_claims": ["C#"], "strength": 0.7, '
+        '"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}'
+    )
+
+    ops.append(
+        '- {"op": "update_evidence", "target_id": "E#", "changes": {"strength": 0.7, '
+        '"status": "revised", "strength_justification": "..."}}'
+    )
+
+    if include_add_assumption:
+        ops.append(
+            '- {"op": "add_assumption", "item": {"id": "A#", '
+            '"type": "empirical|foundational|methodological|scoping", "statement": "...", '
+            '"supports_claims": ["C#"], "strength": 0.8, '
+            '"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}'
+        )
+
+    ops.append(
+        '- {"op": "update_assumption", "target_id": "A#", "changes": {"strength": 0.6, '
+        '"status": "revised", "strength_justification": "..."}, "new_statement": "...", '
+        '"new_type": "empirical|foundational|methodological|scoping"}\n'
+        '  (new_statement and new_type are TOP-LEVEL fields, NOT inside "changes". Only include if changing them.)'
+    )
+
+    ops.append(
+        '- {"op": "add_definition", "item": {"id": "D#", "term": "...", "definition": "...", '
+        '"strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A#", "E#"]}}'
+    )
+
+    ops.append(
+        '- {"op": "update_definition", "target_id": "D#", "changes": {"definition": "...", '
+        '"strength": 0.55, "strength_justification": "...", "status": "revised"}}\n'
+        '  Mutable fields: definition, strength, strength_justification, status, used_by.\n'
+        '  Immutable fields: id, term (to redefine a term, retract the old D# and add a new one).'
+    )
+
+    ops.append(
+        '- {"op": "add_uncertainty", "item": {"id": "U#", "targets": ["C#"], "question": "...", '
+        '"status": "active", "importance": "high|medium|low"}}'
+    )
+
+    ops.append(
+        '- {"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}'
+    )
+
+    ops.append(
+        '- {"op": "add_counterposition", "item": {"id": "X#", "targets": [...], '
+        '"attack_type": "undermining|rebutting|undercutting", '
+        '"attack_strategy": "...", "statement": "...", "my_response": "...", '
+        '"response_sufficiency": "sufficient|partial|unaddressed|moot"}}'
+    )
+
+    ops.append(
+        '- {"op": "update_counterposition", "target_id": "X#", "changes": '
+        '{"my_response": "...", "response_sufficiency": "sufficient|partial|unaddressed|moot"}}'
+    )
+
+    return "SUPPORTED OPERATIONS:\n" + "\n".join(ops)
+
+
+def _build_mandatory_rules_block(*, phase_context: str = "enforcement",
+                                   breadth_sensitivity: float | None = None) -> str:
+    """Build the <mandatory_rules> block for Stage 5 prompts.
+
+    Args:
+        phase_context: "enforcement" for Phase 1, "legacy" for single-phase Stage 5.
+        breadth_sensitivity: The p exponent (only needed for legacy context which
+            includes the thesis strength formula rule).
+    """
+    if phase_context == "enforcement":
+        upgrade_phrase = "in Phase 2 or in a later round"
+        boost_phrase = "after Phase 1"
+    else:  # legacy
+        upgrade_phrase = "in a later round"
+        boost_phrase = "after your patches"
+
+    parts = [
+        "<mandatory_rules>",
+        "BINDING — not suggestions:",
+        (
+            '- CRITIQUE_VALID against you → at least one weakening patch per outcome. Lower strength ≥0.1, '
+            'retire the claim, or refine to address the flaw. Empty patches after CRITIQUE_VALID = protocol '
+            'violation. Stage 3 patches do NOT carry over. Also: if the critique reveals a new vulnerability, '
+            'add a counterposition (X#) recording it. When adding a new X# for a CRITIQUE_VALID outcome, '
+            'response_sufficiency MUST be "partial" or "unaddressed" — NEVER "sufficient". You just lost '
+            'this argument; you cannot claim to have fully addressed it yet. You may upgrade to "sufficient" '
+            f'{upgrade_phrase} after developing a substantive defense.'
+        ),
+        (
+            '- If a definition-targeting challenge (strategies: over_extension, under_extension, '
+            'circularity, stipulative_bias, conceptual_conflation) is sustained (CRITIQUE_VALID): '
+            'lower the targeted D# strength via update_definition. This automatically caps all A#/E# in '
+            "the D#'s used_by list. Add an X# counterposition recording the definitional vulnerability."
+        ),
+        (
+            '- REBUTTAL_VALID for you → defense boosts are applied automatically by the system '
+            f'{boost_phrase}. Do NOT manually increase node strengths for successful defenses. You SHOULD '
+            'update the response_sufficiency of any counterposition (X#) you successfully defended against.'
+        ),
+        (
+            '- UNRESOLVED → required: add uncertainty (U#) with targets referencing the disputed nodes, '
+            'status: "active"; optional: lower strength ~0.05.'
+        ),
+    ]
+
+    if phase_context == "legacy":
+        p = breadth_sensitivity
+        parts.append(
+            f'- Thesis strength is always: avg(active claim strengths) × (n^p / (n^p + 1)) where p = {p}. '
+            'If you lowered or retracted a claim, thesis strength will be recalculated automatically.'
+        )
+
+    parts.extend([
+        (
+            '- DEFINITION CEILING: A#/E# strength ≤ min(active D# strengths from supported_by_definitions). '
+            'If you lower a D# strength, the ceiling automatically propagates — do NOT manually lower '
+            'every dependent A#/E# (the system handles propagation).'
+        ),
+        (
+            "- A claim's strength must not exceed the LOWEST strength among its active/revised "
+            'dependencies (C#, A#, or E#). Retracted dependencies are excluded.'
+        ),
+        (
+            '- "moot" sufficiency: when a counterposition targets a retracted claim, set its '
+            'response_sufficiency to "moot". This indicates the counterposition is obsolete because '
+            'its target no longer exists. "moot" is allowed only when the target has been retracted. '
+            'Once set, "moot" is TERMINAL — it cannot be changed back to any other value.'
+        ),
+        (
+            '- Review your existing uncertainties (U#), prioritizing "high" and "medium" importance — '
+            'these are the most likely to be targeted by opponents via press_uncertainty attacks. If you '
+            'can now resolve any — through new evidence, reasoning, or claims developed during this '
+            'debate — add the supporting material (new C#, E#, or A#) and use resolve_uncertainty to '
+            'mark the U# as resolved. The resolution_note must reference the new material. If you cannot '
+            'resolve a U#, leave it active.'
+        ),
+    ])
+
+    if phase_context == "legacy":
+        parts.append(
+            '- Verify that your belief system is internally consistent — no contradictions between claims, '
+            'no evidence that undermines your own claims, no incompatible assumptions, and strength '
+            'assignments consistent with their dependencies.'
+        )
+
+    parts.append("</mandatory_rules>")
+    return "\n".join(parts)
+
 
 _ANTI_BIAS = """\
 - A response that merely acknowledges a challenge is NOT a successful defense. \
@@ -87,6 +331,46 @@ All strength values (thesis, claims, assumptions, evidence) share a common scale
 | 0.9-1.0 | Robust | Near-certain given available evidence and reasoning |
 | 1.0 | Definitive | Established beyond reasonable dispute |
 </strength_scale>"""
+
+_LOGIC_SCALE_BLOCK = """\
+<logic_scale>
+Score the logical quality of each side's argument:
+| Range   | Label          | Meaning                                                        |
+|---------|----------------|----------------------------------------------------------------|
+| 0.0     | No reasoning   | Argument contains no logical structure; raw assertion only     |
+| 0.1-0.2 | Severely flawed | Critical logical errors or fallacies dominate the reasoning   |
+| 0.3-0.4 | Weak           | More logical problems than sound reasoning; significant gaps   |
+| 0.5     | Mixed          | Some valid reasoning alongside significant logical issues      |
+| 0.6-0.7 | Adequate       | Reasoning is mostly sound with notable but non-fatal gaps      |
+| 0.8-0.9 | Strong         | Well-structured reasoning; only minor logical issues remain    |
+| 1.0     | Rigorous       | Logically impeccable; no identifiable reasoning flaws          |
+</logic_scale>"""
+
+_ETHICS_SCALE_BLOCK = """\
+<ethics_scale>
+Score the ethical implications of the POSITION each side defends — not the
+formal quality of the argument exchange. Even when a challenge targets a
+logical structure (hidden premises, evidence methodology, strength
+calibration), the position being defended could still carry ethical implications
+under the criteria listed in <criteria>. Evaluate those implications against
+the (ethical) criteria above.
+Score 0.5 ONLY when the position genuinely has no ethical dimension under any
+of the criteria (e.g., a purely definitional or mathematical claim with no
+stakeholder impact). When the topic involves consequences for people, rights,
+duties, or moral trade-offs, most positions will warrant a score above or
+below 0.5.
+If you score ethics above 0.6 or below 0.4, you MUST cite the criterion
+number that justifies your assessment.
+| Range   | Label               | Meaning                                                           |
+|---------|---------------------|-------------------------------------------------------------------|
+| 1.0     | Ethically exemplary | Position fully addresses all relevant ethical implications         |
+| 0.8-0.9 | Ethically strong    | Thorough ethical reasoning; only minor gaps remain                 |
+| 0.6-0.7 | Ethically adequate  | Position addresses most ethical considerations with some gaps      |
+| 0.5     | Ethically neutral   | No significant ethical implications, or ethics is not relevant     |
+| 0.3-0.4 | Ethically weak      | Notable ethical concerns outweigh any positive implications        |
+| 0.1-0.2 | Ethically harmful   | Position leads to significant harm or rights violations            |
+| 0.0     | Ethically untenable | Position requires actions indefensible under the ethical framework |
+</ethics_scale>"""
 
 _VALID_DEPENDENCIES_BLOCK = """<valid_dependencies>
 These are the ONLY valid connections between components. No other edges are allowed:
@@ -209,14 +493,22 @@ def build_adjudicator_prompt(
     mode = _determine_mode(logic_weight, ethics_weight)
     mode_instruction = _MODE_INSTRUCTIONS[mode]
     criteria_section = _build_criteria_section(mode, logic_sys, ethics_sys)
-    scoring_section = _MODE_SCORING[mode]
+    scoring_section = _build_mode_scoring(mode, logic_weight, ethics_weight)
+
+    # Select the logic/ethics scale blocks appropriate for this mode
+    if mode == "logic_only":
+        scale_blocks = f"\n{_LOGIC_SCALE_BLOCK}\n"
+    elif mode == "ethics_only":
+        scale_blocks = f"\n{_ETHICS_SCALE_BLOCK}\n"
+    else:  # balanced
+        scale_blocks = f"\n{_LOGIC_SCALE_BLOCK}\n\n{_ETHICS_SCALE_BLOCK}\n"
 
     return (
         "You are a neutral, objective adjudicator with expertise in formal logic, "
         "epistemology, and critical reasoning.\n"
         "\n"
-        "Your purpose is to determine the most appropriate outcome between two agents"
-        "(one which is attacking a an opponent's belief and the other is attempting to defend itself)"
+        "Your purpose is to determine the most appropriate outcome between two agents "
+        "(one which is attacking an opponent's belief and the other is attempting to defend itself) "
         "under the guidance of the criteria below.\n"
         "\n"
         "<criteria>\n"
@@ -231,6 +523,7 @@ def build_adjudicator_prompt(
         "<anti_bias>\n"
         f"{_ANTI_BIAS}\n"
         "</anti_bias>\n"
+        f"{scale_blocks}"
         "\n"
         "<scoring>\n"
         f"{scoring_section}\n"
@@ -349,8 +642,17 @@ def build_adjudicator_per_pair_prompt(
         "     - Verdicts follow the same format: REBUTTAL_VALID / CRITIQUE_VALID / UNRESOLVED.\n"
         "</instructions>\n\n"
         "<output_format>\n"
-        "1. <reasoning>...</reasoning> block with your thorough and in-depth thought process\n"
-        "2. One fenced JSON code block:\n\n"
+        "**CRITICAL**: You MUST output BOTH parts listed below. "
+        "The JSON block must appear OUTSIDE and AFTER the reasoning tags. "
+        "Do NOT nest JSON inside <reasoning>. "
+        "If you omit the JSON block, your verdict will be recorded as UNRESOLVED.\n\n"
+        "Follow these steps IN ORDER:\n"
+        "  STEP 1: Open a <reasoning> tag.\n"
+        "  STEP 2: Write your thorough analysis inside the reasoning block.\n"
+        "  STEP 3: Close the </reasoning> tag.\n"
+        "  STEP 4: AFTER the closing </reasoning> tag, output a fenced ```json block "
+        "with your structured verdict.\n\n"
+        "JSON schema:\n\n"
         "```json\n"
         "{\n"
         "  \"restatement\": \"\",\n"
@@ -369,11 +671,9 @@ def build_adjudicator_per_pair_prompt(
         "}\n"
         "```\n"
         "\n"
-        "**CRITICAL**: You MUST output BOTH parts:\n"
-        "  1. The <reasoning>...</reasoning> block (your analysis)\n"
-        "  2. A SEPARATE fenced ```json ... ``` block (the structured verdict)\n"
-        "The JSON block must appear OUTSIDE the reasoning tags. "
-        "Do NOT nest JSON inside <reasoning>. "
+        "ALL fields in the JSON schema above are REQUIRED. Every field must be present "
+        "and non-empty. The \"scores\" object must contain all 6 numeric values. "
+        "Omitting any field will cause your response to be rejected and retried.\n\n"
         "If you omit the JSON block, your verdict will be recorded as UNRESOLVED.\n"
         "</output_format>\n"
     )
@@ -416,10 +716,19 @@ def build_position_prompt(agent_name: str, persona: str) -> str:
     Args:
         agent_name (str): The agent's name for identification in the debate.
         persona (str): A prompt string describing the agent's epistemic or moral stance.
+            When empty (persona ``"none"``), produces a neutral role card with
+            no epistemic lens.
 
     Returns:
         str: A formatted prompt assigning the worldview to the agent.
     """
+    if not persona:
+        return f"""You are Agent {agent_name}. You have no assigned epistemological worldview. \
+Argue strictly from the content, logic, and evidence within your belief \
+structure. Do not adopt any particular philosophical tradition — let \
+the strength of your definitions, assumptions, evidence, and claims \
+speak for themselves."""
+
     return f"""You are Agent {agent_name}. Your epistemological worldview:
 
 <persona>
@@ -548,7 +857,11 @@ supported_by_definitions} — all foundational premises your claims rest upon.
 
 - "claims" [C#]: {id, type, statement, depends_on, strength, status, \
 inference_chain, predictions, strength_justification} — every substantive assertion. Each claim \
-MUST include a structured inference_chain and at least one falsifiable prediction.
+MUST include a structured inference_chain and at least one falsifiable prediction. \
+Generate AT LEAST 2-3 independent claims that support your thesis from different angles. \
+A single claim creates a fragile position — if it falls under cross-examination, your entire \
+thesis collapses. Multiple claims provide structural resilience and improve your thesis \
+strength via the breadth formula.
     id: Sequential identifier starting at C1. Number sequentially with no gaps: C1, C2, C3, etc.
     inference_chain: REQUIRED — an array of step objects showing the explicit reasoning from \
 premises to conclusion. Each step has a "role", "text", and role-specific fields:
@@ -596,8 +909,11 @@ and conceptual_conflation.
     attack_strategy: required — the specific strategy used for this attack. Must be a valid \
 strategy for the given attack_type. Examples: "challenge_evidence" for undermining, \
 "over_extension" for undermining (D# too broad), "present_counter_example" for rebutting, \
-"challenge_inference_step" for undercutting, "circularity" for undercutting (D# is circular).
-    response_sufficiency must be one of: "sufficient", "partial", "unaddressed"
+"challenge_inference_step" for undercutting, "circularity" for undercutting (D# is circular), \
+"challenge_moral_implications" for undermining (ethical), \
+"challenge_normative_inference" for undercutting (ethical).
+    response_sufficiency must be one of: "sufficient", "partial", "unaddressed", "moot"
+    Use "moot" when the target claim has been retracted, making this counterposition obsolete.
     Counterposition targets must reference existing C#, A#, E#, or D# IDs.
     Include at least 2 counterpositions.
 
@@ -665,7 +981,9 @@ Build your belief bottom-up:
 terms used across them. Every A# and E# must be linked to ≥1 D# via supported_by_definitions. \
 Focus on terms that are important, ambiguous, or contentious. Reuse D# nodes across \
 multiple A#/E# where the same term appears.
-4. Then: Claims (C#) — each must reference ≥1 A#/E# via depends_on. Strength ≤ min(dependency strengths).
+4. Then: Claims (C#) — aim for 2-3+ distinct claims. Each should represent an independent line \
+of argument, not just sub-points of a single claim. Each must reference ≥1 A#/E# via depends_on. \
+Strength ≤ min(dependency strengths).
 5. Then: Counterpositions (X#) — anticipated objections with your responses. Each must include \
 both attack_type and attack_strategy.
 6. Then: Uncertainties (U#) — open questions about your own position
@@ -859,6 +1177,11 @@ foundation falls, everything built on it collapses.
     weakens all A#/E# nodes that depend on the definition.
   - under_extension: A definition (D#) is too narrow, excluding cases it should capture — \
     the premise doesn't cover key cases needed by dependent nodes.
+  *Ethical strategies:*
+  - challenge_moral_implications: Argue that the position leads to ethically problematic \
+    consequences or outcomes for affected parties.
+  - expose_stakeholder_harm: Identify specific parties who are disproportionately or \
+    unjustly harmed by adopting the position.
 
 **REBUTTING** — Present counter-evidence or a counter-conclusion that directly opposes a claim.
   - present_counter_evidence: Offer specific evidence that directly contradicts a claim \
@@ -869,6 +1192,11 @@ foundation falls, everything built on it collapses.
     "unaddressed" — they have already conceded the weakness.
   - offer_alternative_explanation: Argue that the opponent's own evidence better supports \
     a different conclusion than the one they drew.
+  *Ethical strategies:*
+  - present_ethical_counter: Present a substantive ethical argument that directly opposes \
+    the position's moral standing or normative conclusions.
+  - invoke_competing_obligation: Show that a stronger or more relevant moral obligation \
+    overrides the one the position appeals to.
 
 **UNDERCUTTING** — Accept the premises but attack the inference step — even if the premises \
 are true, the conclusion does not follow.
@@ -891,6 +1219,13 @@ are true, the conclusion does not follow.
     inference begs the question because the definition smuggles in the desired answer.
   - conceptual_conflation: A definition (D#) conflates two distinct concepts — this is \
     a form of equivocation that breaks the inference from premises to conclusion.
+  *Ethical strategies:*
+  - challenge_normative_inference: Attack the is-ought gap: the position's factual premises \
+    do not justify its normative or moral conclusions.
+  - expose_value_conflict: Show that the position harbors an unacknowledged contradiction \
+    between its own stated or implied values.
+  - challenge_moral_relevance: The ethical principle or framework being invoked does not \
+    actually apply to the specific case at hand.
 
 When targeting a definition (D#), explain which downstream A#/E# nodes are affected and how \
 the definitional flaw cascades through the argument.
@@ -930,6 +1265,18 @@ depend on this definition.",
   "target_ids": ["D1"],
   "attack_type": "undermining",
   "attack_strategy": "over_extension"
+}}
+```
+
+```json
+{{
+  "qid": "Q5",
+  "text": "Your C3 draws a normative conclusion — that we should adopt policy X — from \
+purely empirical premises about efficiency gains (A1, E2). Even if the factual claims \
+are true, how does the data license a moral 'ought'?",
+  "target_ids": ["C3"],
+  "attack_type": "undercutting",
+  "attack_strategy": "challenge_normative_inference"
 }}
 ```
 </example>
@@ -1108,20 +1455,7 @@ def build_stage_5_belief_update_prompt_cbs(agent_name: str,
     """
     from chal.beliefs.patches import BREADTH_SENSITIVITY
     p = breadth_sensitivity if breadth_sensitivity is not None else BREADTH_SENSITIVITY
-    lines = []
-    for entry in challenge_rebuttal_pairs:
-        challenger = entry.get("challenger", "?")
-        challenge = entry.get("challenge", "?")
-        rebuttal = entry.get("rebuttal", "")
-        res = entry.get("resolution", {}) or {}
-        status = res.get("status", "?")
-        reasoning = res.get("reasoning", "")
-        lines.append(
-            f"- From {challenger}: {challenge}\n"
-            f"  Your rebuttal: {rebuttal}\n"
-            f"  → Outcome: {status} | Reason: {reasoning}"
-        )
-    outcomes_formatted = "\n".join(lines) if lines else "(no adjudications available)"
+    outcomes_formatted = _format_adjudication_outcomes(challenge_rebuttal_pairs)
 
     # Build optional stage 3 patches section
     stage_3_section = ""
@@ -1175,70 +1509,10 @@ update_claim patches.
 
 Then output a single fenced JSON code block.
 
-SUPPORTED OPERATIONS:
-- {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
-"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ...", \
-"inference_chain": [...]}}}}
-  (All fields in changes are optional — include only the ones you want to modify. \
-To retract a claim, set {{"status": "retracted"}} in changes — strength is forced to 0.0 automatically. \
-Include inference_chain only if the reasoning structure itself needs revision.)
-- {{"op": "add_evidence", "item": {{"id": "E#", "type": "empirical|conceptual|expert_consensus", \
-"summary": "...", "source": "...", "supports_claims": ["C#"], "strength": 0.7, \
-"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
-- {{"op": "update_evidence", "target_id": "E#", "changes": {{"strength": 0.7, \
-"status": "revised", "strength_justification": "..."}}}}
-- {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
-"status": "revised", "strength_justification": "..."}}, "new_statement": "...", \
-"new_type": "empirical|foundational|methodological|scoping"}}
-  (new_statement and new_type are TOP-LEVEL fields, NOT inside "changes". Only include if changing them.)
-- {{"op": "add_definition", "item": {{"id": "D#", "term": "...", "definition": "...", \
-"strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A#", "E#"]}}}}
-- {{"op": "update_definition", "target_id": "D#", "changes": {{"definition": "...", \
-"strength": 0.55, "strength_justification": "...", "status": "revised"}}}}
-  Mutable fields: definition, strength, strength_justification, status, used_by.
-  Immutable fields: id, term (to redefine a term, retract the old D# and add a new one).
-- {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
-"status": "active", "importance": "high|medium|low"}}}}
-- {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
-- {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
-"attack_strategy": "...", "statement": "...", "my_response": "...", \
-"response_sufficiency": "sufficient|partial|unaddressed"}}}}
-- {{"op": "update_counterposition", "target_id": "X#", "changes": \
-{{"my_response": "...", "response_sufficiency": "..."}}}}
+{_build_supported_ops_block()}
 </instructions>
 
-<mandatory_rules>
-BINDING — not suggestions:
-- CRITIQUE_VALID against you → at least one weakening patch per outcome. Lower strength ≥0.1, \
-retire the claim, or refine to address the flaw. Empty patches after CRITIQUE_VALID = protocol \
-violation. Stage 3 patches do NOT carry over. Also: if the critique reveals a new vulnerability, \
-add a counterposition (X#) recording it.
-- If a definition-targeting challenge (strategies: over_extension, under_extension, \
-circularity, stipulative_bias, conceptual_conflation) is sustained (CRITIQUE_VALID): \
-lower the targeted D# strength via update_definition. This automatically caps all A#/E# in \
-the D#'s used_by list. Add an X# counterposition recording the definitional vulnerability.
-- REBUTTAL_VALID for you → defense boosts are applied automatically by the system after \
-your patches. Do NOT manually increase node strengths for successful defenses. You SHOULD \
-update the response_sufficiency of any counterposition (X#) you successfully defended against.
-- UNRESOLVED → required: add uncertainty (U#) with targets referencing the disputed nodes, \
-status: "active"; optional: lower strength ~0.05.
-- Thesis strength is always: avg(active claim strengths) × (n^p / (n^p + 1)) where p = {p}. \
-If you lowered or retracted a claim, thesis strength will be recalculated automatically.
-- DEFINITION CEILING: A#/E# strength ≤ min(active D# strengths from supported_by_definitions). \
-If you lower a D# strength, the ceiling automatically propagates — do NOT manually lower \
-every dependent A#/E# (the system handles propagation).
-- A claim's strength must not exceed the LOWEST strength among its active/revised \
-dependencies (C#, A#, or E#). Retracted dependencies are excluded.
-- Review your existing uncertainties (U#), prioritizing "high" and "medium" importance — \
-these are the most likely to be targeted by opponents via press_uncertainty attacks. If you \
-can now resolve any — through new evidence, reasoning, or claims developed during this \
-debate — add the supporting material (new C#, E#, or A#) and use resolve_uncertainty to \
-mark the U# as resolved. The resolution_note must reference the new material. If you cannot \
-resolve a U#, leave it active.
-- Verify that your belief system is internally consistent — no contradictions between claims, \
-no evidence that undermines your own claims, no incompatible assumptions, and strength \
-assignments consistent with their dependencies.
-</mandatory_rules>
+{_build_mandatory_rules_block(phase_context="legacy", breadth_sensitivity=p)}
 
 <example>
 Outcomes: CRITIQUE_VALID on C2, REBUTTAL_VALID on C1 (defended against X1's challenge), \
@@ -1298,20 +1572,7 @@ def build_stage_5_phase1_enforcement_prompt(agent_name: str,
         prior_belief_json: Agent's current CBS belief as JSON string.
         stage_3_patches_json: Optional JSON of patches proposed during Stage 3 rebuttals.
     """
-    lines = []
-    for entry in challenge_rebuttal_pairs:
-        challenger = entry.get("challenger", "?")
-        challenge = entry.get("challenge", "?")
-        rebuttal = entry.get("rebuttal", "")
-        res = entry.get("resolution", {}) or {}
-        status = res.get("status", "?")
-        reasoning = res.get("reasoning", "")
-        lines.append(
-            f"- From {challenger}: {challenge}\n"
-            f"  Your rebuttal: {rebuttal}\n"
-            f"  → Outcome: {status} | Reason: {reasoning}"
-        )
-    outcomes_formatted = "\n".join(lines) if lines else "(no adjudications available)"
+    outcomes_formatted = _format_adjudication_outcomes(challenge_rebuttal_pairs)
 
     # Build optional stage 3 patches section
     stage_3_section = ""
@@ -1360,36 +1621,7 @@ update_claim patches.
 
 Then output a single fenced JSON code block.
 
-SUPPORTED OPERATIONS:
-- {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
-"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ...", \
-"inference_chain": [...]}}}}
-  (All fields in changes are optional — include only the ones you want to modify. \
-To retract a claim, set {{"status": "retracted"}} in changes — strength is forced to 0.0 automatically. \
-Include inference_chain only if the reasoning structure itself needs revision.)
-- {{"op": "add_evidence", "item": {{"id": "E#", "type": "empirical|conceptual|expert_consensus", \
-"summary": "...", "source": "...", "supports_claims": ["C#"], "strength": 0.7, \
-"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
-- {{"op": "update_evidence", "target_id": "E#", "changes": {{"strength": 0.7, \
-"status": "revised", "strength_justification": "..."}}}}
-- {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
-"status": "revised", "strength_justification": "..."}}, "new_statement": "...", \
-"new_type": "empirical|foundational|methodological|scoping"}}
-  (new_statement and new_type are TOP-LEVEL fields, NOT inside "changes". Only include if changing them.)
-- {{"op": "add_definition", "item": {{"id": "D#", "term": "...", "definition": "...", \
-"strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A#", "E#"]}}}}
-- {{"op": "update_definition", "target_id": "D#", "changes": {{"definition": "...", \
-"strength": 0.55, "strength_justification": "...", "status": "revised"}}}}
-  Mutable fields: definition, strength, strength_justification, status, used_by.
-  Immutable fields: id, term (to redefine a term, retract the old D# and add a new one).
-- {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
-"status": "active", "importance": "high|medium|low"}}}}
-- {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
-- {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
-"attack_strategy": "...", "statement": "...", "my_response": "...", \
-"response_sufficiency": "sufficient|partial|unaddressed"}}}}
-- {{"op": "update_counterposition", "target_id": "X#", "changes": \
-{{"my_response": "...", "response_sufficiency": "..."}}}}
+{_build_supported_ops_block()}
 
 SCOPE RESTRICTION: Focus only on direct responses to adjudication outcomes. Do not:
 - Rewrite thesis stance text or summary bullets
@@ -1398,33 +1630,7 @@ SCOPE RESTRICTION: Focus only on direct responses to adjudication outcomes. Do n
 You may adjust thesis strength only as a direct consequence of adjudication-mandated changes.
 </instructions>
 
-<mandatory_rules>
-BINDING — not suggestions:
-- CRITIQUE_VALID against you → at least one weakening patch per outcome. Lower strength ≥0.1, \
-retire the claim, or refine to address the flaw. Empty patches after CRITIQUE_VALID = protocol \
-violation. Stage 3 patches do NOT carry over. Also: if the critique reveals a new vulnerability, \
-add a counterposition (X#) recording it.
-- If a definition-targeting challenge (strategies: over_extension, under_extension, \
-circularity, stipulative_bias, conceptual_conflation) is sustained (CRITIQUE_VALID): \
-lower the targeted D# strength via update_definition. This automatically caps all A#/E# in \
-the D#'s used_by list. Add an X# counterposition recording the definitional vulnerability.
-- REBUTTAL_VALID for you → defense boosts are applied automatically by the system after \
-Phase 1. Do NOT manually increase node strengths for successful defenses. You SHOULD update \
-the response_sufficiency of any counterposition (X#) you successfully defended against.
-- UNRESOLVED → required: add uncertainty (U#) with targets referencing the disputed nodes, \
-status: "active"; optional: lower strength ~0.05.
-- DEFINITION CEILING: A#/E# strength ≤ min(active D# strengths from supported_by_definitions). \
-If you lower a D# strength, the ceiling automatically propagates — do NOT manually lower \
-every dependent A#/E# (the system handles propagation).
-- A claim's strength must not exceed the LOWEST strength among its active/revised \
-dependencies (C#, A#, or E#). Retracted dependencies are excluded.
-- Review your existing uncertainties (U#), prioritizing "high" and "medium" importance — \
-these are the most likely to be targeted by opponents via press_uncertainty attacks. If you \
-can now resolve any — through new evidence, reasoning, or claims developed during this \
-debate — add the supporting material (new C#, E#, or A#) and use resolve_uncertainty to \
-mark the U# as resolved. The resolution_note must reference the new material. If you cannot \
-resolve a U#, leave it active.
-</mandatory_rules>
+{_build_mandatory_rules_block(phase_context="enforcement")}
 
 <example>
 Outcomes: CRITIQUE_VALID on C2, REBUTTAL_VALID on C1 (defended against X1's challenge), \
@@ -1939,9 +2145,15 @@ thesis strength is computed and what you can do to raise it.
 Step 1: ADDRESS OPEN ISSUES
 
 A) Counterposition Audit
-Review all your counterpositions (X#). For each "unaddressed" counterposition:
+Review all your counterpositions (X#).
+- SKIP any counterposition already marked "moot" — "moot" is a TERMINAL state. \
+Once a counterposition is moot, it stays moot. Do NOT update it.
+- For each "unaddressed" counterposition:
 - What node(s) does it target?
 - Has that target already been weakened in Phase 1?
+- If the target has been retracted, mark the counterposition as "moot" \
+(update_counterposition with response_sufficiency: "moot"). Counterpositions \
+targeting retracted claims are obsolete and should be marked "moot".
 - If NOT, you MUST either:
   (a) Weaken the target (update its strength downward), OR
   (b) Explain why the counterposition doesn't actually undermine it — update \
@@ -2021,8 +2233,10 @@ Inside <reasoning> tags, work through each step systematically. This is where \
 your real thinking happens — be rigorous and thorough.
 
 For Step 1A (Counterposition Audit):
+- Skip any X# that is already "moot" — do not modify moot counterpositions.
 - For each "unaddressed" or "partial" X#: What specific node does it target? \
-Has that target already been weakened in Phase 1? If not, is the attack \
+Has that target already been weakened in Phase 1? If the target was retracted, \
+mark the counterposition as "moot". If not, is the attack \
 genuinely valid? What evidence or reasoning supports your response? \
 If you upgrade response_sufficiency, justify WHY the counterposition no \
 longer undermines its target — do not just assert sufficiency.
@@ -2065,52 +2279,7 @@ Every claim must have a structured inference_chain showing explicit reasoning:
 - Exactly one CONCLUSION step: {{"role": "conclusion", "text": "<restate the claim statement>"}}
 Order: all premises first, then inference, then conclusion.
 
-SUPPORTED OPERATIONS:
-- {{"op": "update_thesis", "new_strength": 0.55, "stance": "New stance text...", \
-"summary_bullets": ["bullet 1", "bullet 2", ...], \
-"strength_reasoning": "avg(...) × (n^{p} / (n^{p} + 1)) = ..."}}
-  (All fields optional — include whichever you want to change)
-- {{"op": "update_claim", "target_id": "C#", "changes": {{"strength": 0.55, "status": "revised", \
-"strength_justification": "0.55 — reduced due to ...; limited by <ID> (<lowest strength>) ...", \
-"inference_chain": [...]}}}}
-  (All fields in changes are optional — include only the ones you want to modify. \
-To retract a claim, set {{"status": "retracted"}} in changes — strength is forced to 0.0 automatically)
-- {{"op": "add_claim", "item": {{"id": "C#", "type": "deductive|inductive|abductive|...", \
-"statement": "...", "depends_on": ["A#", "E#", ...], "strength": 0.65, \
-"status": "active", "strength_justification": "0.65 — ...; limited by <ID> (<lowest strength>)", \
-"inference_chain": [ \
-  {{"role": "premise", "text": "<what this premise establishes>", "reference": "A#|E#|C#"}}, \
-  {{"role": "inference", "text": "<the inferential leap>", "inference_type": "deductive|inductive|abductive"}}, \
-  {{"role": "conclusion", "text": "<restate the claim statement>"}} \
-], \
-"predictions": [{{"statement": "...", "test": "...", "decision_criterion": "..."}}]}}}}
-- {{"op": "add_evidence", "item": {{"id": "E#", "type": "empirical|conceptual|expert_consensus", \
-"summary": "...", "source": "...", "supports_claims": ["C#"], "strength": 0.7, \
-"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
-- {{"op": "update_evidence", "target_id": "E#", "changes": {{"strength": 0.7, \
-"status": "revised", "strength_justification": "..."}}}}
-- {{"op": "add_assumption", "item": {{"id": "A#", \
-"type": "empirical|foundational|methodological|scoping", "statement": "...", \
-"supports_claims": ["C#"], "strength": 0.8, \
-"status": "active", "strength_justification": "...", "supported_by_definitions": ["D#"]}}}}
-- {{"op": "update_assumption", "target_id": "A#", "changes": {{"strength": 0.6, \
-"status": "revised", "strength_justification": "..."}}, "new_statement": "...", \
-"new_type": "empirical|foundational|methodological|scoping"}}
-  (new_statement and new_type are TOP-LEVEL fields, NOT inside "changes". Only include if changing them.)
-- {{"op": "add_definition", "item": {{"id": "D#", "term": "...", "definition": "...", \
-"strength": 0.8, "strength_justification": "...", "status": "active", "used_by": ["A#", "E#"]}}}}
-- {{"op": "update_definition", "target_id": "D#", "changes": {{"definition": "...", \
-"strength": 0.55, "strength_justification": "...", "status": "revised"}}}}
-  Mutable fields: definition, strength, strength_justification, status, used_by.
-  Immutable fields: id, term (to redefine a term, retract the old D# and add a new one).
-- {{"op": "add_uncertainty", "item": {{"id": "U#", "targets": ["C#"], "question": "...", \
-"status": "active", "importance": "high|medium|low"}}}}
-- {{"op": "resolve_uncertainty", "target_id": "U#", "resolution_note": "Resolved by ..."}}
-- {{"op": "add_counterposition", "item": {{"id": "X#", "targets": [...], "attack_type": "...", \
-"attack_strategy": "...", "statement": "...", "my_response": "...", \
-"response_sufficiency": "sufficient|partial|unaddressed"}}}}
-- {{"op": "update_counterposition", "target_id": "X#", "changes": \
-{{"my_response": "...", "response_sufficiency": "..."}}}}
+{_build_supported_ops_block(include_thesis=True, include_add_claim=True, include_add_assumption=True, breadth_sensitivity_p=p)}
 </instructions>
 
 {_VALID_DEPENDENCIES_BLOCK}

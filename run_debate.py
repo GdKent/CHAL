@@ -26,9 +26,8 @@ from chal.config import load_config
 from chal.agents.factory import create_agent_from_config
 from chal.agents import prompts
 from chal.orchestrator.debate_controller import DebateController
-from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
-from chal.embeddings.embedding_visualizer import BeliefTrajectoryPlotter
-from chal.cli.runner import _write_best_agent_beliefs
+from chal.cli.runner import _write_best_agent_beliefs, _get_initial_belief_obj
+from chal.utilities.utils import sanitize_filename
 
 
 def main():
@@ -135,16 +134,26 @@ Examples:
         print(f"   ✓ Debug log: {path.name}")
 
     if config.outputs.save_initial_beliefs:
-        path = config.outputs.storage_dir / config.outputs.initial_beliefs_file
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n\n\n".join(results["initial_positions"]))
-        print(f"   ✓ Initial beliefs: {path.name}")
+        init_dir = config.outputs.storage_dir / config.outputs.initial_beliefs_dir
+        init_dir.mkdir(parents=True, exist_ok=True)
+        for agent in controller.agents:
+            fname = sanitize_filename(agent.name) + ".json"
+            fpath = init_dir / fname
+            belief_json = _get_initial_belief_obj(agent)
+            with open(fpath, "w", encoding="utf-8") as f:
+                json.dump(belief_json, f, indent=2, ensure_ascii=False)
+        print(f"   ✓ Initial beliefs: {config.outputs.initial_beliefs_dir}/")
 
     if config.outputs.save_final_beliefs:
-        path = config.outputs.storage_dir / config.outputs.final_beliefs_file
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n\n\n".join(results["final_positions"]))
-        print(f"   ✓ Final beliefs: {path.name}")
+        final_dir = config.outputs.storage_dir / config.outputs.final_beliefs_dir
+        final_dir.mkdir(parents=True, exist_ok=True)
+        for agent in controller.agents:
+            fname = sanitize_filename(agent.name) + ".json"
+            fpath = final_dir / fname
+            belief_json = agent.get_internal_belief_obj()
+            with open(fpath, "w", encoding="utf-8") as f:
+                json.dump(belief_json, f, indent=2, ensure_ascii=False)
+        print(f"   ✓ Final beliefs: {config.outputs.final_beliefs_dir}/")
 
     if config.outputs.save_agent_stats:
         path = config.outputs.storage_dir / config.outputs.stats_file
@@ -162,27 +171,16 @@ Examples:
             import traceback
             traceback.print_exc()
 
-    # Generate embeddings and plot if enabled
-    if config.outputs.generate_embeddings or config.outputs.plot_trajectories:
-        embeddings_path = config.outputs.storage_dir / config.outputs.embeddings_file
-
-        if embeddings_path.exists():
-            tracker = BeliefEmbeddingTracker()
-            tracker.load_embeddings(embeddings_path)
-
-            if config.outputs.plot_trajectories:
-                try:
-                    plotter = BeliefTrajectoryPlotter(n_components=2)
-                    reduced = plotter.reduce_embeddings(tracker.get_all_embeddings())
-
-                    # Save plot to file instead of showing interactively
-                    trajectory_path = config.outputs.storage_dir / config.outputs.trajectory_plot_file
-                    plotter.plot_trajectories(reduced, output_path=trajectory_path)
-                    print(f"   ✓ Belief trajectory plot saved to {trajectory_path}")
-                except Exception as e:
-                    print(f"   ⚠️  Could not generate plot: {e}")
-        else:
+    # Generate belief trajectory plot if enabled
+    if config.outputs.plot_trajectories:
+        try:
+            from chal.embeddings.embedding_visualizer import generate_belief_trajectory_plot
+            plot_path = generate_belief_trajectory_plot(config)
+            print(f"   ✓ Belief trajectory plot saved to {plot_path}")
+        except FileNotFoundError:
             print(f"   ⚠️  Embeddings file not found, skipping visualization")
+        except Exception as e:
+            print(f"   ⚠️  Could not generate plot: {e}")
 
     # Generate interactive graph visualization if enabled
     if config.outputs.generate_graph_visualization:

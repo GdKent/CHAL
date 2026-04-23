@@ -25,6 +25,7 @@ class AgentConfig:
     model: str = "gpt-4o"
     temperature: float = 0.7
     provider: str = "openai"  # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
+    belief_file: Optional[str] = None  # Path to a pre-defined CBS belief JSON file (skips Stage 1)
 
 
 _VALID_WEIGHT_COMBOS = {(1.0, 0.0), (0.5, 0.5), (0.0, 1.0)}
@@ -39,6 +40,7 @@ class AdjudicationConfig:
     logic_system: str = "CLASSICAL_INFORMAL_BAYESIAN"
     ethics_system: str = "NONE"
     provider: str = "openai"  # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
+    threshold: float = 0.15
 
     def __post_init__(self):
         combo = (self.logic_weight, self.ethics_weight)
@@ -80,10 +82,10 @@ class OutputConfig:
     transcript_file: str = "debate_transcript.txt"
 
     save_initial_beliefs: bool = True
-    initial_beliefs_file: str = "initial_beliefs.txt"
+    initial_beliefs_dir: str = "initial_beliefs"
 
     save_final_beliefs: bool = True
-    final_beliefs_file: str = "final_beliefs.txt"
+    final_beliefs_dir: str = "final_beliefs"
 
     # Best-agent belief outputs (highest-performance_score agent only)
     best_beliefs_json_file: str = "best_initial_final_beliefs.json"
@@ -95,6 +97,7 @@ class OutputConfig:
 
     plot_trajectories: bool = True
     trajectory_plot_file: str = "belief_trajectories.png"
+    pca_plot_file: str = "belief_trajectories_pca.png"
 
     save_agent_stats: bool = True
     stats_file: str = "agent_stats.json"
@@ -131,19 +134,14 @@ class DefenseBoostConfig:
     """Configuration for the mechanical defense boost system.
 
     When a node survives a challenge (REBUTTAL_VALID verdict), the system
-    automatically applies a formula-driven strength increase. All parameters
-    are tunable here.
+    automatically applies a flat strength increase.
 
-    Formula: boost(n) = min(base_boost + boost_increment * n, max_boost_per_defense)
-    Ceiling: min(current + boost, original_strength + max_cumulative_boost, 1.0)
-
-    Where n = consecutive successful defenses (1-indexed).
+    Boost per defense: flat_boost (constant, regardless of streak length)
+    Ceiling: min(current + flat_boost, original_strength + max_cumulative_boost, 1.0)
     """
-    enabled: bool = True                    # Master switch for defense boosts
-    base_boost: float = 0.02               # Starting constant in the boost formula
-    boost_increment: float = 0.01          # Added per consecutive defense
-    max_boost_per_defense: float = 0.05    # Per-defense ceiling
-    max_cumulative_boost: float = 0.20     # Max total boost above original_strength
+    enabled: bool = True
+    flat_boost: float = 0.02               # Constant boost per successful defense
+    max_cumulative_boost: float = 0.15     # Max total boost above original_strength
 
 
 @dataclass
@@ -178,16 +176,25 @@ class DebateConfig:
         meta = data.get('metadata', {})
 
         # Parse agents
-        agents = [
-            AgentConfig(
+        config_dir = Path(config_path).parent
+        agents = []
+        for a in data.get('agents', []):
+            # Resolve belief_file path relative to the YAML file's directory
+            belief_file_raw = a.get('belief_file')
+            belief_file: Optional[str] = None
+            if belief_file_raw:
+                bf_path = Path(belief_file_raw)
+                if not bf_path.is_absolute():
+                    bf_path = config_dir / bf_path
+                belief_file = str(bf_path)
+            agents.append(AgentConfig(
                 name=a['name'],
                 persona=a['persona'],
                 model=a.get('model', 'gpt-4o'),
                 temperature=a.get('temperature', 0.7),
-                provider=a.get('provider', 'openai')
-            )
-            for a in data.get('agents', [])
-        ]
+                provider=a.get('provider', 'openai'),
+                belief_file=belief_file,
+            ))
 
         # Parse adjudication
         adj_data = data.get('adjudication', {})
@@ -219,15 +226,16 @@ class DebateConfig:
             save_transcript=out_data.get('save_transcript', True),
             transcript_file=out_data.get('transcript_file', 'debate_transcript.txt'),
             save_initial_beliefs=out_data.get('save_initial_beliefs', True),
-            initial_beliefs_file=out_data.get('initial_beliefs_file', 'initial_beliefs.txt'),
+            initial_beliefs_dir=out_data.get('initial_beliefs_dir', 'initial_beliefs'),
             save_final_beliefs=out_data.get('save_final_beliefs', True),
-            final_beliefs_file=out_data.get('final_beliefs_file', 'final_beliefs.txt'),
+            final_beliefs_dir=out_data.get('final_beliefs_dir', 'final_beliefs'),
             best_beliefs_json_file=out_data.get('best_beliefs_json_file', 'best_initial_final_beliefs.json'),
             best_beliefs_text_file=out_data.get('best_beliefs_text_file', 'best_initial_final_beliefs.txt'),
             generate_embeddings=out_data.get('generate_embeddings', True),
             embeddings_file=out_data.get('embeddings_file', 'embeddings.npz'),
             plot_trajectories=out_data.get('plot_trajectories', True),
             trajectory_plot_file=out_data.get('trajectory_plot_file', 'belief_trajectories.png'),
+            pca_plot_file=out_data.get('pca_plot_file', 'belief_trajectories_pca.png'),
             save_agent_stats=out_data.get('save_agent_stats', True),
             stats_file=out_data.get('stats_file', 'agent_stats.json'),
             generate_graph_visualization=out_data.get('generate_graph_visualization', True),
@@ -252,10 +260,8 @@ class DebateConfig:
         db_data = data.get('defense_boost', {})
         defense_boost = DefenseBoostConfig(
             enabled=db_data.get('enabled', True),
-            base_boost=db_data.get('base_boost', 0.02),
-            boost_increment=db_data.get('boost_increment', 0.01),
-            max_boost_per_defense=db_data.get('max_boost_per_defense', 0.05),
-            max_cumulative_boost=db_data.get('max_cumulative_boost', 0.20),
+            flat_boost=db_data.get('flat_boost', 0.02),
+            max_cumulative_boost=db_data.get('max_cumulative_boost', 0.15),
         )
 
         # Parse debate settings
@@ -306,11 +312,14 @@ class DebateConfig:
             },
             "agents": [
                 {
-                    "name": a.name,
-                    "persona": a.persona,
-                    "model": a.model,
-                    "temperature": a.temperature,
-                    "provider": a.provider,
+                    k: v for k, v in {
+                        "name": a.name,
+                        "persona": a.persona,
+                        "model": a.model,
+                        "temperature": a.temperature,
+                        "provider": a.provider,
+                        "belief_file": a.belief_file,
+                    }.items() if v is not None
                 }
                 for a in self.agents
             ],
@@ -335,15 +344,16 @@ class DebateConfig:
                 "save_transcript": self.outputs.save_transcript,
                 "transcript_file": self.outputs.transcript_file,
                 "save_initial_beliefs": self.outputs.save_initial_beliefs,
-                "initial_beliefs_file": self.outputs.initial_beliefs_file,
+                "initial_beliefs_dir": self.outputs.initial_beliefs_dir,
                 "save_final_beliefs": self.outputs.save_final_beliefs,
-                "final_beliefs_file": self.outputs.final_beliefs_file,
+                "final_beliefs_dir": self.outputs.final_beliefs_dir,
                 "best_beliefs_json_file": self.outputs.best_beliefs_json_file,
                 "best_beliefs_text_file": self.outputs.best_beliefs_text_file,
                 "generate_embeddings": self.outputs.generate_embeddings,
                 "embeddings_file": self.outputs.embeddings_file,
                 "plot_trajectories": self.outputs.plot_trajectories,
                 "trajectory_plot_file": self.outputs.trajectory_plot_file,
+                "pca_plot_file": self.outputs.pca_plot_file,
                 "save_agent_stats": self.outputs.save_agent_stats,
                 "stats_file": self.outputs.stats_file,
                 "generate_graph_visualization": self.outputs.generate_graph_visualization,
@@ -362,9 +372,7 @@ class DebateConfig:
             },
             "defense_boost": {
                 "enabled": self.defense_boost.enabled,
-                "base_boost": self.defense_boost.base_boost,
-                "boost_increment": self.defense_boost.boost_increment,
-                "max_boost_per_defense": self.defense_boost.max_boost_per_defense,
+                "flat_boost": self.defense_boost.flat_boost,
                 "max_cumulative_boost": self.defense_boost.max_cumulative_boost,
             },
         }

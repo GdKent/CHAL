@@ -24,6 +24,8 @@ from chal.agents.prompts import (
     PANPSYCHIST,
     SIMULATIONIST,
     SYNTHESIST,
+    _LOGIC_SCALE_BLOCK,
+    _ETHICS_SCALE_BLOCK,
     build_adjudicator_prompt,
     build_debate_context,
     compute_position_analysis,
@@ -187,7 +189,7 @@ def test_adjudicator_prompt_balanced_mode_instruction():
         logic_weight=0.5, ethics_weight=0.5,
         logic_sys=_TEST_LOGIC_SYS, ethics_sys=_TEST_ETHICS_SYS,
     )
-    assert "Logical soundness is the baseline" in prompt
+    assert "Both dimensions contribute to the final score" in prompt
 
 
 @pytest.mark.unit
@@ -1931,7 +1933,7 @@ def test_adjudicator_prompt_mode_differentiation():
     # --- Mode-specific instructions differ ---
     assert "Disregard any ethical arguments" in logic_only
     assert "Logical validity is irrelevant" in ethics_only
-    assert "Logical soundness is the baseline" in balanced
+    assert "Both dimensions contribute to the final score" in balanced
 
 
 # ==============================================
@@ -2303,7 +2305,7 @@ def test_adjudicator_prompt_contains_critical_json_warning():
     )
     assert "CRITICAL" in prompt, \
         "Adjudicator prompt should contain CRITICAL warning"
-    assert "OUTSIDE the reasoning tags" in prompt, \
+    assert "OUTSIDE and AFTER the reasoning tags" in prompt, \
         "Adjudicator prompt should warn that JSON must be outside reasoning tags"
     assert "UNRESOLVED" in prompt, \
         "Adjudicator prompt should warn about UNRESOLVED consequence"
@@ -2536,3 +2538,359 @@ def test_strength_scale_literal_appears_exactly_once_in_prompts_source():
         "prompts.py source (inside _STRENGTH_SCALE_BLOCK)."
     )
     assert src.count("</strength_scale>") == 1
+
+
+@pytest.mark.unit
+def test_build_position_prompt_empty_persona():
+    """build_position_prompt with empty persona produces neutral role card."""
+    from chal.agents.prompts import build_position_prompt
+    result = build_position_prompt("Agent-Custom", "")
+    assert "no assigned epistemological worldview" in result.lower() or "no assigned" in result
+    assert "Agent-Custom" in result
+    assert "<persona>" not in result
+
+
+# ==============================================
+# Logic & Ethics Scale Constant Tests (Phase A)
+# ==============================================
+
+@pytest.mark.unit
+def test_logic_scale_block_constant_shape():
+    """The _LOGIC_SCALE_BLOCK constant must contain every required label,
+    range, wrapping tag, and preamble phrase. This test pins the semantics
+    so that edits require explicit intent."""
+    # Wrapping tags
+    assert _LOGIC_SCALE_BLOCK.startswith("<logic_scale>")
+    assert _LOGIC_SCALE_BLOCK.rstrip().endswith("</logic_scale>")
+
+    # All 7 labels
+    for label in ["No reasoning", "Severely flawed", "Weak", "Mixed",
+                  "Adequate", "Strong", "Rigorous"]:
+        assert label in _LOGIC_SCALE_BLOCK, f"Missing label: {label}"
+
+    # Range boundaries
+    for rng in ["0.0", "0.1-0.2", "0.3-0.4", "0.5", "0.6-0.7",
+                "0.8-0.9", "1.0"]:
+        assert rng in _LOGIC_SCALE_BLOCK, f"Missing range: {rng}"
+
+    # Preamble phrase
+    assert "Score the logical quality" in _LOGIC_SCALE_BLOCK
+
+
+@pytest.mark.unit
+def test_ethics_scale_block_constant_shape():
+    """The _ETHICS_SCALE_BLOCK constant must contain every required label,
+    wrapping tag, and citation requirement. This test pins the semantics
+    so that edits require explicit intent."""
+    # Wrapping tags
+    assert _ETHICS_SCALE_BLOCK.startswith("<ethics_scale>")
+    assert _ETHICS_SCALE_BLOCK.rstrip().endswith("</ethics_scale>")
+
+    # All 7 merit-based labels
+    for label in ["Ethically exemplary", "Ethically strong", "Ethically adequate",
+                  "Ethically neutral", "Ethically weak", "Ethically harmful",
+                  "Ethically untenable"]:
+        assert label in _ETHICS_SCALE_BLOCK, f"Missing label: {label}"
+
+    # Citation requirement
+    assert "MUST cite the criterion" in _ETHICS_SCALE_BLOCK
+    assert "number that justifies your assessment" in _ETHICS_SCALE_BLOCK
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_includes_logic_scale_logic_only():
+    """In logic-only mode the adjudicator prompt must include the logic scale."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0,
+        ethics_weight=0.0,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<logic_scale>" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_includes_logic_scale_balanced():
+    """In balanced mode the adjudicator prompt must include the logic scale."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.5,
+        ethics_weight=0.5,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<logic_scale>" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_excludes_logic_scale_ethics_only():
+    """In ethics-only mode the adjudicator prompt must NOT include the logic scale."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.0,
+        ethics_weight=1.0,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<logic_scale>" not in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_includes_ethics_scale_ethics_only():
+    """In ethics-only mode the adjudicator prompt must include the ethics scale."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.0,
+        ethics_weight=1.0,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<ethics_scale>" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_includes_ethics_scale_balanced():
+    """In balanced mode the adjudicator prompt must include the ethics scale."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.5,
+        ethics_weight=0.5,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<ethics_scale>" in prompt
+
+
+@pytest.mark.unit
+def test_adjudicator_prompt_excludes_ethics_scale_logic_only():
+    """In logic-only mode the adjudicator prompt must NOT include the ethics scale."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=1.0,
+        ethics_weight=0.0,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "<ethics_scale>" not in prompt
+
+
+@pytest.mark.unit
+def test_scoring_scales_ordering_in_adjudicator():
+    """In balanced mode, the ordering must be:
+    </anti_bias> < <logic_scale> < <ethics_scale> < <scoring>."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.5,
+        ethics_weight=0.5,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    anti_bias_end = prompt.index("</anti_bias>")
+    logic_start = prompt.index("<logic_scale>")
+    ethics_start = prompt.index("<ethics_scale>")
+    scoring_start = prompt.index("<scoring>")
+    assert anti_bias_end < logic_start, "</anti_bias> must appear before <logic_scale>"
+    assert logic_start < ethics_start, "<logic_scale> must appear before <ethics_scale>"
+    assert ethics_start < scoring_start, "<ethics_scale> must appear before <scoring>"
+
+
+@pytest.mark.unit
+def test_logic_scale_literal_appears_exactly_once_in_source():
+    """There must be exactly one literal <logic_scale> block in prompts.py
+    — inside _LOGIC_SCALE_BLOCK. Any additional literal occurrence indicates
+    a local copy-paste that should reuse the constant."""
+    import inspect
+    from pathlib import Path
+    import chal.agents.prompts as prompts_mod
+    src = Path(inspect.getfile(prompts_mod)).read_text(encoding="utf-8")
+    assert src.count("<logic_scale>") == 1, (
+        "Exactly one <logic_scale> opening tag should exist in "
+        "prompts.py source (inside _LOGIC_SCALE_BLOCK)."
+    )
+    assert src.count("</logic_scale>") == 1
+
+
+@pytest.mark.unit
+def test_ethics_scale_literal_appears_exactly_once_in_source():
+    """There must be exactly one literal <ethics_scale> block in prompts.py
+    — inside _ETHICS_SCALE_BLOCK. Any additional literal occurrence indicates
+    a local copy-paste that should reuse the constant."""
+    import inspect
+    from pathlib import Path
+    import chal.agents.prompts as prompts_mod
+    src = Path(inspect.getfile(prompts_mod)).read_text(encoding="utf-8")
+    assert src.count("<ethics_scale>") == 1, (
+        "Exactly one <ethics_scale> opening tag should exist in "
+        "prompts.py source (inside _ETHICS_SCALE_BLOCK)."
+    )
+    assert src.count("</ethics_scale>") == 1
+
+
+@pytest.mark.unit
+def test_scoring_scales_not_in_non_adjudicator_prompts():
+    """Logic and ethics scales must NOT appear in any non-adjudicator prompt
+    builder output. These scales are adjudicator-specific."""
+    _sample_pairs = [{
+        "challenger": "Agent-B",
+        "challenge": "Your C1 is weak because E1 is outdated",
+        "rebuttal": "E1 was replicated in 2025 with consistent results",
+        "resolution": {
+            "status": "critique_valid",
+            "reasoning": "Insufficient replication evidence",
+        },
+    }]
+    _sample_belief_json = (
+        '{"thesis": {"stance": "test", "strength": 0.7}, "claims": []}'
+    )
+    _intermediate_belief_json = (
+        '{"thesis": {"stance": "intermediate", "strength": 0.6}, '
+        '"claims": [{"id": "C1", "strength": 0.5}]}'
+    )
+    _phase1_summary = "- Updated C1: strength->0.5\n- Thesis strength: weaken"
+
+    non_adj_prompts = [
+        ("universal", build_universal_prompt("T")),
+        ("stage_1", build_stage_1_belief_prompt_cbs(
+            topic="T", agent_name="A", persona_label="P",
+        )),
+        ("stage_2", build_stage_2_prompt(
+            topic="T", agent_name="A", opponent_name="B",
+            agent_belief_json="{}", opponent_belief_json="{}",
+        )),
+        ("stage_3", build_stage_3_structured_rebuttal_prompt(
+            topic="T", agent_name="A", opponent_name="B",
+            received_questions_json="{}", agent_belief_json="{}",
+        )),
+        ("stage_5_main", build_stage_5_belief_update_prompt_cbs(
+            agent_name="A",
+            challenge_rebuttal_pairs=_sample_pairs,
+            prior_belief_json=_sample_belief_json,
+        )),
+        ("stage_5_phase1", build_stage_5_phase1_enforcement_prompt(
+            agent_name="A",
+            challenge_rebuttal_pairs=_sample_pairs,
+            prior_belief_json=_sample_belief_json,
+        )),
+        ("stage_5_phase2", build_stage_5_phase2_introspection_prompt(
+            agent_name="A",
+            intermediate_belief_json=_intermediate_belief_json,
+            phase1_changes_summary=_phase1_summary,
+        )),
+    ]
+    for label, prompt in non_adj_prompts:
+        assert "<logic_scale>" not in prompt, (
+            f"{label} prompt should not contain <logic_scale>"
+        )
+        assert "<ethics_scale>" not in prompt, (
+            f"{label} prompt should not contain <ethics_scale>"
+        )
+
+
+@pytest.mark.unit
+def test_mode_scoring_references_actual_weights():
+    """In balanced mode with specific weights, the scoring section must
+    reference the actual numeric weight values."""
+    from chal.agents.logic_systems import LOGIC_SYSTEMS
+    from chal.agents.ethics_systems import ETHICS_SYSTEMS
+    prompt = build_adjudicator_prompt(
+        logic_weight=0.7,
+        ethics_weight=0.3,
+        logic_sys=LOGIC_SYSTEMS["FORMAL_DEDUCTIVE"],
+        ethics_sys=ETHICS_SYSTEMS["UTILITARIAN"],
+    )
+    assert "0.7" in prompt, "Prompt should contain the logic weight 0.7"
+    assert "0.3" in prompt, "Prompt should contain the ethics weight 0.3"
+
+
+# ==============================================
+# Ethical Attack Strategy Tests (Phase B-2)
+# ==============================================
+
+_ALL_ETHICAL_STRATEGIES = [
+    "challenge_moral_implications",
+    "expose_stakeholder_harm",
+    "present_ethical_counter",
+    "invoke_competing_obligation",
+    "challenge_normative_inference",
+    "expose_value_conflict",
+    "challenge_moral_relevance",
+]
+
+
+@pytest.mark.unit
+def test_stage2_taxonomy_mentions_ethical_strategies():
+    """Stage 2 attack taxonomy must mention all 7 ethical strategy names."""
+    prompt = build_stage_2_prompt(
+        topic="Philosophy",
+        agent_name="Agent-A",
+        opponent_name="Agent-B",
+        agent_belief_json='{"thesis": {"statement": "Test"}}',
+        opponent_belief_json='{"thesis": {"statement": "Test2"}}'
+    )
+    for strategy in _ALL_ETHICAL_STRATEGIES:
+        assert strategy in prompt, (
+            f"Stage 2 taxonomy missing ethical strategy: {strategy}"
+        )
+
+
+@pytest.mark.unit
+def test_ethical_strategies_under_correct_types_in_stage2():
+    """Ethical strategies must appear under the correct attack type section
+    in the Stage 2 attack taxonomy."""
+    prompt = build_stage_2_prompt(
+        topic="Philosophy",
+        agent_name="Agent-A",
+        opponent_name="Agent-B",
+        agent_belief_json='{"thesis": {"statement": "Test"}}',
+        opponent_belief_json='{"thesis": {"statement": "Test2"}}'
+    )
+    undermining_idx = prompt.index("UNDERMINING")
+    rebutting_idx = prompt.index("REBUTTING")
+    undercutting_idx = prompt.index("UNDERCUTTING")
+
+    # Undermining ethical strategies: after UNDERMINING, before REBUTTING
+    undermining_section = prompt[undermining_idx:rebutting_idx]
+    assert "challenge_moral_implications" in undermining_section, \
+        "challenge_moral_implications should be under UNDERMINING"
+    assert "expose_stakeholder_harm" in undermining_section, \
+        "expose_stakeholder_harm should be under UNDERMINING"
+
+    # Rebutting ethical strategies: after REBUTTING, before UNDERCUTTING
+    rebutting_section = prompt[rebutting_idx:undercutting_idx]
+    assert "present_ethical_counter" in rebutting_section, \
+        "present_ethical_counter should be under REBUTTING"
+    assert "invoke_competing_obligation" in rebutting_section, \
+        "invoke_competing_obligation should be under REBUTTING"
+
+    # Undercutting ethical strategies: after UNDERCUTTING
+    undercutting_section = prompt[undercutting_idx:]
+    assert "challenge_normative_inference" in undercutting_section, \
+        "challenge_normative_inference should be under UNDERCUTTING"
+    assert "expose_value_conflict" in undercutting_section, \
+        "expose_value_conflict should be under UNDERCUTTING"
+    assert "challenge_moral_relevance" in undercutting_section, \
+        "challenge_moral_relevance should be under UNDERCUTTING"
+
+
+@pytest.mark.unit
+def test_stage1_mentions_ethical_strategy_examples():
+    """Stage 1 prompt must mention at least one ethical strategy name
+    in the attack_strategy examples for counterpositions."""
+    prompt = build_stage_1_belief_prompt_cbs(
+        topic="Test",
+        agent_name="Agent-A",
+        persona_label="Empiricist"
+    )
+    found = any(strategy in prompt for strategy in _ALL_ETHICAL_STRATEGIES)
+    assert found, (
+        "Stage 1 prompt should mention at least one ethical strategy name "
+        "in the attack_strategy examples"
+    )

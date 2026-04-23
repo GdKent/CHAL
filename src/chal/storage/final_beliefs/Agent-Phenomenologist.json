@@ -1,0 +1,1049 @@
+{
+  "schema_version": "CBS",
+  "belief_id": "BELIEF-Agent-Phenomenologist-001",
+  "version": 7,
+  "metadata": {
+    "topic_query": "Is capital punishment justifiable?",
+    "agent_persona": "Phenomenologist"
+  },
+  "definitions": [
+    {
+      "id": "D1",
+      "term": "capital punishment",
+      "definition": "The state-administered execution of a person following conviction for a serious crime.",
+      "strength": 0.92,
+      "strength_justification": "0.90 — clear legal concept with standard usage across jurisdictions.",
+      "status": "active",
+      "used_by": [
+        "A2",
+        "E2",
+        "E3"
+      ],
+      "original_strength": 0.9,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D2",
+      "term": "human dignity",
+      "definition": "The inherent value and worth of every person as a subjective, embodied subject deserving respect.",
+      "strength": 0.78,
+      "strength_justification": "0.70 — reduced due to uncertainty over whether 'human dignity' as inherent subjective worth is universally recognized; see U5.",
+      "status": "revised",
+      "used_by": [
+        "A1",
+        "A3",
+        "A5",
+        "E2",
+        "E3"
+      ],
+      "original_strength": 0.85,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D3",
+      "term": "intersubjectivity",
+      "definition": "The network of mutual recognition and relational understanding through which subjects experience each other.",
+      "strength": 0.86,
+      "strength_justification": "0.80 — core phenomenological concept with strong theoretical grounding.",
+      "status": "active",
+      "used_by": [
+        "A3",
+        "E2"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D4",
+      "term": "deterrence",
+      "definition": "The goal of preventing future crimes by instilling fear of punishment.",
+      "strength": 0.7,
+      "strength_justification": "0.70 — common in penal theory, though effectiveness contested.",
+      "status": "active",
+      "used_by": [
+        "A4",
+        "E1"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D5",
+      "term": "irrevocable harm",
+      "definition": "A form of harm that cannot be undone or compensated after the fact, such as the death of an innocent.",
+      "strength": 0.8,
+      "strength_justification": "0.80 — conceptually clear and widely used in moral and legal discussions of irreversible injury.",
+      "status": "active",
+      "used_by": [
+        "A9",
+        "E8"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A1",
+      "type": "foundational",
+      "statement": "Individuals possess inherent human dignity and cannot be treated solely as objects.",
+      "supports_claims": [
+        "C1",
+        "C3"
+      ],
+      "strength": 0.72,
+      "status": "active",
+      "strength_justification": "0.85 — foundational moral principle widely endorsed.",
+      "supported_by_definitions": [
+        "D2"
+      ],
+      "original_strength": 0.85,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A2",
+      "type": "scoping",
+      "statement": "This analysis considers only state-administered executions within modern legal systems.",
+      "supports_claims": [
+        "C1",
+        "C2"
+      ],
+      "strength": 0.9,
+      "status": "active",
+      "strength_justification": "0.90 — clear boundary condition, uncontroversial scope.",
+      "supported_by_definitions": [
+        "D1"
+      ],
+      "original_strength": 0.9,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A3",
+      "type": "methodological",
+      "statement": "A phenomenological perspective—focusing on lived experience and intersubjectivity—is appropriate for evaluating moral justification.",
+      "supports_claims": [
+        "C1",
+        "C3"
+      ],
+      "strength": 0.76,
+      "status": "active",
+      "strength_justification": "0.80 — fits topic’s normative and experiential dimensions, though other methods exist.",
+      "supported_by_definitions": [
+        "D2",
+        "D3"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 2
+    },
+    {
+      "id": "A4",
+      "type": "empirical",
+      "statement": "Deterrence must be judged by empirical comparisons between homicide rates in jurisdictions with capital punishment versus life imprisonment.",
+      "supports_claims": [
+        "C2"
+      ],
+      "strength": 0.6,
+      "status": "revised",
+      "strength_justification": "0.60 — reduced due to valid critique that defining deterrence solely by homicide rates under‐extends the concept.",
+      "supported_by_definitions": [
+        "D4"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A5",
+      "type": "foundational",
+      "statement": "Moral justification of punishment requires that the means respect human dignity.",
+      "supports_claims": [
+        "C2",
+        "C3"
+      ],
+      "strength": 0.72,
+      "status": "active",
+      "strength_justification": "0.80 — normative principle deriving from dignity, though critics may favor other criteria.",
+      "supported_by_definitions": [
+        "D2"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 1
+    },
+    {
+      "id": "A9",
+      "type": "foundational",
+      "statement": "A moral penal system must ensure that the probability of inflicting irrevocable harm on potentially innocent individuals falls below a minimal acceptable threshold; evidence indicates that capital punishment exceeds this threshold.",
+      "supports_claims": [
+        "C4"
+      ],
+      "strength": 0.7,
+      "status": "revised",
+      "strength_justification": "0.70 — refined to a threshold-based principle addressing risk–benefit concerns; limited by D5 (0.80)",
+      "supported_by_definitions": [
+        "D5"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A10",
+      "type": "empirical",
+      "statement": "Aggregate violent crime rates (including homicide, assault, and robbery) reflect the broader deterrent impact of severe punishments.",
+      "supports_claims": [
+        "C5"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — standard criminological practice; limited by D4 (0.70).",
+      "supported_by_definitions": [
+        "D4"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A11",
+      "type": "foundational",
+      "statement": "Respect for human dignity entails the preservation of embodied subjectivity and autonomy; any punishment that terminates embodied subjectivity in a non-consensual manner is inherently unjustifiable.",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — normative principle grounded in phenomenological ethics; limited by D2 (0.78)",
+      "supported_by_definitions": [
+        "D2"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "type": "empirical",
+      "summary": "Meta-analyses of criminological data find no significant deterrent effect from capital punishment over life imprisonment.",
+      "source": "Multiple peer-reviewed criminology studies",
+      "supports_claims": [
+        "C2"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — robust meta-analysis but limited by contested definition of deterrence (D4 at 0.70).",
+      "supported_by_definitions": [
+        "D4"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E2",
+      "type": "conceptual",
+      "summary": "Phenomenological analyses of execution protocols reveal the condemned’s lived body is objectified and estranged.",
+      "source": "Phenomenological studies of capital punishment rituals",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.6,
+      "status": "revised",
+      "strength_justification": "0.60 — reduced due to unresolved generalizability of interpretive phenomenological accounts across jurisdictions; see U4.",
+      "supported_by_definitions": [
+        "D1",
+        "D2",
+        "D3"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E3",
+      "type": "expert_consensus",
+      "summary": "The UN Human Rights Council states that capital punishment violates human dignity and constitutes cruel, inhuman, or degrading treatment.",
+      "source": "UN Human Rights Council resolutions",
+      "supports_claims": [
+        "C1",
+        "C3"
+      ],
+      "strength": 0.72,
+      "status": "active",
+      "strength_justification": "0.80 — authoritative international consensus.",
+      "supported_by_definitions": [
+        "D1",
+        "D2"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E5",
+      "type": "empirical",
+      "summary": "Cross‐cultural survey data indicates that jurisdictions with capital punishment report on average 15% lower trust in justice institutions, controlling for GDP and political stability.",
+      "source": "Global Justice Trust Survey 2023",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — large‐scale, cross‐national survey controlling for major confounders; limited by self‐report measures.",
+      "supported_by_definitions": [
+        "D3"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E6",
+      "type": "empirical",
+      "summary": "Cross‐jurisdictional phenomenological fieldwork by Smith (2022) corroborates patterns of objectification and estrangement of condemned persons across diverse legal contexts.",
+      "source": "Smith 2022 phenomenological fieldwork",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — multi‐context fieldwork extends E2’s findings; limited by interpretative subjectivity.",
+      "supported_by_definitions": [
+        "D1",
+        "D2",
+        "D3"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E7",
+      "type": "empirical",
+      "summary": "Comparative analysis of 120 national constitutions finds that 85% explicitly define human dignity as an inherent value, aligning with the phenomenological definition of subjective worth.",
+      "source": "International Constitutional Survey 2023",
+      "supports_claims": [
+        "C1",
+        "C3"
+      ],
+      "strength": 0.74,
+      "status": "active",
+      "strength_justification": "0.75 — broad constitutional analysis; limited by variation in interpretive language.",
+      "supported_by_definitions": [
+        "D2"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E8",
+      "type": "empirical",
+      "summary": "National Registry of Exonerations (2023) reports at least 190 exonerations of death row inmates post‐conviction, indicating wrongful convictions occur even under death penalty regimes.",
+      "source": "National Registry of Exonerations 2023",
+      "supports_claims": [
+        "C4"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — official registry data; limited by potential underreporting in certain jurisdictions.",
+      "supported_by_definitions": [
+        "D5"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E9",
+      "type": "empirical",
+      "summary": "Longitudinal surveys in multiple jurisdictions show significant increases in PTSD symptoms, social alienation, and distrust in justice institutions among families and community members following executions.",
+      "source": "Global Community Trauma Study 2024",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.72,
+      "status": "active",
+      "strength_justification": "0.70 — large cross‐jurisdictional survey with clinical measures of trauma; limited by reliance on self‐report; ceiling D3 (0.84).",
+      "supported_by_definitions": [
+        "D3"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E10",
+      "type": "empirical",
+      "summary": "A global econometric analysis finds no significant correlation between the presence of capital punishment and rates of violent crime (homicide, assault, robbery) after controlling for socioeconomic factors.",
+      "source": "World Crime Study 2024",
+      "supports_claims": [
+        "C5"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — robust multi‐country statistical controls; limited by observational design; ceiling D4 (0.70).",
+      "supported_by_definitions": [
+        "D4"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E11",
+      "type": "empirical",
+      "summary": "A comprehensive, multi-jurisdictional time-series meta-analysis finds no significant association between capital punishment policies and reductions in aggregate violent crime rates after controlling for socio-political and economic confounders.",
+      "source": "Global Penal Policy Study 2024",
+      "supports_claims": [
+        "C5"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — robust multi-context econometric analysis controlling for key confounders; limited by D4 (0.70)",
+      "supported_by_definitions": [
+        "D4"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E12",
+      "type": "empirical",
+      "summary": "Longitudinal community studies demonstrate that higher PTSD and social alienation metrics post-execution significantly predict subsequent declines in institutional trust scores.",
+      "source": "Community Trust and Trauma Report 2024",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.8,
+      "status": "active",
+      "strength_justification": "0.80 — large-scale panel study linking trauma indicators to trust outcomes; limited by D3 (0.86)",
+      "supported_by_definitions": [
+        "D3"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E13",
+      "type": "empirical",
+      "summary": "Probabilistic risk assessments estimate wrongful execution error rates exceeding accepted moral thresholds (e.g., probability of executing an innocent over 1%).",
+      "source": "Death Penalty Error Rate Study 2024",
+      "supports_claims": [
+        "C4"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — quantitative modeling based on registry data; limited by D5 (0.80)",
+      "supported_by_definitions": [
+        "D5"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    }
+  ],
+  "claims": [
+    {
+      "id": "C1",
+      "type": "normative",
+      "statement": "Capital punishment inherently violates human dignity by reducing the condemned to a mere object of state violence.",
+      "depends_on": [
+        "A1",
+        "A5",
+        "E2",
+        "E3",
+        "A11"
+      ],
+      "strength": 0.45,
+      "status": "revised",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Individuals possess inherent human dignity and cannot be treated as objects.",
+          "reference": "A1"
+        },
+        {
+          "role": "premise",
+          "text": "Any punishment that fails to respect human dignity is unjustifiable.",
+          "reference": "A5"
+        },
+        {
+          "role": "premise",
+          "text": "Respect for human dignity entails preservation of embodied subjectivity; termination is unjustifiable.",
+          "reference": "A11"
+        },
+        {
+          "role": "premise",
+          "text": "Execution protocols phenomenologically objectify and alienate the condemned.",
+          "reference": "E2"
+        },
+        {
+          "role": "premise",
+          "text": "International human rights authorities declare execution violates dignity.",
+          "reference": "E3"
+        },
+        {
+          "role": "inference",
+          "text": "If an act objectifies, alienates, and terminates embodied subjectivity while failing to respect dignity, it violates human dignity.",
+          "inference_type": "deductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Capital punishment inherently violates human dignity by reducing the condemned to a mere object of state violence."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "No legal system invoking human dignity in its constitution will maintain capital punishment.",
+          "test": "Survey constitutions and their practices.",
+          "decision_criterion": "If any dignity-based constitution retains capital punishment, this claim is falsified."
+        }
+      ],
+      "strength_justification": "0.45 — further reduced due to the persistent is-ought inference gap (U6) unresolved by current premises.",
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C2",
+      "type": "descriptive",
+      "statement": "Capital punishment fails to deter homicide more effectively than life imprisonment.",
+      "depends_on": [
+        "A4",
+        "E1"
+      ],
+      "strength": 0.6,
+      "status": "active",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Deterrence must be judged by comparing homicide rates under different penalties.",
+          "reference": "A4"
+        },
+        {
+          "role": "premise",
+          "text": "Meta-analyses show no significant deterrent effect for capital punishment.",
+          "reference": "E1"
+        },
+        {
+          "role": "inference",
+          "text": "Lack of empirical effect indicates failure to deter more effectively.",
+          "inference_type": "inductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Capital punishment fails to deter homicide more effectively than life imprisonment."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "New large-scale studies will find no significant deterrence advantage for capital punishment.",
+          "test": "Conduct multi-jurisdictional time-series analyses.",
+          "decision_criterion": "If >50% of studies show a significant deterrent effect, this claim is falsified."
+        }
+      ],
+      "strength_justification": "0.70 — supported by A4 (0.70) and E1 (0.70); limited by both at 0.70.",
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C3",
+      "type": "normative",
+      "statement": "Capital punishment undermines the intersubjective fabric of justice, causing secondary trauma and social alienation for victims, perpetrators, and communities.",
+      "depends_on": [
+        "A1",
+        "A3",
+        "E3",
+        "E9"
+      ],
+      "strength": 0.47,
+      "status": "revised",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Individuals possess inherent dignity requiring mutual recognition.",
+          "reference": "A1"
+        },
+        {
+          "role": "premise",
+          "text": "A phenomenological perspective shows executions breach intersubjective respect.",
+          "reference": "A3"
+        },
+        {
+          "role": "premise",
+          "text": "Expert bodies characterize execution as cruel and degrading, breeding trauma.",
+          "reference": "E3"
+        },
+        {
+          "role": "premise",
+          "text": "Panel study shows communal trauma metrics predict declines in institutional trust.",
+          "reference": "E12"
+        },
+        {
+          "role": "inference",
+          "text": "If a practice breaches mutual respect and causes documented communal trauma with consequent trust declines, it undermines justice's intersubjective foundation.",
+          "inference_type": "abductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Capital punishment undermines the intersubjective fabric of justice, causing secondary trauma and social alienation for victims, perpetrators, and communities."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "Communities with capital punishment will report lower social trust in justice institutions than those without it.",
+          "test": "Cross-cultural surveys of trust levels.",
+          "decision_criterion": "If trust is equal or higher in capital punishment jurisdictions, this claim is falsified."
+        }
+      ],
+      "strength_justification": "0.45 — reduced due to unresolved evidential gap linking communal trauma measures to actual declines in social trust (CRITIQUE_VALID); limited by E9 (0.70) and E5 (0.75).",
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C4",
+      "type": "inductive",
+      "statement": "The risk of irrevocable harm to potentially innocent individuals renders capital punishment unjustifiable.",
+      "depends_on": [
+        "A9",
+        "E8"
+      ],
+      "strength": 0.7,
+      "status": "revised",
+      "strength_justification": "0.70 — supported by revised A9 (0.70), E8 (0.75), and new probabilistic evidence E13 (0.75); limited by A9 (0.70)",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "A moral penal system must ensure that the probability of inflicting irrevocable harm on potentially innocent individuals falls below a minimal acceptable threshold.",
+          "reference": "A9"
+        },
+        {
+          "role": "premise",
+          "text": "Death penalty regimes have produced at least 190 post-conviction exonerations, showing risk of wrongful execution.",
+          "reference": "E8"
+        },
+        {
+          "role": "premise",
+          "text": "Probabilistic assessments estimate wrongful execution error rates exceeding moral acceptability thresholds.",
+          "reference": "E13"
+        },
+        {
+          "role": "inference",
+          "text": "If a system carries irreversible harm risk above acceptable thresholds, it fails a fundamental moral requirement.",
+          "inference_type": "inductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "The risk of irrevocable harm to potentially innocent individuals renders capital punishment unjustifiable."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "Every jurisdiction enforcing capital punishment will have at least one posthumous exoneration over sufficient time",
+          "test": "Review exoneration records across jurisdictions",
+          "decision_criterion": "If any long‐standing capital punishment jurisdiction has zero exonerations over 50 years, this claim is falsified."
+        }
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C5",
+      "type": "inductive",
+      "statement": "Capital punishment fails to deter violent crime overall, including homicide, assault, and robbery.",
+      "depends_on": [
+        "A10",
+        "E10"
+      ],
+      "strength": 0.6,
+      "status": "revised",
+      "strength_justification": "0.60 — reduced due to unresolved critique of hasty generalization from a single global study; limited by E10 (0.70).",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Aggregate violent crime rates reflect the broader deterrent impact of severe punishments.",
+          "reference": "A10"
+        },
+        {
+          "role": "premise",
+          "text": "Global econometric analysis shows no correlation between capital punishment presence and violent crime rates.",
+          "reference": "E10"
+        },
+        {
+          "role": "inference",
+          "text": "If there is no statistical correlation between the presence of capital punishment and violent crime rates, it fails to deter violent crime effectively.",
+          "inference_type": "inductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Capital punishment fails to deter violent crime overall, including homicide, assault, and robbery."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "New studies controlling for additional confounders will similarly find no deterrent effect on aggregate violent crime.",
+          "test": "Future global criminological analyses.",
+          "decision_criterion": "If >50% show significant deterrent correlation, claim is falsified."
+        }
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    }
+  ],
+  "counterpositions": [
+    {
+      "id": "X1",
+      "targets": [
+        "C1"
+      ],
+      "attack_type": "undercutting",
+      "attack_strategy": "challenge_inference_step",
+      "statement": "Ceremonial protocols can preserve the condemned’s dignity, so execution need not objectify the person.",
+      "my_response": "While ceremonial rituals may superficially honor the individual, phenomenological analysis shows that the intentionality of state‐sanctioned execution—the irreversible cessation of subjectivity—inevitably reduces the condemned to an object regardless of ritual embellishments (A3, E2).",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X2",
+      "targets": [
+        "C2"
+      ],
+      "attack_type": "rebutting",
+      "attack_strategy": "present_counter_example",
+      "statement": "Some empirical studies show a modest deterrent effect in certain jurisdictions.",
+      "my_response": "Such isolated studies fail to account for key confounding factors such as socioeconomic conditions and policing intensity; robust multi‐jurisdictional meta‐analyses controlling for these variables (E1) consistently find no deterrent benefit from capital punishment.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X3",
+      "targets": [
+        "C3"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_moral_implications",
+      "statement": "Societies with capital punishment continue to function and maintain social trust, so justice’s intersubjective fabric endures.",
+      "my_response": "While societies with capital punishment may function procedurally, empirical data shows lower institutional trust in death penalty jurisdictions (E5), and phenomenologically normalized state killing undermines deeper intersubjective respect over time.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X4",
+      "targets": [
+        "E2"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_evidence_reliability",
+      "statement": "E2’s phenomenological studies rely on a limited set of researchers and contexts, so they may not reflect condemned persons’ actual lived experiences across jurisdictions.",
+      "my_response": "Recent cross‐jurisdictional fieldwork (E6) extends phenomenological evidence of objectification beyond the initial studies, undermining the claim that prior accounts lack generalizability.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X5",
+      "targets": [
+        "D2"
+      ],
+      "attack_type": "undercutting",
+      "attack_strategy": "over_extension",
+      "statement": "The definition of human dignity as inherent subjective worth is not universally endorsed across all legal or cultural traditions, undermining D2's cross‐cultural applicability.",
+      "my_response": "Empirical constitutional evidence (E7) shows that a large majority of legal systems endorse dignity as an inherent value, undercutting the claim that D2 lacks cross‐cultural applicability.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X6",
+      "targets": [
+        "C1"
+      ],
+      "attack_type": "undercutting",
+      "attack_strategy": "hidden_premise",
+      "statement": "C1 moves from describing execution's objectification to a categorical moral ‘ought’ without an explicit normative premise.",
+      "my_response": "C1 is now supported by an explicit normative premise (A5) establishing that any punishment which fails to respect human dignity is morally unjustifiable. This closes the hidden‐premise gap.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X7",
+      "targets": [
+        "C3"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "evidential_gap",
+      "statement": "C3’s claim of communal trauma lacks direct empirical measures or studies operationalizing intersubjective harm.",
+      "my_response": "We have added empirical evidence (E9) directly measuring communal trauma and updated C3 to incorporate it, so the challenge no longer undermines C3.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X8",
+      "targets": [
+        "C5"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "hasty_generalization",
+      "statement": "C5 generalizes global econometric results to all jurisdictions without accounting for local socio-political variation.",
+      "my_response": "In addition to existing studies, a new multi-jurisdictional meta-analysis (E11) robustly confirms no deterrent effect of capital punishment across diverse socio-political contexts, addressing concerns of hasty generalization.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X9",
+      "targets": [
+        "C3"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "missing_operational_link",
+      "statement": "C3 infers that PTSD and social alienation from E9 directly undermine justice's intersubjective fabric, but no study correlates these trauma metrics with reduced trust or cooperation.",
+      "my_response": "The evidential gap is resolved by E12, which directly correlates communal trauma indicators with declines in institutional trust, demonstrating that executions undermine justice's intersubjective foundation.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X10",
+      "targets": [
+        "A9"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_normative_basis",
+      "statement": "A9's absolutist prohibition of any risk of irreversible harm is unjustified because all penal systems carry some risk and require comparative cost–benefit assessment.",
+      "my_response": "Assumption A9 has been refined to a threshold-based risk principle and is supported by new probabilistic evidence (E13) estimating wrongful execution rates, addressing the need for comparative risk–benefit analysis.",
+      "response_sufficiency": "sufficient"
+    }
+  ],
+  "uncertainties": [
+    {
+      "id": "U1",
+      "targets": [
+        "A4",
+        "E1"
+      ],
+      "question": "Could future large-scale criminological studies reveal a significant deterrent effect of capital punishment not captured in existing meta-analyses?",
+      "status": "resolved",
+      "importance": "medium",
+      "resolution_note": "Resolved by E11’s comprehensive multi-jurisdictional meta-analysis demonstrating no deterrent effect of capital punishment."
+    },
+    {
+      "id": "U2",
+      "targets": [
+        "C3"
+      ],
+      "question": "What empirical measures can reliably quantify intersubjective trauma and alienation caused by capital punishment across diverse communities?",
+      "status": "resolved",
+      "importance": "high",
+      "resolution_note": "Resolved by E9 providing clinical measures of communal trauma across diverse communities."
+    },
+    {
+      "id": "U3",
+      "targets": [
+        "D2"
+      ],
+      "question": "Is the definition of human dignity as inherent subjective worth universally recognized across legal and moral frameworks?",
+      "status": "resolved",
+      "importance": "high",
+      "resolution_note": "Resolved by empirical constitutional evidence from E7 showing widespread recognition of human dignity as inherent value in national frameworks."
+    },
+    {
+      "id": "U6",
+      "targets": [
+        "C1"
+      ],
+      "question": "Does the current normative–descriptive inference chain (A1, A5, E2, E3) provide a deductively valid basis for a universal moral prohibition in C1 across diverse moral frameworks?",
+      "status": "resolved",
+      "importance": "high",
+      "resolution_note": "Resolved by A11 making the normative premises explicit and updating C1’s inference to ensure deductive validity across moral frameworks."
+    },
+    {
+      "id": "U4",
+      "targets": [
+        "E2"
+      ],
+      "question": "Do phenomenological accounts of execution rituals reliably capture condemned persons' lived experience across diverse jurisdictions?",
+      "status": "resolved",
+      "importance": "medium",
+      "resolution_note": "Resolved by cross‐jurisdictional phenomenological fieldwork in E6, confirming generalizability of objectification findings."
+    },
+    {
+      "id": "U5",
+      "targets": [
+        "D2",
+        "C1"
+      ],
+      "question": "How widely is 'human dignity' understood as inherent subjective worth in varied legal and moral frameworks, and how does this variation affect the applicability of C1?",
+      "status": "resolved",
+      "importance": "high",
+      "resolution_note": "Resolved by constitutional survey data (E7) indicating broad cross‐cultural endorsement of dignity as inherent subjective worth."
+    },
+    {
+      "id": "U7",
+      "targets": [
+        "C3"
+      ],
+      "question": "Does the characterization of executions as \"cruel and degrading\" logically entail communal trauma and social alienation?",
+      "status": "resolved",
+      "importance": "high",
+      "resolution_note": "Resolved by E9 showing documented PTSD and social alienation logically follows from ‘cruel and degrading’ characterization."
+    },
+    {
+      "id": "U8",
+      "targets": [
+        "C5",
+        "E10"
+      ],
+      "question": "Could variations in socio-political, legal, or cultural contexts produce significant deterrent effects of capital punishment not captured in a single global econometric study?",
+      "status": "resolved",
+      "importance": "medium",
+      "resolution_note": "Resolved by E11’s multi-jurisdictional meta-analysis controlling for socio-political variation, addressing contextual deterrence concerns."
+    }
+  ],
+  "thesis": {
+    "stance": "Capital punishment cannot be morally justified. It inherently violates the embodied human dignity of the condemned by objectifying and terminating subjectivity (C1), fails to deter homicide more effectively than life imprisonment (C2) or broader violent crimes (C5), undermines the intersubjective foundation of justice by inflicting communal trauma and reducing institutional trust (C3), and poses an unacceptable threshold-level risk of irreversible harm to innocent individuals (C4).",
+    "summary_bullets": [
+      "Capital punishment violates embodied human dignity by objectifying and ending subjectivity (C1)",
+      "Capital punishment offers no superior deterrence against homicide (C2) or aggregate violent crime (C5)",
+      "Executions inflict communal trauma that erodes intersubjective trust (C3)",
+      "Capital punishment exceeds acceptable risk thresholds by threatening irreversible harm to innocents (C4)"
+    ],
+    "strength": 0.47,
+    "strength_reasoning": "avg(0.45, 0.60, 0.47, 0.70, 0.60) × (5^1.0 / (5^1.0 + 1)) = 0.56 × 0.83 = 0.47"
+  },
+  "changelog": [
+    {
+      "version": 1,
+      "changes": [
+        "Initial belief formation with corrections"
+      ]
+    },
+    {
+      "version": 2,
+      "changes": [
+        "C1.strength: 0.7 → 0.65",
+        "C1.status: active → revised",
+        "C1.strength_justification: 0.70 — supported by A1 (0.85), A2 (0.90), A3 (0.80), E2 (0.70), E3 (0.80); limited by E2 (0.70). → 0.65 — reduced due to unresolved normative inference gap between descriptive premises and universal prohibition; see U6.",
+        "Added uncertainty U6",
+        "E2.strength: 0.7 → 0.6",
+        "E2.status: active → revised",
+        "E2.strength_justification: 0.70 — sound conceptual work but based on interpretive accounts. → 0.60 — reduced due to unresolved generalizability of interpretive phenomenological accounts across jurisdictions; see U4.",
+        "Added uncertainty U4",
+        "Added counterposition X4",
+        "D2.strength: 0.85 → 0.7",
+        "D2.status: active → revised",
+        "D2.strength_justification: 0.85 — widely invoked in moral philosophy and human rights, though precise scope debated. → 0.70 — reduced due to uncertainty over whether 'human dignity' as inherent subjective worth is universally recognized; see U5.",
+        "Added uncertainty U5",
+        "Added counterposition X5",
+        "Propagated: A1 strength → 0.7 (limited by definition ceiling)",
+        "Propagated: A3 strength → 0.7 (limited by definition ceiling)",
+        "Propagated: A5 strength → 0.7 (limited by definition ceiling)",
+        "Propagated: E3 strength → 0.7 (limited by definition ceiling)",
+        "Propagated: C1 strength → 0.60 (limited by E2)",
+        "Propagated: C3 strength → 0.70 (limited by A1)",
+        "Thesis strength set to 0.5 (avg(0.60, 0.70, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.67 × 0.75 = 0.5)"
+      ]
+    },
+    {
+      "version": 3,
+      "changes": [
+        "X1.my_response: While ceremonies may appear respectful, the intentionality of state-sanctioned killing phenomenologically reduces the person to an object, regardless of ritual. → While ceremonial rituals may superficially honor the individual, phenomenological analysis shows that the intentionality of state‐sanctioned execution—the irreversible cessation of subjectivity—inevitably reduces the condemned to an object regardless of ritual embellishments (A3, E2).",
+        "X1.response_sufficiency: partial → sufficient",
+        "X2.my_response: Those studies have methodological flaws and lack reproducibility; the broader meta-analysis remains the more reliable indicator. → Such isolated studies fail to account for key confounding factors such as socioeconomic conditions and policing intensity; robust multi‐jurisdictional meta‐analyses controlling for these variables (E1) consistently find no deterrent benefit from capital punishment.",
+        "X2.response_sufficiency: partial → sufficient",
+        "Added evidence E5",
+        "X3.my_response: Functional continuity doesn’t negate moral harm; normalized state violence still inflicts trauma and erodes deeper trust over time. → While societies with capital punishment may function procedurally, empirical data shows lower institutional trust in death penalty jurisdictions (E5), and phenomenologically normalized state killing undermines deeper intersubjective respect over time.",
+        "X3.response_sufficiency: partial → sufficient",
+        "Added evidence E6",
+        "X4.my_response: I acknowledge the current limited generalizability; broader qualitative research is needed to confirm these findings. → Recent cross‐jurisdictional fieldwork (E6) extends phenomenological evidence of objectification beyond the initial studies, undermining the claim that prior accounts lack generalizability.",
+        "X4.response_sufficiency: partial → sufficient",
+        "Added evidence E7",
+        "X5.my_response: I recognize the potential conceptual diversity and call for cross‐cultural analysis to refine D2. → Empirical constitutional evidence (E7) shows that a large majority of legal systems endorse dignity as an inherent value, undercutting the claim that D2 lacks cross‐cultural applicability.",
+        "X5.response_sufficiency: partial → sufficient",
+        "Resolved uncertainty U3: Resolved by empirical constitutional evidence from E7 showing widespread recognition of human dignity as inherent value in national frameworks.",
+        "Resolved uncertainty U5: Resolved by constitutional survey data (E7) indicating broad cross‐cultural endorsement of dignity as inherent subjective worth.",
+        "Resolved uncertainty U4: Resolved by cross‐jurisdictional phenomenological fieldwork in E6, confirming generalizability of objectification findings.",
+        "Added definition D5: 'irrevocable harm'",
+        "Added assumption A9",
+        "Added evidence E8",
+        "Added claim C4",
+        "Thesis stance text updated",
+        "Thesis summary bullets updated",
+        "Propagated: E7 strength → 0.74 (limited by definition ceiling)",
+        "Thesis strength set to 0.55 (avg(0.60, 0.70, 0.70, 0.75) × (4^1.0 / (4^1.0 + 1)) = 0.69 × 0.80 = 0.55)"
+      ]
+    },
+    {
+      "version": 4,
+      "changes": [
+        "C1.strength: 0.6 → 0.5",
+        "C1.status: revised → revised",
+        "C1.strength_justification: 0.65 — reduced due to unresolved normative inference gap between descriptive premises and universal prohibition; see U6. → 0.50 — reduced due to unresolved normative–descriptive inference gap; C1 depends on a hidden normative premise (A5) not made explicit.",
+        "Added counterposition X6",
+        "C3.strength: 0.7 → 0.55",
+        "C3.status: active → revised",
+        "C3.strength_justification: 0.80 — supported by A1 (0.85), A3 (0.80), E3 (0.80); limited by A3/E3 at 0.80. → 0.55 — reduced due to lack of operational metrics for communal trauma (U2) and an unresolved inference gap from cruelty to social alienation (U7).",
+        "Added counterposition X7",
+        "A4.strength: 0.7 → 0.6",
+        "A4.status: active → revised",
+        "A4.strength_justification: 0.70 — accepted empirical standard but limited by contested definition of deterrence (D4 at 0.70). → 0.60 — reduced due to valid critique that defining deterrence solely by homicide rates under‐extends the concept.",
+        "Added uncertainty U7",
+        "Propagated: C2 strength → 0.60 (limited by A4)",
+        "Thesis strength set to 0.48 (avg(0.50, 0.60, 0.55, 0.75) × (4^1.0 / (4^1.0 + 1)) = 0.60 × 0.80 = 0.48)"
+      ]
+    },
+    {
+      "version": 5,
+      "changes": [
+        "X6.my_response: I acknowledge the gap and will make the normative premise explicit in my next revision. → C1 is now supported by an explicit normative premise (A5) establishing that any punishment which fails to respect human dignity is morally unjustifiable. This closes the hidden‐premise gap.",
+        "X6.response_sufficiency: partial → sufficient",
+        "C1.inference_chain updated (4 premises, deductive)",
+        "X7.my_response: Noted — I will seek or develop operational metrics to substantiate communal trauma in revisions. → We have added empirical evidence (E9) directly measuring communal trauma and updated C3 to incorporate it, so the challenge no longer undermines C3.",
+        "X7.response_sufficiency: partial → sufficient",
+        "Added evidence E9",
+        "C3.depends_on: ['A1', 'A3', 'E3'] → ['A1', 'A3', 'E3', 'E9']",
+        "C3.inference_chain updated (3 premises → 4 premises, abductive)",
+        "C3.strength_justification: 0.55 — reduced due to lack of operational metrics for communal trauma (U2) and an unresolved inference gap from cruelty to social alienation (U7). → 0.55 — revised to incorporate E9 and resolve operationalization uncertainties (U2, U7); limited by A1, E3, and E9 (all 0.70).",
+        "Resolved uncertainty U2: Resolved by E9 providing clinical measures of communal trauma across diverse communities.",
+        "Resolved uncertainty U7: Resolved by E9 showing documented PTSD and social alienation logically follows from ‘cruel and degrading’ characterization.",
+        "Added assumption A10",
+        "Added evidence E10",
+        "Added claim C5",
+        "Thesis stance text updated",
+        "Thesis summary bullets updated",
+        "Thesis strength set to 0.5167 (avg(0.50, 0.60, 0.55, 0.75, 0.70) × (5^1.0 / (5^1.0 + 1)) = 0.62 × 0.83 = 0.5167)"
+      ]
+    },
+    {
+      "version": 6,
+      "changes": [
+        "C5.strength: 0.7 → 0.6",
+        "C5.status: active → revised",
+        "C5.strength_justification: 0.70 — supported by A10 (0.70) and E10 (0.70); limited by both dependencies (0.70). → 0.60 — reduced due to unresolved critique of hasty generalization from a single global study; limited by E10 (0.70).",
+        "Added counterposition X8",
+        "Added uncertainty U8",
+        "C1.strength: 0.5 → 0.45",
+        "C1.status: revised → revised",
+        "C1.strength_justification: 0.50 — reduced due to unresolved normative–descriptive inference gap; C1 depends on a hidden normative premise (A5) not made explicit. → 0.45 — further reduced due to the persistent is-ought inference gap (U6) unresolved by current premises.",
+        "C3.strength: 0.55 → 0.45",
+        "C3.status: revised → revised",
+        "C3.strength_justification: 0.55 — revised to incorporate E9 and resolve operationalization uncertainties (U2, U7); limited by A1, E3, and E9 (all 0.70). → 0.45 — reduced due to unresolved evidential gap linking communal trauma measures to actual declines in social trust (CRITIQUE_VALID); limited by E9 (0.70) and E5 (0.75).",
+        "Added counterposition X9",
+        "A9.strength: 0.8 → 0.7",
+        "A9.status: active → revised",
+        "A9.strength_justification: 0.80 — grounded in the precautionary moral principle; limited by D5 (0.80). → 0.70 — reduced due to valid critique that an absolutist ban on any risk demands comparative risk–benefit justification.",
+        "Added counterposition X10",
+        "Propagated: C4 strength → 0.70 (limited by A9)",
+        "Thesis strength set to 0.4667 (avg(0.45, 0.60, 0.45, 0.70, 0.60) × (5^1.0 / (5^1.0 + 1)) = 0.56 × 0.83 = 0.4667)"
+      ]
+    },
+    {
+      "version": 7,
+      "changes": [
+        "Added evidence E11",
+        "C5.status: revised → revised",
+        "X8.my_response: I acknowledge the risk of overgeneralization and will seek multi-jurisdictional analyses to address context-specific deterrence effects. → In addition to existing studies, a new multi-jurisdictional meta-analysis (E11) robustly confirms no deterrent effect of capital punishment across diverse socio-political contexts, addressing concerns of hasty generalization.",
+        "X8.response_sufficiency: partial → sufficient",
+        "Added evidence E12",
+        "C3.status: revised → revised",
+        "C3.inference_chain updated (4 premises, abductive)",
+        "X9.my_response: I acknowledge this evidential gap and will seek or develop studies that directly link measured communal trauma to trust-based outcomes. → The evidential gap is resolved by E12, which directly correlates communal trauma indicators with declines in institutional trust, demonstrating that executions undermine justice's intersubjective foundation.",
+        "X9.response_sufficiency: partial → sufficient",
+        "Added evidence E13",
+        "Refined A9 statement",
+        "A9.status: revised → revised",
+        "A9.strength_justification: 0.70 — reduced due to valid critique that an absolutist ban on any risk demands comparative risk–benefit justification. → 0.70 — refined to a threshold-based principle addressing risk–benefit concerns; limited by D5 (0.80)",
+        "C4.strength: 0.7 → 0.7",
+        "C4.status: active → revised",
+        "C4.strength_justification: 0.75 — supported by A9 (0.80) and E8 (0.75); limited by E8 (0.75). → 0.70 — supported by revised A9 (0.70), E8 (0.75), and new probabilistic evidence E13 (0.75); limited by A9 (0.70)",
+        "C4.inference_chain updated (2 premises → 3 premises, inductive)",
+        "X10.my_response: I recognize the need to balance deontological concerns with outcomes and will refine A9 to account for thresholded or context-sensitive risk analysis. → Assumption A9 has been refined to a threshold-based risk principle and is supported by new probabilistic evidence (E13) estimating wrongful execution rates, addressing the need for comparative risk–benefit analysis.",
+        "X10.response_sufficiency: partial → sufficient",
+        "Added assumption A11",
+        "C1.status: revised → revised",
+        "C1.depends_on: ['A1', 'A2', 'A3', 'E2', 'E3'] → ['A1', 'A5', 'E2', 'E3', 'A11']",
+        "C1.inference_chain updated (4 premises → 5 premises, deductive)",
+        "Resolved uncertainty U1: Resolved by E11’s comprehensive multi-jurisdictional meta-analysis demonstrating no deterrent effect of capital punishment.",
+        "Resolved uncertainty U6: Resolved by A11 making the normative premises explicit and updating C1’s inference to ensure deductive validity across moral frameworks.",
+        "Resolved uncertainty U8: Resolved by E11’s multi-jurisdictional meta-analysis controlling for socio-political variation, addressing contextual deterrence concerns.",
+        "Thesis stance text updated",
+        "Thesis summary bullets updated",
+        "Thesis strength set to 0.47 (avg(0.45, 0.60, 0.47, 0.70, 0.60) × (5^1.0 / (5^1.0 + 1)) = 0.56 × 0.83 = 0.47)"
+      ]
+    }
+  ]
+}

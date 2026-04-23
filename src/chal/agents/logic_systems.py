@@ -714,6 +714,19 @@ FUZZY_MULTIVALUED = {
     },
 }
 
+NONE = {
+    "label": "None (Pure Ethics)",
+    "description": (
+        "No logical framework applied. Evaluate arguments solely on ethical "
+        "merit and moral reasoning, not logical soundness."
+    ),
+    "criteria": {
+        "critique_valid": [],
+        "rebuttal_valid": [],
+        "unresolved": [],
+    },
+}
+
 PARACONSISTENT = {
     "label": "Paraconsistent",
     "description": (
@@ -810,6 +823,7 @@ LOGIC_SYSTEMS = {
     "DIALECTICAL": DIALECTICAL,
     "FUZZY_MULTIVALUED": FUZZY_MULTIVALUED,
     "PARACONSISTENT": PARACONSISTENT,
+    "NONE": NONE,
 }
 
 

@@ -46,8 +46,8 @@ def _make_results() -> dict:
     """Return a minimal results dict with agent stats and convergence."""
     return {
         "agent_stats": {
-            "Agent-A": {"performance_score": 7.0},
-            "Agent-B": {"performance_score": 5.0},
+            "Agent-A": {"performance_score": 0.55},
+            "Agent-B": {"performance_score": 0.35},
         },
         "convergence_history": [{"convergence_score": 0.72}],
         "synthesis": "",
@@ -177,8 +177,8 @@ class TestLogDebate:
         # Agent-B wins this time
         results = _make_results()
         results["agent_stats"] = {
-            "Agent-A": {"performance_score": 3.0},
-            "Agent-B": {"performance_score": 9.5},
+            "Agent-A": {"performance_score": 0.20},
+            "Agent-B": {"performance_score": 0.75},
         }
 
         log_debate(config, results)

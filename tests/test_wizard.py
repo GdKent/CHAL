@@ -151,8 +151,8 @@ class TestAskAgentConfig:
     @patch("chal.cli.wizard.questionary.autocomplete")
     @patch("chal.cli.wizard.questionary.select")
     def test_returns_agent_config(self, mock_select, mock_auto):
-        # select calls: persona, provider
-        mock_select.return_value.ask.side_effect = ["EMPIRICIST", "openai"]
+        # select calls: persona, provider, belief file question
+        mock_select.return_value.ask.side_effect = ["EMPIRICIST", "openai", "no"]
         # autocomplete call: model
         mock_auto.return_value.ask.return_value = "gpt-4o"
 
@@ -164,6 +164,7 @@ class TestAskAgentConfig:
         assert result.model == "gpt-4o"
         assert result.temperature == 1.0
         assert "Empiricist" in result.name
+        assert result.belief_file is None
 
     @pytest.mark.unit
     @patch("chal.cli.wizard.questionary.autocomplete")
@@ -173,7 +174,8 @@ class TestAskAgentConfig:
             name="Agent-Test", persona="SKEPTIC", model="o1-mini",
             provider="openai", temperature=1.0
         )
-        mock_select.return_value.ask.side_effect = ["SKEPTIC", "openai"]
+        # select calls: persona, provider, belief file question
+        mock_select.return_value.ask.side_effect = ["SKEPTIC", "openai", "no"]
         mock_auto.return_value.ask.return_value = "o1-mini"
 
         result = ask_agent_config(0, default=default)
@@ -507,8 +509,10 @@ class TestRunWizard:
             m_select.return_value.ask.side_effect = [
                 "debate",                           # main menu
                 "__custom__",                       # ask_preset
-                "EMPIRICIST", "openai",            # agent 1
-                "RATIONALIST", "openai",           # agent 2
+                "EMPIRICIST", "openai",            # agent 1: persona, provider
+                "no",                               # agent 1: belief file
+                "RATIONALIST", "openai",           # agent 2: persona, provider
+                "no",                               # agent 2: belief file
                 "open",                             # stage 2
                 "rebuttal",                         # stage 3
                 "openai",                           # adjudicator provider
@@ -549,8 +553,10 @@ class TestRunWizard:
             m_select.return_value.ask.side_effect = [
                 "debate",                        # main menu
                 "__custom__",                    # ask_preset
-                "EMPIRICIST", "openai",
-                "SKEPTIC", "anthropic",
+                "EMPIRICIST", "openai",          # agent 1: persona, provider
+                "no",                            # agent 1: belief file
+                "SKEPTIC", "anthropic",          # agent 2: persona, provider
+                "no",                            # agent 2: belief file
                 "open",
                 "rebuttal",
                 "openai",                        # adjudicator provider
@@ -606,8 +612,10 @@ class TestRunWizard:
             m_select.return_value.ask.side_effect = [
                 "debate",                        # main menu
                 "__custom__",                    # ask_preset
-                "EMPIRICIST", "openai",
-                "RATIONALIST", "openai",
+                "EMPIRICIST", "openai",          # agent 1: persona, provider
+                "no",                            # agent 1: belief file
+                "RATIONALIST", "openai",         # agent 2: persona, provider
+                "no",                            # agent 2: belief file
                 "open",
                 "rebuttal",
                 "openai",                        # adjudicator provider
@@ -641,9 +649,9 @@ class TestRunWizard:
 class TestConstants:
 
     @pytest.mark.unit
-    def test_persona_choices_has_12(self):
-        """PERSONA_CHOICES has all 12 personas."""
-        assert len(PERSONA_CHOICES) == 12
+    def test_persona_choices_has_13(self):
+        """PERSONA_CHOICES has all 13 personas (including NONE)."""
+        assert len(PERSONA_CHOICES) == 13
 
     @pytest.mark.unit
     def test_persona_choice_values_are_uppercase(self):

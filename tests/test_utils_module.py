@@ -24,10 +24,13 @@ from chal.utilities.utils import (
     VALID_ATTACK_STRATEGIES,
     ALL_STRATEGIES,
     VALID_ADJUDICATION_VERDICTS,
+    EXCHANGE_SCORE_WEIGHTS,
     compute_attack_histograms,
+    compute_per_round_attack_histograms,
     snapshot_belief,
     finalize_agent_stats,
     select_best_agent,
+    sanitize_filename,
 )
 
 
@@ -188,6 +191,7 @@ def test_initialize_agent_stats_default_values():
     assert agent_stat["successful_rebuttals"] == 0
     assert agent_stat["unresolved_arguments"] == 0
     assert agent_stat["total_arguments"] == 0
+    assert agent_stat["exchange_scores"] == []
 
 
 # ==============================================
@@ -278,73 +282,109 @@ def test_update_agent_stats_total_arguments():
     assert stats["Target"]["total_arguments"] == 3
 
 
+@pytest.mark.unit
+def test_update_agent_stats_records_exchange_scores_critique_valid():
+    """critique_valid: challenger gets +1.0, target gets -1.0."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+    record = {
+        "challenger": "Challenger",
+        "target": "Target",
+        "resolution": {"status": "critique_valid"}
+    }
+    update_agent_stats(stats, record)
+    assert stats["Challenger"]["exchange_scores"] == [1.0]
+    assert stats["Target"]["exchange_scores"] == [-1.0]
+
+
+@pytest.mark.unit
+def test_update_agent_stats_records_exchange_scores_rebuttal_valid():
+    """rebuttal_valid: challenger gets -0.5, target gets +1.0."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+    record = {
+        "challenger": "Challenger",
+        "target": "Target",
+        "resolution": {"status": "rebuttal_valid"}
+    }
+    update_agent_stats(stats, record)
+    assert stats["Challenger"]["exchange_scores"] == [-0.5]
+    assert stats["Target"]["exchange_scores"] == [1.0]
+
+
+@pytest.mark.unit
+def test_update_agent_stats_records_exchange_scores_unresolved():
+    """unresolved: challenger gets 0.0, target gets +0.25."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+    record = {
+        "challenger": "Challenger",
+        "target": "Target",
+        "resolution": {"status": "unresolved"}
+    }
+    update_agent_stats(stats, record)
+    assert stats["Challenger"]["exchange_scores"] == [0.0]
+    assert stats["Target"]["exchange_scores"] == [0.25]
+
+
 # ==============================================
 # 5. Performance Score Calculation Tests
 # ==============================================
 
 @pytest.mark.unit
-def test_calculate_performance_scores_default_weights():
-    """Test performance score calculation with standard weights."""
+def test_calculate_performance_scores_from_exchange_scores():
+    """APS = mean of per-exchange scores, normalized to [-1, +1]."""
     stats = {
         "Agent-A": {
-            "successful_critiques": 5,
-            "successful_rebuttals": 3,
-            "failed_rebuttals": 1,
-            "unresolved_arguments": 2,
-            "total_arguments": 10
+            "exchange_scores": [1.0, -0.5, 0.25, 1.0],
+            "performance_score": 0.0,
         }
     }
 
     calculate_performance_scores(stats)
 
-    assert "performance_score" in stats["Agent-A"]
-    assert isinstance(stats["Agent-A"]["performance_score"], float)
+    # (1.0 + -0.5 + 0.25 + 1.0) / 4 = 0.4375
+    assert stats["Agent-A"]["performance_score"] == pytest.approx(0.4375)
 
 
 @pytest.mark.unit
-def test_calculate_performance_scores_custom_weights():
-    """Test performance score with custom weights."""
+def test_calculate_performance_scores_empty_exchanges():
+    """Empty exchange_scores yields APS of 0.0."""
     stats = {
         "Agent-A": {
-            "successful_critiques": 5,
-            "successful_rebuttals": 3,
-            "failed_rebuttals": 1,
-            "unresolved_arguments": 2,
-            "total_arguments": 10
+            "exchange_scores": [],
+            "performance_score": 0.0,
         }
     }
 
-    weights = {
-        'successful_critique': 2.0,
-        'successful_rebuttal': 1.0,
-        'failed_rebuttal': -1.0,
-        'unresolved_argument': -0.5
-    }
-
-    calculate_performance_scores(stats, weights=weights)
-
-    assert "performance_score" in stats["Agent-A"]
-    assert isinstance(stats["Agent-A"]["performance_score"], float)
-
-
-@pytest.mark.unit
-def test_calculate_performance_scores_formula():
-    """Test that performance score formula is correct."""
-    stats = {
-        "Agent-A": {
-            "successful_critiques": 3,
-            "successful_rebuttals": 2,
-            "failed_rebuttals": 0,
-            "unresolved_arguments": 1,
-            "total_arguments": 6
-        }
-    }
-
-    # Default weights: successful_critique=3.0, successful_rebuttal=2.0, failed_rebuttal=-2.0, unresolved_argument=-0.5
-    # Score = (3*3.0 + 2*2.0 + 0*(-2.0) + 1*(-0.5)) = 9 + 4 + 0 - 0.5 = 12.5
     calculate_performance_scores(stats)
 
-    assert stats["Agent-A"]["performance_score"] == pytest.approx(12.5, abs=0.1)
+    assert stats["Agent-A"]["performance_score"] == 0.0
+
+
+@pytest.mark.unit
+def test_calculate_performance_scores_normalized_range():
+    """APS is always in [-1, +1] range."""
+    # All wins as challenger → each exchange = +1.0
+    stats_all_win = {
+        "Agent-A": {"exchange_scores": [1.0, 1.0, 1.0], "performance_score": 0.0}
+    }
+    calculate_performance_scores(stats_all_win)
+    assert stats_all_win["Agent-A"]["performance_score"] == pytest.approx(1.0)
+
+    # All losses as target → each exchange = -1.0
+    stats_all_lose = {
+        "Agent-A": {"exchange_scores": [-1.0, -1.0, -1.0], "performance_score": 0.0}
+    }
+    calculate_performance_scores(stats_all_lose)
+    assert stats_all_lose["Agent-A"]["performance_score"] == pytest.approx(-1.0)
+
+    # Mixed → in between
+    stats_mixed = {
+        "Agent-A": {"exchange_scores": [1.0, -1.0, 0.25, -0.5], "performance_score": 0.0}
+    }
+    calculate_performance_scores(stats_mixed)
+    score = stats_mixed["Agent-A"]["performance_score"]
+    assert -1.0 <= score <= 1.0
+    # (1.0 + -1.0 + 0.25 + -0.5) / 4 = -0.0625
+    assert score == pytest.approx(-0.0625)
 
 
 @pytest.mark.unit
@@ -357,7 +397,8 @@ def test_get_performance_summary():
             "failed_rebuttals": 1,
             "unresolved_arguments": 2,
             "total_arguments": 10,
-            "performance_score": 15.5
+            "performance_score": 0.45,
+            "exchange_scores": [0.45] * 10,
         },
         "Agent-B": {
             "successful_critiques": 2,
@@ -365,7 +406,8 @@ def test_get_performance_summary():
             "failed_rebuttals": 1,
             "unresolved_arguments": 2,
             "total_arguments": 10,
-            "performance_score": 16.0
+            "performance_score": 0.55,
+            "exchange_scores": [0.55] * 10,
         }
     }
 
@@ -374,6 +416,7 @@ def test_get_performance_summary():
     assert isinstance(summary, str)
     assert "Agent-A" in summary
     assert "Agent-B" in summary
+    assert "APS" in summary
 
 
 # ==============================================
@@ -391,7 +434,7 @@ def test_display_agent_stats():
             "failed_rebuttals": 1,
             "unresolved_arguments": 2,
             "total_arguments": 10,
-            "performance_score": 15.5
+            "performance_score": 0.45
         }
     }
 
@@ -413,7 +456,7 @@ def test_display_agent_stats_includes_all_metrics(capsys):
             "failed_rebuttals": 1,
             "unresolved_arguments": 2,
             "total_arguments": 10,
-            "performance_score": 15.5
+            "performance_score": 0.45
         }
     }
 
@@ -764,9 +807,9 @@ def test_snapshot_belief_handles_degraded_input():
 def test_select_best_agent_by_score():
     """Highest performance_score wins."""
     stats = {
-        "Agent-A": {"performance_score": 5.0},
-        "Agent-B": {"performance_score": 9.0},
-        "Agent-C": {"performance_score": 7.5},
+        "Agent-A": {"performance_score": 0.25},
+        "Agent-B": {"performance_score": 0.75},
+        "Agent-C": {"performance_score": 0.50},
     }
     assert select_best_agent(stats, ["Agent-A", "Agent-B", "Agent-C"]) == "Agent-B"
 
@@ -775,9 +818,9 @@ def test_select_best_agent_by_score():
 def test_select_best_agent_tiebreaker_first_in_order():
     """Ties are broken by earlier position in agent_order."""
     stats = {
-        "Agent-A": {"performance_score": 10.0},
-        "Agent-B": {"performance_score": 10.0},
-        "Agent-C": {"performance_score": 10.0},
+        "Agent-A": {"performance_score": 0.50},
+        "Agent-B": {"performance_score": 0.50},
+        "Agent-C": {"performance_score": 0.50},
     }
     # All three tied — earlier index wins.
     assert select_best_agent(stats, ["Agent-C", "Agent-A", "Agent-B"]) == "Agent-C"
@@ -788,8 +831,8 @@ def test_select_best_agent_tiebreaker_first_in_order():
 def test_select_best_agent_ignores_debate_aggregate_sentinel():
     """The _debate_aggregate sentinel is never selected as best."""
     stats = {
-        "Agent-A": {"performance_score": 3.0},
-        "Agent-B": {"performance_score": 5.0},
+        "Agent-A": {"performance_score": 0.25},
+        "Agent-B": {"performance_score": 0.50},
         "_debate_aggregate": {"attacks_total": 42},
     }
     assert select_best_agent(stats, ["Agent-A", "Agent-B"]) == "Agent-B"
@@ -858,6 +901,9 @@ def test_finalize_agent_stats_builds_debate_aggregate():
     assert result["Agent-A"]["final_snapshot"]["thesis_strength"] == 0.5
     assert result["Agent-B"]["final_snapshot"]["thesis_strength"] == 0.7
 
+    # operational_metrics key is always present in _debate_aggregate.
+    assert "operational_metrics" in agg
+
 
 @pytest.mark.unit
 def test_finalize_agent_stats_falls_back_to_live_belief_for_final_snapshot():
@@ -918,3 +964,436 @@ def test_finalize_agent_stats_invariants():
             + result["Agent-B"]["adjudication_outcomes"]["as_challenger"][v]
         )
         assert agg["adjudication_verdicts"][v] == per_agent_sum
+
+
+# ==============================================
+# 9. Filename Sanitization Tests
+# ==============================================
+
+class TestSanitizeFilename:
+    """Tests for sanitize_filename() utility function."""
+
+    @pytest.mark.unit
+    def test_clean_name_unchanged(self):
+        """A name with only word chars and hyphens passes through unchanged."""
+        assert sanitize_filename("Agent-Empiricist") == "Agent-Empiricist"
+
+    @pytest.mark.unit
+    def test_spaces_replaced(self):
+        """Spaces are replaced with underscores."""
+        assert sanitize_filename("Agent With Spaces") == "Agent_With_Spaces"
+
+    @pytest.mark.unit
+    def test_special_chars_replaced(self):
+        """Slashes, colons, and other special characters become underscores."""
+        assert sanitize_filename("agent/special:chars") == "agent_special_chars"
+
+    @pytest.mark.unit
+    def test_leading_trailing_stripped(self):
+        """Leading and trailing underscores are stripped."""
+        assert sanitize_filename("___test___") == "test"
+
+    @pytest.mark.unit
+    def test_empty_string_returns_unnamed(self):
+        """An empty string returns the fallback 'unnamed'."""
+        assert sanitize_filename("") == "unnamed"
+
+    @pytest.mark.unit
+    def test_only_special_chars_returns_unnamed(self):
+        """A string of only special characters returns the fallback 'unnamed'."""
+        assert sanitize_filename("///...") == "unnamed"
+
+    @pytest.mark.unit
+    def test_underscores_preserved(self):
+        """Existing underscores in the name are preserved."""
+        assert sanitize_filename("Agent_Test") == "Agent_Test"
+
+
+# ==============================================
+# 10. Ethical Attack Strategy Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_valid_attack_strategies_total_count():
+    """Total strategy count equals 27 (20 epistemological + 7 ethical)."""
+    assert len(ALL_STRATEGIES) == 27
+
+
+@pytest.mark.unit
+def test_ethical_strategies_in_correct_types():
+    """Each of the 7 ethical strategies is in the expected attack type set."""
+    # undermining ethical strategies
+    assert "challenge_moral_implications" in VALID_ATTACK_STRATEGIES["undermining"]
+    assert "expose_stakeholder_harm" in VALID_ATTACK_STRATEGIES["undermining"]
+
+    # rebutting ethical strategies
+    assert "present_ethical_counter" in VALID_ATTACK_STRATEGIES["rebutting"]
+    assert "invoke_competing_obligation" in VALID_ATTACK_STRATEGIES["rebutting"]
+
+    # undercutting ethical strategies
+    assert "challenge_normative_inference" in VALID_ATTACK_STRATEGIES["undercutting"]
+    assert "expose_value_conflict" in VALID_ATTACK_STRATEGIES["undercutting"]
+    assert "challenge_moral_relevance" in VALID_ATTACK_STRATEGIES["undercutting"]
+
+
+# ==============================================
+# 10. Per-Round Attack Histogram Tests (Phase A)
+# ==============================================
+
+@pytest.mark.unit
+def test_compute_per_round_attack_histograms_groups_by_round():
+    """Pairs with different round_num tags are grouped correctly."""
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undermining", "attack_strategy": "challenge_evidence",
+         "round_num": 1},
+        {"challenger": "Agent-B", "target": "Agent-A",
+         "attack_type": "rebutting", "attack_strategy": "present_counter_evidence",
+         "round_num": 1},
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undercutting", "attack_strategy": "identify_circularity",
+         "round_num": 2},
+    ]
+
+    result = compute_per_round_attack_histograms(pairs, ["Agent-A", "Agent-B"])
+
+    assert "round_1" in result
+    assert "round_2" in result
+
+    # Round 1: Agent-A has 1 attack, Agent-B has 1 attack
+    assert result["round_1"]["Agent-A"]["total"] == 1
+    assert result["round_1"]["Agent-B"]["total"] == 1
+    assert result["round_1"]["Agent-A"]["by_type"]["undermining"] == 1
+    assert result["round_1"]["Agent-B"]["by_type"]["rebutting"] == 1
+
+    # Round 2: Only Agent-A attacked
+    assert result["round_2"]["Agent-A"]["total"] == 1
+    assert result["round_2"]["Agent-A"]["by_type"]["undercutting"] == 1
+    assert result["round_2"]["Agent-B"]["total"] == 0
+
+
+@pytest.mark.unit
+def test_compute_per_round_attack_histograms_empty_pairs():
+    """Empty pairs list returns empty result."""
+    result = compute_per_round_attack_histograms([], ["Agent-A"])
+    assert result == {}
+
+
+@pytest.mark.unit
+def test_finalize_agent_stats_includes_per_round_attack_histograms():
+    """finalize_agent_stats stores per-round attack data in agent stats and aggregate."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+
+    # Pre-populate per_round snapshots
+    stats["Agent-A"]["per_round"]["round_1"] = {"thesis_strength": 0.5}
+    stats["Agent-A"]["per_round"]["round_2"] = {"thesis_strength": 0.6}
+    stats["Agent-B"]["per_round"]["round_1"] = {"thesis_strength": 0.4}
+    stats["Agent-B"]["per_round"]["round_2"] = {"thesis_strength": 0.5}
+
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undermining", "attack_strategy": "challenge_evidence",
+         "round_num": 1},
+        {"challenger": "Agent-B", "target": "Agent-A",
+         "attack_type": "rebutting", "attack_strategy": "present_counter_evidence",
+         "round_num": 2},
+    ]
+
+    agent_a = MagicMock(); agent_a.name = "Agent-A"
+    agent_b = MagicMock(); agent_b.name = "Agent-B"
+
+    result = finalize_agent_stats(stats, pairs, [agent_a, agent_b], max_rounds=2)
+
+    # Per-round attack histograms should be present
+    assert "attack_histograms" in result["Agent-A"]["per_round"]["round_1"]
+    assert result["Agent-A"]["per_round"]["round_1"]["attack_histograms"]["total"] == 1
+
+    # Aggregate should include per_round_attacks
+    assert "per_round_attacks" in result["_debate_aggregate"]
+    assert "round_1" in result["_debate_aggregate"]["per_round_attacks"]
+    assert "round_2" in result["_debate_aggregate"]["per_round_attacks"]
+
+
+# ==============================================
+# 11. Score Aggregation & Override Tracking Tests (Phase C)
+# ==============================================
+
+@pytest.mark.unit
+def test_initialize_agent_stats_includes_score_aggregates():
+    """Agent stats should include score aggregate and override tracking fields."""
+    stats = initialize_agent_stats(["Agent-A"])
+    agent = stats["Agent-A"]
+
+    assert "adjudication_score_aggregates" in agent
+    agg = agent["adjudication_score_aggregates"]
+    assert "as_challenger" in agg
+    assert "as_target" in agg
+    assert agg["as_challenger"]["logic_sum"] == 0.0
+    assert agg["as_challenger"]["count"] == 0
+    assert agg["as_target"]["ethics_sum"] == 0.0
+    assert agent["verdict_overrides"] == 0
+
+
+@pytest.mark.unit
+def test_update_agent_stats_accumulates_scores():
+    """update_agent_stats should accumulate scores from resolution."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+
+    record = {
+        "challenger": "Challenger",
+        "target": "Target",
+        "resolution": {
+            "status": "critique_valid",
+            "scores": {
+                "challenger_logic": 0.7, "challenger_ethics": 0.5,
+                "defender_logic": 0.4, "defender_ethics": 0.5,
+                "challenger_combined": 0.6, "defender_combined": 0.45,
+            },
+        },
+    }
+
+    update_agent_stats(stats, record)
+
+    c_agg = stats["Challenger"]["adjudication_score_aggregates"]["as_challenger"]
+    assert c_agg["logic_sum"] == pytest.approx(0.7)
+    assert c_agg["ethics_sum"] == pytest.approx(0.5)
+    assert c_agg["combined_sum"] == pytest.approx(0.6)
+    assert c_agg["count"] == 1
+
+    t_agg = stats["Target"]["adjudication_score_aggregates"]["as_target"]
+    assert t_agg["logic_sum"] == pytest.approx(0.4)
+    assert t_agg["ethics_sum"] == pytest.approx(0.5)
+    assert t_agg["combined_sum"] == pytest.approx(0.45)
+    assert t_agg["count"] == 1
+
+
+@pytest.mark.unit
+def test_update_agent_stats_tracks_overrides():
+    """override_occurred in resolution increments verdict_overrides for both agents."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+
+    record = {
+        "challenger": "Challenger",
+        "target": "Target",
+        "resolution": {
+            "status": "critique_valid",
+            "override_occurred": True,
+            "scores": {
+                "challenger_logic": 0.8, "challenger_ethics": 0.5,
+                "defender_logic": 0.3, "defender_ethics": 0.5,
+                "challenger_combined": 0.65, "defender_combined": 0.4,
+            },
+        },
+    }
+
+    update_agent_stats(stats, record)
+
+    assert stats["Challenger"]["verdict_overrides"] == 1
+    assert stats["Target"]["verdict_overrides"] == 1
+
+
+@pytest.mark.unit
+def test_update_agent_stats_no_override_when_false():
+    """override_occurred=False should not increment verdict_overrides."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+
+    record = {
+        "challenger": "Challenger",
+        "target": "Target",
+        "resolution": {
+            "status": "critique_valid",
+            "override_occurred": False,
+        },
+    }
+
+    update_agent_stats(stats, record)
+
+    assert stats["Challenger"]["verdict_overrides"] == 0
+    assert stats["Target"]["verdict_overrides"] == 0
+
+
+@pytest.mark.unit
+def test_update_agent_stats_accumulates_across_multiple_records():
+    """Score sums and counts accumulate correctly across multiple records."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+
+    records = [
+        {"challenger": "Challenger", "target": "Target",
+         "resolution": {"status": "critique_valid",
+                        "scores": {"challenger_logic": 0.7, "challenger_ethics": 0.5,
+                                   "defender_logic": 0.4, "defender_ethics": 0.5,
+                                   "challenger_combined": 0.6, "defender_combined": 0.45}}},
+        {"challenger": "Challenger", "target": "Target",
+         "resolution": {"status": "rebuttal_valid",
+                        "scores": {"challenger_logic": 0.3, "challenger_ethics": 0.5,
+                                   "defender_logic": 0.8, "defender_ethics": 0.5,
+                                   "challenger_combined": 0.4, "defender_combined": 0.65}}},
+        {"challenger": "Challenger", "target": "Target",
+         "resolution": {"status": "unresolved",
+                        "scores": {"challenger_logic": 0.5, "challenger_ethics": 0.5,
+                                   "defender_logic": 0.5, "defender_ethics": 0.5,
+                                   "challenger_combined": 0.5, "defender_combined": 0.5}}},
+    ]
+
+    for r in records:
+        update_agent_stats(stats, r)
+
+    c_agg = stats["Challenger"]["adjudication_score_aggregates"]["as_challenger"]
+    assert c_agg["logic_sum"] == pytest.approx(0.7 + 0.3 + 0.5)
+    assert c_agg["count"] == 3
+
+    t_agg = stats["Target"]["adjudication_score_aggregates"]["as_target"]
+    assert t_agg["logic_sum"] == pytest.approx(0.4 + 0.8 + 0.5)
+    assert t_agg["count"] == 3
+
+
+@pytest.mark.unit
+def test_update_agent_stats_tolerates_missing_scores():
+    """Records without scores should not crash score accumulation."""
+    stats = initialize_agent_stats(["Challenger", "Target"])
+
+    record = {
+        "challenger": "Challenger",
+        "target": "Target",
+        "resolution": {"status": "critique_valid"},
+    }
+
+    update_agent_stats(stats, record)
+
+    # Scores should remain at zero
+    c_agg = stats["Challenger"]["adjudication_score_aggregates"]["as_challenger"]
+    assert c_agg["count"] == 0
+    assert c_agg["logic_sum"] == 0.0
+
+
+@pytest.mark.unit
+def test_finalize_agent_stats_computes_score_means():
+    """finalize_agent_stats should compute mean scores from aggregates."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+
+    # Pre-populate score aggregates (ethics 0.5 = neutral under merit-based scale)
+    stats["Agent-A"]["adjudication_score_aggregates"]["as_challenger"] = {
+        "logic_sum": 2.1, "ethics_sum": 1.5, "combined_sum": 1.8, "count": 3,
+    }
+    stats["Agent-A"]["adjudication_score_aggregates"]["as_target"] = {
+        "logic_sum": 1.2, "ethics_sum": 1.0, "combined_sum": 1.1, "count": 2,
+    }
+    stats["Agent-B"]["adjudication_score_aggregates"]["as_challenger"] = {
+        "logic_sum": 0.0, "ethics_sum": 0.0, "combined_sum": 0.0, "count": 0,
+    }
+
+    agent_a = MagicMock(); agent_a.name = "Agent-A"
+    agent_b = MagicMock(); agent_b.name = "Agent-B"
+
+    result = finalize_agent_stats(stats, [], [agent_a, agent_b], max_rounds=1)
+
+    means_a = result["Agent-A"]["adjudication_score_means"]
+    assert means_a["as_challenger"]["logic_mean"] == pytest.approx(2.1 / 3)
+    assert means_a["as_challenger"]["count"] == 3
+    assert means_a["as_target"]["logic_mean"] == pytest.approx(1.2 / 2)
+    assert means_a["as_target"]["count"] == 2
+
+    # Agent-B with no data should have None means
+    means_b = result["Agent-B"]["adjudication_score_means"]
+    assert means_b["as_challenger"]["logic_mean"] is None
+    assert means_b["as_challenger"]["count"] == 0
+
+
+@pytest.mark.unit
+def test_finalize_agent_stats_includes_override_total_in_aggregate():
+    """_debate_aggregate.total_verdict_overrides counts unique override events from pairs."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+    # Per-agent counts are set by update_agent_stats (both agents get incremented
+    # per override), but the aggregate should count unique events from pairs.
+    stats["Agent-A"]["verdict_overrides"] = 3
+    stats["Agent-B"]["verdict_overrides"] = 3
+
+    # Provide pairs with override data: 3 overrides out of 5 pairs
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B", "resolution": {"status": "critique_valid", "override_occurred": True}},
+        {"challenger": "Agent-A", "target": "Agent-B", "resolution": {"status": "rebuttal_valid", "override_occurred": False}},
+        {"challenger": "Agent-B", "target": "Agent-A", "resolution": {"status": "unresolved", "override_occurred": True}},
+        {"challenger": "Agent-B", "target": "Agent-A", "resolution": {"status": "critique_valid", "override_occurred": False}},
+        {"challenger": "Agent-A", "target": "Agent-B", "resolution": {"status": "unresolved", "override_occurred": True}},
+    ]
+
+    agent_a = MagicMock(); agent_a.name = "Agent-A"
+    agent_b = MagicMock(); agent_b.name = "Agent-B"
+
+    result = finalize_agent_stats(stats, pairs, [agent_a, agent_b], max_rounds=1)
+
+    # 3 unique override events (not 6 from summing per-agent counts)
+    assert result["_debate_aggregate"]["total_verdict_overrides"] == 3
+
+
+# ==============================================
+# 12. Operational Metrics in finalize_agent_stats
+# ==============================================
+
+@pytest.mark.unit
+def test_finalize_agent_stats_includes_operational_metrics():
+    """finalize_agent_stats stores operational_metrics in _debate_aggregate."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A", "Agent-B"])
+
+    # Pre-populate per_round snapshots so finalize uses them as final_snapshot.
+    stats["Agent-A"]["per_round"]["round_2"] = {
+        "thesis_strength": 0.5,
+        "component_counts": {"claims": 3},
+    }
+    stats["Agent-B"]["per_round"]["round_2"] = {
+        "thesis_strength": 0.7,
+        "component_counts": {"claims": 4},
+    }
+
+    pairs = [
+        {"challenger": "Agent-A", "target": "Agent-B",
+         "attack_type": "undermining", "attack_strategy": "challenge_evidence"},
+    ]
+
+    agent_a = MagicMock(); agent_a.name = "Agent-A"
+    agent_b = MagicMock(); agent_b.name = "Agent-B"
+
+    result = finalize_agent_stats(
+        stats, pairs, [agent_a, agent_b], max_rounds=2,
+        operational_metrics={
+            "total_retries": 5,
+            "total_rate_limit_hits": 2,
+            "total_output_tokens": 1000,
+            "total_input_tokens": 5000,
+            "duration_s": 120.5,
+        },
+    )
+
+    assert result["_debate_aggregate"]["operational_metrics"]["total_retries"] == 5
+    assert result["_debate_aggregate"]["operational_metrics"]["total_rate_limit_hits"] == 2
+    assert result["_debate_aggregate"]["operational_metrics"]["total_output_tokens"] == 1000
+    assert result["_debate_aggregate"]["operational_metrics"]["total_input_tokens"] == 5000
+    assert result["_debate_aggregate"]["operational_metrics"]["duration_s"] == 120.5
+
+
+@pytest.mark.unit
+def test_finalize_agent_stats_operational_metrics_default_empty():
+    """finalize_agent_stats defaults operational_metrics to empty dict when not passed."""
+    from unittest.mock import MagicMock
+
+    stats = initialize_agent_stats(["Agent-A"])
+
+    # Pre-populate per_round snapshot.
+    stats["Agent-A"]["per_round"]["round_1"] = {
+        "thesis_strength": 0.6,
+        "component_counts": {"claims": 2},
+    }
+
+    agent_a = MagicMock(); agent_a.name = "Agent-A"
+
+    result = finalize_agent_stats(stats, [], [agent_a], max_rounds=1)
+
+    assert result["_debate_aggregate"]["operational_metrics"] == {}

@@ -488,7 +488,7 @@ def test_validate_counterposition_attack_type_invalid():
 @pytest.mark.unit
 def test_validate_counterposition_response_sufficiency_valid():
     """Test that valid response_sufficiency values are accepted."""
-    for sufficiency in ("sufficient", "partial", "unaddressed"):
+    for sufficiency in ("sufficient", "partial", "unaddressed", "moot"):
         belief = create_sample_belief(num_claims=1)
         belief["counterpositions"] = [{
             "id": "X1",

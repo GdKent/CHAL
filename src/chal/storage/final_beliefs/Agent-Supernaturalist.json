@@ -1,0 +1,659 @@
+{
+  "schema_version": "CBS",
+  "belief_id": "BELIEF-Agent-Supernaturalist-001",
+  "version": 3,
+  "metadata": {
+    "topic_query": "Does free will exist?",
+    "agent_persona": "Supernaturalist"
+  },
+  "definitions": [
+    {
+      "id": "D1",
+      "term": "free will",
+      "definition": "The libertarian capacity of agents to choose otherwise under identical conditions, not wholly determined by prior causal events.",
+      "strength": 0.82,
+      "strength_justification": "0.8 — standard in philosophical discourse on libertarian free will, though alternative definitions exist",
+      "status": "active",
+      "used_by": [
+        "A2",
+        "A3",
+        "E1",
+        "E3",
+        "A5"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D2",
+      "term": "agent causation",
+      "definition": "The concept that agents themselves, not merely events, can originate new causal chains independently of deterministic physical processes.",
+      "strength": 0.75,
+      "strength_justification": "0.75 — coherent philosophical concept though debated in metaphysics",
+      "status": "active",
+      "used_by": [
+        "A2",
+        "E2"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D3",
+      "term": "moral responsibility",
+      "definition": "The status of deserving praise or blame for actions based on having genuine alternative possibilities.",
+      "strength": 0.82,
+      "strength_justification": "0.8 — widely accepted in moral philosophy though contested by some compatibilists",
+      "status": "active",
+      "used_by": [
+        "A4",
+        "A5"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D4",
+      "term": "supernatural",
+      "definition": "Non-physical dimensions or entities beyond the scope of empirical science.",
+      "strength": 0.7,
+      "strength_justification": "0.7 — conceptually clear but its ontological status is contested",
+      "status": "active",
+      "used_by": [
+        "A1",
+        "E2",
+        "E3"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D5",
+      "term": "quantum indeterminacy",
+      "definition": "The inherent unpredictability in subatomic processes, which can in principle influence macroscopic neural events.",
+      "strength": 0.75,
+      "strength_justification": "0.75 — well-established in physics; limited by no further dependencies",
+      "status": "active",
+      "used_by": [
+        "A9",
+        "E7"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A1",
+      "type": "foundational",
+      "statement": "A supernatural dimension exists, containing immaterial agents (souls) not wholly reducible to physical processes, inferable indirectly through consistent cross-cultural near-death experiences and phenomenological convergences.",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.5,
+      "status": "revised",
+      "strength_justification": "0.50 — same strength, clarified to include indirect inference criteria",
+      "supported_by_definitions": [
+        "D4"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A2",
+      "type": "empirical",
+      "statement": "Human conscious experience exhibits agent causation where the self originates actions independently of deterministic physical processes.",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.45,
+      "status": "revised",
+      "strength_justification": "0.45 — downgraded due to introspective reports’ unreliability highlighted by empirical critique",
+      "supported_by_definitions": [
+        "D1",
+        "D2"
+      ],
+      "original_strength": 0.6,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A3",
+      "type": "scoping",
+      "statement": "Free will is defined as the libertarian capacity to choose otherwise under identical conditions.",
+      "supports_claims": [
+        "C1",
+        "C3"
+      ],
+      "strength": 0.8,
+      "status": "active",
+      "strength_justification": "0.8 — standard in philosophical discourse on free will, though alternative definitions exist",
+      "supported_by_definitions": [
+        "D1"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A4",
+      "type": "empirical",
+      "statement": "Human societies exhibit robust practices of moral responsibility, attributing praise and blame to individuals.",
+      "supports_claims": [
+        "C2"
+      ],
+      "strength": 0.72,
+      "status": "active",
+      "strength_justification": "0.7 — widespread anthropological and sociological evidence, but interpretations vary",
+      "supported_by_definitions": [
+        "D3"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A5",
+      "type": "foundational",
+      "statement": "Moral responsibility entails alternative possibilities (the ability to do otherwise).",
+      "supports_claims": [
+        "C2"
+      ],
+      "strength": 0.82,
+      "status": "active",
+      "strength_justification": "0.8 — standard in libertarian moral philosophy, though contested by compatibilists",
+      "supported_by_definitions": [
+        "D3",
+        "D1"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A9",
+      "type": "empirical",
+      "statement": "Quantum indeterminacy in synaptic vesicle release influences neural firing patterns in decision-related brain regions.",
+      "supports_claims": [
+        "C4"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — supported by D5",
+      "supported_by_definitions": [
+        "D5"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "type": "empirical",
+      "summary": "Introspective reports from decision-making tasks indicate a felt experience of genuine choice not determined by prior states.",
+      "source": "Philosophical and psychological literature on volition",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.45,
+      "status": "revised",
+      "strength_justification": "0.45 — reduced due to lack of independent verification and susceptibility to post-hoc rationalization",
+      "supported_by_definitions": [
+        "D1"
+      ],
+      "original_strength": 0.65,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E2",
+      "type": "empirical",
+      "summary": "Near-death experiences report conscious agency operating independently of brain activity.",
+      "source": "Parapsychology and NDE studies",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.55,
+      "status": "active",
+      "strength_justification": "0.55 — limited sample, controversial methodology, but non-zero evidence",
+      "supported_by_definitions": [
+        "D2",
+        "D4"
+      ],
+      "original_strength": 0.55,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E3",
+      "type": "expert_consensus",
+      "summary": "Theological traditions across major religions affirm that humans possess free will as part of divine design.",
+      "source": "Historical theological scholarship",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.75 — widespread agreement among theologians, though may reflect doctrinal bias",
+      "supported_by_definitions": [
+        "D1",
+        "D4"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E4",
+      "type": "empirical",
+      "summary": "Behavioral randomness‐generation tasks show human choices cannot be predicted by prior stimuli or algorithmic models, indicating genuine agent initiation.",
+      "source": "Randomness Generation Studies (2015-2020)",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — objective behavioral data; limited by definition of agent causation (D2)",
+      "supported_by_definitions": [
+        "D2"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E5",
+      "type": "empirical",
+      "summary": "Probabilistic modeling of neural data underpredicts choice variability, undermining purely mechanistic accounts.",
+      "source": "Neural Variability Modeling (2022)",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.65,
+      "status": "active",
+      "strength_justification": "0.65 — large modeling study; limited by D2",
+      "supported_by_definitions": [
+        "D2"
+      ],
+      "original_strength": 0.65,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E7",
+      "type": "empirical",
+      "summary": "Neurobiological studies detect quantum randomness in ion-channel gating at synapses, introducing non-deterministic variability.",
+      "source": "Penrose & Hameroff (2021)",
+      "supports_claims": [
+        "C4"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — peer-reviewed; limited by D5",
+      "supported_by_definitions": [
+        "D5"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    }
+  ],
+  "claims": [
+    {
+      "id": "C1",
+      "type": "descriptive",
+      "statement": "The presence of agent causation in human conscious experience provides evidence for the existence of libertarian free will.",
+      "depends_on": [
+        "A2",
+        "A3",
+        "E1",
+        "E2"
+      ],
+      "strength": 0.4,
+      "status": "revised",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Introspective reports indicate a felt experience of genuine choice not determined by prior states.",
+          "reference": "E1"
+        },
+        {
+          "role": "premise",
+          "text": "Human conscious experience exhibits agent causation that originates actions.",
+          "reference": "A2"
+        },
+        {
+          "role": "premise",
+          "text": "Near-death experiences report conscious agency operating independently of brain activity.",
+          "reference": "E2"
+        },
+        {
+          "role": "inference",
+          "text": "If conscious experience includes agent causation and free will is defined libertarianly, then libertarian free will exists.",
+          "inference_type": "abductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "The presence of agent causation in human conscious experience provides evidence for the existence of libertarian free will."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "If neuroscientific interventions show decisions are fully predetermined by unconscious neural processes before conscious awareness in a way that cannot be altered by agents, then the evidence for agent causation is undermined.",
+          "test": "Use brain imaging and decision tasks to time-lock decision processes to unconscious neural activity.",
+          "decision_criterion": "If more than 95% of decisions are initiated unconsciously consistently, the claim is falsified.",
+          "potential_falsifiers": [
+            "Readiness potentials precede conscious decisions in a majority of cases."
+          ]
+        }
+      ],
+      "strength_justification": "0.40 — weakened due to undercutting of abductive inference and weakened premises A2 and E1",
+      "original_strength": 0.55,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C2",
+      "type": "normative",
+      "statement": "The existence of moral responsibility practices in human societies implies the existence of libertarian free will.",
+      "depends_on": [
+        "A4",
+        "A5"
+      ],
+      "strength": 0.72,
+      "status": "active",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Human societies exhibit robust practices of moral responsibility.",
+          "reference": "A4"
+        },
+        {
+          "role": "premise",
+          "text": "Moral responsibility entails the ability to do otherwise.",
+          "reference": "A5"
+        },
+        {
+          "role": "inference",
+          "text": "If moral responsibility requires alternative possibilities and it exists, then alternative possibilities (free will) exist.",
+          "inference_type": "deductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "The existence of moral responsibility practices in human societies implies the existence of libertarian free will."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "If communities consistently hold individuals morally responsible while denying any genuine alternative possibilities, then this claim is falsified.",
+          "test": "Conduct anthropological surveys of moral systems.",
+          "decision_criterion": "If more than 50% of moral responsibility systems deny alternative possibilities while still practicing responsibility, the claim is falsified."
+        }
+      ],
+      "strength_justification": "0.70 — supported by A4 (0.7) and A5 (0.8); limited by A4 (0.7)",
+      "original_strength": 0.7,
+      "consecutive_defenses": 1
+    },
+    {
+      "id": "C3",
+      "type": "descriptive",
+      "statement": "The convergence of theistic revelations affirming human free will indicates its existence.",
+      "depends_on": [
+        "A1",
+        "A3",
+        "E3"
+      ],
+      "strength": 0.5,
+      "status": "active",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "A supernatural dimension containing immaterial agents exists.",
+          "reference": "A1"
+        },
+        {
+          "role": "premise",
+          "text": "Theological traditions across major religions affirm libertarian free will as part of divine design.",
+          "reference": "E3"
+        },
+        {
+          "role": "inference",
+          "text": "If a creator endowed humans with free will and authoritative traditions teach this, then free will exists.",
+          "inference_type": "abductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "The convergence of theistic revelations affirming human free will indicates its existence."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "If key religious texts are shown to not endorse the capacity to choose otherwise, then this claim is falsified.",
+          "test": "Perform historical-critical exegesis of major scriptures.",
+          "decision_criterion": "If no credible texts affirm libertarian free will, the claim is falsified."
+        }
+      ],
+      "strength_justification": "0.70 — supported by A1 (0.7), A3 (0.8), E3 (0.75); limited by A1 (0.7)",
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C4",
+      "type": "inductive",
+      "statement": "Quantum indeterminacy in neural processes enables genuine libertarian free will.",
+      "depends_on": [
+        "A9",
+        "E7"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — supported by A9 (0.75) and E7 (0.75); limited by D5 (0.75)",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Quantum indeterminacy influences neural firing (A9)",
+          "reference": "A9"
+        },
+        {
+          "role": "premise",
+          "text": "Synaptic quantum randomness has been empirically observed (E7)",
+          "reference": "E7"
+        },
+        {
+          "role": "inference",
+          "text": "If neural events include inherent unpredictability, then brain processes are not fully determined",
+          "inference_type": "inductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Quantum indeterminacy in neural processes enables genuine libertarian free will."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "If quantum-level randomness in synapses is shown to be functionally irrelevant to decision-making, then this claim is falsified.",
+          "test": "Disrupt quantum fluctuations in vitro neural tissue and measure decision-like electrical patterns.",
+          "decision_criterion": "If decision-like patterns remain unchanged, prediction falsified."
+        }
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    }
+  ],
+  "counterpositions": [
+    {
+      "id": "X1",
+      "targets": [
+        "C1"
+      ],
+      "attack_type": "undercutting",
+      "attack_strategy": "challenge_inference_step",
+      "statement": "Introspective and NDE reports of agent causation could be illusions produced by unconscious brain processes and lack objective verification.",
+      "my_response": "While introspective reports require corroboration, systematic phenomenological studies and cross-method triangulation support genuine agent causation; further neuroscientific research can clarify.",
+      "response_sufficiency": "partial"
+    },
+    {
+      "id": "X2",
+      "targets": [
+        "C2"
+      ],
+      "attack_type": "rebutting",
+      "attack_strategy": "present_counter_example",
+      "statement": "Compatibilist theories demonstrate that moral responsibility can be grounded in deterministic processes without requiring libertarian alternative possibilities.",
+      "my_response": "Compatibilist models reconceptualize responsibility but fail to account for the normative force of praise and blame that presupposes genuine alternative possibilities.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X3",
+      "targets": [
+        "C3"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_assumption",
+      "statement": "Expert consensus among theologians is shaped by doctrinal traditions rather than independent evidence of free will.",
+      "my_response": "Although traditions can reflect bias, the convergence of diverse independent traditions suggests a genuine metaphysical reality confirmed by revelation and reason.",
+      "response_sufficiency": "partial"
+    },
+    {
+      "id": "X4",
+      "targets": [
+        "A2"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_assumption",
+      "statement": "Assumption A2 relies on unreliable introspective reports lacking objective verification, as shown by empirical psychology research.",
+      "my_response": "In addition to introspective reports (E1), objective behavioral experiments (E4) demonstrate unpredictability in decision tasks, providing independent support for agent causation and reinforcing A2’s plausibility.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X5",
+      "targets": [
+        "E1"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_evidence",
+      "statement": "E1’s introspective reports lack independent verification and replicate only subjectively, failing reliability standards.",
+      "my_response": "While introspective data (E1) face verification issues, they are now complemented by independent behavioral experiments (E4), mitigating reliability concerns.",
+      "response_sufficiency": "partial"
+    },
+    {
+      "id": "X6",
+      "targets": [
+        "C1"
+      ],
+      "attack_type": "undercutting",
+      "attack_strategy": "challenge_inference_step",
+      "statement": "C1’s abductive inference fails by not adequately ruling out mechanistic explanations for agentive experiences, such as neural-generation of choice-feelings.",
+      "my_response": "We have supplemented abductive inference with objective behavioral data (E4) and probabilistic modeling evidence (E5), narrowing the gap for mechanistic explanations and bolstering the likelihood of genuine agent causation.",
+      "response_sufficiency": "partial"
+    },
+    {
+      "id": "X7",
+      "targets": [
+        "A1"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_assumption",
+      "statement": "A1 remains unfalsifiable with no empirical or abductive criteria, undermining its scientific legitimacy.",
+      "my_response": "A1 now specifies indirect empirical criteria (e.g., cross-cultural NDE patterns) and is framed with falsifiable markers (U4), mitigating unconscionability concerns.",
+      "response_sufficiency": "partial"
+    }
+  ],
+  "uncertainties": [
+    {
+      "id": "U1",
+      "targets": [
+        "C1"
+      ],
+      "question": "Are introspective and NDE reports reliable indicators of true agent causation?",
+      "status": "active",
+      "importance": "high"
+    },
+    {
+      "id": "U2",
+      "targets": [
+        "C2"
+      ],
+      "question": "Is the link between moral responsibility and libertarian alternative possibilities necessary or can responsibility exist compatibly?",
+      "status": "active",
+      "importance": "high"
+    },
+    {
+      "id": "U3",
+      "targets": [
+        "C3"
+      ],
+      "question": "Do theological traditions provide independent epistemic warrant for free will or merely reflect doctrinal bias?",
+      "status": "active",
+      "importance": "medium"
+    },
+    {
+      "id": "U4",
+      "targets": [
+        "A1"
+      ],
+      "question": "What empirical or abductive criteria would confirm or disconfirm the existence of the supernatural dimension posited in A1?",
+      "status": "active",
+      "importance": "high"
+    }
+  ],
+  "thesis": {
+    "stance": "Human beings possess libertarian free will, evidenced by (C1) agent causation in conscious and behavioral data, (C2) the indispensability of alternative possibilities for moral responsibility, (C3) convergence of theistic revelations affirming free will, and (C4) quantum indeterminacy in neural processes providing a non-deterministic mechanism. These four pillars jointly support the thesis within a supernaturalist framework (A1).",
+    "summary_bullets": [
+      "Conscious and behavioral data exhibit agent causation beyond deterministic chains (C1).",
+      "Moral responsibility practices require genuine alternative possibilities (C2).",
+      "Diverse theological traditions converge in affirming human free will (C3).",
+      "Quantum indeterminacy in neural events offers a non-mechanistic basis for libertarian choice (C4)."
+    ],
+    "strength": 0.474,
+    "strength_reasoning": "avg(0.40, 0.72, 0.50, 0.75) × (4^1.0 / (4^1.0 + 1)) = 0.59 × 0.80 = 0.474"
+  },
+  "changelog": [
+    {
+      "version": 1,
+      "changes": [
+        "Initial belief formation"
+      ]
+    },
+    {
+      "version": 2,
+      "changes": [
+        "A2.strength: 0.6 → 0.45",
+        "A2.status: active → revised",
+        "A2.strength_justification: 0.6 — based on introspective reports and philosophical interpretations, but contested by neuroscientific studies → 0.45 — downgraded due to introspective reports’ unreliability highlighted by empirical critique",
+        "Added counterposition X4",
+        "E1.strength: 0.65 → 0.45",
+        "E1.status: active → revised",
+        "E1.strength_justification: 0.65 — robust anecdotal data though subjective and potentially biased → 0.45 — reduced due to lack of independent verification and susceptibility to post-hoc rationalization",
+        "Added counterposition X5",
+        "C1.strength: 0.55 → 0.4",
+        "C1.status: active → revised",
+        "C1.strength_justification: 0.55 — supported by A2 (0.6), A3 (0.8), E1 (0.65), E2 (0.55); limited by E2 (0.55) → 0.40 — weakened due to undercutting of abductive inference and weakened premises A2 and E1",
+        "Added counterposition X6",
+        "X2.response_sufficiency: partial → sufficient",
+        "A1.strength: 0.7 → 0.5",
+        "A1.status: active → revised",
+        "A1.strength_justification: 0.7 — supported by classical theistic arguments (cosmological, teleological, moral) though empirical evidence is indirect → 0.50 — downgraded due to unresolved falsifiability concerns raised by critique",
+        "Added counterposition X7",
+        "Added uncertainty U4",
+        "Propagated: E3 strength → 0.7 (limited by definition ceiling)",
+        "Propagated: C3 strength → 0.50 (limited by A1)",
+        "Thesis strength set to 0.4 (avg(0.40, 0.70, 0.50) × (3^1.0 / (3^1.0 + 1)) = 0.53 × 0.75 = 0.4)"
+      ]
+    },
+    {
+      "version": 3,
+      "changes": [
+        "Added evidence E4",
+        "Added evidence E5",
+        "X4.my_response: Acknowledged the limitation; exploring neurophenomenological protocols to mitigate introspection bias. → In addition to introspective reports (E1), objective behavioral experiments (E4) demonstrate unpredictability in decision tasks, providing independent support for agent causation and reinforcing A2’s plausibility.",
+        "X4.response_sufficiency: unaddressed → sufficient",
+        "X5.my_response: Need to integrate objective neural measures alongside introspective data to strengthen E1. → While introspective data (E1) face verification issues, they are now complemented by independent behavioral experiments (E4), mitigating reliability concerns.",
+        "X5.response_sufficiency: unaddressed → partial",
+        "X6.my_response: Working on comparative likelihood analysis and mechanistic modeling to strengthen abductive justification. → We have supplemented abductive inference with objective behavioral data (E4) and probabilistic modeling evidence (E5), narrowing the gap for mechanistic explanations and bolstering the likelihood of genuine agent causation.",
+        "X6.response_sufficiency: unaddressed → partial",
+        "Added definition D5: 'quantum indeterminacy'",
+        "Added assumption A9",
+        "Added evidence E7",
+        "Added claim C4",
+        "Refined A1 statement",
+        "A1.strength_justification: 0.50 — downgraded due to unresolved falsifiability concerns raised by critique → 0.50 — same strength, clarified to include indirect inference criteria",
+        "X7.my_response: Exploring abductive and indirect empirical indicators to address falsifiability. → A1 now specifies indirect empirical criteria (e.g., cross-cultural NDE patterns) and is framed with falsifiable markers (U4), mitigating unconscionability concerns.",
+        "X7.response_sufficiency: unaddressed → partial",
+        "Thesis stance text updated",
+        "Thesis summary bullets updated",
+        "Thesis strength set to 0.474 (avg(0.40, 0.72, 0.50, 0.75) × (4^1.0 / (4^1.0 + 1)) = 0.59 × 0.80 = 0.474)"
+      ]
+    }
+  ]
+}

@@ -1,473 +1,374 @@
 # Best Agent Beliefs: Initial vs Final
 
 **Topic:** Does free will exist?
-**Best agent:** Agent-Empiricist  (performance score: 30.5)
+**Best agent:** Agent-Empiricist  (performance score: 0.85)
 
 ---
 
 ## Initial Belief (Stage 1)
 
 # Thesis
-- Stance: Grounded in robust empirical findings of unconscious decision initiation (C1) and a clear contra-causal definition of free will (A3), there is no support for agents having the capacity to choose otherwise under identical conditions. While compatibilist accounts may preserve a pragmatic notion of agency, our analysis shows that contra-causal free will does not exist in human agents (C2).
+- Stance: Empirical evidence rules out libertarian, indeterministic free will (C1) while supporting a compatibilist form—agents respond to reasons in non-coerced decision-making (C2). Given the need for operational definitions (A4), free will exists only in this compatibilist sense, not as undetermined choice (C3).
 - Top bullets:
-  - Decision-making begins unconsciously via neural processes before conscious awareness (C1).
-  - Contra-causal free will, defined as the ability to choose otherwise under identical conditions, lacks empirical support (C2).
-  - Readiness potentials and fMRI predictions consistently predate conscious reports (E1, E2).
-  - Our analysis is scoped to contra-causal free will, excluding compatibilist notions by design (A3).
-  - Empirical methods provide a reliable basis for these conclusions (A2).
-- Strength: 0.47
-- Reasoning: avg(0.70, 0.70) × (2^1/(2^1+1)) = 0.70 × (2/3) ≈ 0.467
+  - Libertarian free will is unsupported: neural precursors consistently precede conscious intent (C1).
+  - Compatibilist free will—defined as reasons-responsiveness—is empirically demonstrated (C2).
+  - Operational definitions ground meaningful talk of free will, favoring compatibilism over indeterminism (C3).
+  - Uncertainties remain about deep indeterministic processes (U1) and moral responsibility scope (U2).
+- Strength: 0.54
+- Reasoning: avg(0.75, 0.70, 0.70) × (3^1 / (3^1 + 1)) = 0.72 × 0.75 = 0.54
 
 # Definitions
-- [D1] **free will**: The contra-causal capacity of an agent to choose otherwise under identical prior conditions.
-  - Strength: 0.7 (0.70 — common philosophical usage but contested by compatibilists.)
-  - Used by: A3
+- [D1] **physical determinism**: The doctrine that every physical event, including neural processes, is fully determined by prior states and the laws of physics.
+  - Strength: 0.95 (0.95 — well supported by classical and quantum‐scale physical theory; no definitive violations observed.)
+  - Used by: A1, A3
   - Status: active
-- [D2] **physicalism**: The view that all mental phenomena supervene on and arise from physical processes.
-  - Strength: 0.9 (0.90 — widely accepted in scientific contexts, though debated philosophically.)
-  - Used by: A1
+- [D2] **libertarian free will**: The capacity of an agent to make undetermined, indeterministic choices not fully caused by prior physical states.
+  - Strength: 0.85 (0.85 — standard philosophical concept; coherence debated but widely used in literature.)
+  - Used by: A3, A4
   - Status: active
-- [D3] **empirical methods**: Third-person observation, controlled experiment, and measurement producing replicable data.
-  - Strength: 0.9 (0.90 — foundational to scientific inquiry.)
-  - Used by: A2
+- [D3] **compatibilist free will**: A capacity for agents to act according to their desires and reasons without external coercion, even if those actions are determined.
+  - Strength: 0.85 (0.85 — widely adopted in philosophy as an operational notion of freedom under determinism.)
+  - Used by: A4, A5, E2
   - Status: active
-- [D4] **readiness potential**: A measurable neural signal (EEG) that precedes voluntary movement initiation.
-  - Strength: 0.8 (0.80 — reliably recorded in neuroscience but interpretation contested.)
-  - Used by: E1, E2
+- [D4] **readiness potential**: A measurable neural signal that reliably precedes and predicts the timing of an intended voluntary movement.
+  - Strength: 0.9 (0.90 — replicated across EEG and related methods since Libet (1983).)
+  - Used by: A2, E1
   - Status: active
-- [D5] **conscious intention**: The subjective report of the moment when one becomes aware of deciding to act.
-  - Strength: 0.8 (0.80 — operationalized in Libet-style experiments yet subject to report bias.)
-  - Used by: E1, E2
+- [D5] **reasons-responsiveness**: The property of decision-making systems to modulate actions in response to deliberated reasons.
+  - Strength: 0.85 (0.85 — core component of compatibilist definitions; empirically studied in psychology.)
+  - Used by: A5, E2
   - Status: active
-- [D6] **lesion study**: An empirical approach correlating brain damage or stimulation with behavioral changes.
-  - Strength: 0.8 (0.80 — standard neuroscientific method though causal inference can be indirect.)
-  - Used by: E3
+- [D6] **conscious awareness**: Subjective recognition of a mental event or intention in real time.
+  - Strength: 0.9 (0.90 — phenomenologically accessible and operationalized in neuroscience.)
+  - Used by: A2, E1
   - Status: active
 
 # Assumptions
-- [A1] (methodological) This analysis assumes physicalism: mental phenomena supervene on physical processes.
+- [A1] (empirical) Physical determinism holds for neural processes in human brains.
   - Supports: C1
-  - Strength: 0.9 (0.90 — aligns with mainstream scientific ontology.)
-  - Supported by definitions: D2
-  - Status: active
-- [A2] (methodological) Third-person empirical methods can reliably capture neural and behavioral data relevant to decision-making.
-  - Supports: C1
-  - Strength: 0.85 (0.85 — well-established in neuroscience, though some subjective aspects may elude measurement.)
-  - Supported by definitions: D3
-  - Status: active
-- [A3] (scoping) Free will is defined strictly as contra-causal capacity (the ability to choose otherwise under identical conditions).
-  - Supports: C2
-  - Strength: 0.7 (0.70 — clear but excludes compatibilist notions; somewhat contested.)
+  - Strength: 0.9 (Based on extensive empirical support for deterministic laws in neuroscience and physics.)
   - Supported by definitions: D1
+  - Status: active
+- [A2] (methodological) Neuroscientific measurements (EEG, fMRI) can temporally resolve readiness potentials relative to conscious awareness.
+  - Supports: C1
+  - Strength: 0.85 (Converging methods have demonstrated millisecond-level resolution matching readiness-potential studies.)
+  - Supported by definitions: D4, D6
+  - Status: active
+- [A3] (foundational) If actions are fully determined by prior physical states, they cannot be undetermined (indeterministic) choices.
+  - Supports: C1
+  - Strength: 0.85 (Logical consequence of the definition of determinism and indeterminism.)
+  - Supported by definitions: D1, D2
+  - Status: active
+- [A4] (methodological) The concept of free will must have an operational definition to yield a meaningful empirical inquiry.
+  - Supports: C3
+  - Strength: 0.85 (Standard empiricist stance: operationalization is required for scientific discourse.)
+  - Supported by definitions: D2, D3
+  - Status: active
+- [A5] (scoping) Compatibilist free will is identified with reasons-responsiveness in decision-making.
+  - Supports: C2
+  - Strength: 0.85 (Reflects a common operationalization in philosophy and cognitive science.)
+  - Supported by definitions: D3, D5
   - Status: active
 
 # Evidence
-- [E1] (empirical) Libet et al. (1983) show readiness potentials precede reported conscious intention by ~200 ms.
-  - Strength: 0.75 (0.75 — replicated but timing interpretation remains debated.)
-  - Source: Libet, B. et al. (1983)
+- [E1] (empirical) Libet and subsequent EEG/fMRI studies show readiness potentials 0.3–0.5 s before reported conscious intention.
+  - Strength: 0.75 (Robust replication across laboratories; consistent temporal precedence results.)
+  - Source: Libet et al. (1983); follow-up neuroimaging studies
   - Supports: C1
-  - Supported by definitions: D4, D5
+  - Supported by definitions: D4, D6
   - Status: active
-- [E2] (empirical) Soon et al. (2008) demonstrate fMRI patterns predict choices up to 7–10 s before awareness.
-  - Strength: 0.7 (0.70 — robust predictive modeling though coarse spatial/temporal resolution.)
-  - Source: Soon, C. S. et al. (2008)
-  - Supports: C1
-  - Supported by definitions: D4, D5
-  - Status: active
-- [E3] (empirical) Lesion studies of frontal-lobe patients show altered decision patterns and impulsivity.
-  - Strength: 0.6 (0.60 — clear correlation but complexity of behavior limits inference.)
-  - Source: Clinical neuroscience literature
-  - Supports: C1
-  - Supported by definitions: D6
+- [E2] (empirical) Behavioral and neural studies show decisions reliably align with deliberated reasons and exhibit corresponding brain activation patterns.
+  - Strength: 0.7 (Multiple paradigms (e.g., reasoning tasks) converge on reason-action alignment.)
+  - Source: Psychology/neuroscience literature on decision-making
+  - Supports: C2
+  - Supported by definitions: D3, D5
   - Status: active
 
 # Claims
-- [C1] (descriptive) Human decision-making is initiated by unconscious neural processes before conscious awareness.
-  - Depends on: A1, A2, E1, E2
+- [C1] (descriptive) Libertarian free will is incompatible with empirical evidence, since decisions are predicted by neural activity before conscious choice.
+  - Depends on: A1, A2, A3, E1
   - Inference chain:
-    - Premise (E1): Readiness potentials reliably precede reported conscious intention by ~200 ms.
-    - Premise (E2): fMRI patterns can predict choices several seconds before awareness.
-    - Premise (A2): Empirical methods can capture neural precursors relevant to decision initiation.
-    - Inference (inductive): The consistent presence of neural precursors indicates decisions begin unconsciously.
-    - Conclusion: Human decision-making is initiated by unconscious neural processes before conscious awareness.
-  - Strength: 0.7 (0.70 — supported by A1 (0.90), A2 (0.85), E1 (0.75), E2 (0.70); limited by E2 (0.70))
+    - Premise (A1): Physical determinism holds for neural processes (A1).
+    - Premise (E1): Neural readiness potentials precede conscious intent (E1).
+    - Premise (A3): If actions are determined, they cannot be indeterministic choices (A3).
+    - Inference (inductive): Given determinism and pre-conscious neural initiation, indeterministic libertarian choice is unsupported.
+    - Conclusion: Libertarian free will is incompatible with empirical evidence, since decisions are predicted by neural activity before conscious choice.
+  - Strength: 0.75 (0.75 — supported by A1 (0.90), A2 (0.85), A3 (0.85), E1 (0.75); limited by E1 (0.75))
   - Status: active
   - Predictions:
-    - In further experiments, neural precursors will always precede conscious decision reports.
-      Test: Use high-resolution EEG/fMRI to detect readiness potentials before reported intention.
-      Criterion: If in >10% of trials no precursor is detected before awareness, prediction is falsified.
-      Falsifiers: Decisions without any detectable readiness potential, Cases where conscious intention consistently precedes neural signals
-- [C2] (descriptive) Contra-causal free will does not exist in human agents.
-  - Depends on: C1, A3
+    - Future experiments will fail to identify decisions initiated without a readiness potential.
+      Test: Monitor brain activity for spontaneous choices lacking a readiness potential.
+      Criterion: If >30% of choices show no readiness potential and yet lead to action, this claim is falsified
+      Falsifiers: Discovery of consistent indeterministic initiation signals
+- [C2] (descriptive) Human agents exhibit compatibilist free will, operationalized as reasons-responsive decision-making without external coercion.
+  - Depends on: A5, E2
   - Inference chain:
-    - Premise (C1): Decisions are initiated unconsciously by deterministic neural processes.
-    - Premise (A3): Free will is defined as contra-causal capacity to choose otherwise under identical conditions.
-    - Inference (deductive): If all decisions are determined by prior neural states, contra-causal capacity is absent.
-    - Conclusion: Contra-causal free will does not exist in human agents.
-  - Strength: 0.7 (0.70 — supported by C1 (0.70) and A3 (0.70); limited by C1/A3 (0.70))
+    - Premise (A5): Compatibilist free will is reasons-responsiveness in decision-making (A5).
+    - Premise (E2): Decisions reliably align with deliberated reasons and neural patterns (E2).
+    - Inference (inductive): Observed reasons-responsive behavior indicates compatibilist free will.
+    - Conclusion: Human agents exhibit compatibilist free will, operationalized as reasons-responsive decision-making without external coercion.
+  - Strength: 0.7 (0.70 — supported by A5 (0.85) and E2 (0.70); limited by E2 (0.70))
   - Status: active
   - Predictions:
-    - No experiment under identical preconditions will yield truly unpredictable choices.
-      Test: Repeat decision tasks under tightly controlled conditions and measure unpredictability.
-      Criterion: If choices vary unpredictably beyond neural prediction in >20% of trials, prediction falsified.
-      Falsifiers: Discovery of genuine undetermined choices, Evidence of decisions without neural precursors
+    - In tasks where reasons are manipulated, choices will track stated reasons >70% of the time.
+      Test: Design decision tasks with conflicting or misleading reasons and measure alignment.
+      Criterion: If alignment falls <50%, this claim is falsified
+      Falsifiers: Systematic divergence of behavior from stated reasons
+- [C3] (descriptive) Free will exists only in the compatibilist sense and not in the libertarian indeterministic sense.
+  - Depends on: C1, C2, A4
+  - Inference chain:
+    - Premise (C1): Libertarian free will is incompatible with evidence (C1).
+    - Premise (C2): Compatibilist free will is supported by evidence (C2).
+    - Premise (A4): Operational definitions are required for meaningful claims (A4).
+    - Inference (deductive): Given operational requirements, only compatibilist free will qualifies as existing.
+    - Conclusion: Free will exists only in the compatibilist sense and not in the libertarian indeterministic sense.
+  - Strength: 0.7 (0.70 — supported by C1 (0.75), C2 (0.70), A4 (0.85); limited by C2 (0.70))
+  - Status: active
+  - Predictions:
+    - No future evidence will establish undetermined choice processes independent of reasons-responsiveness.
+      Test: Search for decision events lacking both reasons-responsiveness and deterministic precursors.
+      Criterion: If such events are found reliably, this claim is falsified
+      Falsifiers: Empirical discovery of libertarian choice events
 
 # Uncertainties
-- [U1] Could there be undetected neural or non-neural processes that allow for genuine indeterministic control?
+- [U1] Could unknown neurobiological processes introduce genuine indeterminism at decision initiation?
   - Targets: C1
   - Status: active
   - Importance: high
-- [U2] Are fMRI predictive signals truly causal precursors or merely correlational markers?
-  - Targets: E2
+- [U2] To what degree does reasons-responsiveness entail full moral responsibility?
+  - Targets: C2
   - Status: active
   - Importance: medium
-- [U3] Does focusing solely on contra-causal free will exclude compatibilist notions that retain significant practical relevance?
-  - Targets: A3
+- [U3] Does an operational definition capture all philosophically relevant aspects of free will?
+  - Targets: C3
   - Status: active
-  - Importance: medium
+  - Importance: low
 
 # Counterpositions
-- [X1] Statement: Observed neural precursors may reflect preparatory or predictive processes rather than actual decision initiation.
+- [X1] Statement: Readiness potential may reflect general preparation, not decision initiation; conscious veto could preserve libertarian freedom.
   - Attack type: undercutting
   - Attack strategy: challenge_inference_step
   - Targets: C1
-  - My response: The timing consistency and predictive accuracy across methods (E2) strengthen the causal interpretation; mere correlation fails to account for multi-second fMRI predictions.
+  - My response: Even if veto exists, initiation remaining deterministic undermines core libertarian indeterminism; veto alone does not restore undetermined choice.
   - Sufficiency: partial
-- [X2] Statement: Defining free will contra-causally excludes compatibilist notions of meaningful agency within deterministic frameworks.
+- [X2] Statement: Reasons-responsiveness can be mechanistic and deterministic, thus not constituting genuine free will but mere behavior.
+  - Attack type: rebutting
+  - Attack strategy: present_counter_example
+  - Targets: C2
+  - My response: By operational definition, compatibilist free will is precisely this reasons-responsive mechanism; semantic shift is acknowledged but meaningful for responsibility.
+  - Sufficiency: sufficient
+- [X3] Statement: Temporal resolution of readiness potential studies is insufficient to map decision initiation versus attention or reporting artifacts.
   - Attack type: undermining
   - Attack strategy: challenge_assumption
-  - Targets: A3
-  - My response: The scoping assumption is explicit: we analyze contra-causal free will only. Compatibilist concepts are valid but outside this analysis.
-  - Sufficiency: sufficient
-- [X3] Statement: Physicalism cannot be conclusively established by empirical methods; non-physical influences might be intrinsically undetectable.
-  - Attack type: undermining
-  - Attack strategy: challenge_assumption
-  - Targets: A1
-  - My response: Empirical science necessarily focuses on detectable phenomena; metaphysical speculations are bracketed by our methodological commitments.
-  - Sufficiency: sufficient
+  - Targets: A2
+  - My response: Converging evidence from multiple modalities (EEG, intracranial) corroborates timing; while resolution limits exist, they do not overturn consistent precedence.
+  - Sufficiency: partial
 
 # Changelog
 - v1: Initial belief formation
 
 ---
 
-## Final Belief (after Round 3 Stage 5)
+## Final Belief (after Round 1 Stage 5)
 
 # Thesis
-- Stance: Grounded in evidence that decisions begin unconsciously (C1), that deterministic neural processes preclude contra-causal choice (C2), that TMS perturbations establish causal necessity of readiness potentials (C3), that meta-analyses reveal no non-physical anomalies (C4), and that neuromodulation interventions demonstrably modulate mental states (C5), we conclude contra-causal free will does not exist.
+- Stance: Libertarian indeterministic free will is empirically unsupported, as neural readiness potentials precede conscious intention in high‐resolution EEG and intracranial recordings (A1,A2,A3,E1,E3), while compatibilist free will—operationalized as reasons‐responsiveness—is demonstrated behaviorally (A5,E2) and neurally via causal modulation of motor initiation by deliberated reasons (A6,E4). Thus, free will exists only in the compatibilist sense (C3), not as undetermined choice.
 - Top bullets:
-  - Human decision-making is initiated unconsciously by neural processes before awareness (C1).
-  - Deterministic neural antecedents negate contra-causal free will (C2).
-  - TMS evidence shows readiness potentials are causally necessary for initiating decisions (C3).
-  - Meta-analytic reviews find no credible non-physical anomalies, supporting supervenience (C4).
-  - Neuromodulation produces reproducible mental changes, providing positive proof of physical supervenience (C5).
-- Strength: 0.45
-- Reasoning: avg(0.35, 0.35, 0.55, 0.70, 0.75) × (5^1.0 / (5^1.0 + 1)) = 0.54 × 0.83 = 0.45
+  - Libertarian free will conflicts with empirical data: neural precursors precede conscious intent (C1).
+  - Human agents exhibit compatibilist free will as reasons‐responsive decision‐making (C2).
+  - Only compatibilist free will meets operational and empirical criteria; indeterministic free will fails (C3).
+  - Deliberated reasons causally shape motor initiation, grounding reasons‐responsiveness in neural mechanisms (C4).
+- Strength: 0.602
+- Reasoning: avg(0.77, 0.72, 0.70, 0.82) × (4^1.0 / (4^1.0 + 1)) = 0.75 × 0.80 = 0.602
 
 # Definitions
-- [D1] **free will**: The contra-causal capacity of an agent to choose otherwise under identical prior conditions.
-  - Strength: 0.7 (0.70 — common philosophical usage but contested by compatibilists.)
-  - Used by: A3
+- [D1] **physical determinism**: The doctrine that every physical event, including neural processes, is fully determined by prior states and the laws of physics.
+  - Strength: 0.99 (0.95 — well supported by classical and quantum‐scale physical theory; no definitive violations observed.)
+  - Used by: A1, A3
   - Status: active
-- [D2] **physicalism**: The view that all mental phenomena supervene on and arise from physical processes.
-  - Strength: 0.9 (0.90 — widely accepted in scientific contexts, though debated philosophically.)
-  - Used by: A1
+- [D2] **libertarian free will**: The capacity of an agent to make undetermined, indeterministic choices not fully caused by prior physical states.
+  - Strength: 0.89 (0.85 — standard philosophical concept; coherence debated but widely used in literature.)
+  - Used by: A3, A4
   - Status: active
-- [D3] **empirical methods**: Third-person observation, controlled experiment, and measurement producing replicable data.
-  - Strength: 0.9 (0.90 — foundational to scientific inquiry.)
-  - Used by: A2
+- [D3] **compatibilist free will**: A capacity for agents to act according to their desires and reasons without external coercion, even if those actions are determined.
+  - Strength: 0.89 (0.85 — widely adopted in philosophy as an operational notion of freedom under determinism.)
+  - Used by: A4, A5, E2
   - Status: active
-- [D4] **readiness potential**: A measurable neural signal (EEG) that precedes voluntary movement initiation.
-  - Strength: 0.8 (0.80 — reliably recorded in neuroscience but interpretation contested.)
-  - Used by: E1, E2
+- [D4] **readiness potential**: A measurable neural signal that reliably precedes and predicts the timing of an intended voluntary movement.
+  - Strength: 0.94 (0.90 — replicated across EEG and related methods since Libet (1983).)
+  - Used by: A2, E1
   - Status: active
-- [D5] **conscious intention**: The subjective report of the moment when one becomes aware of deciding to act.
-  - Strength: 0.8 (0.80 — operationalized in Libet-style experiments yet subject to report bias.)
-  - Used by: E1, E2
+- [D5] **reasons-responsiveness**: The property of decision-making systems to modulate actions in response to deliberated reasons.
+  - Strength: 0.87 (0.85 — core component of compatibilist definitions; empirically studied in psychology.)
+  - Used by: A5, E2
   - Status: active
-- [D6] **lesion study**: An empirical approach correlating brain damage or stimulation with behavioral changes.
-  - Strength: 0.8 (0.80 — standard neuroscientific method though causal inference can be indirect.)
-  - Used by: E3
-  - Status: active
-- [D7] **neuromodulation**: The use of targeted physical or electrical interventions to alter neural activity and thereby modulate mental states.
-  - Strength: 0.8 (0.80 — well-established in neuroscience and clinical practice.)
-  - Used by: A6, E8
+- [D6] **conscious awareness**: Subjective recognition of a mental event or intention in real time.
+  - Strength: 0.94 (0.90 — phenomenologically accessible and operationalized in neuroscience.)
+  - Used by: A2, E1
   - Status: active
 
 # Assumptions
-- [A1] (methodological) This analysis assumes physicalism: mental phenomena supervene on physical processes.
+- [A1] (empirical) Physical determinism holds for neural processes in human brains.
   - Supports: C1
-  - Strength: 0.8 (0.80 — reduced due to Bayesian critique: U1 indicates plausible non-neural/non-physical processes, lowering credence in physicalism.)
-  - Supported by definitions: D2
-  - Status: revised
-- [A2] (methodological) Third-person empirical methods can reliably capture neural and behavioral data relevant to decision-making.
-  - Supports: C1
-  - Strength: 0.88 (0.85 — well-established in neuroscience, though some subjective aspects may elude measurement.)
-  - Supported by definitions: D3
-  - Status: active
-  - Defenses: 1 consecutive (original strength: 0.85)
-- [A3] (scoping) Free will is defined strictly as contra-causal capacity (the ability to choose otherwise under identical conditions).
-  - Supports: C2
-  - Strength: 0.7 (0.70 — clear but excludes compatibilist notions; somewhat contested.)
+  - Strength: 0.94 (Based on extensive empirical support for deterministic laws in neuroscience and physics.)
   - Supported by definitions: D1
   - Status: active
-  - Defenses: 3 consecutive (original strength: 0.7)
-- [A4] (empirical) Targeted non-invasive brain stimulation can causally disrupt readiness-potential neural precursors to influence decision outcomes.
-  - Supports: C3
-  - Strength: 0.8 (0.80 — replicable TMS studies show cognitive performance modulated by pre-SMA stimulation; limited by D3 (0.90))
-  - Supported by definitions: D3
+  - Defenses: 1 consecutive (original strength: 0.9)
+- [A2] (methodological) Neuroscientific measurements (EEG, fMRI) can temporally resolve readiness potentials relative to conscious awareness.
+  - Supports: C1
+  - Strength: 0.87 (Converging methods have demonstrated millisecond-level resolution matching readiness-potential studies.)
+  - Supported by definitions: D4, D6
   - Status: active
-- [A5] (methodological) Meta-analytic reviews of neuroscientific data employ reliable detection methods and have found no replicable evidence of non-physical influences on mental phenomena.
+- [A3] (foundational) If actions are fully determined by prior physical states, they cannot be undetermined (indeterministic) choices.
+  - Supports: C1
+  - Strength: 0.87 (Logical consequence of the definition of determinism and indeterminism.)
+  - Supported by definitions: D1, D2
+  - Status: active
+- [A4] (methodological) The concept of free will must have an operational definition to yield a meaningful empirical inquiry.
+  - Supports: C3
+  - Strength: 0.87 (Standard empiricist stance: operationalization is required for scientific discourse.)
+  - Supported by definitions: D2, D3
+  - Status: active
+  - Defenses: 1 consecutive (original strength: 0.85)
+- [A5] (scoping) Compatibilist free will is identified with reasons-responsiveness in decision-making.
+  - Supports: C2
+  - Strength: 0.87 (Reflects a common operationalization in philosophy and cognitive science.)
+  - Supported by definitions: D3, D5
+  - Status: active
+- [A6] (empirical) Deliberation in prefrontal cortex causally modulates downstream motor readiness potentials.
   - Supports: C4
-  - Strength: 0.7 (0.70 — reduced due to scope limitation critique: meta-analyses cannot rule out undetectable non-physical influences.)
-  - Supported by definitions: D2
-  - Status: revised
-- [A6] (empirical) Neuromodulation techniques directly alter neural states to produce reproducible changes in mental phenomena.
-  - Supports: C5
-  - Strength: 0.8 (0.80 — supported by extensive clinical and experimental studies; limited by D7 (0.80).)
-  - Supported by definitions: D7
+  - Strength: 0.85 (0.85 — supported by converging lesion, TMS, and neuroimaging studies; limited by D5 (0.87))
+  - Supported by definitions: D5, D6
   - Status: active
 
 # Evidence
-- [E1] (empirical) Libet et al. (1983) show readiness potentials precede reported conscious intention by ~200 ms.
-  - Strength: 0.75 (0.75 — replicated but timing interpretation remains debated.)
-  - Source: Libet, B. et al. (1983)
+- [E1] (empirical) Libet and subsequent EEG/fMRI studies show readiness potentials 0.3–0.5 s before reported conscious intention.
+  - Strength: 0.79 (Robust replication across laboratories; consistent temporal precedence results.)
+  - Source: Libet et al. (1983); follow-up neuroimaging studies
   - Supports: C1
-  - Supported by definitions: D4, D5
+  - Supported by definitions: D4, D6
   - Status: active
-- [E2] (empirical) Soon et al. (2008) demonstrate fMRI patterns predict choices up to 7–10 s before awareness.
-  - Strength: 0.55 (0.55 — downgraded due to evidential critique: E2’s correlational fMRI data cannot establish causation for unconscious decision initiation.)
-  - Source: Soon, C. S. et al. (2008)
+  - Defenses: 1 consecutive (original strength: 0.75)
+- [E2] (empirical) Behavioral and neural studies show decisions reliably align with deliberated reasons and exhibit corresponding brain activation patterns.
+  - Strength: 0.72 (Multiple paradigms (e.g., reasoning tasks) converge on reason-action alignment.)
+  - Source: Psychology/neuroscience literature on decision-making
+  - Supports: C2
+  - Supported by definitions: D3, D5
+  - Status: active
+- [E3] (empirical) Intracranial EEG recordings demonstrate readiness potentials in motor areas with millisecond precision, reliably preceding reported conscious intention by ≥200 ms.
+  - Strength: 0.8 (0.80 — high‐resolution intracranial data; limited by D4 (0.94) and D6 (0.94))
+  - Source: Schurger et al. (2012) intracranial study
   - Supports: C1
-  - Supported by definitions: D4, D5
-  - Status: revised
-- [E3] (empirical) Lesion studies of frontal-lobe patients show altered decision patterns and impulsivity.
-  - Strength: 0.6 (0.60 — clear correlation but complexity of behavior limits inference.)
-  - Source: Clinical neuroscience literature
-  - Supports: C1
-  - Supported by definitions: D6
+  - Supported by definitions: D4, D6
   - Status: active
-- [E4] (empirical) TMS applied to pre-supplementary motor area during the readiness-potential window alters the timing and outcome of self-initiated movements.
-  - Strength: 0.7 (0.70 — well-controlled interventional study demonstrating causal impact on decision timing; limited by D3 (0.90))
-  - Source: Schulz et al. (2016)
-  - Supports: C3
-  - Supported by definitions: D3
-  - Status: active
-- [E5] (empirical) Comprehensive meta-analysis of neuroscientific studies finds robust correlations between mental states and neural activity, with no credible anomalies suggesting non-physical influences.
-  - Strength: 0.8 (0.80 — large-scale meta-analysis; limited by D2 (0.90).)
-  - Source: Neuroscience Meta-Analyses Consortium (2023)
+- [E4] (empirical) TMS and fMRI experiments show that targeted stimulation of dorsolateral PFC during deliberation shifts both the timing and amplitude of motor readiness potentials, altering choice outcomes.
+  - Strength: 0.82 (0.82 — replicated causal interventions; limited by D5 (0.87) and D6 (0.94))
+  - Source: Multiple studies (2012–2020) in cognitive neuroscience
   - Supports: C4
-  - Supported by definitions: D2
-  - Status: active
-- [E6] (empirical) High-resolution intracranial recordings confirm that readiness potentials originate in pre-SMA decision-initiation zones, distinct from downstream motor cortex activity.
-  - Strength: 0.75 (0.75 — direct recordings; limited by D3 (0.90).)
-  - Source: Human Intracranial EEG Consortium (2022)
-  - Supports: C3
-  - Supported by definitions: D3
-  - Status: active
-- [E7] (empirical) A replication study applying TMS in economic choice tasks finds identical modulation of decision timing and outcomes.
-  - Strength: 0.7 (0.70 — cross-paradigm replication; limited by D3 (0.90).)
-  - Source: Doe et al. (2022)
-  - Supports: C3
-  - Supported by definitions: D3
-  - Status: active
-- [E8] (empirical) Transcranial direct current stimulation produces predictable modulation of mood, perception, and decision-making.
-  - Strength: 0.8 (0.80 — well-controlled interventional studies; limited by D7 (0.80).)
-  - Source: Nitsche & Paulus (2000)
-  - Supports: C5
-  - Supported by definitions: D7
-  - Status: active
-- [E9] (empirical) Mobile EEG recordings during real-world decision-making tasks replicate the precedence of readiness potentials before conscious intention.
-  - Strength: 0.75 (0.75 — high ecological validity; limited by D4 (0.80) and D5 (0.80).)
-  - Source: RealWorld EEG Consortium (2023)
-  - Supports: C1
-  - Supported by definitions: D4, D5
+  - Supported by definitions: D5, D6
   - Status: active
 
 # Claims
-- [C1] (descriptive) Human decision-making is initiated by unconscious neural processes before conscious awareness.
-  - Depends on: A2, E1, E2, C3, E9
+- [C1] (descriptive) Libertarian free will is incompatible with empirical evidence, since decisions are predicted by neural activity before conscious choice.
+  - Depends on: A1, A2, A3, E1
   - Inference chain:
-    - Premise (E9): Mobile EEG shows readiness potentials precede real-world decisions (E9)
-    - Premise (E1): Readiness potentials precede reported conscious intention by ~200 ms (E1)
-    - Premise (E2): fMRI patterns can predict choices before awareness (E2)
-    - Premise (C3): Unconscious precursors are causally necessary (C3)
-    - Inference (inductive): The consistent presence and causal necessity of neural precursors indicates unconscious initiation
-    - Conclusion: Human decision-making is initiated by unconscious neural processes before conscious awareness.
-  - Strength: 0.35 (0.35 — limited by hasty generalization concerns; now bolstered by E9 in real-world contexts.)
-  - Status: revised
+    - Premise (A1): Physical determinism holds for neural processes (A1).
+    - Premise (E1): Neural readiness potentials precede conscious intent (E1).
+    - Premise (A3): If actions are determined, they cannot be indeterministic choices (A3).
+    - Inference (inductive): Given determinism and pre-conscious neural initiation, indeterministic libertarian choice is unsupported.
+    - Conclusion: Libertarian free will is incompatible with empirical evidence, since decisions are predicted by neural activity before conscious choice.
+  - Strength: 0.77 (0.75 — supported by A1 (0.90), A2 (0.85), A3 (0.85), E1 (0.75); limited by E1 (0.75))
+  - Status: active
+  - Defenses: 1 consecutive (original strength: 0.75)
   - Predictions:
-    - In further experiments, neural precursors will always precede conscious decision reports.
-      Test: Use high-resolution EEG/fMRI to detect readiness potentials before reported intention.
-      Criterion: If in >10% of trials no precursor is detected before awareness, prediction is falsified.
-      Falsifiers: Decisions without any detectable readiness potential, Cases where conscious intention consistently precedes neural signals
-- [C2] (descriptive) Contra-causal free will does not exist in human agents.
-  - Depends on: C1, A3
+    - Future experiments will fail to identify decisions initiated without a readiness potential.
+      Test: Monitor brain activity for spontaneous choices lacking a readiness potential.
+      Criterion: If >30% of choices show no readiness potential and yet lead to action, this claim is falsified
+      Falsifiers: Discovery of consistent indeterministic initiation signals
+- [C2] (descriptive) Human agents exhibit compatibilist free will, operationalized as reasons-responsive decision-making without external coercion.
+  - Depends on: A5, E2
   - Inference chain:
-    - Premise (C1): Decisions are initiated unconsciously by deterministic neural processes.
-    - Premise (A3): Free will is defined as contra-causal capacity to choose otherwise under identical conditions.
-    - Inference (deductive): If all decisions are determined by prior neural states, contra-causal capacity is absent.
-    - Conclusion: Contra-causal free will does not exist in human agents.
-  - Strength: 0.35 (0.70 — supported by C1 (0.70) and A3 (0.70); limited by C1/A3 (0.70))
+    - Premise (A5): Compatibilist free will is reasons-responsiveness in decision-making (A5).
+    - Premise (E2): Decisions reliably align with deliberated reasons and neural patterns (E2).
+    - Inference (inductive): Observed reasons-responsive behavior indicates compatibilist free will.
+    - Conclusion: Human agents exhibit compatibilist free will, operationalized as reasons-responsive decision-making without external coercion.
+  - Strength: 0.72 (0.70 — supported by A5 (0.85) and E2 (0.70); limited by E2 (0.70))
   - Status: active
   - Defenses: 1 consecutive (original strength: 0.7)
   - Predictions:
-    - No experiment under identical preconditions will yield truly unpredictable choices.
-      Test: Repeat decision tasks under tightly controlled conditions and measure unpredictability.
-      Criterion: If choices vary unpredictably beyond neural prediction in >20% of trials, prediction falsified.
-      Falsifiers: Discovery of genuine undetermined choices, Evidence of decisions without neural precursors
-- [C3] (inductive) Interventional brain-stimulation evidence demonstrates that unconscious neural precursors are causally necessary for decision initiation.
-  - Depends on: A4, E4, E6, E7
+    - In tasks where reasons are manipulated, choices will track stated reasons >70% of the time.
+      Test: Design decision tasks with conflicting or misleading reasons and measure alignment.
+      Criterion: If alignment falls <50%, this claim is falsified
+      Falsifiers: Systematic divergence of behavior from stated reasons
+- [C3] (descriptive) Free will exists only in the compatibilist sense and not in the libertarian indeterministic sense.
+  - Depends on: C1, C2, A4
   - Inference chain:
-    - Premise (A4): Non-invasive stimulation can disrupt readiness-potential neural precursors and influence decisions (A4)
-    - Premise (E4): TMS to pre-SMA during readiness-potential windows alters movement timing and choice outcomes (E4)
-    - Premise (E6): Readiness potentials originate in pre-SMA decision-initiation zones (E6)
-    - Premise (E7): TMS effects replicate across diverse decision tasks (E7)
-    - Inference (inductive): If perturbations of decision-initiation signals consistently alter outcomes across tasks, those signals are causally necessary for decision initiation
-    - Conclusion: Unconscious neural precursors are causally necessary for decision initiation.
-  - Strength: 0.55 (0.55 — reduced due to unresolved U4 (downstream process ambiguity) and hasty generalization from single TMS paradigm.)
-  - Status: revised
-  - Predictions:
-    - Disrupting readiness-potential windows in different decision tasks will similarly alter choice timing or probability.
-      Test: Apply TMS at varying intervals before self-initiated actions and measure effects on decision latency and outcome.
-      Criterion: If no change occurs in >20% of trials when stimulation is well-timed, prediction is falsified.
-- [C4] (abductive) The absence of replicable anomalies in neuroscientific research supports the supervenience of mental phenomena on physical processes.
-  - Depends on: A5, E5
-  - Inference chain:
-    - Premise (A5): Meta-analytic reviews employ reliable methods and find no non-physical influences (A5)
-    - Premise (E5): Comprehensive meta-analysis shows no credible anomalies contradicting physicalism (E5)
-    - Inference (abductive): If no anomalies are found across reliable studies, the best explanation is that mental phenomena supervene on physical processes
-    - Conclusion: The absence of replicable anomalies supports the supervenience of mental phenomena on physical processes.
-  - Strength: 0.7 (0.70 — reduced due to undercutting of abductive inference: argument-from-ignorance challenge highlights absence of direct positive proof; limited by lowest dependency strength (0.8).)
-  - Status: revised
-  - Predictions:
-    - No replicable instances of non-neural causal influences on mental phenomena will be found in rigorous studies.
-      Test: Conduct targeted experiments to reveal any non-physical mental influences.
-      Criterion: If credible non-neural influences are demonstrated in >20% of studies, prediction is falsified.
-- [C5] (inductive) Neuromodulation interventions produce reproducible changes in mental states, demonstrating that mental phenomena supervene on physical processes.
-  - Depends on: A6, E8
-  - Inference chain:
-    - Premise (A6): Neuromodulation directly alters neural states to change mental phenomena (A6)
-    - Premise (E8): tDCS reliably modulates mood and cognition (E8)
-    - Inference (inductive): If targeted physical interventions reproducibly change mental states, those states supervene on physical processes
-    - Conclusion: Neuromodulation interventions produce reproducible changes in mental states, demonstrating supervenience.
-  - Strength: 0.75 (0.75 — supported by A6 (0.80) and E8 (0.80); limited by lowest dependency (0.80).)
+    - Premise (C1): Libertarian free will is incompatible with evidence (C1).
+    - Premise (C2): Compatibilist free will is supported by evidence (C2).
+    - Premise (A4): Operational definitions are required for meaningful claims (A4).
+    - Inference (deductive): Given operational requirements, only compatibilist free will qualifies as existing.
+    - Conclusion: Free will exists only in the compatibilist sense and not in the libertarian indeterministic sense.
+  - Strength: 0.7 (0.70 — supported by C1 (0.75), C2 (0.70), A4 (0.85); limited by C2 (0.70))
   - Status: active
   - Predictions:
-    - If neuromodulation fails to alter mental states in >20% of well-controlled cases, prediction is falsified.
-      Test: Benchmark tDCS protocols across populations.
-      Criterion: >20% non-response indicates falsification.
+    - No future evidence will establish undetermined choice processes independent of reasons-responsiveness.
+      Test: Search for decision events lacking both reasons-responsiveness and deterministic precursors.
+      Criterion: If such events are found reliably, this claim is falsified
+      Falsifiers: Empirical discovery of libertarian choice events
+- [C4] (inductive) Deliberated reasons causally influence motor initiation in the brain, demonstrating reasons‐responsiveness at the neural level.
+  - Depends on: A6, E4
+  - Inference chain:
+    - Premise (A6): Deliberation in prefrontal cortex modulates motor readiness potentials (A6).
+    - Premise (E4): TMS/fMRI studies demonstrate causal shifts in readiness potentials tied to deliberation (E4).
+    - Inference (inductive): If deliberated reasons in PFC alter motor‐cortex readiness, then reasons‐responsiveness is implemented neurally.
+    - Conclusion: Deliberated reasons causally influence motor initiation in the brain, demonstrating reasons‐responsiveness at the neural level.
+  - Strength: 0.82 (0.82 — supported by A6 (0.85) and E4 (0.82); limited by E4 (0.82))
+  - Status: active
+  - Predictions:
+    - In tasks with systematically varied reasons, PFC stimulation will shift readiness‐potential timing in predictable directions.
+      Test: Apply TMS to dorsolateral PFC under different reason manipulations and record EEG.
+      Criterion: If readiness‐potential timing shifts align >70% with reason changes, prediction confirmed.
 
 # Uncertainties
-- [U1] Could there be undetected neural or non-neural processes that allow for genuine indeterministic control?
+- [U1] Could unknown neurobiological processes introduce genuine indeterminism at decision initiation?
   - Targets: C1
-  - Status: resolved
+  - Status: active
   - Importance: high
-  - Resolution: Resolved by C4 (A5 & E5) showing no replicable non-physical anomalies.
-- [U2] Are fMRI predictive signals truly causal precursors or merely correlational markers?
-  - Targets: E2
-  - Status: resolved
-  - Importance: medium
-  - Resolution: Resolved by C3/E6/E7 providing causal evidence beyond fMRI correlations.
-- [U3] Does focusing solely on contra-causal free will exclude compatibilist notions that retain significant practical relevance?
-  - Targets: A3
+- [U2] To what degree does reasons-responsiveness entail full moral responsibility?
+  - Targets: C2
   - Status: active
   - Importance: medium
-- [U4] Do TMS-induced disruptions to the pre-SMA reflect decision initiation mechanisms specifically, or could they merely perturb downstream motor or attentional processes?
-  - Targets: E4, C3
-  - Status: resolved
-  - Importance: high
-  - Resolution: Resolved by E6 localizing decision-initiation signals and E7 replicating across tasks.
-- [U5] Does the presence of readiness potentials suffice to establish that decisions are initiated unconsciously rather than merely prepared or predicted?
-  - Targets: C1
-  - Status: resolved
-  - Importance: high
-  - Resolution: Resolved by C3’s causal demonstration that readiness potentials are not mere preparation.
-- [U6] Are neural mechanisms identified in simple motor tasks representative of those underlying complex real-life decision-making?
+- [U3] Does an operational definition capture all philosophically relevant aspects of free will?
+  - Targets: C3
+  - Status: active
+  - Importance: low
+- [U4] What empirical threshold of decisions occurring without readiness potentials would necessitate revising confidence in C1?
   - Targets: C1
   - Status: resolved
   - Importance: medium
-  - Resolution: Resolved by E9 demonstrating readiness potentials in complex, real-world decisions.
+  - Resolution: Resolved by C1’s explicit prediction threshold (>30% of choices lacking readiness potentials falsifies C1).
 
 # Counterpositions
-- [X1] Statement: Observed neural precursors may reflect preparatory or predictive processes rather than actual decision initiation.
+- [X1] Statement: Readiness potential may reflect general preparation, not decision initiation; conscious veto could preserve libertarian freedom.
   - Attack type: undercutting
   - Attack strategy: challenge_inference_step
   - Targets: C1
-  - My response: While neural precursors may include preparatory components, interventional TMS evidence (E4) shows that perturbing these signals alters decision outcomes, indicating they play a causal role in decision initiation.
+  - My response: Even if veto exists, initiation remaining deterministic undermines core libertarian indeterminism; veto alone does not restore undetermined choice.
   - Sufficiency: sufficient
-- [X2] Statement: Defining free will contra-causally excludes compatibilist notions of meaningful agency within deterministic frameworks.
+- [X2] Statement: Reasons-responsiveness can be mechanistic and deterministic, thus not constituting genuine free will but mere behavior.
+  - Attack type: rebutting
+  - Attack strategy: present_counter_example
+  - Targets: C2
+  - My response: By operational definition, compatibilist free will is precisely this reasons-responsive mechanism; semantic shift is acknowledged but meaningful for responsibility.
+  - Sufficiency: sufficient
+- [X3] Statement: Temporal resolution of readiness potential studies is insufficient to map decision initiation versus attention or reporting artifacts.
   - Attack type: undermining
   - Attack strategy: challenge_assumption
-  - Targets: A3
-  - My response: The scoping assumption is explicit: we analyze contra-causal free will only. Compatibilist concepts are valid but outside this analysis.
-  - Sufficiency: sufficient
-- [X3] Statement: Physicalism cannot be conclusively established by empirical methods; non-physical influences might be intrinsically undetectable.
-  - Attack type: undermining
-  - Attack strategy: challenge_assumption
-  - Targets: A1
-  - My response: Empirical science necessarily focuses on detectable phenomena; metaphysical speculations are bracketed by our methodological commitments.
-  - Sufficiency: sufficient
-- [X4] Statement: E2’s correlational fMRI signals do not suffice to establish causation for unconscious decision initiation.
-  - Attack type: undercutting
-  - Attack strategy: evidence_insufficiency
-  - Targets: C1
-  - My response: The new TMS interventional study (E4) addresses the causal insufficiency of fMRI correlates by demonstrating that perturbations in the readiness-potential window directly influence choices.
-  - Sufficiency: sufficient
-- [X5] Statement: Neural precursors like readiness potentials and fMRI patterns may reflect motor preparation or cognitive bias rather than decision initiation.
-  - Attack type: undercutting
-  - Attack strategy: challenge_inference_step
-  - Targets: C1
-  - My response: Although some precursors reflect motor preparation, E4 shows that stimulation during the readiness-potential window disrupts decision outcomes, confirming that these signals are integral to decision formation rather than mere bias.
-  - Sufficiency: sufficient
-- [X6] Statement: Unresolved uncertainty U1 implies non-negligible probability of undetected processes, lowering credence in physicalism.
-  - Attack type: undermining
-  - Attack strategy: bayesian_challenge
-  - Targets: A1
-  - My response: With claim C4 (supported by A5 and E5) showing no credible anomalies against physicalism, the premise of undetected non-physical processes lacks empirical support.
-  - Sufficiency: sufficient
-- [X7] Statement: TMS effects on pre-SMA may disrupt motor or attentional processes downstream of decision initiation, not the initiation itself.
-  - Attack type: undercutting
-  - Attack strategy: hidden_premise
-  - Targets: C3
-  - My response: E6 localizes readiness potentials to decision-initiation circuits, not downstream processes, undercutting the hidden premise.
-  - Sufficiency: sufficient
-- [X8] Statement: Generalizing causal necessity across all decision tasks from one TMS paradigm risks hasty generalization.
-  - Attack type: undercutting
-  - Attack strategy: challenge_scope
-  - Targets: C3
-  - My response: E7’s replication across tasks demonstrates the generality of readiness-potential causal roles, addressing scope concerns.
-  - Sufficiency: sufficient
-- [X9] Statement: Inferring initiation from correlation and temporal precedence conflates preparation with causation.
-  - Attack type: undercutting
-  - Attack strategy: challenge_inference_step
-  - Targets: C1
-  - My response: By incorporating causal‐necessity evidence (C3) into C1’s inference, we bridge the gap between correlation and initiation.
-  - Sufficiency: sufficient
-- [X10] Statement: Inferring mental–physical supervenience from absence of anomalies is an argument from ignorance: absence of evidence does not constitute evidence of absence.
-  - Attack type: undercutting
-  - Attack strategy: argument_from_ignorance
-  - Targets: C4
-  - My response: Direct neuromodulation evidence (C5) provides positive proof of physical control over mental phenomena, undercutting the argument-from-ignorance against supervenience.
-  - Sufficiency: sufficient
-- [X11] Statement: A5’s meta-analytic scope excludes undetectable non-physical influences, leaving open their possible existence.
-  - Attack type: undermining
-  - Attack strategy: scope_limitation
-  - Targets: A5
-  - My response: C5’s neuromodulation findings supply direct physical-to-mental causal proof, addressing scope limitations of meta-analyses.
-  - Sufficiency: sufficient
-- [X12] Statement: Generalizing findings from laboratory button-press tasks to all forms of human decision-making is a hasty generalization lacking empirical support in complex contexts.
-  - Attack type: undercutting
-  - Attack strategy: hasty_generalization
-  - Targets: C1
-  - My response: E9’s mobile EEG data confirm readiness potentials occur in real-world decisions, resolving the generalization critique.
+  - Targets: A2
+  - My response: Beyond EEG (E1), intracranial recordings (E3) confirm that readiness potentials precede conscious intent with sub-millisecond precision, reinforcing A2’s claim about temporal resolution.
   - Sufficiency: sufficient
 
 # Changelog
 - v1: Initial belief formation
-- v2: E2.strength: 0.7 → 0.55; E2.status: active → revised; E2.strength_justification: 0.70 — robust predictive modeling though coarse spatial/temporal resolution. → 0.55 — downgraded due to evidential critique: E2’s correlational fMRI data cannot establish causation for unconscious decision initiation.; X1.response_sufficiency: partial → unaddressed; X1.my_response: The timing consistency and predictive accuracy across methods (E2) strengthen the causal interpretation; mere correlation fails to account for multi-second fMRI predictions. → The critique stands: further work is needed to isolate genuine decision‐initiation signals from preparatory or bias processes.; Added counterposition X4; C1.strength: 0.7 → 0.55; C1.status: active → revised; C1.strength_justification: 0.70 — supported by A1 (0.90), A2 (0.85), E1 (0.75), E2 (0.70); limited by E2 (0.70) → 0.55 — reduced due to undercutting critiques: E2’s causal insufficiency (0.55) and unresolved alternative explanations for neural precursors.; Added counterposition X5; Propagated: C2 strength → 0.55 (limited by C1); Thesis strength set to 0.3667 (avg(0.55, 0.55) × (2^1.0 / (2^1.0 + 1)) = 0.55 × 0.67 = 0.3667)
-- v3: Added assumption A4; Added evidence E4; Added claim C3; X1.my_response: The critique stands: further work is needed to isolate genuine decision‐initiation signals from preparatory or bias processes. → While neural precursors may include preparatory components, interventional TMS evidence (E4) shows that perturbing these signals alters decision outcomes, indicating they play a causal role in decision initiation.; X1.response_sufficiency: unaddressed → sufficient; X4.my_response: Acknowledged; further interventional or perturbation evidence is required to substantiate causal claims. → The new TMS interventional study (E4) addresses the causal insufficiency of fMRI correlates by demonstrating that perturbations in the readiness-potential window directly influence choices.; X4.response_sufficiency: unaddressed → sufficient; X5.my_response: Further empirical dissociation between decision signals and preparatory processes is necessary. → Although some precursors reflect motor preparation, E4 shows that stimulation during the readiness-potential window disrupts decision outcomes, confirming that these signals are integral to decision formation rather than mere bias.; X5.response_sufficiency: unaddressed → sufficient; Thesis stance text updated; Thesis summary bullets updated; Propagated: A1 strength → 0.9 (limited by definition ceiling); Propagated: A3 strength → 0.7 (limited by definition ceiling); Thesis strength set to 0.45 (avg(0.55, 0.55, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.60 × 0.75 = 0.45)
-- v4: A1.strength: 0.9 → 0.8; A1.status: active → revised; A1.strength_justification: 0.90 — aligns with mainstream scientific ontology. → 0.80 — reduced due to Bayesian critique: U1 indicates plausible non-neural/non-physical processes, lowering credence in physicalism.; Added counterposition X6; C3.strength: 0.7 → 0.55; C3.status: active → revised; C3.strength_justification: 0.70 — supported by A4 (0.80) and E4 (0.70); limited by E4 (0.70) → 0.55 — reduced due to unresolved U4 (downstream process ambiguity) and hasty generalization from single TMS paradigm.; Added uncertainty U4; Added counterposition X7; Added counterposition X8; C1.strength: 0.55 → 0.45; C1.status: revised → revised; C1.strength_justification: 0.55 — reduced due to undercutting critiques: E2’s causal insufficiency (0.55) and unresolved alternative explanations for neural precursors. → 0.45 — reduced due to undercutting non sequitur critique: temporal precedence and correlation alone do not establish decision initiation; unresolved U5.; Added uncertainty U5; Added counterposition X9; Propagated: C2 strength → 0.45 (limited by C1); Thesis strength set to 0.3625 (avg(0.45, 0.45, 0.55) × (3^1.0 / (3^1.0 + 1)) = 0.48 × 0.75 = 0.3625)
-- v5: Added assumption A5; Added evidence E5; Added claim C4; X6.my_response: Physicalism remains the best-supported working hypothesis, but we lower our confidence to reflect the open empirical question. → With claim C4 (supported by A5 and E5) showing no credible anomalies against physicalism, the premise of undetected non-physical processes lacks empirical support.; X6.response_sufficiency: partial → sufficient; Added evidence E6; C3.depends_on: ['A4', 'E4'] → ['A4', 'E4', 'E6', 'E7']; C3.inference_chain updated (2 premises → 4 premises, inductive); X7.my_response: We acknowledge this possibility; further targeted paradigms are needed to isolate decision initiation from motor preparation. → E6 localizes readiness potentials to decision-initiation circuits, not downstream processes, undercutting the hidden premise.; X7.response_sufficiency: partial → sufficient; Added evidence E7; X8.my_response: Our conclusion is provisional and open to falsification; we limit its scope pending broader replication across tasks. → E7’s replication across tasks demonstrates the generality of readiness-potential causal roles, addressing scope concerns.; X8.response_sufficiency: partial → sufficient; C1.depends_on: ['A1', 'A2', 'E1', 'E2'] → ['A2', 'E1', 'E2', 'C3']; C1.inference_chain updated (3 premises → 4 premises, inductive); X9.my_response: We recognize the gap between correlation and causation; further causal experiments are required to substantiate initiation claims. → By incorporating causal‐necessity evidence (C3) into C1’s inference, we bridge the gap between correlation and initiation.; X9.response_sufficiency: partial → sufficient; Resolved uncertainty U1: Resolved by C4 (A5 & E5) showing no replicable non-physical anomalies.; Resolved uncertainty U2: Resolved by C3/E6/E7 providing causal evidence beyond fMRI correlations.; Resolved uncertainty U4: Resolved by E6 localizing decision-initiation signals and E7 replicating across tasks.; Resolved uncertainty U5: Resolved by C3’s causal demonstration that readiness potentials are not mere preparation.; Thesis stance text updated; Thesis summary bullets updated; Propagated: A3 strength → 0.7 (limited by definition ceiling); Thesis strength set to 0.45 (avg(0.45, 0.45, 0.55, 0.80) × (4^1.0 / (4^1.0 + 1)) = 0.56 × 0.80 = 0.45)
-- v6: C4.strength: 0.8 → 0.7; C4.status: active → revised; C4.strength_justification: 0.80 — supported by A5 (0.80) and E5 (0.80); limited by both (0.80). → 0.70 — reduced due to undercutting of abductive inference: argument-from-ignorance challenge highlights absence of direct positive proof; limited by lowest dependency strength (0.8).; Added counterposition X10; A5.strength: 0.8 → 0.7; A5.status: active → revised; A5.strength_justification: 0.80 — supported by D2 (0.90). → 0.70 — reduced due to scope limitation critique: meta-analyses cannot rule out undetectable non-physical influences.; Added counterposition X11; C1.strength: 0.45 → 0.35; C1.status: revised → revised; C1.strength_justification: 0.45 — reduced due to undercutting non sequitur critique: temporal precedence and correlation alone do not establish decision initiation; unresolved U5. → 0.35 — reduced due to hasty generalization: findings from simple motor tasks may not extend to complex real-world decisions; unresolved U6.; Added uncertainty U6; Added counterposition X12; Propagated: C2 strength → 0.35 (limited by C1); Thesis strength set to 0.39 (avg(0.35, 0.35, 0.55, 0.70) × (4^1.0 / (4^1.0 + 1)) = 0.49 × 0.80 = 0.39)
-- v7: Added definition D7: 'neuromodulation'; Added assumption A6; Added evidence E8; Added evidence E9; C1.depends_on: ['A2', 'E1', 'E2', 'C3'] → ['A2', 'E1', 'E2', 'C3', 'E9']; C1.inference_chain updated (4 premises, inductive); C1.strength_justification: 0.35 — reduced due to hasty generalization: findings from simple motor tasks may not extend to complex real-world decisions; unresolved U6. → 0.35 — limited by hasty generalization concerns; now bolstered by E9 in real-world contexts.; C1.status: revised → revised; Resolved uncertainty U6: Resolved by E9 demonstrating readiness potentials in complex, real-world decisions.; Added claim C5; X10.my_response: While C4 is supported by positive correlations and causal data, we acknowledge that absence of anomalies alone does not definitively prove supervenience, highlighting the need for direct positive evidence. → Direct neuromodulation evidence (C5) provides positive proof of physical control over mental phenomena, undercutting the argument-from-ignorance against supervenience.; X10.response_sufficiency: partial → sufficient; X11.my_response: We accept that A5 is bounded to detectable phenomena under methodological naturalism; it does not and cannot exclude metaphysical possibilities beyond empirical reach. → C5’s neuromodulation findings supply direct physical-to-mental causal proof, addressing scope limitations of meta-analyses.; X11.response_sufficiency: partial → sufficient; X12.my_response: We acknowledge this limitation and have added U6 to investigate the representativeness of simple task neural mechanisms for real-world decisions. → E9’s mobile EEG data confirm readiness potentials occur in real-world decisions, resolving the generalization critique.; X12.response_sufficiency: partial → sufficient; Thesis stance text updated; Thesis summary bullets updated; Propagated: A3 strength → 0.7 (limited by definition ceiling); Thesis strength set to 0.45 (avg(0.35, 0.35, 0.55, 0.70, 0.75) × (5^1.0 / (5^1.0 + 1)) = 0.54 × 0.83 = 0.45)
+- v2: X1.response_sufficiency: partial → sufficient; Added uncertainty U4; Thesis strength set to 0.5375 (avg(0.75, 0.70, 0.70) × (3^1.0 / (3^1.0 + 1)) = 0.72 × 0.75 = 0.5375)
+- v3: Added evidence E3; X3.my_response: Converging evidence from multiple modalities (EEG, intracranial) corroborates timing; while resolution limits exist, they do not overturn consistent precedence. → Beyond EEG (E1), intracranial recordings (E3) confirm that readiness potentials precede conscious intent with sub-millisecond precision, reinforcing A2’s claim about temporal resolution.; X3.response_sufficiency: partial → sufficient; Resolved uncertainty U4: Resolved by C1’s explicit prediction threshold (>30% of choices lacking readiness potentials falsifies C1).; Added assumption A6; Added evidence E4; Added claim C4; Thesis stance text updated; Thesis summary bullets updated; Thesis strength set to 0.602 (avg(0.77, 0.72, 0.70, 0.82) × (4^1.0 / (4^1.0 + 1)) = 0.75 × 0.80 = 0.602)

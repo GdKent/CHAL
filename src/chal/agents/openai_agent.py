@@ -164,6 +164,7 @@ class OpenAIAgent(Agent):
                 temperature=temperature,
                 key_pool=self.key_pool,
                 current_key=self.api_key,
+                on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
 
             return Message(
@@ -182,7 +183,8 @@ class OpenAIAgent(Agent):
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
 def retry_openai_chat_completion(client, model, messages, temperature,
                                   max_retries=5, base_delay=60.0,
-                                  key_pool=None, current_key=""):
+                                  key_pool=None, current_key="",
+                                  on_rate_limit=None):
     """
     Wrapper to retry OpenAI chat completions with exponential backoff.
 
@@ -218,7 +220,10 @@ def retry_openai_chat_completion(client, model, messages, temperature,
             return client.chat.completions.create(**kwargs)
 
         except (openai.RateLimitError, openai.APIStatusError, openai.APIConnectionError) as e:
-            # On rate limit with key pool: rotate key and retry immediately
+            # On rate limit: fire callback, then rotate key and retry
+            if isinstance(e, openai.RateLimitError):
+                if on_rate_limit:
+                    on_rate_limit()
             if isinstance(e, openai.RateLimitError) and key_pool is not None:
                 key_pool.mark_rate_limited("openai", current_key, cooldown_seconds=60)
                 current_key = key_pool.get_key("openai")

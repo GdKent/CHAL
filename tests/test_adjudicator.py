@@ -14,7 +14,7 @@ import pytest
 import json
 from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
-from chal.orchestrator.adjudicator import Adjudicator
+from chal.orchestrator.adjudicator import Adjudicator, enforce_verdict
 from chal.agents.base import Message
 from tests.utils import create_mock_agent
 
@@ -538,3 +538,164 @@ def test_run_reasoning_tags_used_in_fallback_path(mock_adjudicator_agent):
     result = adjudicator.run("Challenge", "Rebuttal", challenger="A", target="B")
 
     assert result["reasoning"] == full_reasoning
+
+
+# ==============================================
+# 10. Verdict Enforcement Tests
+# ==============================================
+
+@pytest.mark.unit
+def test_enforce_verdict_critique_valid():
+    """Scores with clear challenger advantage produce critique_valid."""
+    scores = {
+        "challenger_logic": 0.8, "challenger_ethics": 0.5,
+        "defender_logic": 0.4, "defender_ethics": 0.5,
+    }
+    result = enforce_verdict(scores, logic_weight=0.5, ethics_weight=0.5)
+    assert result["computed_verdict"] == "critique_valid"
+    assert result["gap"] >= 0.15
+
+
+@pytest.mark.unit
+def test_enforce_verdict_rebuttal_valid():
+    """Scores with clear defender advantage produce rebuttal_valid."""
+    scores = {
+        "challenger_logic": 0.3, "challenger_ethics": 0.5,
+        "defender_logic": 0.7, "defender_ethics": 0.5,
+    }
+    result = enforce_verdict(scores, logic_weight=0.5, ethics_weight=0.5)
+    assert result["computed_verdict"] == "rebuttal_valid"
+    assert result["gap"] <= -0.15
+
+
+@pytest.mark.unit
+def test_enforce_verdict_unresolved():
+    """Small score gap produces unresolved."""
+    scores = {
+        "challenger_logic": 0.55, "challenger_ethics": 0.5,
+        "defender_logic": 0.5, "defender_ethics": 0.5,
+    }
+    result = enforce_verdict(scores, logic_weight=0.5, ethics_weight=0.5)
+    assert result["computed_verdict"] == "unresolved"
+    assert abs(result["gap"]) < 0.15
+
+
+@pytest.mark.unit
+def test_enforce_verdict_edge_at_positive_threshold():
+    """Gap exactly at +threshold uses >= so produces critique_valid."""
+    # logic_weight=1.0, ethics_weight=0.0
+    # challenger_logic=0.65, defender_logic=0.5 => gap=0.15
+    scores = {
+        "challenger_logic": 0.65, "challenger_ethics": 0.5,
+        "defender_logic": 0.5, "defender_ethics": 0.5,
+    }
+    result = enforce_verdict(scores, logic_weight=1.0, ethics_weight=0.0, threshold=0.15)
+    assert result["computed_verdict"] == "critique_valid"
+    assert result["gap"] == pytest.approx(0.15)
+
+
+@pytest.mark.unit
+def test_enforce_verdict_edge_at_negative_threshold():
+    """Gap exactly at -threshold uses <= so produces rebuttal_valid."""
+    scores = {
+        "challenger_logic": 0.5, "challenger_ethics": 0.5,
+        "defender_logic": 0.65, "defender_ethics": 0.5,
+    }
+    result = enforce_verdict(scores, logic_weight=1.0, ethics_weight=0.0, threshold=0.15)
+    assert result["computed_verdict"] == "rebuttal_valid"
+    assert result["gap"] == pytest.approx(-0.15)
+
+
+@pytest.mark.unit
+def test_enforce_verdict_edge_balanced_weights_fp_regression():
+    """Balanced weights (0.5/0.5) at exact threshold must not lose to FP noise.
+
+    Regression test: with cl=0.65, ce=0.5, dl=0.35, de=0.5 and weights 0.5/0.5,
+    the mathematical gap is exactly 0.15 but IEEE 754 arithmetic produces
+    0.14999999999999991 which is less than float(0.15). The gap must be rounded
+    before comparison to avoid spurious 'unresolved' verdicts.
+    """
+    scores = {
+        "challenger_logic": 0.65, "challenger_ethics": 0.5,
+        "defender_logic": 0.35, "defender_ethics": 0.5,
+    }
+    result = enforce_verdict(scores, logic_weight=0.5, ethics_weight=0.5, threshold=0.15)
+    assert result["computed_verdict"] == "critique_valid"
+    assert result["gap"] == pytest.approx(0.15)
+
+    # Negative direction: same gap magnitude should produce rebuttal_valid
+    scores_neg = {
+        "challenger_logic": 0.35, "challenger_ethics": 0.5,
+        "defender_logic": 0.65, "defender_ethics": 0.5,
+    }
+    result_neg = enforce_verdict(scores_neg, logic_weight=0.5, ethics_weight=0.5, threshold=0.15)
+    assert result_neg["computed_verdict"] == "rebuttal_valid"
+    assert result_neg["gap"] == pytest.approx(-0.15)
+
+
+@pytest.mark.unit
+def test_enforce_verdict_custom_threshold():
+    """Custom threshold of 0.30 makes a 0.20 gap produce unresolved."""
+    scores = {
+        "challenger_logic": 0.7, "challenger_ethics": 0.5,
+        "defender_logic": 0.5, "defender_ethics": 0.5,
+    }
+    result = enforce_verdict(scores, logic_weight=1.0, ethics_weight=0.0, threshold=0.30)
+    assert result["computed_verdict"] == "unresolved"
+    assert result["gap"] == pytest.approx(0.2)
+
+
+@pytest.mark.unit
+def test_run_overrides_llm_verdict_when_math_disagrees(mock_adjudicator_agent, test_adjudications):
+    """When LLM verdict contradicts the scores, math wins."""
+    # The rebuttal_valid fixture has defender_logic=0.7 > challenger_logic=0.4
+    # but we'll change the outcome to "critique_valid" to force a disagreement
+    adjudication = dict(test_adjudications["rebuttal_valid"])
+    adjudication["outcome"] = "critique_valid"  # LLM says critique_valid
+    mock_response = Message(
+        role="assistant",
+        content=f"```json\n{json.dumps(adjudication)}\n```"
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    result = adjudicator.run("Challenge", "Rebuttal", challenger="Agent-A", target="Agent-B")
+
+    # Math says rebuttal_valid (defender has higher scores)
+    assert result["status"] == "rebuttal_valid"
+    assert result["override_occurred"] is True
+    assert result["llm_verdict"] == "critique_valid"
+
+
+@pytest.mark.unit
+def test_run_no_override_when_math_agrees(mock_adjudicator_agent, test_adjudications):
+    """When LLM verdict matches math, no override occurs."""
+    adjudication = test_adjudications["rebuttal_valid"]
+    mock_response = Message(
+        role="assistant",
+        content=f"```json\n{json.dumps(adjudication)}\n```"
+    )
+    mock_adjudicator_agent.generate = Mock(return_value=mock_response)
+
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    result = adjudicator.run("Challenge", "Rebuttal", challenger="Agent-A", target="Agent-B")
+
+    assert result["status"] == "rebuttal_valid"
+    assert result["override_occurred"] is False
+
+
+@pytest.mark.unit
+def test_adjudicator_init_accepts_threshold(mock_adjudicator_agent):
+    """Adjudicator accepts and stores threshold parameter."""
+    adjudicator = Adjudicator(
+        adjudicator_agent=mock_adjudicator_agent,
+        threshold=0.20,
+    )
+    assert adjudicator.threshold == 0.20
+
+
+@pytest.mark.unit
+def test_adjudicator_default_threshold(mock_adjudicator_agent):
+    """Adjudicator default threshold is 0.15."""
+    adjudicator = Adjudicator(adjudicator_agent=mock_adjudicator_agent)
+    assert adjudicator.threshold == 0.15

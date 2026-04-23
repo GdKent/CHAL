@@ -63,7 +63,7 @@ def _make_results() -> dict:
         "debug_log": "Debug log text.",
         "initial_positions": ["Belief A", "Belief B"],
         "final_positions": ["Updated A", "Updated B"],
-        "agent_stats": {"Agent-A": {"wins": 1}, "Agent-B": {"wins": 0}},
+        "agent_stats": {"Agent-A": {"performance_score": 0.5}, "Agent-B": {"performance_score": -0.1}},
     }
 
 
@@ -98,24 +98,35 @@ class TestSaveDebateOutputs:
     def test_saves_initial_beliefs(self, tmp_path):
         config = _make_config(tmp_path, save_initial_beliefs=True)
         results = _make_results()
+        controller = _make_controller_with_agents()
 
-        save_debate_outputs(config, results, MagicMock(), _console())
+        save_debate_outputs(config, results, controller, _console())
 
-        path = tmp_path / config.outputs.initial_beliefs_file
-        assert path.exists()
-        content = path.read_text()
-        assert "Belief A" in content
-        assert "Belief B" in content
+        beliefs_dir = tmp_path / config.outputs.initial_beliefs_dir
+        assert beliefs_dir.is_dir()
+        assert (beliefs_dir / "Agent-A.json").exists()
+        assert (beliefs_dir / "Agent-B.json").exists()
+        # Verify at least one file contains valid CBS data
+        data = json.loads((beliefs_dir / "Agent-A.json").read_text(encoding="utf-8"))
+        assert "schema_version" in data
+        assert "thesis" in data
 
     @pytest.mark.unit
     def test_saves_final_beliefs(self, tmp_path):
         config = _make_config(tmp_path, save_final_beliefs=True)
         results = _make_results()
+        controller = _make_controller_with_agents()
 
-        save_debate_outputs(config, results, MagicMock(), _console())
+        save_debate_outputs(config, results, controller, _console())
 
-        path = tmp_path / config.outputs.final_beliefs_file
-        assert path.exists()
+        beliefs_dir = tmp_path / config.outputs.final_beliefs_dir
+        assert beliefs_dir.is_dir()
+        assert (beliefs_dir / "Agent-A.json").exists()
+        assert (beliefs_dir / "Agent-B.json").exists()
+        # Verify at least one file contains valid CBS data
+        data = json.loads((beliefs_dir / "Agent-A.json").read_text(encoding="utf-8"))
+        assert "schema_version" in data
+        assert "thesis" in data
 
     @pytest.mark.unit
     def test_saves_agent_stats(self, tmp_path):
@@ -140,6 +151,38 @@ class TestSaveDebateOutputs:
         # Only files in tmp_path should be nothing (or .gitkeep etc.)
         files = list(tmp_path.glob("*"))
         assert len(files) == 0
+
+    @pytest.mark.unit
+    @patch("chal.embeddings.embedding_visualizer.generate_pca_trajectory_plot")
+    @patch("chal.embeddings.embedding_visualizer.generate_belief_trajectory_plot")
+    def test_plot_trajectories_calls_generate_function(self, mock_gen_plot, mock_gen_pca, tmp_path):
+        """When plot_trajectories=True, generate_belief_trajectory_plot is called."""
+        config = _make_config(tmp_path, plot_trajectories=True)
+        results = _make_results()
+
+        mock_gen_plot.return_value = tmp_path / config.outputs.trajectory_plot_file
+        mock_gen_pca.return_value = tmp_path / config.outputs.pca_plot_file
+
+        saved = save_debate_outputs(config, results, MagicMock(), _console())
+
+        mock_gen_plot.assert_called_once_with(config)
+        assert config.outputs.trajectory_plot_file in saved
+
+    @pytest.mark.unit
+    @patch("chal.embeddings.embedding_visualizer.generate_pca_trajectory_plot")
+    @patch("chal.embeddings.embedding_visualizer.generate_belief_trajectory_plot")
+    def test_pca_plot_trajectories_calls_generate_function(self, mock_gen_plot, mock_gen_pca, tmp_path):
+        """When plot_trajectories=True, generate_pca_trajectory_plot is also called."""
+        config = _make_config(tmp_path, plot_trajectories=True)
+        results = _make_results()
+
+        mock_gen_plot.return_value = tmp_path / config.outputs.trajectory_plot_file
+        mock_gen_pca.return_value = tmp_path / config.outputs.pca_plot_file
+
+        saved = save_debate_outputs(config, results, MagicMock(), _console())
+
+        mock_gen_pca.assert_called_once_with(config)
+        assert config.outputs.pca_plot_file in saved
 
 
 # =========================================================================
@@ -383,8 +426,8 @@ class TestSaveDebateOutputsReturnValue:
 # =========================================================================
 
 def _make_best_belief_results(
-    a_score: float = 12.5,
-    b_score: float = 3.0,
+    a_score: float = 0.65,
+    b_score: float = 0.15,
     a_initial: str = "Initial belief for Agent-A.",
     a_final: str = "Final belief for Agent-A.",
     b_initial: str = "Initial belief for Agent-B.",
@@ -404,7 +447,7 @@ def _make_best_belief_results(
     }
 
 
-def _make_controller_with_agents(best_score: float = 12.5) -> MagicMock:
+def _make_controller_with_agents(best_score: float = 0.65) -> MagicMock:
     """Build a mock controller with two agents (A and B)."""
     initial_a = json.dumps({
         "schema_version": "CBS",
@@ -446,7 +489,7 @@ class TestWriteBestAgentBeliefs:
     def test_best_initial_final_beliefs_json_is_written(self, tmp_path):
         """_write_best_agent_beliefs produces a CBS-shaped JSON with correct best_agent."""
         config = _make_config(tmp_path)
-        results = _make_best_belief_results(a_score=12.5, b_score=3.0)
+        results = _make_best_belief_results(a_score=0.65, b_score=0.15)
         controller = _make_controller_with_agents()
 
         written = _write_best_agent_beliefs(config, results, controller)
@@ -457,7 +500,7 @@ class TestWriteBestAgentBeliefs:
 
         payload = json.loads(json_path.read_text(encoding="utf-8"))
         assert payload["best_agent"] == "Agent-A"
-        assert payload["performance_score"] == pytest.approx(12.5)
+        assert payload["performance_score"] == pytest.approx(0.65)
         assert payload["topic"] == config.topic
         # Initial belief parsed from all_beliefs_held[0]; final from get_internal_belief_obj()
         assert payload["initial_belief"]["thesis"]["stance"] == "A initial"
@@ -492,7 +535,7 @@ class TestWriteBestAgentBeliefs:
     def test_best_agent_picks_highest_score(self, tmp_path):
         """When Agent-B has the higher score, it becomes best_agent."""
         config = _make_config(tmp_path)
-        results = _make_best_belief_results(a_score=2.0, b_score=9.9)
+        results = _make_best_belief_results(a_score=0.10, b_score=0.75)
         controller = _make_controller_with_agents()
 
         _write_best_agent_beliefs(config, results, controller)
@@ -501,13 +544,13 @@ class TestWriteBestAgentBeliefs:
             (tmp_path / config.outputs.best_beliefs_json_file).read_text(encoding="utf-8")
         )
         assert payload["best_agent"] == "Agent-B"
-        assert payload["performance_score"] == pytest.approx(9.9)
+        assert payload["performance_score"] == pytest.approx(0.75)
 
     @pytest.mark.unit
     def test_tiebreaker_picks_first_in_config_order(self, tmp_path):
         """Equal scores resolve via first-in-config.agents order."""
         config = _make_config(tmp_path)
-        results = _make_best_belief_results(a_score=7.0, b_score=7.0)
+        results = _make_best_belief_results(a_score=0.50, b_score=0.50)
         controller = _make_controller_with_agents()
 
         _write_best_agent_beliefs(config, results, controller)

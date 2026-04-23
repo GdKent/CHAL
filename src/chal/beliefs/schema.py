@@ -350,7 +350,7 @@ CBS_JSON_SCHEMA: Dict[str, Any] = {
                     "my_response": { "type": "string" },
                     "response_sufficiency": {
                         "type": "string",
-                        "enum": ["sufficient", "partial", "unaddressed"]
+                        "enum": ["sufficient", "partial", "unaddressed", "moot"]
                     }
                 }
             }
@@ -840,7 +840,7 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
 
     from chal.utilities.utils import VALID_ATTACK_STRATEGIES
     VALID_ATTACK_TYPES = {"undermining", "rebutting", "undercutting"}
-    VALID_SUFFICIENCY = {"sufficient", "partial", "unaddressed"}
+    VALID_SUFFICIENCY = {"sufficient", "partial", "unaddressed", "moot"}
     for item in belief.get("counterpositions", []) or []:
         x_id = item.get("id", "?")
         at = item.get("attack_type")

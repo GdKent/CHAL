@@ -46,6 +46,14 @@ agents:
     model: "o4-mini"
     temperature: 0.7
     provider: "openai"
+    # belief_file: path/to/belief.json  # Optional: provide pre-defined CBS belief (skips Stage 1)
+
+  # Example custom belief agent with no persona:
+  # - name: Agent-Custom
+  #   persona: none                              # No epistemic lens (advanced beliefs only)
+  #   model: o4-mini
+  #   provider: openai
+  #   belief_file: path/to/custom_belief.json    # Pre-defined CBS belief (skips Stage 1)
 
 # --- Mixed-provider example (uncomment to use) ---
 # agents:
@@ -172,13 +180,13 @@ outputs:
 
   # --- Belief Snapshots ---
 
-  # Save initial agent beliefs from Stage 1
+  # Save initial agent beliefs from Stage 1 (per-agent JSON in sub-folder)
   save_initial_beliefs: true
-  initial_beliefs_file: "initial_beliefs.txt"
+  initial_beliefs_dir: "initial_beliefs"
 
-  # Save final agent beliefs after all updates
+  # Save final agent beliefs after all updates (per-agent JSON in sub-folder)
   save_final_beliefs: true
-  final_beliefs_file: "final_beliefs.txt"
+  final_beliefs_dir: "final_beliefs"
 
   # Best agent beliefs (the agent with the highest performance_score).
   # Always emitted. The .json is raw CBS; the .txt is markdown.
@@ -196,6 +204,7 @@ outputs:
   # (Requires generate_embeddings = true)
   plot_trajectories: true
   trajectory_plot_file: "belief_trajectories.png"
+  pca_plot_file: "belief_trajectories_pca.png"
 
   # Generate interactive HTML belief graph visualization
   # (Shows argument structure as interactive node-edge graph using Cytoscape.js)
@@ -218,20 +227,17 @@ outputs:
 # ============================================================================
 # Mechanical strength increases for nodes that survive adversarial challenges.
 # When a node is targeted by a critique and the rebuttal wins (REBUTTAL_VALID),
-# the system automatically applies a formula-driven strength boost.
+# the system automatically applies a flat strength boost.
 #
-# Formula: boost(n) = min(base_boost + boost_increment * n, max_boost_per_defense)
-# Ceiling: min(current + boost, original_strength + max_cumulative_boost, 1.0)
-# Where n = consecutive successful defenses (1-indexed).
+# Formula: Each successful defense adds flat_boost to the node's strength.
+# Ceiling: min(current + flat_boost, original_strength + max_cumulative_boost, 1.0)
 #
 # The boost resets to 0 consecutive defenses when a node loses a defense
 # (CRITIQUE_VALID). Nodes not attacked in a round are unchanged.
 defense_boost:
   enabled: true                    # Master switch — set false to disable all defense boosts
-  base_boost: 0.02                # Starting constant in the formula (default: 0.02)
-  boost_increment: 0.01           # Added per consecutive defense (default: 0.01)
-  max_boost_per_defense: 0.05     # Maximum boost for a single defense (default: 0.05)
-  max_cumulative_boost: 0.20      # Maximum total boost above original_strength (default: 0.20)
+  flat_boost: 0.02                # Constant boost per successful defense (default: 0.02)
+  max_cumulative_boost: 0.15      # Maximum total boost above original_strength (default: 0.15)
 
 # ============================================================================
 # PARALLELIZATION SETTINGS

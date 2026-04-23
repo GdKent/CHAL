@@ -14,10 +14,12 @@ from rich.console import Console
 from chal.config import DebateConfig
 from chal.agents.factory import create_agent_from_config
 from chal.agents.epistemic_personas import get_persona
+from chal.beliefs.io import load_belief_from_file, belief_to_markdown
+from chal.beliefs.patches import initialize_defense_tracking
 from chal.orchestrator.debate_controller import DebateController
 from chal.cli.display import DebateDisplay
 from chal.cli.api_keys import validate_api_keys, create_key_pool
-from chal.utilities.utils import select_best_agent
+from chal.utilities.utils import select_best_agent, sanitize_filename
 
 
 def run_debate(
@@ -68,10 +70,27 @@ def run_debate(
         agent = create_agent_from_config(agent_cfg, key_pool=key_pool)
         agents.append(agent)
         personas[agent_cfg.name] = persona_obj
-        console.print(
-            f"  [green]>[/green] {agent_cfg.name} "
-            f"({agent_cfg.persona}, {agent_cfg.provider}/{agent_cfg.model})"
-        )
+
+        # Pre-load custom belief from file (skips Stage 1 for this agent)
+        if agent_cfg.belief_file:
+            try:
+                belief_obj = load_belief_from_file(agent_cfg.belief_file)
+                initialize_defense_tracking(belief_obj)
+                agent.set_internal_belief_obj(belief_obj)
+                agent.set_internal_belief(belief_to_markdown(belief_obj))
+                console.print(
+                    f"  [green]>[/green] {agent_cfg.name} "
+                    f"({agent_cfg.persona}, {agent_cfg.provider}/{agent_cfg.model}) "
+                    f"[cyan](custom belief loaded from {agent_cfg.belief_file})[/cyan]"
+                )
+            except (FileNotFoundError, ValueError) as e:
+                console.print(f"[red]Error loading custom belief for {agent_cfg.name}:[/red] {e}")
+                return 1
+        else:
+            console.print(
+                f"  [green]>[/green] {agent_cfg.name} "
+                f"({agent_cfg.persona}, {agent_cfg.provider}/{agent_cfg.model})"
+            )
 
     # Create controller
     controller = DebateController(
@@ -167,18 +186,28 @@ def save_debate_outputs(
         saved_files.append(path.name)
 
     if config.outputs.save_initial_beliefs:
-        path = config.outputs.storage_dir / config.outputs.initial_beliefs_file
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n\n\n".join(results["initial_positions"]))
-        console.print(f"  [green]>[/green] Initial beliefs: {path.name}")
-        saved_files.append(path.name)
+        init_dir = config.outputs.storage_dir / config.outputs.initial_beliefs_dir
+        init_dir.mkdir(parents=True, exist_ok=True)
+        for agent in controller.agents:
+            fname = sanitize_filename(agent.name) + ".json"
+            fpath = init_dir / fname
+            belief_json = _get_initial_belief_obj(agent)
+            with open(fpath, "w", encoding="utf-8") as f:
+                json.dump(belief_json, f, indent=2, ensure_ascii=False)
+        console.print(f"  [green]>[/green] Initial beliefs: {config.outputs.initial_beliefs_dir}/")
+        saved_files.append(config.outputs.initial_beliefs_dir + "/")
 
     if config.outputs.save_final_beliefs:
-        path = config.outputs.storage_dir / config.outputs.final_beliefs_file
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n\n\n".join(results["final_positions"]))
-        console.print(f"  [green]>[/green] Final beliefs: {path.name}")
-        saved_files.append(path.name)
+        final_dir = config.outputs.storage_dir / config.outputs.final_beliefs_dir
+        final_dir.mkdir(parents=True, exist_ok=True)
+        for agent in controller.agents:
+            fname = sanitize_filename(agent.name) + ".json"
+            fpath = final_dir / fname
+            belief_json = agent.get_internal_belief_obj()
+            with open(fpath, "w", encoding="utf-8") as f:
+                json.dump(belief_json, f, indent=2, ensure_ascii=False)
+        console.print(f"  [green]>[/green] Final beliefs: {config.outputs.final_beliefs_dir}/")
+        saved_files.append(config.outputs.final_beliefs_dir + "/")
 
     if config.outputs.save_agent_stats:
         path = config.outputs.storage_dir / config.outputs.stats_file
@@ -199,34 +228,37 @@ def save_debate_outputs(
         if verbose:
             console.print(traceback.format_exc())
 
-    # Generate embeddings and plot if enabled
-    if config.outputs.generate_embeddings or config.outputs.plot_trajectories:
-        embeddings_path = config.outputs.storage_dir / config.outputs.embeddings_file
-        if embeddings_path.exists():
-            from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
-            from chal.embeddings.embedding_visualizer import BeliefTrajectoryPlotter
-
-            tracker = BeliefEmbeddingTracker()
-            tracker.load_embeddings(embeddings_path)
-
-            if config.outputs.plot_trajectories:
-                try:
-                    plotter = BeliefTrajectoryPlotter(n_components=2)
-                    reduced = plotter.reduce_embeddings(tracker.get_all_embeddings())
-                    trajectory_path = (
-                        config.outputs.storage_dir / config.outputs.trajectory_plot_file
-                    )
-                    plotter.plot_trajectories(reduced, output_path=trajectory_path)
-                    console.print(
-                        f"  [green]>[/green] Belief trajectory plot: {trajectory_path.name}"
-                    )
-                    saved_files.append(trajectory_path.name)
-                except Exception as e:
-                    console.print(f"  [yellow]Warning:[/yellow] Could not generate plot: {e}")
-        else:
+    # Generate belief trajectory plot if enabled
+    if config.outputs.plot_trajectories:
+        try:
+            from chal.embeddings.embedding_visualizer import generate_belief_trajectory_plot
+            plot_path = generate_belief_trajectory_plot(config)
+            console.print(
+                f"  [green]>[/green] Belief trajectory plot: {plot_path.name}"
+            )
+            saved_files.append(plot_path.name)
+        except FileNotFoundError:
             console.print(
                 "  [yellow]Warning:[/yellow] Embeddings file not found, skipping visualization"
             )
+        except Exception as e:
+            console.print(f"  [yellow]Warning:[/yellow] Could not generate plot: {e}")
+
+    # Generate PCA belief trajectory plot if enabled
+    if config.outputs.plot_trajectories:
+        try:
+            from chal.embeddings.embedding_visualizer import generate_pca_trajectory_plot
+            pca_plot_path = generate_pca_trajectory_plot(config)
+            console.print(
+                f"  [green]>[/green] PCA trajectory plot: {pca_plot_path.name}"
+            )
+            saved_files.append(pca_plot_path.name)
+        except FileNotFoundError:
+            console.print(
+                "  [yellow]Warning:[/yellow] Embeddings file not found, skipping PCA visualization"
+            )
+        except Exception as e:
+            console.print(f"  [yellow]Warning:[/yellow] Could not generate PCA plot: {e}")
 
     # Generate interactive graph visualization if enabled
     if config.outputs.generate_graph_visualization:
@@ -360,3 +392,21 @@ def _write_best_agent_beliefs(config: DebateConfig, results: dict, controller) -
         f.write("\n".join(md_lines))
 
     return [json_path.name, text_path.name]
+
+
+def _get_initial_belief_obj(agent) -> dict:
+    """Extract the initial CBS belief dict from an agent's belief history.
+
+    Parses ``agent.all_beliefs_held[0]`` (a JSON string) back to a dict.
+    Returns an error-shaped dict if the history is empty or unparseable.
+    """
+    all_beliefs = getattr(agent, "all_beliefs_held", []) or []
+    if not all_beliefs:
+        return {"error": "no initial belief recorded"}
+    raw = all_beliefs[0]
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return {"error": "initial belief unparseable", "raw": str(raw)}

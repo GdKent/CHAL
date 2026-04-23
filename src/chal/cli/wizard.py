@@ -72,6 +72,7 @@ _LOGIC_WIZARD_TAGS: dict[str, str] = {
     "DIALECTICAL": "Thesis-antithesis",
     "FUZZY_MULTIVALUED": "Degrees of truth",
     "PARACONSISTENT": "Tolerates contradictions",
+    "NONE": "Not recommended",
 }
 
 _ETHICS_WIZARD_TAGS: dict[str, str] = {
@@ -80,7 +81,7 @@ _ETHICS_WIZARD_TAGS: dict[str, str] = {
     "DEONTOLOGICAL": "Moral duties",
     "VIRTUE_ETHICS": "Character & flourishing",
     "CARE_ETHICS": "Relationships",
-    "BALANCED": "Outcomes + duties",
+    "BALANCED": "Recommended",
 }
 
 # Display order for ethics system selector (BALANCED second, after NONE)
@@ -227,6 +228,7 @@ Each persona embodies a distinct epistemological stance:
   \u2022 [bold]PANPSYCHIST[/bold] \u2014 Consciousness is fundamental to all matter.
   \u2022 [bold]SIMULATIONIST[/bold] \u2014 Evaluates claims through the simulation hypothesis.
   \u2022 [bold]SYNTHESIST[/bold] \u2014 Integrates science, spirituality, and systems thinking.
+  \u2022 [bold]NONE[/bold] \u2014 No persona; argues purely from the belief structure.
 
 [dim]Tip: Pair contrasting personas (e.g. Empiricist vs Supernaturalist) for the \
 most productive debates.[/dim]\
@@ -364,7 +366,9 @@ evidence sufficiency.
   \u2022 [bold]Fuzzy / Multi-valued[/bold] \u2014 Degrees of truth between 0 and 1; no \
 binary judgments.
   \u2022 [bold]Paraconsistent[/bold] \u2014 Tolerates local contradictions without global \
-explosion.\
+explosion.
+  \u2022 [bold]None (Pure Ethics)[/bold] \u2014 No logical evaluation; judge only ethical \
+merit. [bold](Not recommended for most topics)[/bold]\
 """
 
 HELP_ADJ_ETHICS_SYSTEM = """\
@@ -381,8 +385,8 @@ categorical imperative.
 and excellence.
   \u2022 [bold]Care Ethics[/bold] \u2014 Prioritize relationships, responsibility, and \
 vulnerability.
-  \u2022 [bold]Balanced[/bold] \u2014 Weigh both outcomes/welfare and autonomy/rights \
-equally.\
+  \u2022 [bold]Balanced (Rule-Utilitarian)[/bold] \u2014 Comprehensive: evaluate both \
+outcomes/welfare and moral rules/rights. Most thorough ethics system. (Recommended)\
 """
 
 HELP_OUTPUTS = """\
@@ -722,9 +726,10 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
     d_model = default.model if default else None
     d_temp = 1.0  # Fixed — reasoning models require or expect temperature 1.0
     d_name = default.name if default else None
+    d_belief_file = default.belief_file if default else None
 
     sub = 0
-    while sub < 3:
+    while sub < 4:
         try:
             if sub == 0:
                 d_persona = _ask(questionary.select(
@@ -746,6 +751,26 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
                     choices=suggestions,
                     default=default_model,
                 ), help_text=HELP_MODEL)
+            elif sub == 3:
+                use_belief = _ask(questionary.select(
+                    "Load a pre-existing belief file? (Stage 1 will be skipped)",
+                    choices=[
+                        Choice("No", value="no"),
+                        Choice("Yes", value="yes"),
+                    ],
+                    default="yes" if d_belief_file else "no",
+                ))
+                if use_belief == "yes":
+                    d_belief_file = _ask(questionary.text(
+                        "Path to belief JSON file:",
+                        default=d_belief_file or "",
+                        validate=lambda t: (
+                            True if t.strip().endswith(".json") and Path(t.strip()).is_file()
+                            else "File must exist and end in .json"
+                        ),
+                    ))
+                else:
+                    d_belief_file = None
             sub += 1
         except WizardBack:
             if sub > 0:
@@ -761,6 +786,7 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
         model=d_model,
         temperature=d_temp,
         provider=d_provider,
+        belief_file=d_belief_file,
     )
 
 
@@ -812,10 +838,10 @@ def ask_adjudicator_config(default: AdjudicationConfig | None = None) -> Adjudic
     d_balance = _detect_balance_preset(d_logic, d_ethics)
 
     # Build Choice lists for logic and ethics system selectors
-    # CLASSICAL_INFORMAL_BAYESIAN appears first (recommended default)
+    # CLASSICAL_INFORMAL_BAYESIAN appears first (recommended default), NONE last
     _LOGIC_KEY_ORDER = ["CLASSICAL_INFORMAL_BAYESIAN"] + [
-        k for k in LOGIC_SYSTEMS if k != "CLASSICAL_INFORMAL_BAYESIAN"
-    ]
+        k for k in LOGIC_SYSTEMS if k not in ("CLASSICAL_INFORMAL_BAYESIAN", "NONE")
+    ] + ["NONE"]
     logic_sys_choices = [
         Choice(f"{get_logic_system_label(k)} — {_LOGIC_WIZARD_TAGS[k]}", value=k)
         for k in _LOGIC_KEY_ORDER
@@ -1016,7 +1042,11 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
 
     agent_lines = []
     for a in config.agents:
-        agent_lines.append(f"{a.name} ({a.persona}, {a.provider}/{a.model})")
+        persona_display = "(no persona)" if a.persona.upper() == "NONE" else a.persona
+        line = f"{a.name} ({persona_display}, {a.provider}/{a.model})"
+        if a.belief_file:
+            line += " (custom belief)"
+        agent_lines.append(line)
     table.add_row("Agents", "\n".join(agent_lines))
 
     table.add_row("Stage 3", config.stage3_mode)

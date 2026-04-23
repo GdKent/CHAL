@@ -162,6 +162,7 @@ class GoogleAgent(Agent):
                 temperature=temperature,
                 key_pool=self.key_pool,
                 current_key=self.api_key,
+                on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
 
             return Message(
@@ -180,7 +181,8 @@ class GoogleAgent(Agent):
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
 def retry_google_generate(client, model, contents, system_prompt, temperature,
                            max_retries=5, base_delay=60.0,
-                           key_pool=None, current_key=""):
+                           key_pool=None, current_key="",
+                           on_rate_limit=None):
     """
     Wrapper to retry Google Gemini content generation with exponential backoff.
 
@@ -218,6 +220,8 @@ def retry_google_generate(client, model, contents, system_prompt, temperature,
         except genai_errors.APIError as e:
             # Detect rate limit (HTTP 429) for key rotation
             is_rate_limit = getattr(e, 'code', None) == 429 or '429' in str(e)
+            if is_rate_limit and on_rate_limit:
+                on_rate_limit()
             if is_rate_limit and key_pool is not None:
                 key_pool.mark_rate_limited("google", current_key, cooldown_seconds=60)
                 current_key = key_pool.get_key("google")

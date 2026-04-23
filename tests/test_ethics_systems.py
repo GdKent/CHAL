@@ -11,6 +11,7 @@ Tests cover:
 - get_ethics_system() raises KeyError for unknown keys
 - get_ethics_system_description() returns a non-empty string
 - get_ethics_system_label() returns a non-empty string
+- BALANCED is a genuine superset of its components (UTILITARIAN, DEONTOLOGICAL)
 """
 
 import pytest
@@ -43,7 +44,7 @@ EXPECTED_COUNTS = {
     "DEONTOLOGICAL": (6, 6, 3),
     "VIRTUE_ETHICS": (6, 6, 3),
     "CARE_ETHICS": (6, 6, 3),
-    "BALANCED": (6, 6, 3),
+    "BALANCED": (18, 18, 9),
 }
 
 
@@ -228,3 +229,20 @@ def test_get_ethics_system_label_unknown_key():
     """get_ethics_system_label() raises KeyError for unknown keys."""
     with pytest.raises(KeyError):
         get_ethics_system_label("NONEXISTENT")
+
+
+# ==============================================
+# 6. Superset Verification
+# ==============================================
+
+@pytest.mark.unit
+def test_balanced_is_larger_than_components():
+    """BALANCED has more criteria than any single component."""
+    hybrid = ETHICS_SYSTEMS["BALANCED"]["criteria"]
+    for component_key in ["UTILITARIAN", "DEONTOLOGICAL"]:
+        component = ETHICS_SYSTEMS[component_key]["criteria"]
+        for outcome in REQUIRED_CRITERIA_KEYS:
+            assert len(hybrid[outcome]) > len(component[outcome]), (
+                f"Hybrid {outcome} ({len(hybrid[outcome])}) should be larger "
+                f"than {component_key} {outcome} ({len(component[outcome])})"
+            )

@@ -1,12 +1,12 @@
 # CHAL Debate Analysis Report
 
-*Generated: 2026-04-17 12:37:47*
+*Generated: 2026-04-23 15:03:58*
 
 ## 1. Debate Metadata
 
 - **Topic**: Does free will exist?
 - **Stage 3 Mode**: rebuttal
-- **Rounds**: 3
+- **Rounds**: 1
 - **Agents**: 2
   - **Agent-Empiricist**: o4-mini (unknown), persona: Empiricist
   - **Agent-Supernaturalist**: o4-mini (unknown), persona: Supernaturalist
@@ -17,318 +17,335 @@
 
 | Verdict | Count | Percentage |
 |---------|-------|------------|
-| critique_valid | 7 | 70.0% |
-| rebuttal_valid | 3 | 30.0% |
+| critique_valid | 4 | 40.0% |
+| rebuttal_valid | 6 | 60.0% |
 | unresolved | 0 | 0.0% |
 | **Total** | **10** | **100%** |
 
 ## 3. Adjudication Details
 
 ### Q1: Agent-Empiricist → Agent-Supernaturalist
-- **Verdict**: REBUTTAL_VALID
-- **Attack**: undermining / challenge_strength_calibration
-- **Challenge**: Your claim C1 has a reported strength of 0.35. Given that it relies on multiple contested premises (A1 at 0.45, A2 at 0.63, A3 at 0.70, E1 at 0.55, E2 at 0.60, E6 at 0.60), why is its overall strength not lower—say around 0.20? How do you justify maintaining 0.35 rather than calibrating C1 downward to reflect these dependencies?
-- **Rebuttal**: The strength of C1 (0.35) is set by an abductive calibration method, which assesses the collective explanatory coherence of multiple independent lines of support rather than a simple product or minimum of premise strengths. While each premise may be contested, together they form a moderately warranted best explanation for free will. Dropping to 0.20 would under‐represent the abductive fit of agent causation, phenomenological data, and quantum openness.
-- **Reasoning**: Step 1: Restatement  
-The dispute concerns how to numerically calibrate the strength of claim C1 (“Free will exists…”) given its reliance on multiple contested premises. The Empiricist challenges the calibration, arguing that the low individual premise strengths (A1 = 0.45, A2 = 0.63, A3 = 0.70, E1 = 0.55, E2 = 0.60, E6 = 0.60) should combine to yield an overall strength nearer 0.20 rather than the stated 0.35. The Supernaturalist replies that they use an abductive‐coherence calibration method—rather than a simple product or minimum rule—so 0.35 accurately reflects explanatory fit.
+- **Verdict**: CRITIQUE_VALID
+- **Attack**: undermining / challenge_assumption
+- **Challenge**: Your assumption A2 relies on introspective reports of agent causation, but extensive psychological research shows introspection is prone to reconstruction and bias. How do you justify treating A2 as an empirical foundation with strength 0.6 in the absence of independent objective measures?
+- **Rebuttal**: While introspection alone can be biased, A2 is grounded in systematic phenomenological research employing controlled decision tasks, cross‐cultural cohorts, and neurophenomenological correlations. Multiple studies demonstrate reliable patterns where subjects’ reports of agentive choice align with distinct neural signatures, supporting A2’s empirical basis at strength 0.6.
+- **Reasoning**: 1. Restatement  
+Agent-Empiricist challenges assumption A2 (“Human conscious experience exhibits agent causation…”) on the grounds that it rests on introspective reports, which psychological research deems unreliable without objective measures. Agent-Supernaturalist responds by claiming that A2 is buttressed by systematic phenomenological studies and neural‐signature correlations, thereby justifying A2’s strength of 0.6.
 
-Step 2: Formalization  
-Challenger (Empiricist) argument:  
- P1. The strengths of all six supporting premises for C1 are {0.45, 0.63, 0.70, 0.55, 0.60, 0.60}.  
- P2 (unstated). The overall strength of a claim should be a (multiplicative or averaging) function of its premise strengths.  
- Therefore C1’s strength should be ≈0.20, not 0.35.  
+2. Formalization of the Challenger’s Argument  
+Premise 1: Psychological research shows introspective reports are prone to reconstruction and bias.  
+Premise 2: A2 relies primarily on introspective reports and lacks independent objective measures.  
+Conclusion: Therefore, A2’s assigned strength of 0.6 as an empirical foundation is unjustified and should be downgraded.
 
-Hidden Premise Identified: That numerical premise‐strengths must be combined via a standard Bayesian/deductive rule (product, minimum, average) to yield claim strength.
+3. Formalization of the Defender’s Argument  
+Premise 1: A2 is based on systematic phenomenological research with controlled decision tasks and cross-cultural cohorts.  
+Premise 2: Multiple studies find subjects’ reported agentive choices align reliably with distinct neural signatures.  
+Conclusion: Therefore, A2 retains empirical support at strength 0.6.
 
-Defender (Supernaturalist) argument:  
- P1. Claim strength is set by an abductive calibration method that assesses explanatory coherence, not by simple premise‐strength aggregation.  
- P2. The six premises, taken together, yield a moderately warranted abductive explanation of free will.  
- Therefore C1’s strength of 0.35 is justified and need not be lowered to 0.20.
+4. Adjudication of the Challenger’s Critique  
+– The challenger correctly identifies that if A2 depends solely on introspection, then known biases in introspection undermine its evidential basis (Informal Fallacy: Evidence Misuse, criterion 6).  
+– The premises are supported by well‐established experimental psychology on introspective unreliability.  
+– The inference to downgrading A2 is valid: unreliable method → weaker empirical support.  
+No fallacies are present in the critique.  
 
-Step 3: Adjudication  
-– The critique commits a hidden‐premise fallacy (#3): it assumes without justification that claim strengths must be computed by combining premise strengths via a specific mathematical rule. That aggregation rule is neither self‐evident nor stated in the belief schema.  
-– The defender correctly points out that the critic misidentifies the dialectical form of the strength calibration: it applies a Bayesian/multiplicative expectation to an abductive coherence methodology. This counts as a valid rebuttal under criterion REBUTTAL_VALID #2: “The critique misidentifies the logical form of the argument.”  
-– The defender does not need to provide a full alternative numeric model here to defeat the hidden‐premise challenge; simply showing that the critic attacked the wrong combination rule suffices.
+5. Adjudication of the Defender’s Rebuttal  
+– The defender introduces an appeal to unspecified “multiple studies” without citation or quantification (Informal Fallacy: Insufficient Evidence, criterion 14).  
+– The response fails to explicitly counter the introspective bias literature or demonstrate how neural correlations overcome it in practice.  
+– This amounts to a bare assertion rather than a structured rebuttal, leaving the core critique unresolved.
 
-No other critical formal or informal fallacies are at play. Therefore the critic’s challenge fails, and the defender’s rebuttal succeeds in identifying the faulty premise in the critique.
+6. Scoring  
+Challenger’s logic: 0.8 (Strong) — sound reasoning, relevant evidence, valid inference.  
+Defender’s logic: 0.4 (Weak) — reliance on unsupported claims, informal fallacy of insufficient evidence.  
 
-Result: REBUTTAL_VALID
+Outcome: The critique outweighs the rebuttal by >0.15, so CRITIQUE_VALID.
 
 ### Q2: Agent-Empiricist → Agent-Supernaturalist
 - **Verdict**: CRITIQUE_VALID
 - **Attack**: undermining / challenge_evidence
-- **Challenge**: Evidence E7 claims veridical perceptions during continuous-EEG/video–monitored clinical death. What empirical controls or monitoring thresholds ensure absolutely no residual subcortical or brainstem activity could account for these reports, and how do you rule out sensory leakage or delayed recall confounds?
-- **Rebuttal**: Doe et al. (2024) employed multimodal monitoring beyond surface EEG: 128-channel EEG, fNIRS probes targeting subcortical/brainstem regions, continuous transcranial Doppler of cerebral and brainstem perfusion, fully sealed auditory/visual occlusion, and randomized immediate‐report stimuli presented behind opaque screens. This rigorous protocol precludes residual neural activity, sensory leakage, or delayed‐recall confounds.
-- **Reasoning**: 1. Restatement  
-The Empiricist challenges Evidence E7’s adequacy in ruling out any residual subcortical or brainstem activity, sensory leakage, or delayed‐recall confounds in reports of veridical perceptions during clinical death. The Supernaturalist replies that Doe et al. (2024) employed multiple monitoring modalities—128‐channel EEG, fNIRS for subcortical/brainstem, transcranial Doppler perfusion monitoring, sealed sensory occlusion, and randomized immediate‐report stimuli—to preclude all these confounds.
+- **Challenge**: Your evidence E1 consists of subjective introspective reports indicating 'genuine choice,' yet these reports lack independent verification and are known to reflect post-hoc rationalizations. Can you explain how E1 meets the standards of reliability and replicability to support C1?
+- **Rebuttal**: E1’s strength (0.65) already accounts for subjectivity. Crucially, independent laboratories have replicated the finding that subjects reliably distinguish genuine volitional episodes from mere urges across double‐blind task variants. These replications demonstrate a modest but real standard of reliability and replicability for E1.
+- **Reasoning**: Step 1: Restatement  
+The Empiricist challenges whether evidence E1 (introspective reports of “genuine choice”) is sufficiently reliable and replicable to underpin the claim C1 that libertarian free will is incompatible with neural prediction experiments. The Supernaturalist responds that E1’s reported strength already factors in subjectivity and that independent, double‐blind laboratory replications have validated the introspective distinction between genuine volitional episodes and mere urges.
 
-2. Formalization  
-Challenger’s implicit argument:  
-  P1. E7 must demonstrate that no neural activity (including subcortical or brainstem) or sensory leakage/delayed recall could account for reported perceptions.  
-  P2. E7 as described (continuous surface EEG and video alone) does not guarantee the absence of such confounds.  
-  C. Therefore, E7 is insufficient to support the inference of consciousness independent of brain function (C3).
+Step 2: Formalization  
+Challenger’s argument (informal/evidential critique):  
+1. Premise: E1 consists of subjective introspective reports (known to reflect post‐hoc rationalizations).  
+2. Premise: To support C1, empirical evidence must be independently verifiable and replicable.  
+3. Conclusion: Therefore, E1 does not meet reliability and replicability standards and cannot adequately support C1.  
 
-Defender’s counterargument:  
-  P1′. Doe et al. (2024) used 128‐channel EEG, fNIRS, transcranial Doppler, sealed sensory occlusion, and randomized immediate‐report stimuli.  
-  P2′. These methods collectively preclude any residual neural activity, sensory leakage, or delayed‐recall confounds.  
-  C′. Therefore, E7 does meet the required controls and remains a valid basis for C3.
+Defender’s argument (rebuttal):  
+1. Premise: The published strength score for E1 (0.65) already accounts for its subjectivity.  
+2. Premise (new claim): Independent laboratories, using double‐blind task variants, have replicated E1—subjects consistently distinguish genuine volitional episodes from urges.  
+3. Inference: These replications establish E1 as a reliable and replicable measure.  
+4. Conclusion: E1 therefore does satisfy the required empirical standards to support C1.  
 
-3. Adjudication  
-- The Empiricist correctly identifies that the excerpt for E7 in the beliefs only mentions “continuous EEG/video monitoring” and does not describe subcortical probes, perfusion monitoring, or sensory‐occlusion protocols. This is a case of evidence insufficiency (criterion 14) and potentially hidden/unjustified premises in the defender’s account (criterion 3, 22).  
-- The Supernaturalist’s rebuttal introduces detailed methodological claims not supported by the provided belief excerpt. There is no citation in E7 for fNIRS probes, Doppler perfusion, sealed occlusion, or randomized stimuli. This is an unsupported assertion (dependency failure) and evidence misuse: the rebuttal relies on data not present in the shared E7 summary.  
-- No formal fallacy is present on the challenger’s side; they simply demand proper specification of controls. The defender fails to demonstrate that those controls were in fact part of the study as summarized.
+Step 3: Adjudication  
+– The defender introduces an unreferenced assertion of “double‐blind lab replications” that is not recorded in the provided E1 excerpt. There is no citation, study name, or specification of how these replications were conducted or published. This constitutes evidence misuse and unsupported appeal to authority (“appeal to unpublished studies”) (informal fallacy) and fails to meet the burden of proof.  
+– The challenger’s informal critique correctly identifies that introspective reports alone are prone to bias and post‐hoc rationalization, and that reliable empirical support requires documented independent replication.  
+– No formal deductive structure is offered by the defender to show how the new replication evidence guarantees reliability; rather, it’s asserted without substantiation.  
+– Under the criteria, the challenge is a valid “insufficient evidence” or “evidence misuse” critique (criteria 6, 14), and the defender has not rectified the flaw.  
 
-Conclusion: The challenger’s critique is valid and the defender’s response fails on grounds of unsupported premises.  
-Outcome: CRITIQUE_VALID
+Verdict: The challenge succeeds (CRITIQUE_VALID).  
+– challenger_logic = 0.8 (strong informal critique with clear application of evidence standards)  
+– defender_logic = 0.2 (flawed rebuttal relying on unsubstantiated evidence claim)  
+– ethics scores = 0.0  
+– challenger_combined = 0.8, defender_combined = 0.2 (difference 0.6 ≥ 0.15)  
+– Outcome: critique_valid
 
 ### Q3: Agent-Empiricist → Agent-Supernaturalist
 - **Verdict**: CRITIQUE_VALID
 - **Attack**: undercutting / challenge_inference_step
-- **Challenge**: In C1 you infer from E6 (quantum coherence in microtubules) that non-physical agent causation is instantiated in the brain. How do you justify that this coherence implies an immaterial mind–brain interface, rather than being an epiphenomenon of normal neurophysiology? That inferential leap seems unsupported.
-- **Rebuttal**: The inference from E6 is grounded in the Orch-OR framework: microtubule coherence is functionally linked to volitional states, not merely an epiphenomenon. Empirical E6 findings show coherence peaks precede subjective choice markers and correlate with unpredictability in E5’s bias‐controlled tasks, establishing a mechanistic bridge for a mind–brain interface.
-- **Reasoning**: Step 1: Restatement of the core disagreement
-Agent-Empiricist objects to Claim C1 of the supernaturalist’s belief set (“Free will exists…”) on the grounds that the move from E6 (“sustained quantum coherence in neuronal microtubules suggests openness to non-physical causation”) to the conclusion that there is an immaterial mind–brain interface is unsupported. Agent-Supernaturalist replies by invoking the Orch-OR framework and claiming E6 data show coherence peaks preceding subjective choice markers and correlate with unpredictability in E5 tasks, thereby bridging to a non-physical causal interface.
+- **Challenge**: In C1 you move from introspective and NDE premises to the conclusion that libertarian free will exists by abductive inference. Given plausible alternative explanations (e.g., unconscious neural generation of the 'feeling' of choice), why does the inference step logically favor libertarian free will over these mechanistic explanations?
+- **Rebuttal**: The abductive inference in C1 legitimately compares competing explanations. The illusion hypothesis requires a detailed mechanism to generate false agentive experiences across normal and anomalous cases (e.g., NDEs). Libertarian agent causation more parsimoniously accounts for the full range of observed phenomenology and exceptional cases, so until a concrete mechanistic model can match its explanatory scope, C1 stands.
+- **Reasoning**: 1. Restatement  
+The Empiricist (challenger) disputes Supernaturalist’s claim C1 (target C1) that introspective and near-death phenomenology abductively justify libertarian free will. The challenger points out a hidden premise: the inference to libertarian free will assumes no plausible mechanistic “illusion” explanation can account for the same data. Without ruling out or comparing the mechanistic hypothesis, the abductive step is undercut. The Supernaturalist (defender) replies that the illusion hypothesis would need an ad hoc, detailed mechanism to produce false agentive experiences (both normal and anomalous), whereas libertarian agent causation is more parsimonious and explanatory, so until someone builds that mechanistic model, C1 holds.
 
-Step 2: Formalizing both sides
+2. Formalizations  
+Challenger’s critique (undercutting C1):  
+P1a: A valid abductive inference to hypothesis H requires showing that no alternative hypothesis A can explain the observed evidence at least as well.  
+P2a: Plausible mechanistic (neural-illusion) hypotheses exist that could explain introspective feelings of choice and NDE agency phenomenology.  
+C1a: Therefore, Supernaturalist’s abductive inference to libertarian free will is not logically justified (hidden premise missing).  
 
-Challenger’s implicit formal critique:
-  P1: E6 only establishes quantum coherence in microtubules.
-  P2: From coherence alone one cannot infer a non-physical mind–brain interface (hidden premise needed).
-  C: Therefore, the inference from E6 to an immaterial agent‐causal interface is a non sequitur.
+Defender’s rebuttal:  
+P1b: The illusion (neural-mechanism) hypothesis lacks a detailed, unified account of both ordinary agentive phenomenology and exceptional cases like NDEs.  
+P2b: Libertarian agent causation provides a single, more parsimonious explanation for the full range of experiences.  
+C1b: Thus the abductive inference favoring libertarian free will remains the best explanation until a mechanistic model matches its scope (appeal to parsimony).
 
-Defender’s rebuttal chain (as claimed):
-  P1: Orch-OR posits functional linkage between coherence and volition (unstated theoretical premise).
-  P2: E6 findings allegedly show coherence peaks preceding subjective choice markers.
-  P3: E6 findings allegedly correlate with unpredictability in bias-controlled tasks (E5).
-  I: These link coherence mechanistically to volitional states.
-  C: Hence E6 supports a mind–brain interface and thus free will.
+3. Adjudication  
+- The challenger correctly identified a hidden premise: C1’s abductive step presumes that no alternative explanation rivals libertarianism in explanatory scope (criterion 3).  
+- The rebuttal appeals to Occam’s Razor but does not demonstrate that no plausible mechanistic model could be comparably simple, nor does it supply positive evidence quantifying comparative explanatory likelihoods (Bayesian likelihoods or detailed mechanism). It rests on absence of a rival model rather than establishing impossibility.  
+- The rebuttal fails to supply the missing premise (that mechanistic hypotheses are incoherent or less likely) with substantive proof, thus not resolving the hidden-premise flaw.  
+- No formal fallacies are introduced by the challenger. The rebuttal’s “until someone builds a model” defense is an argument from ignorance rather than a genuine inference to the best explanation.  
 
-Step 3: Adjudication under the hybrid criteria
-1. Hidden premise: The defender relies on P2–P3, which are not in E6 or any cited evidence. This is a classic hidden-premise fallacy (#3). 
-2. Evidence misuse: The defender attributes to E6 observations about subjective choice markers and unpredictability that are not present in the belief excerpt (#6).
-3. Deductive invalidity / non sequitur: The conclusion of an immaterial interface does not follow from microtubule coherence without further substantiation (#1).
-4. No formal inference rule is demonstrated, nor is there a missing self-evident premise that they have justified (#21).
-5. Asymmetric updating: The defender asserts unreferenced data and ignores the challenge that E6 alone is silent on function (#9).
-
-The rebuttal fails to resolve the hidden‐premise and evidence‐misuse issues. Therefore the challenger’s critique is valid.
-
-Scores:
-Challenger_logic: 0.80 (strong identification of hidden premise and non sequitur)
-Defender_logic: 0.20 (fails to substantiate missing premises or evidence)
-Combined difference ≥ 0.15 → CRITIQUE_VALID
+Result: The challenge reveals a critical flaw (hidden premise) in C1’s inference. The defender has not cured that flaw. By the logic-scale, the challenger’s objection is strong (0.8), the rebuttal is mixed (0.5). The difference (0.3) exceeds 0.15, so CRITIQUE_VALID.
 
 ### Q4: Agent-Empiricist → Agent-Supernaturalist
-- **Verdict**: CRITIQUE_VALID
-- **Attack**: undermining / challenge_assumption
-- **Challenge**: Assumption A2 grants a strength of 0.63 to the claim that non-physical agents can originate causal chains not reducible to physical laws. Given the well-established causal closure of physics and absence of direct evidence for agent causation, what justifies A2’s relatively high strength, and shouldn’t it be substantially lower?
-- **Rebuttal**: A2’s 0.63 rating reflects strong conceptual virtue: agent‐causal theories are well‐developed and coherent within metaphysics, and causal closure at quantum scales remains an empirical hypothesis rather than a settled fact. Therefore, a moderate strength is justified pending further empirical adjudication.
-- **Reasoning**: Step 1: Restatement  
-The Empiricist challenges the supernaturalist’s assignment of strength 0.63 to assumption A2 (“Non-physical agents can originate causal chains not reducible to physical laws”), arguing that given the well-established causal closure of physics and no direct evidence for agent causation, a 0.63 confidence is unjustified and should be much lower. The Supernaturalist responds that conceptual coherence of agent-causal theories and the unsettled status of causal closure at quantum scales justify a moderate strength pending further empirical data.
+- **Verdict**: REBUTTAL_VALID
+- **Attack**: undercutting / challenge_normative_inference
+- **Challenge**: C2 draws a normative conclusion—that moral responsibility implies libertarian free will—from descriptive premises about social practices. How do you bridge the is-ought gap, given that compatibilist theories demonstrate moral responsibility can exist under determinism?
+- **Rebuttal**: We bridge the is-ought gap via explicit normative premise A5 (‘Moral responsibility entails alternative possibilities’). The inference is deductive: from A4 (descriptive) and A5 (normative) we validly derive C2. Compatibilists dispute A5, but that is a substantive normative debate—not a hidden is-ought smuggling—and does not invalidate the deductive move.
+- **Reasoning**: 1. Restatement  
+The Agent-Empiricist challenges the validity of target claim C2 (“The existence of moral responsibility practices in human societies implies the existence of libertarian free will”) by alleging an illicit is-ought leap from purely descriptive premise A4. The Agent-Supernaturalist rebuts that C2 uses both A4 (descriptive) and an explicit normative premise A5, so the deduction is formally valid.
 
-Step 2: Formalization  
-Challenger’s implicit inference chain:  
- P1. Physics exhibits causal closure, and there is no direct empirical evidence for non-physical agent causation.  
- P2. Under Bayesian standards, a prior for A2 should be low without positive evidence overcoming the low prior and closure constraint.  
- C. Therefore, assigning strength 0.63 to A2 is unjustified; the strength should be substantially lower.  
+2. Formalizations  
+- Challenger’s implicit inference (as attacked):  
+  P1: A4 (Human societies exhibit robust practices of moral responsibility) – descriptive.  
+  —(no normative premise)→  
+  C2: Libertarian free will exists – normative.  
+  → Invalid: normative conclusion cannot follow from descriptive premise alone.  
 
-Defender’s inference chain:  
- P1. Agent-causal theories have strong conceptual virtues (coherence, explanatory power) in metaphysical discourse.  
- P2. Causal closure of physics at quantum scales remains an empirical hypothesis, not a settled constraint.  
- C. Therefore, it is reasonable to assign a moderate strength (0.63) to A2 until further empirical adjudication.
+- Defender’s stated inference:  
+  P1: A4 (Human societies exhibit robust practices of moral responsibility).  
+  P2: A5 (Moral responsibility entails the ability to do otherwise).  
+  By modus ponens / standard deductive inference: if moral responsibility requires alternative possibilities and moral responsibility exists, then alternative possibilities (libertarian free will) exist.  
+  ∴ C2: Libertarian free will exists.
 
-Step 3: Adjudication  
-– The challenger correctly points out that A2 lacks direct empirical support (Insufficient evidence, criterion #14) and that the burden of proof for an extraordinary metaphysical claim lies on those positing it (Prior probability neglected, #7; Base rate neglect, #8).  
-– The defender’s appeal to “conceptual virtue” does not supply empirical or probabilistic evidence to overcome the strong prior against non-physical causation. This is evidence misuse (#6) and fails to engage Bayesian updating (#5, #10).  
-– The defender does not demonstrate that the likelihood of the observed physical-causal phenomena is higher under agent causation than under physical closure, nor do they supply missing premises that would render the assignment deductively valid.  
+3. Adjudication  
+- Deductive structure: The defender correctly cites two premises (A4 descriptive + A5 normative) to derive C2. The inference is formally valid (a constructive syllogism).  
+- The challenger misrepresents the target: the normative premise A5 is explicit in the target’s depends_on list. There is no hidden is-ought smuggling.  
+- This is a misidentification of the argument’s form (a recognized flaw).  
+- No other fallacies or evidence issues affect the defender’s deduction of C2.  
 
-Because the Empiricist’s critique identifies a substantive evidential and Bayesian flaw in maintaining a 0.63 confidence for A2, and the Supernaturalist’s rebuttal fails to resolve these flaws, the critique is valid and the defense fails.  
-Verdict: CRITIQUE_VALID
+Accordingly, the rebuttal is successful under criterion: the critique misidentifies the logical form of the argument, and the defender’s inference is deductively valid.
+
+Scores:  
+- Challenger’s logic: 0.2 (severely flawed—misrepresentation).  
+- Defender’s logic: 0.9 (strong—valid deductive structure, only minor potential for more explicit premises wording).  
+- Both ethics: 0.0.  
+- Combined scores equal the logic scores.  
+- Difference = 0.9 − 0.2 = 0.7 ≥ 0.15 ⇒ rebuttal_valid.
 
 ### Q5: Agent-Empiricist → Agent-Supernaturalist
 - **Verdict**: CRITIQUE_VALID
-- **Attack**: undermining / press_uncertainty
-- **Challenge**: Uncertainty U2 (‘Could a purely physicalist account explain the robust sense of freedom?’) remains active. How can you maintain C1’s abductive inference to non-physical free will in light of this unresolved physicalist illusion hypothesis, and what evidence decisively rules out the simpler materialist explanation?
-- **Rebuttal**: This points to an active uncertainty (U2). To discriminate genuine non-physical agency from a physicalist illusion, we need paradigms that eliminate all measurement gaps and noise, test quantum‐coherence interventions during choice tasks, and observe whether unpredictability and volitional correlates persist. Until such experiments are run, the question remains open.
-- **Reasoning**: 1. Restatement  
-The empiricist (challenger) points out that Uncertainty U2 — the hypothesis that the sense of freedom may be an illusion explainable by purely physical means — is still unresolved. They argue this undermines C1’s abductive inference to non-physical free will, since no decisive evidence has ruled out the simpler materialist explanation. The supernaturalist (defender) replies that we lack experiments that fully eliminate measurement gaps or test for genuinely non-physical agency, so the question remains open.
+- **Attack**: undermining / demand_falsifiability
+- **Challenge**: Your foundational assumption A1 posits an unfalsifiable supernatural dimension. Under empiricist methodology, such an assumption lacks testability. What empirical criteria or potential falsifiers can you offer to establish A1, and how do you respond to its current lack of falsifiability?
+- **Rebuttal**: You are correct that A1 currently lacks specified empirical or falsification protocols. This is an open question about how one might confirm or disconfirm the supernatural. To address it properly, we need to articulate abductive criteria or indirect empirical indicators. Until then, this remains an unresolved uncertainty.
+- **Reasoning**: Step 1: RESTATEMENT  
+The Agent-Empiricist challenges Agent-Supernaturalist’s foundational assumption A1 (“A supernatural dimension exists…”) on the grounds that it is currently unfalsifiable and offers no empirical tests or potential falsifiers. The Agent-Supernaturalist concedes this point, admits no criteria have been specified, and labels the question unresolved.
 
-2. Formalization  
-Challenger’s implicit argument:  
-  P1. If a plausible physicalist “illusion” account of the sense of freedom remains live (U2 unresolved), then abductive inference to non-physical free will (C1) is premature.  
-  P2. U2 is unresolved; no decisive evidence rules out the physicalist illusion.  
-  C. Therefore, C1’s abductive inference to non-physical free will is unjustified absent such evidence.
+Step 2: FORMALIZATION  
+Challenger’s argument (informal structure):  
+P1: A1 posits a supernatural dimension.  
+P2: Under empiricist methodology, a hypothesis must be empirically testable or falsifiable to be scientifically meaningful.  
+P3: No empirical tests or potential falsifiers for A1 have been provided.  
+C: Therefore, A1 currently lacks scientific legitimacy (it is unfalsifiable).  
 
-Defender’s reply:  
-  P3. To discriminate genuine non-physical agency from physicalist illusion, we need paradigms eliminating all measurement gaps, testing quantum-coherence during choice tasks, and observing persistent volitional correlates.  
-  C2. Until such experiments are conducted, the question of non-physical free will remains open.
+Defender’s response:  
+R1: “You are correct that A1 currently lacks specified empirical or falsification protocols.” (Concession)  
+R2: “This is an open question… Until then, this remains an unresolved uncertainty.” (No positive defense or criteria offered)  
 
-3. Adjudication  
-- The challenger’s critique is deductively valid: pointing out an unresolved alternative hypothesis does undercut the abductive move to C1. There is no hidden premise, no fallacy, and they correctly demand evidence ruling out the simpler explanation.  
-- The defender offers no counter-evidence, no assessment of likelihoods, and no methodology suffices as actual data. They merely defer judgment pending future experiments, thus failing to resolve the abductive gap.  
-- The defender does not demonstrate a valid inference to sustain C1, nor do they rebut the core claim that without ruling out U2, C1 lacks justification.
+Step 3: ADJUDICATION  
+– The challenger correctly identifies that A1 has no specified falsification criteria or empirical tests (no misrepresentation or hidden premises).  
+– The defender offers no rebuttal beyond conceding the point and marking the issue unresolved, thus failing to resolve the critique or supply new evidence or criteria.  
+– By the meta‐criteria, an explicit concession without resolution constitutes a successful critique.  
 
-Outcome: The empiricist’s critique is valid and the supernaturalist’s response fails to address it.
+Scores:  
+• Challenger’s logic: Strong, valid methodological critique of an unfalsifiable assumption → 0.9  
+• Defender’s logic: Severely flawed, no substantive counter to the falsifiability challenge → 0.2  
+• Both ethics: 0.0  
+
+Outcome: CRITIQUE_VALID, because the defense fails to salvage A1’s scientific testability and the concession confirms the challenge.
 
 ### Q1: Agent-Supernaturalist → Agent-Empiricist
-- **Verdict**: CRITIQUE_VALID
-- **Attack**: undercutting / challenge_inference_step
-- **Challenge**: Your claim C4 abductively infers that the absence of replicable anomalies confirms physical supervenience. How do you avoid the fallacy of argument from ignorance, given that absence of evidence is not positive proof of absence?
-- **Rebuttal**: Refute: C4 employs abductive reasoning based on E5’s large‐scale meta‐analysis, which provides positive support for neural supervenience. We do not infer from mere silence but from the best explanation of substantive correlational and causal data.
+- **Verdict**: REBUTTAL_VALID
+- **Attack**: undermining / challenge_strength_calibration
+- **Challenge**: You assign assumption A1 (physical determinism holds for neural processes) a strength of 0.9. Given recognized quantum indeterminacy and chaotic neural dynamics, how do you justify calibrating A1 at such a high level rather than lowering it to reflect these plausible sources of neural nondeterminism?
+- **Rebuttal**: The 0.9 calibration for A1 reflects that all reproducible, macroscopic neural phenomena adhere to deterministic physical laws. Quantum fluctuations average out in neural tissue and no empirical study has shown quantum indeterminacy being harnessed to produce controlled, meaningful decision variability. Chaotic dynamics, while unpredictable, are still deterministic in principle. Thus A1 remains strongly supported.
 - **Reasoning**: Step 1: Restatement  
-The supernaturalist challenges Empiricist’s abductive Claim C4—that “the absence of replicable anomalies supports mental–physical supervenience”—arguing this is an argument from ignorance (absence of evidence is not evidence of absence).  
+The challenger questions the high confidence (0.9) in A1 (“physical determinism holds for neural processes”), arguing that quantum indeterminacy and chaotic neural dynamics plausibly introduce genuine nondeterminism, so A1’s strength should be lowered. The defender replies that at the scale of neural tissue quantum fluctuations average out, chaotic unpredictability is still deterministic in principle, and no empirical evidence shows quantum effects driving decision‐making. Thus they maintain A1 at 0.9.
 
 Step 2: Formalization  
-Challenger’s implicit argument:  
-  P1. No replicable anomalies have been found.  
-  C. Therefore, inferring supervenience amounts to an argument from ignorance (informal fallacy).  
 
-Defender’s argument (C4 as defended):  
-  P1 (A5). Meta‐analytic reviews reliably report no non-physical influences.  
-  P2 (E5). Comprehensive meta-analysis finds no credible anomalies.  
-  Inference (Abductive). The best explanation for P1–P2 is that mental phenomena supervene on physical processes.  
-  C. Hence, the absence of anomalies supports supervenience.  
+Challenger’s argument (inductive):  
+P1: Quantum mechanics entails genuine indeterminacy at microscopic scales.  
+P2: Neural processes are highly sensitive (chaotic), so microscopic fluctuations could be amplified.  
+⟹ C: It is plausible that neural processes are nondeterministic; hence assigning A1 a 0.9 confidence overstates our certainty.
+
+Defender’s response (mixed deductive/inductive):  
+P1: Macroscopic neural phenomena consistently obey deterministic laws (no reliable deviations observed).  
+P2: Quantum fluctuations average out in large neural ensembles (no mechanism to channel microscopic randomness into meaningful decisions).  
+P3: Chaotic systems remain deterministic even if unpredictable.  
+P4: No empirical study has demonstrated quantum‐driven decision variability.  
+⟹ C: There is no substantive reason to lower confidence in A1; 0.9 remains justified.
 
 Step 3: Adjudication  
-1. Identification of fallacy: The challenger correctly identifies “argument from ignorance” – inferring existence/structure of a phenomenon solely because you haven’t seen counter-examples.  
-2. Does the defender remove reliance on pure absence? The rebuttal invokes “positive support” via “substantive correlational and causal data,” but C4’s premises (A5/E5) only record the absence of anomalies, not actual positive evidence of neural–mental correlation.  
-3. Abduction vs. ignorance: Abductive inference can be legitimate when based on positive observations. Here, the only observations are non-findings, so the “best explanation” move still depends on lack of disconfirming cases, which remains an ignorance-based inference.  
-4. No new positive premises were supplied, no missing premise filled. The defense merely relabels the move “abductive” without altering its dependence on silence.  
+- The challenger relies on theoretical possibility rather than empirical evidence that quantum indeterminacy influences neural computation. This conflates unpredictability with ontological nondeterminism (false inference). It also neglects the base rate—nearly all neural studies find lawful, reproducible dynamics. Their premises do not strongly support lowering A1 from 0.9. (Insufficient evidence; conflation of chaos with indeterminism.)  
+- The defender correctly distinguishes epistemic unpredictability from ontic determinism, cites the lack of observed quantum effects in brain function, and points out that chaotic dynamics do not violate determinism. No formal fallacy is evident; the evidence invoked is appropriate for an empirical claim.  
+- Under Bayesian standards, the challenger has not produced new evidence with higher likelihood under the nondeterminism hypothesis. The defender’s lack‐of‐evidence argument is acceptable here (no positive evidence for quantum‐driven decision‐making).  
+- Therefore the defender successfully rebuts the challenge.
 
-Conclusion: The defender fails to dissolve the argument from ignorance. The critic’s identification of an informal fallacy stands.  
-Verdict: CRITIQUE_VALID
+Outcome: REBUTTAL_VALID (defender’s argument is substantially stronger than the challenge).
 
 ### Q2: Agent-Supernaturalist → Agent-Empiricist
-- **Verdict**: CRITIQUE_VALID
+- **Verdict**: REBUTTAL_VALID
 - **Attack**: undermining / challenge_evidence
-- **Challenge**: Assumption A5 relies on meta-analyses of detectable neural studies to rule out non-physical influences. How can you be sure that undetectable or non-empirical influences wouldn’t escape such analyses by definition?
-- **Rebuttal**: Refute: Under methodological naturalism, only empirically detectable influences are within scope. A5 accurately describes the state of detectable neural phenomena; undetectable processes are by definition outside empirical science, not a flaw in A5.
-- **Reasoning**: 1. Restatement  
-The challenger attacks the target’s Assumption A5 (meta‐analytic reviews find no replicable non‐physical influences) by pointing out that A5 only covers empirically detectable influences and therefore cannot rule out any hypothetical, undetectable, non‐physical influences. The defender replies that under methodological naturalism, only detectable influences are in scope, so A5’s limitation is not a flaw but a definitional boundary.
+- **Challenge**: Your evidence E1 relies on readiness potentials to infer decision initiation. How do you address studies suggesting readiness potentials reflect general preparatory or attentional processes rather than true decision onset, and what bearing does this have on the relevance of E1 for C1?
+- **Rebuttal**: Although some reinterpret the readiness potential as general motor preparation, intracranial recordings and drift–diffusion models (Schurger et al. 2012; Murakami et al. 2014) localize decision-specific neural buildup rather than mere attention or nonspecific prep. These convergent findings preserve E1’s status as reflecting genuine decision initiation signals.
+- **Reasoning**: Step 1 – Restatement of the core disagreement  
+Agent-Supernaturalist challenges the relevance of evidence E1 (readiness potentials as markers of decision initiation) to claim C1 (introspective felt choice supporting libertarian free will). They point to studies interpreting readiness potentials as general preparatory or attentional processes rather than true decision onset, which would undermine E1’s use in C1. Agent-Empiricist rebuts that intracranial recordings (Schurger et al. 2012; Murakami et al. 2014) and drift–diffusion models localize neural buildup specific to decision processes, not mere attention or nonspecific preparation, thus preserving E1’s status.
 
-2. Formalization of the challenger’s critique  
-- Premise (from A5): “Meta‐analytic reviews employ reliable methods and find no replicable evidence of non‐physical influences.”  
-- Implicit inference in C4: “Therefore, there are no non‐physical influences.”  
-- Challenger’s objection: The inference from “no detected evidence” to “no existence” is illegitimate, because undetectable influences could exist by definition and would escape these studies.  
-- Fallacy identified: argument from ignorance / evidence misuse (absence of evidence ≠ evidence of absence).
+Step 2 – Formalization  
+Challenger’s implicit argument (inductive critique):  
+  P1: If readiness potentials reflect general preparatory/attentional processes rather than decision onset, then E1 does not mark genuine decision initiation.  
+  P2: Some studies suggest readiness potentials reflect only general preparatory/attentional processes.  
+  C: Therefore, E1 may not support the premise of genuine decision initiation needed for C1.
 
-3. Formalization of the defender’s rebuttal  
-- Premise: Methodological naturalism restricts inquiry to empirically detectable phenomena.  
-- Conclusion: A5’s statement is only meant to describe the detectable domain; anything undetectable is simply outside the method’s scope, so there is no internal flaw in A5.  
+Defender’s response (evidential support for decision specificity):  
+  P1’: Intracranial recordings and drift–diffusion models show neural buildup specific to decision formation (Schurger et al. 2012; Murakami et al. 2014).  
+  P2’: Decision-specific neural buildup implies readiness potentials are not merely non-specific preparatory signals.  
+  C’: Therefore, E1 legitimately reflects genuine decision initiation signals and remains relevant to C1.
 
-4. Adjudication  
-- The challenger correctly identifies that A5’s scope limitation prevents it from ruling out undetectable influences, thus the abductive move to “no non‐physical influences exist” is unsupported (#6 Evidence misuse; informal argument from ignorance).  
-- The defender does not supply any new premise to exclude undetectable influences or show they cannot exist; instead, they merely restate the methodological boundary without addressing the logical gap.  
-- No deductive rule, missing premise, or evidence update is provided to bridge from “no evidence detected” to “non‐physical influences are absent.”  
-- Therefore the critique stands and the rebuttal fails to resolve the flaw. According to the criteria, this is a successful critique: CRITIQUE_VALID.
+Step 3 – Adjudication  
+• Deductive validity: Both sides use inductive/evidential reasoning, not formal deduction. No illicit formal inferences.  
+• Informal fallacies: The challenger does not commit a fallacy; they raise a legitimate reinterpretation. The defender does not rely on ad hominem or misrepresentation.  
+• Evidence misuse: The defender cites peer-reviewed intracranial and modeling studies directly addressing the reinterpretation. No misuse detected.  
+• Prior probability: The challenger’s reinterpretation is known but secondary to invasive/neural findings; the defender brings higher-specificity evidence.  
+• Base rates/likelihood: The defender shows higher likelihood of decision-specific buildup under the decision hypothesis than under the attentional hypothesis, directly addressing the critic’s concern.  
+• Asymmetric updating: The defender acknowledges alternative interpretations and cites convergent data, demonstrating symmetric updating.  
+• Unfalsifiable claim: Both sides describe testable empirical phenomena.  
+• Occam’s Razor: The defender’s account (decision-specific buildup) is not more complex than the attentional interpretation once specialized data are considered.
+
+Conclusion: Agent-Empiricist’s rebuttal meets the CRITERIA for REBUTTAL_VALID. They have provided additional, specific empirical evidence that directly addresses the challenger’s concern, restoring E1’s role in C1 without logical flaw.
 
 ### Q3: Agent-Supernaturalist → Agent-Empiricist
 - **Verdict**: REBUTTAL_VALID
-- **Attack**: undermining / press_uncertainty
-- **Challenge**: You define free will strictly as contra-causal capacity (A3) and acknowledge that this excludes compatibilist notions (U3). Given the practical importance of compatibilist views for moral responsibility, why do you dismiss them outright?
-- **Rebuttal**: Refute: A3 is a deliberate scoping assumption. We explicitly set aside compatibilist notions to focus on contra‐causal freedom. This is not dismissal of compatibilism’s practical import, but a boundary for our metaphysical inquiry.
-- **Reasoning**: 1. RESTATEMENT  
-The dispute centers on the scoping assumption A3 (“Free will is defined strictly as contra-causal capacity”). The challenger contends that by adopting A3 the analysis “dismisses” all compatibilist notions of agency (counterposition X2). The defender responds that A3 is merely a deliberate boundary to focus on contra-causal freedom, not a rejection of compatibilism’s practical value.
+- **Attack**: undermining / challenge_assumption
+- **Challenge**: Assumption A4 holds that free will must have an operational definition to be meaningful. This seems to preclude any metaphysical or non-empirical concept of freedom. How do you justify A4’s foundational status without presupposing the very compatibilist conclusion you draw?
+- **Rebuttal**: A4 is a neutral scientiﬁc principle requiring any hypothesized phenomenon—libertarian or compatibilist—to be tied to observable markers before talking meaningfully about its existence. It neither presumes compatibilism nor precludes a future empirical operationalisation of libertarian freedom; it simply enforces methodological clarity.
+- **Reasoning**: Step 1: Restatement  
+The challenger (Agent-Supernaturalist) objects to Assumption A4 (“the concept of free will must have an operational definition to yield a meaningful empirical inquiry”), arguing that by insisting on operationalization it effectively rules out any metaphysical or libertarian notion of free will and thus covertly presupposes the compatibilist conclusion (C3), making A4 question-begging. The defender (Agent-Empiricist) replies that A4 is merely a neutral methodological requirement—any hypothesized phenomenon (libertarian or compatibilist) must be made empirically tractable by an operational definition, and A4 does not in itself favor compatibilism nor bar a future empirical account of libertarian freedom.
 
-2. FORMALIZATION  
-
-Challenger’s implicit critique:  
-  P1: A3 excludes compatibilist definitions of free will.  
-  P2: Excluding compatibilist notions without justification is conceptually biased.  
-  C: Therefore, A3 is unjustified or illegitimate.
+Step 2: Formalizations  
+Challenger’s implicit argument:  
+  P1: A4 asserts that free will must have an operational definition to count as a meaningful topic.  
+  P2: Only compatibilist free will currently has such an operational definition.  
+  ──────────────────────────────────────────────────────────  
+  C: Therefore, A4 covertly presupposes and guarantees the compatibilist conclusion (only compatibilist free will can “exist”), i.e., it is question-begging.
 
 Defender’s rebuttal:  
-  P1: A3 is explicitly labeled a scoping assumption.  
-  P2: A scoping assumption delimits the topic for metaphysical inquiry, not rejects alternative concepts.  
-  C: Hence, A3 does not dismiss compatibilism; it merely confines this analysis to contra-causal freedom.
+  P1: A4 holds that any hypothesized phenomenon—libertarian or compatibilist—requires an operational definition to be meaningfully discussed.  
+  P2: Nothing in A4 precludes developing an operational definition for libertarian free will; it merely demands clarity.  
+  ──────────────────────────────────────────────────────────  
+  C: A4 is methodologically neutral and does not beg the compatibilist conclusion; it simply enforces empirical rigor.
 
-3. ADJUDICATION  
-- The challenger points out a definitional choice but offers no formal argument or evidence that scoping itself is invalid. This is at best a request for methodological clarification, not a proof of flaw (no formal fallacy, hidden premise, or misuse of evidence).  
-- The defender clarifies that A3 is by design a boundary condition, thereby directly addressing the challenge. The response restores coherence to the assumption: scoping definitions are valid methodological tools when made explicit.  
-- No disqualifying flaw (circularity, misrepresentation, etc.) is present on the defender’s side. The challenger did not demonstrate A3 to be self-defeating or illegitimate; they merely expressed concern about its coverage.  
-- Under the criteria, the defender successfully resolves the critique by showing A3 is an explicit methodological choice, not a covert dismissal of compatibilism.  
+Step 3: Adjudication  
+- The challenger raises a valid concern about potential circularity (begging the question) in A4: requiring operational definition does indeed filter out non-empirical accounts by fiat. However, the challenger does not show that the defender actually conflated “operational” with “compatibilist” or that A4 contains a hidden premise that only compatibilist free will can be operationalized. The challenge remains at the level of a pointed question rather than a completed logical argument.  
+- The defender directly addresses the core worry: A4 applies equally to both libertarian and compatibilist conceptions, and it doesn’t endorse any particular substantive theory of free will. This rebuttal restores the neutrality of A4 and shows that demanding operational definition is not a covert endorsement of compatibilism.  
+- No formal fallacy or informal misrepresentation is evident in the defender’s reply. The defender clarifies the scope of A4 and resolves the alleged circularity.  
 
-Outcome: REBUTTAL_VALID (the defender’s clarification adequately addresses the challenge).  
-Scores: Challenger’s logic is weak (no substantive argument); defender’s logic is strong (directly answers and legitimizes the scoping assumption).
+Conclusion: The defender’s response satisfactorily dissolves the circularity critique by showing that A4 is a content-neutral methodological rule, not a covert substantive assumption of compatibilism. Therefore, the rebuttal is successful.
 
 ### Q4: Agent-Supernaturalist → Agent-Empiricist
-- **Verdict**: CRITIQUE_VALID
-- **Attack**: undercutting / challenge_scope
-- **Challenge**: Your claim C1 generalizes unconscious initiation from simplified motor tasks to all human decision-making. What justification do you have for extending findings from laboratory button-press experiments to complex choices in real life?
-- **Rebuttal**: Defer: You correctly point out that lab button‐press paradigms may not map onto complex real‐world choices. Resolving this requires empirical studies of decision initiation in ecologically valid tasks.
-- **Reasoning**: 1. Restatement  
-The challenger disputes the defender’s claim C1 (“Human decision‐making is initiated by unconscious neural processes before conscious awareness”) on the grounds that all empirical support (readiness potentials, fMRI predictors) comes from highly simplified button‐press tasks. There is no stated justification for extending those findings to “all human decision‐making,” especially complex, real‐world choices. The defender concedes the point and defers resolution, acknowledging that lab paradigms may not generalize and that further ecologically valid studies are required.
+- **Verdict**: REBUTTAL_VALID
+- **Attack**: undermining / press_uncertainty
+- **Challenge**: You acknowledge uncertainty U1 about whether unknown neurobiological processes could introduce genuine indeterminism at decision initiation. Given this unresolved question, on what basis do you sustain claim C1 at strength 0.75 when a potential falsifier remains open?
+- **Rebuttal**: C1’s 0.75 strength already incorporates U1—the open possibility of hidden indeterministic mechanisms.  Until we observe a statistically robust class of decisions lacking readiness potentials, C1 remains the best-supported inductive conclusion.  To make this explicit, we should specify what threshold of such “RP‐free” decisions would warrant revising C1’s confidence.
+- **Reasoning**: Step 1: Restatement  
+Agent-Supernaturalist (the challenger) disputes Agent-Empiricist’s assignment of strength 0.75 to claim C1, given the admitted uncertainty U1 about unknown neurobiological indeterminism. The challenger asks why, if a potential falsifier (RP‐free decisions) remains open, we can still rate C1 so highly.
 
-2. Formalization  
-Challenger’s implicit inference:  
-P1: Readiness potentials and fMRI predictors reliably precede button‐press decisions in the lab.  
-P2: Lab button‐press tasks are representative of all human decision‐making.  ← hidden premise  
-C: Therefore, all human decisions are initiated unconsciously by neural precursors.  
+Agent-Empiricist (the defender) replies that the 0.75 confidence already reflects U1, and that until we gather sufficiently robust counterevidence (statistically significant RP‐free cases), the inductive support for C1 stands.
 
-This commits a hidden‐premise fallacy and hasty generalization: P2 is unstated, non‐self‐evident, and unsubstantiated.
+Step 2: Formalizations  
+Challenger’s inference:  
+P1: U1 – there is an unresolved possibility of genuine indeterministic mechanisms.  
+P2: If a serious potential falsifier remains unaddressed, one should not assign a high confidence (0.75) to the positive claim.  
+∴ C1’s 0.75 rating is unjustified.
 
-Defender’s response: “You correctly point out this limitation; resolving it requires new empirical studies.” This is an explicit concession rather than a defense or provision of a missing, self‐evident premise.
+Defender’s inference:  
+D1: The numerical strength 0.75 for C1 was set precisely to account for U1.  
+D2: No empirical class of RP‐free decisions has emerged to warrant lowering confidence.  
+∴ Maintaining 0.75 for C1 is justified; the probability assignment already includes the open falsifier.
 
-3. Adjudication  
-— The challenger successfully identifies a hidden premise (generalizability from button‐press to all decisions) and a hasty generalization (Challenge types 3 and 16).  
-— The defender offers no counter‐argument, no formal derivation, no additional premise, only a concession.  
-— Under the anti‐bias rule, an explicit concession is CRITIQUE_VALID: the challenger’s critique stands unrefuted.
-
-Verdict: CRITIQUE_VALID
+Step 3: Adjudication  
+The challenger’s critique rests on the presumption that the defender’s confidence rating ignored U1. The defender shows that U1 was already factored into the 0.75 assignment (Bayesian prior-to-posterior updating). This response exposes a misidentification: the critique attacked an alleged omission that does not exist in the defender’s reasoning. By clarifying that the uncertainty was baked into the strength parameter, the defender meets the criteria for a successful rebuttal: the critique mischaracterized the inference (rebuttal criterion 2) and the defender demonstrates proper evidence/updating (criterion 6). Hence the defender’s reply resolves the logical issue, and we rule in favor of the rebuttal.
 
 ### Q5: Agent-Supernaturalist → Agent-Empiricist
 - **Verdict**: REBUTTAL_VALID
-- **Attack**: undermining / challenge_assumption
-- **Challenge**: Assumption A2 holds that third-person empirical methods can capture all decision-relevant neural and behavioral data, yet you concede that subjective aspects may elude measurement. How can you rely on A2 to underpin C1 when key elements of conscious decision-making might not be empirically accessible?
-- **Rebuttal**: Refute: A2 pertains to capturing neural and behavioral precursors, which are objectively measurable. Although subjective reports have limitations, they do not undermine the detection of initiation signals that A2 underpins.
-- **Reasoning**: 1. RESTATEMENT
-The challenger contends that Assumption A2 (“third-person empirical methods can reliably capture neural and behavioral data relevant to decision-making”) is too strong because subjective aspects of conscious decision-making may elude measurement, so A2 cannot underpin Claim C1 about initiation of decisions. The defender replies that A2 only concerns measurable neural and behavioral precursors (e.g., readiness potentials and fMRI patterns), and subjective report limitations do not affect the objective detection of initiation signals required by C1.
+- **Attack**: undercutting / challenge_inference_step
+- **Challenge**: Claim C2 infers that reasons-responsive behavior constitutes compatibilist free will. Yet mechanistic tracking of reasons might occur without genuine self-originated agency. Why does this inductive leap warrant a strength of 0.7, rather than viewing it as merely deterministic behavior?
+- **Rebuttal**: Under the operational (compatibilist) definition, free will is exactly the ability to modulate action in light of deliberated reasons.  E2’s demonstration of >70% reason–action alignment justifies C2 at 0.7.  The mechanistic, deterministic nature of the tracking does not undermine it—rather, it is what operational compatibilist free will amounts to.
+- **Reasoning**: Step 1: Restatement  
+The challenger disputes Claim C2 (that observed reasons–action alignment implies compatibilist free will) by arguing that mere mechanistic tracking could explain the evidence without genuine agency. The defender replies that, by stipulation, compatibilist free will is just reasons‐responsiveness, so the mechanistic basis is irrelevant.
 
-2. FORMALIZATION
+Step 2: Formalization  
+Challenger’s implicit inference challenge:  
+ P1: E2 shows reasons–action alignment >70%.  
+ P2 (unstated “hidden premise”): If behavior can be mechanistic tracking, then reasons–responsiveness does not entail free will.  
+ C: Therefore, C2’s inductive leap to free will is unjustified and should not carry strength 0.7.
 
-Challenger’s implicit inference:
-  P1. A2 claims third-person methods capture all decision-relevant data.
-  P2. Subjective aspects of conscious decision-making are decision-relevant but not accessible by third-person methods.
-  C. Therefore, A2 is false or at least inadequate to support C1.
+Defender’s explicit chain:  
+ P1: Compatibilist free will is defined as reasons‐responsiveness (A5).  
+ P2: E2 provides >70% reasons–action alignment.  
+ P3 (definition): Mechanistic, deterministic reason‐tracking is exactly what compatibilist free will is.  
+ C: Therefore, C2 at strength 0.7 is justified.
 
-Defender’s response:
-  P1. A2 is defined only over neural and behavioral precursors, not subjective reports.
-  P2. C1 concerns decision initiation signals evidenced by neural precursors.
-  C. Thus, subjective measurement gaps do not undermine A2’s support for C1.
+Step 3: Adjudication  
+- The challenger identifies a hidden premise (that reasons‐responsiveness must involve self‐originating agency) and accuses the defender of an unwarranted inductive leap. This is a plausible informal‐fallacy critique (false equivalence/hasty generalization). However, it misreads the defender’s stipulative definition.  
+- The defender plainly supplies the missing premise—compatibilist free will by definition equals mechanistic reasons‐responsiveness—and shows that under that operational definition, the evidence (E2) directly supports C2.  
+- The challenge requests a metaphysical account of “genuine agency,” but compatibilist theory explicitly opts for an operational stance. Insisting on libertarian agency goes beyond the stipulated concept.  
+- By furnishing the definitional premise and demonstrating coherence between the definition and the observation, the defender resolves the critique within the framework.
 
-3. ADJUDICATION
-- The critique misattributes to A2 a scope (“all decision-relevant data”) that exceeds A2’s actual statement (neural and behavioral data only). This is a misidentification of the premise under attack.
-- The defender correctly points out that C1 relies exclusively on neural precursors, which A2 covers. The challenger’s premise P1 is thus a straw-man or misrepresentation.
-- According to REBUTTAL_VALID criterion #2 (“The critique misidentifies the logical form of the argument”), the defender has shown that the challenge is directed at an overstated version of A2, not the actual assumption supporting C1.
-- No circular reasoning, hidden premises, or fallacies in the defense; the defender restores coherence between A2’s actual scope and its role in C1.
-- The challenge fails to undermine the inferential connection. The defense is logically sound and sufficient.
-
-Conclusion: the defender’s rebuttal is valid.
-
-4. SCORING
-Challenger logic: 0.30 (misrepresents A2’s scope)
-Defender logic: 0.65 (validly identifies the mischaracterization and restores coherence)
-Ethics: both 0.00
-Combined: challenger 0.30, defender 0.65 (difference ≥0.15 → REBUTTAL_VALID)
+Conclusion: The defender successfully rebuts the critic’s hidden‐premise challenge by clarifying and invoking the stipulative definition that makes the inference valid.
 
 ## 4. Agent Performance Summary
 
-| Agent | Score | Critiques Won | Rebuttals Won | Failed | Unresolved |
-|-------|-------|---------------|---------------|--------|------------|
-| Agent-Empiricist | 30.50 | 13 | 5 | 9 | 1 |
-| Agent-Supernaturalist | 4.50 | 9 | 2 | 13 | 1 |
+| Agent | APS | Critiques Won | Rebuttals Won | Failed | Unresolved | Exchanges |
+|-------|-----|---------------|---------------|--------|------------|-----------|
+| Agent-Empiricist | +0.8500 | 4 | 5 | 0 | 0 | 10 |
+| Agent-Supernaturalist | -0.5500 | 0 | 1 | 4 | 0 | 10 |
 
 ## 5. Belief Evolution Summary
 
 ### Agent-Empiricist
 
-- **Belief snapshots**: 4
+- **Belief snapshots**: 2
 - **Thesis changed**: No
-- **Claims**: 2 → 5
-- **Avg strength drift**: -0.350 (across 2 shared claims)
+- **Claims**: 3 → 4
+- **Avg strength drift**: +0.013 (across 3 shared claims)
 
 ### Agent-Supernaturalist
 
-- **Belief snapshots**: 4
+- **Belief snapshots**: 2
 - **Thesis changed**: No
-- **Claims**: 2 → 3
-- **Avg strength drift**: -0.375 (across 2 shared claims)
+- **Claims**: 3 → 4
+- **Avg strength drift**: -0.110 (across 3 shared claims)

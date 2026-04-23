@@ -111,15 +111,16 @@ def generate_analysis_report(
     }
     sorted_agents = sorted(per_agent_stats.items(), key=lambda x: x[1].get('performance_score', 0), reverse=True)
 
-    sections.append("| Agent | Score | Critiques Won | Rebuttals Won | Failed | Unresolved |")
-    sections.append("|-------|-------|---------------|---------------|--------|------------|")
+    sections.append("| Agent | APS | Critiques Won | Rebuttals Won | Failed | Unresolved | Exchanges |")
+    sections.append("|-------|-----|---------------|---------------|--------|------------|-----------|")
     for agent_name, stats in sorted_agents:
         sections.append(
-            f"| {agent_name} | {stats.get('performance_score', 0):.2f} "
+            f"| {agent_name} | {stats.get('performance_score', 0):+.4f} "
             f"| {stats.get('successful_critiques', 0)} "
             f"| {stats.get('successful_rebuttals', 0)} "
             f"| {stats.get('failed_rebuttals', 0)} "
-            f"| {stats.get('unresolved_arguments', 0)} |"
+            f"| {stats.get('unresolved_arguments', 0)} "
+            f"| {stats.get('total_arguments', 0)} |"
         )
     sections.append("")
 
@@ -226,6 +227,7 @@ def generate_analysis_json(
 
         summary = {
             "performance_score": stats.get("performance_score", 0),
+            "exchange_scores": stats.get("exchange_scores", []),
             "successful_critiques": stats.get("successful_critiques", 0),
             "successful_rebuttals": stats.get("successful_rebuttals", 0),
             "failed_rebuttals": stats.get("failed_rebuttals", 0),

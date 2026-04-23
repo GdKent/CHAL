@@ -647,7 +647,7 @@ _IMPORTANCE_ENUM: Set[str] = {"high", "medium", "low"}
 _ASSUMPTION_TYPE_ENUM: Set[str] = {"foundational", "empirical", "methodological", "scoping"}
 _EVIDENCE_TYPE_ENUM: Set[str] = {"empirical", "conceptual", "expert_consensus"}
 _ATTACK_TYPE_ENUM: Set[str] = {"undermining", "rebutting", "undercutting"}
-_SUFFICIENCY_ENUM: Set[str] = {"sufficient", "partial", "unaddressed"}
+_SUFFICIENCY_ENUM: Set[str] = {"sufficient", "partial", "unaddressed", "moot"}
 _CHANGE_ENUM: Set[str] = {"weaken", "strengthen"}
 
 _UPDATE_CLAIM_WHITELIST: Set[str] = {
@@ -1128,9 +1128,9 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                         err(i, "add_counterposition statement must be a non-empty string")
                 if "my_response" in item:
                     sufficiency = item.get("response_sufficiency", "")
-                    if sufficiency != "unaddressed":
+                    if sufficiency not in ("unaddressed", "moot"):
                         if not isinstance(item["my_response"], str) or not item["my_response"].strip():
-                            err(i, "add_counterposition my_response must be a non-empty string (required when response_sufficiency is not 'unaddressed')")
+                            err(i, "add_counterposition my_response must be a non-empty string (required when response_sufficiency is not 'unaddressed' or 'moot')")
                 # Track new ID for forward references within the batch
                 if i not in errors:
                     counterposition_ids.add(item["id"])
@@ -1153,6 +1153,14 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
                 # Enum validations
                 if "response_sufficiency" in changes and changes["response_sufficiency"] not in _SUFFICIENCY_ENUM:
                     err(i, f"update_counterposition response_sufficiency must be one of: {', '.join(sorted(_SUFFICIENCY_ENUM))}")
+                # Guard: "moot" is terminal — cannot be changed to another value
+                if "response_sufficiency" in changes and target_id:
+                    for cp in belief.get("counterpositions", []):
+                        if cp["id"] == target_id and cp.get("response_sufficiency") == "moot":
+                            if changes["response_sufficiency"] != "moot":
+                                err(i, f"update_counterposition cannot change response_sufficiency from 'moot' — "
+                                       f"'moot' is terminal (counterposition {target_id} targets a retracted claim)")
+                            break
                 if "attack_type" in changes and changes["attack_type"] not in _ATTACK_TYPE_ENUM:
                     err(i, f"update_counterposition attack_type must be one of: {', '.join(sorted(_ATTACK_TYPE_ENUM))}")
                 # Non-empty strings

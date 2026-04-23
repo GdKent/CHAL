@@ -9,6 +9,23 @@ import re
 from typing import List
 
 
+def sanitize_filename(name: str) -> str:
+    """Convert a string to a filesystem-safe filename (no extension).
+
+    Replaces any character that is not alphanumeric, hyphen, or underscore
+    with an underscore, then strips leading/trailing underscores.
+
+    Args:
+        name: Raw string (e.g. an agent name).
+
+    Returns:
+        A sanitized string safe for use as a filename stem.
+    """
+    sanitized = re.sub(r'[^\w\-]', '_', name)
+    sanitized = sanitized.strip('_')
+    return sanitized or "unnamed"
+
+
 # ---------------------------------------------------------------------------
 # Stage 2 attack taxonomy constants
 # ---------------------------------------------------------------------------
@@ -23,12 +40,18 @@ VALID_ATTACK_STRATEGIES = {
         "press_uncertainty",
         "over_extension",           # D# definition is too broad — weakens the premise foundation
         "under_extension",          # D# definition is too narrow — premise doesn't cover key cases
+        # Ethical strategies
+        "challenge_moral_implications",  # Position leads to ethically problematic consequences
+        "expose_stakeholder_harm",       # Specific parties disproportionately or unjustly harmed
     },
     "rebutting": {
         "present_counter_evidence",
         "present_counter_example",
         "exploit_counterposition",
         "offer_alternative_explanation",
+        # Ethical strategies
+        "present_ethical_counter",       # Substantive ethical argument opposing the position's moral standing
+        "invoke_competing_obligation",   # Stronger moral obligation overrides the one the position appeals to
     },
     "undercutting": {
         "challenge_inference_step",
@@ -39,6 +62,10 @@ VALID_ATTACK_STRATEGIES = {
         "circularity",              # D# definition is circular — breaks the inference chain
         "stipulative_bias",         # D# definition begs the question — smuggles conclusion into premises
         "conceptual_conflation",    # D# definition conflates distinct concepts — equivocation
+        # Ethical strategies
+        "challenge_normative_inference",  # Factual premises do not justify normative/moral conclusions (is-ought gap)
+        "expose_value_conflict",          # Unacknowledged contradiction between the position's own values
+        "challenge_moral_relevance",      # Ethical principle invoked does not apply to the specific case
     },
 }
 
@@ -57,6 +84,13 @@ ALL_STRATEGIES = sorted({
 
 # Valid adjudicator verdict labels (tracked in agent_stats.adjudication_outcomes).
 VALID_ADJUDICATION_VERDICTS = ("critique_valid", "rebuttal_valid", "unresolved")
+
+# Per-exchange role-weighted score table for APS calculation.
+# Keys: role → verdict → float score.
+EXCHANGE_SCORE_WEIGHTS = {
+    'challenger': {'critique_valid': 1.0, 'rebuttal_valid': -0.5, 'unresolved': 0.0},
+    'target':     {'critique_valid': -1.0, 'rebuttal_valid': 1.0, 'unresolved': 0.25},
+}
 
 # CBS component array names and which ones carry a `status` field whose value
 # `"retracted"` excludes a node from the non-retracted count. X# (counterpositions)
@@ -231,7 +265,8 @@ def initialize_agent_stats(agent_names: list[str]) -> dict:
             'failed_rebuttals': 0,          # Rebuttals that lost (critique_valid)
             'unresolved_arguments': 0,      # Arguments that were unresolved
             'total_arguments': 0,           # Total arguments (as challenger or target)
-            'performance_score': 0.0,       # Weighted performance score
+            'performance_score': 0.0,       # Normalized APS in [-1, +1]
+            'exchange_scores': [],          # Per-exchange role-weighted scores
             # Expanded tracking (populated by controller + finalize helpers)
             'initial_snapshot': None,       # Snapshot after Stage 1 (pre-round 1)
             'per_round': {},                # {"round_N": snapshot_dict}
@@ -241,6 +276,11 @@ def initialize_agent_stats(agent_names: list[str]) -> dict:
                 'as_challenger': _empty_verdict_histogram(),
                 'as_target': _empty_verdict_histogram(),
             },
+            'adjudication_score_aggregates': {
+                'as_challenger': {'logic_sum': 0.0, 'ethics_sum': 0.0, 'combined_sum': 0.0, 'count': 0},
+                'as_target': {'logic_sum': 0.0, 'ethics_sum': 0.0, 'combined_sum': 0.0, 'count': 0},
+            },
+            'verdict_overrides': 0,
         } for name in agent_names
     }
 
@@ -281,52 +321,79 @@ def update_agent_stats(agent_stats: dict, record: dict):
         agent_stats[challenger]['unresolved_arguments'] += 1
         agent_stats[target]['unresolved_arguments'] += 1
 
+    # Per-exchange role-weighted scores (for APS calculation).
+    agent_stats[challenger]['exchange_scores'].append(
+        EXCHANGE_SCORE_WEIGHTS['challenger'].get(resolution, 0.0)
+    )
+    agent_stats[target]['exchange_scores'].append(
+        EXCHANGE_SCORE_WEIGHTS['target'].get(resolution, 0.0)
+    )
+
     # Role-split verdict histogram (only for recognised verdict labels).
     if resolution in VALID_ADJUDICATION_VERDICTS:
         agent_stats[challenger]['adjudication_outcomes']['as_challenger'][resolution] += 1
         agent_stats[target]['adjudication_outcomes']['as_target'][resolution] += 1
 
+    # Score accumulation (for computing means at finalization).
+    scores = record.get('resolution', {}).get('scores', {})
+    if scores:
+        c_agg = agent_stats[challenger]['adjudication_score_aggregates']['as_challenger']
+        c_agg['logic_sum'] += scores.get('challenger_logic', 0.0)
+        c_agg['ethics_sum'] += scores.get('challenger_ethics', 0.0)
+        c_agg['combined_sum'] += scores.get('challenger_combined', 0.0)
+        c_agg['count'] += 1
+
+        t_agg = agent_stats[target]['adjudication_score_aggregates']['as_target']
+        t_agg['logic_sum'] += scores.get('defender_logic', 0.0)
+        t_agg['ethics_sum'] += scores.get('defender_ethics', 0.0)
+        t_agg['combined_sum'] += scores.get('defender_combined', 0.0)
+        t_agg['count'] += 1
+
+    # Override tracking.
+    if record.get('resolution', {}).get('override_occurred'):
+        agent_stats[challenger]['verdict_overrides'] += 1
+        agent_stats[target]['verdict_overrides'] += 1
+
     return agent_stats
 
 
-def calculate_performance_scores(agent_stats: dict, weights: dict = None) -> dict:
+def calculate_performance_scores(agent_stats: dict) -> dict:
     """
-    Calculates performance scores for all agents based on debate outcomes.
+    Calculates the Agent Performance Score (APS) for all agents.
 
-    Performance Score Formula:
-        APS = (successful_critiques × W_crit)
-            + (successful_rebuttals × W_reb)
-            - (failed_rebuttals × W_fail)
-            - (unresolved_arguments × W_unres)
+    APS uses per-exchange role-weighted scoring normalized by total exchanges:
+
+        APS = sum(exchange_scores) / len(exchange_scores)
+
+    Output range: [-1.0, +1.0]
+      +1.0  = won every exchange in both roles
+       0.0  = break-even
+      -1.0  = lost every exchange in both roles
+
+    Per-exchange weights (by role x verdict):
+      Challenger + critique_valid  -> +1.0
+      Challenger + rebuttal_valid  -> -0.5
+      Challenger + unresolved      ->  0.0
+      Target     + rebuttal_valid  -> +1.0
+      Target     + critique_valid  -> -1.0
+      Target     + unresolved      -> +0.25
 
     Args:
-        agent_stats (dict): The agent statistics dictionary.
-        weights (dict, optional): Custom weights for scoring. Defaults to standard weights.
+        agent_stats: The agent statistics dictionary.
 
     Returns:
-        dict: Updated agent_stats with performance_score calculated.
+        Updated agent_stats with 'performance_score' set for each agent.
     """
-    # Default weights (can be overridden via config)
-    default_weights = {
-        'successful_critique': 3.0,      # Highest reward (breaking opponent's claim)
-        'successful_rebuttal': 2.0,      # Moderate reward (defending own claim)
-        'failed_rebuttal': -2.0,         # Moderate penalty (claim didn't survive)
-        'unresolved_argument': -0.5      # Minor penalty (unclear outcome)
-    }
-
-    w = weights if weights else default_weights
-
     for agent_name, stats in agent_stats.items():
         # Skip the "_debate_aggregate" sentinel key (only added post-finalize).
         if agent_name.startswith("_") or not isinstance(stats, dict):
             continue
-        score = (
-            stats['successful_critiques'] * w['successful_critique'] +
-            stats['successful_rebuttals'] * w['successful_rebuttal'] +
-            stats['failed_rebuttals'] * w['failed_rebuttal'] +
-            stats['unresolved_arguments'] * w['unresolved_argument']
-        )
-        stats['performance_score'] = round(score, 2)
+
+        scores = stats.get('exchange_scores', [])
+        if scores:
+            stats['performance_score'] = round(sum(scores) / len(scores), 4)
+        else:
+            stats['performance_score'] = 0.0
 
     return agent_stats
 
@@ -365,7 +432,7 @@ def display_agent_stats(agent_stats: dict, show_performance_ranking: bool = True
                 rank_indicator = " [3rd]"
 
         print(f"\nAgent: {agent}{rank_indicator}")
-        print(f"  Performance Score: {stats['performance_score']}")
+        print(f"  Performance Score (APS): {stats['performance_score']:+.4f}")
         print(f"  ------------------------------")
         print(f"  Successful Critiques: {stats['successful_critiques']}")
         print(f"  Failed Critiques: {stats['failed_critiques']}")
@@ -379,7 +446,7 @@ def display_agent_stats(agent_stats: dict, show_performance_ranking: bool = True
         leader = sorted_agents[0]
         second = sorted_agents[1]
         gap = leader[1]['performance_score'] - second[1]['performance_score']
-        print(f"\nPerformance Gap: {leader[0]} leads by {gap:+.2f} points")
+        print(f"\nPerformance Gap: {leader[0]} leads by {gap:+.4f} APS")
 
 
 def get_performance_summary(agent_stats: dict) -> str:
@@ -399,20 +466,21 @@ def get_performance_summary(agent_stats: dict) -> str:
     ]
     sorted_agents = sorted(per_agent_items, key=lambda x: x[1]['performance_score'], reverse=True)
 
-    summary_lines = ["AGENT PERFORMANCE SCORES:"]
+    summary_lines = ["AGENT PERFORMANCE SCORES (APS):"]
     for agent_name, stats in sorted_agents:
         summary_lines.append(
-            f"  {agent_name}: {stats['performance_score']:.2f} "
+            f"  {agent_name}: {stats['performance_score']:+.4f} "
             f"({stats['successful_critiques']} critiques, "
             f"{stats['successful_rebuttals']} rebuttals, "
             f"{stats['failed_rebuttals']} failed, "
-            f"{stats['unresolved_arguments']} unresolved)"
+            f"{stats['unresolved_arguments']} unresolved "
+            f"| {stats['total_arguments']} exchanges)"
         )
 
     if len(sorted_agents) > 1:
         leader = sorted_agents[0]
         gap = leader[1]['performance_score'] - sorted_agents[1][1]['performance_score']
-        summary_lines.append(f"\nCURRENT LEADER: {leader[0]} (+{gap:.2f})")
+        summary_lines.append(f"\nCURRENT LEADER: {leader[0]} ({gap:+.4f} APS)")
 
     return "\n".join(summary_lines)
 
@@ -490,6 +558,39 @@ def compute_attack_histograms(
     return aggregate
 
 
+def compute_per_round_attack_histograms(all_pairs: list, agent_names: list) -> dict:
+    """Group challenge-rebuttal pairs by round_num and compute per-round attack histograms.
+
+    Args:
+        all_pairs: List of pairs, each with a 'round_num' key.
+        agent_names: List of agent names.
+
+    Returns:
+        Dict keyed by round label (e.g. "round_1") with per-agent attack histograms.
+    """
+    from collections import defaultdict
+    rounds = defaultdict(list)
+    for pair in all_pairs:
+        rn = pair.get("round_num", 1)
+        rounds[f"round_{rn}"].append(pair)
+
+    result = {}
+    for round_key, round_pairs in sorted(rounds.items()):
+        # Create temporary agent stats to compute histograms for this round
+        round_stats = initialize_agent_stats(agent_names)
+        compute_attack_histograms(round_stats, round_pairs, agent_names)
+        per_agent = {}
+        for name in agent_names:
+            cea = round_stats[name].get("cross_examination_attacks", {})
+            per_agent[name] = {
+                "total": cea.get("total", 0),
+                "by_type": dict(cea.get("by_type", {})),
+                "by_strategy": dict(cea.get("by_strategy", {})),
+            }
+        result[round_key] = per_agent
+    return result
+
+
 def snapshot_belief(belief_obj: dict) -> dict:
     """Extract a ``{thesis_strength, component_counts}`` snapshot from a CBS belief.
 
@@ -540,6 +641,7 @@ def finalize_agent_stats(
     challenge_rebuttal_pairs: list,
     agents,
     max_rounds: int,
+    operational_metrics: dict | None = None,
 ) -> dict:
     """Assemble ``_debate_aggregate`` and derive each agent's ``final_snapshot``.
 
@@ -569,6 +671,16 @@ def finalize_agent_stats(
 
     # 1. Attack histograms (fills each agent's cross_examination_attacks + aggregate).
     attack_agg = compute_attack_histograms(agent_stats, challenge_rebuttal_pairs, agent_names)
+
+    # 1b. Per-round attack histograms
+    per_round_attacks = compute_per_round_attack_histograms(challenge_rebuttal_pairs, agent_names)
+    # Store per-round attack data in each agent's per_round dict
+    for round_key, agent_attacks in per_round_attacks.items():
+        for name in agent_names:
+            if name in agent_stats and "per_round" in agent_stats[name]:
+                if round_key not in agent_stats[name]["per_round"]:
+                    agent_stats[name]["per_round"][round_key] = {}
+                agent_stats[name]["per_round"][round_key]["attack_histograms"] = agent_attacks.get(name, {})
 
     # 2. Verdict aggregate: sum over each agent's as_challenger counts (each pair
     #    has exactly one challenger, so this equals the total verdict count).
@@ -601,11 +713,45 @@ def finalize_agent_stats(
             snapshot = snapshot_belief(belief if isinstance(belief, dict) else {})
         stats["final_snapshot"] = snapshot
 
+    # 4. Compute score means from aggregates.
+    # Count unique override events from pairs (not per-agent sums, which
+    # double-count since each override increments both challenger and target).
+    total_overrides = sum(
+        1 for pair in challenge_rebuttal_pairs
+        if pair.get("resolution", {}).get("override_occurred")
+    )
+    for name in agent_names:
+        stats = agent_stats.get(name)
+        if not stats:
+            continue
+        score_means = {}
+        for role in ("as_challenger", "as_target"):
+            agg = stats.get("adjudication_score_aggregates", {}).get(role, {})
+            count = agg.get("count", 0)
+            if count > 0:
+                score_means[role] = {
+                    "logic_mean": round(agg["logic_sum"] / count, 4),
+                    "ethics_mean": round(agg["ethics_sum"] / count, 4),
+                    "combined_mean": round(agg["combined_sum"] / count, 4),
+                    "count": count,
+                }
+            else:
+                score_means[role] = {
+                    "logic_mean": None,
+                    "ethics_mean": None,
+                    "combined_mean": None,
+                    "count": 0,
+                }
+        stats["adjudication_score_means"] = score_means
+
     agent_stats["_debate_aggregate"] = {
         "attacks_total": attack_agg["attacks_total"],
         "attacks_by_type": attack_agg["attacks_by_type"],
         "attacks_by_strategy": attack_agg["attacks_by_strategy"],
         "adjudication_verdicts": verdict_aggregate,
+        "per_round_attacks": per_round_attacks,
+        "total_verdict_overrides": total_overrides,
+        "operational_metrics": operational_metrics or {},
     }
 
     return agent_stats

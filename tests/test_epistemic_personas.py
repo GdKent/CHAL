@@ -30,6 +30,7 @@ EXPECTED_KEYS = [
     "PANPSYCHIST",
     "SIMULATIONIST",
     "SYNTHESIST",
+    "NONE",
 ]
 
 
@@ -38,15 +39,23 @@ def test_all_personas_in_dict():
     """All 12 persona keys exist in the PERSONAS dict."""
     for key in EXPECTED_KEYS:
         assert key in PERSONAS, f"Missing persona key: {key}"
-    assert len(PERSONAS) == 12
+    assert len(PERSONAS) == 13
+
+
+@pytest.mark.unit
+def test_none_persona_is_empty_string():
+    """NONE persona returns empty string (no worldview)."""
+    result = get_persona("none")
+    assert result == ""
 
 
 @pytest.mark.unit
 def test_persona_values_are_strings():
-    """Every value in PERSONAS is a non-empty string."""
+    """Every persona value is a string; all except NONE are non-empty."""
     for key, value in PERSONAS.items():
         assert isinstance(value, str), f"{key} value is not a string"
-        assert len(value) > 0, f"{key} value is empty"
+        if key != "NONE":
+            assert len(value) > 0, f"{key} value is empty"
 
 
 @pytest.mark.unit

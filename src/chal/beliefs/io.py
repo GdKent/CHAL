@@ -5,12 +5,14 @@ Utilities to:
 - Parse model output into (json_belief, markdown_view)
 - Render a belief into Markdown (human view)
 - Project a belief to a compact text string for embeddings
+- Project a belief to per-component text lists for rich embeddings
 
 Acronyms:
 - CBS = CHAL Belief Schema
 """
 
 from __future__ import annotations
+from pathlib import Path
 from typing import Any, Dict, Tuple, Optional, List
 import json
 import re
@@ -18,6 +20,44 @@ from chal.beliefs.schema import validate_belief, SCHEMA_VERSION
 
 FALLBACK_MIN_STR = 0.0
 FALLBACK_MAX_STR = 1.0
+
+
+def load_belief_from_file(path: str | Path) -> Dict[str, Any]:
+    """Load and validate a CBS belief object from a JSON file.
+
+    Args:
+        path: Path to a ``.json`` file containing a complete CBS belief object.
+
+    Returns:
+        The validated belief dict, ready for use.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the JSON is malformed or CBS schema validation fails.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Belief file not found: {path}")
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            belief_obj = json.load(f)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in belief file {path}: {exc}") from exc
+
+    if not isinstance(belief_obj, dict):
+        raise ValueError(
+            f"Belief file must contain a JSON object, got {type(belief_obj).__name__}"
+        )
+
+    errors = validate_belief(belief_obj)
+    if errors:
+        error_list = "\n".join(f"  - {e}" for e in errors)
+        raise ValueError(
+            f"Belief file {path} failed CBS schema validation:\n{error_list}"
+        )
+
+    return belief_obj
 
 
 def parse_model_output_to_belief(output: str) -> Tuple[Optional[Dict[str, Any]], Optional[str], List[str]]:
@@ -236,3 +276,114 @@ def project_for_embedding(belief: Dict[str, Any]) -> str:
         )
 
     return "\n".join(lines)
+
+
+def project_for_component_embedding(belief: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract per-component text lists and scalar features from a CBS belief
+    for rich, component-wise embedding.
+
+    Returns a dict with:
+      - "definitions": list of {"text": str, "strength": float}
+      - "assumptions": list of {"text": str, "strength": float}
+      - "evidence": list of {"text": str, "strength": float}
+      - "claims": list of {"text": str, "strength": float}
+      - "thesis_text": str (stance + bullets concatenated)
+      - "uncertainties": list of str (questions for open uncertainties only)
+      - "counterpositions": {"partial": [str], "sufficient": [str], "unaddressed": [str]}
+      - "scalars": dict with 11 scalar features
+    """
+    # --- Strength-bearing components: filter out retracted nodes ---
+    active_defs = [
+        d for d in (belief.get("definitions") or [])
+        if d.get("status") != "retracted"
+    ]
+    active_assumptions = [
+        a for a in (belief.get("assumptions") or [])
+        if a.get("status") != "retracted"
+    ]
+    active_evidence = [
+        e for e in (belief.get("evidence") or [])
+        if e.get("status") != "retracted"
+    ]
+    active_claims = [
+        c for c in (belief.get("claims") or [])
+        if c.get("status") != "retracted"
+    ]
+
+    # --- Text extraction per component ---
+    def_items = [
+        {"text": f"{d.get('term', '')}: {d.get('definition', '')}", "strength": d.get("strength", 0.0)}
+        for d in active_defs
+    ]
+    assumption_items = [
+        {"text": a.get("statement", ""), "strength": a.get("strength", 0.0)}
+        for a in active_assumptions
+    ]
+    evidence_items = [
+        {"text": e.get("summary", ""), "strength": e.get("strength", 0.0)}
+        for e in active_evidence
+    ]
+    claim_items = [
+        {"text": c.get("statement", ""), "strength": c.get("strength", 0.0)}
+        for c in active_claims
+    ]
+
+    # --- Thesis: concatenate stance + bullet points ---
+    th = belief.get("thesis") or {}
+    stance = th.get("stance", "")
+    bullets = th.get("summary_bullets") or []
+    thesis_text = f"{stance}. {'. '.join(bullets)}" if bullets else stance
+
+    # --- Uncertainties: only open (not resolved) ---
+    open_uncertainties = [
+        u.get("question", "")
+        for u in (belief.get("uncertainties") or [])
+        if u.get("status") != "resolved"
+    ]
+
+    # --- Counterpositions: group by response_sufficiency ---
+    counter_by_sufficiency: Dict[str, List[str]] = {
+        "partial": [],
+        "sufficient": [],
+        "unaddressed": [],
+        "moot": [],
+    }
+    for x in (belief.get("counterpositions") or []):
+        suff = x.get("response_sufficiency", "unaddressed")
+        if suff in counter_by_sufficiency:
+            counter_by_sufficiency[suff].append(x.get("statement", ""))
+
+    # --- Scalar features ---
+    def _avg_strength(items: list) -> float:
+        if not items:
+            return 0.0
+        return sum(i.get("strength", 0.0) for i in items) / len(items)
+
+    all_counterpositions = belief.get("counterpositions") or []
+    all_uncertainties = belief.get("uncertainties") or []
+
+    scalars = {
+        "n_definitions": len(active_defs),
+        "n_assumptions": len(active_assumptions),
+        "n_evidence": len(active_evidence),
+        "n_claims": len(active_claims),
+        "avg_strength_definitions": _avg_strength(active_defs),
+        "avg_strength_assumptions": _avg_strength(active_assumptions),
+        "avg_strength_evidence": _avg_strength(active_evidence),
+        "avg_strength_claims": _avg_strength(active_claims),
+        "n_counterpositions": len(all_counterpositions),
+        "n_uncertainties": len(all_uncertainties),
+        "thesis_strength": th.get("strength", 0.0),
+    }
+
+    return {
+        "definitions": def_items,
+        "assumptions": assumption_items,
+        "evidence": evidence_items,
+        "claims": claim_items,
+        "thesis_text": thesis_text,
+        "uncertainties": open_uncertainties,
+        "counterpositions": counter_by_sufficiency,
+        "scalars": scalars,
+    }

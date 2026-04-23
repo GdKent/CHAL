@@ -215,14 +215,6 @@ class DebateDisplay:
 
         # Build rich summary content
         parts: List[str] = ["[bold green]Debate complete![/bold green]"]
-
-        # Duration
-        duration_s = data.get("total_duration_s")
-        if duration_s is not None:
-            mins, secs = divmod(int(duration_s), 60)
-            parts.append(f"Duration: {mins}m {secs}s")
-
-        # Topic
         topic = data.get("topic")
         if topic:
             parts.append(f"Topic: {topic}")
@@ -250,6 +242,9 @@ class DebateDisplay:
                 self.console.print(
                     f"  Convergence: {score:.2f} ({label})"
                 )
+
+        # Debate summary table
+        self._show_debate_summary(data)
 
     def _on_output_files_saved(self, data: Dict[str, Any]) -> None:
         """Show a summary of saved output files."""
@@ -297,23 +292,62 @@ class DebateDisplay:
             padding=(0, 1),
         )
         table.add_column("Agent", style="#A82545")
-        table.add_column("Score", justify="right")
-        table.add_column("Wins", justify="right")
-        table.add_column("Losses", justify="right")
+        table.add_column("APS", justify="right")
 
         for name, stats in agent_stats.items():
             # Skip the "_debate_aggregate" sentinel inserted by finalize_agent_stats.
             if name.startswith("_") or not isinstance(stats, dict):
                 continue
             score = stats.get("performance_score", 0)
-            wins = stats.get("sustained", 0)
-            losses = stats.get("overruled", 0)
             table.add_row(
                 name,
-                f"{score:.1f}" if isinstance(score, (int, float)) else str(score),
-                str(wins),
-                str(losses),
+                f"{score:+.4f}" if isinstance(score, (int, float)) else str(score),
             )
+
+        self.console.print(table)
+
+    def _show_debate_summary(self, data: Dict[str, Any]) -> None:
+        """Render a comprehensive debate summary table."""
+        agent_stats = data.get("agent_stats", {})
+        agg = agent_stats.get("_debate_aggregate", {})
+        ops = data.get("operational_metrics", {})
+
+        table = Table(
+            title="Debate Summary",
+            show_header=False,
+            expand=False,
+            padding=(0, 1),
+        )
+        table.add_column("Metric", style="bold")
+        table.add_column("Value", justify="right")
+
+        # Timing & scale
+        duration_s = ops.get("duration_s", 0)
+        if duration_s:
+            mins, secs = divmod(int(duration_s), 60)
+            table.add_row("Duration", f"{mins}m {secs}s")
+
+        verdicts = agg.get("adjudication_verdicts", {})
+        total_exchanges = sum(verdicts.values())
+        table.add_row("Total Exchanges", str(total_exchanges))
+
+        # Verdicts
+        table.add_section()
+        for verdict in ("critique_valid", "rebuttal_valid", "unresolved"):
+            count = verdicts.get(verdict, 0)
+            label = verdict.replace("_", " ").title()
+            table.add_row(f"  {label}", str(count))
+        overrides = agg.get("total_verdict_overrides", 0)
+        table.add_row("  Verdict Overrides", str(overrides))
+
+        # Operational metrics
+        table.add_section()
+        table.add_row("  Total Retries", str(ops.get("total_retries", 0)))
+        table.add_row("  Rate Limit Hits", str(ops.get("total_rate_limit_hits", 0)))
+        input_tok = ops.get("total_input_tokens", 0)
+        output_tok = ops.get("total_output_tokens", 0)
+        table.add_row("  Input Tokens", f"{input_tok:,}")
+        table.add_row("  Output Tokens", f"{output_tok:,}")
 
         self.console.print(table)
 

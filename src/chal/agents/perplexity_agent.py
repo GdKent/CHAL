@@ -155,6 +155,7 @@ class PerplexityAgent(Agent):
                 temperature=temperature,
                 key_pool=self.key_pool,
                 current_key=self.api_key,
+                on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
 
             usage = {}
@@ -181,7 +182,8 @@ class PerplexityAgent(Agent):
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
 def retry_perplexity_chat_completion(client, model, messages, temperature,
                                       max_retries=5, base_delay=60.0,
-                                      key_pool=None, current_key=""):
+                                      key_pool=None, current_key="",
+                                      on_rate_limit=None):
     """
     Wrapper to retry Perplexity chat completions with exponential backoff.
 
@@ -213,7 +215,10 @@ def retry_perplexity_chat_completion(client, model, messages, temperature,
         except (perplexity_module.RateLimitError,
                 perplexity_module.APIStatusError,
                 perplexity_module.APIConnectionError) as e:
-            # On rate limit with key pool: rotate key and retry immediately
+            # On rate limit: fire callback, then rotate key and retry
+            if isinstance(e, perplexity_module.RateLimitError):
+                if on_rate_limit:
+                    on_rate_limit()
             if isinstance(e, perplexity_module.RateLimitError) and key_pool is not None:
                 key_pool.mark_rate_limited("perplexity", current_key, cooldown_seconds=60)
                 current_key = key_pool.get_key("perplexity")

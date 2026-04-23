@@ -3151,6 +3151,26 @@ def test_validate_add_counterposition_unaddressed_allows_empty_response():
 
 
 @pytest.mark.unit
+def test_validate_add_counterposition_moot_allows_empty_response():
+    """my_response can be empty when response_sufficiency is 'moot'."""
+    belief = create_sample_belief(num_claims=1)
+    patches = [{
+        "op": "add_counterposition",
+        "item": {
+            "id": "X1",
+            "targets": ["C1"],
+            "attack_type": "rebutting",
+            "statement": "Test counterposition",
+            "my_response": "",
+            "response_sufficiency": "moot"
+        }
+    }]
+
+    errors = _flat(validate_patches(patches, belief))
+    assert len(errors) == 0, f"Moot counterposition with empty my_response should be valid, got: {errors}"
+
+
+@pytest.mark.unit
 def test_validate_add_counterposition_partial_requires_response():
     """my_response must be non-empty when response_sufficiency is 'partial'."""
     belief = create_sample_belief(num_claims=1)
@@ -3956,3 +3976,58 @@ def test_cascade_no_infinite_loop():
     # All definition patches (11-20) should cascade-fail
     for i in range(11, 21):
         assert i in errors, f"Patch {i} (definition) should cascade-fail"
+
+
+# ==============================================
+# Moot Terminal State Tests
+# ==============================================
+
+def _make_belief_with_moot_counterposition():
+    """Create a minimal valid CBS belief with one counterposition at moot."""
+    belief = create_sample_belief(num_claims=1)
+    belief["counterpositions"] = [{
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Test counterposition targeting a retracted claim",
+        "my_response": "",
+        "response_sufficiency": "moot",
+    }]
+    return belief
+
+
+@pytest.mark.unit
+def test_validate_update_counterposition_moot_is_terminal():
+    """Changing response_sufficiency FROM 'moot' should be rejected."""
+    belief = _make_belief_with_moot_counterposition()
+    patches = [
+        {"op": "update_counterposition", "target_id": "X1",
+         "changes": {"response_sufficiency": "sufficient"}}
+    ]
+    errors = validate_patches(patches, belief)
+    assert 0 in errors
+    assert any("moot" in e and "terminal" in e for e in errors[0])
+
+
+@pytest.mark.unit
+def test_validate_update_counterposition_moot_to_moot_ok():
+    """Setting moot -> moot (no-op) should be allowed."""
+    belief = _make_belief_with_moot_counterposition()
+    patches = [
+        {"op": "update_counterposition", "target_id": "X1",
+         "changes": {"response_sufficiency": "moot"}}
+    ]
+    errors = validate_patches(patches, belief)
+    assert not errors
+
+
+@pytest.mark.unit
+def test_validate_update_counterposition_moot_other_fields_ok():
+    """Updating non-sufficiency fields on a moot counterposition should work."""
+    belief = _make_belief_with_moot_counterposition()
+    patches = [
+        {"op": "update_counterposition", "target_id": "X1",
+         "changes": {"my_response": "Updated response text"}}
+    ]
+    errors = validate_patches(patches, belief)
+    assert not errors

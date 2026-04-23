@@ -35,13 +35,25 @@ def _make_valid_adjudicator_response(
     outcome="rebuttal_valid",
     reasoning="Test reasoning",
     restatement="Test restatement",
+    formalization_challenger="P1: X\nP2: Y\nC: Z",
+    formalization_target="P1: A\nP2: B\nC: C",
+    scores=None,
 ) -> str:
+    if scores is None:
+        scores = {
+            "challenger_logic": 0.5, "challenger_ethics": 0.5,
+            "defender_logic": 0.5, "defender_ethics": 0.5,
+            "challenger_combined": 0.5, "defender_combined": 0.5,
+        }
     return (
         "<reasoning>Analysis here</reasoning>\n\n"
         + _wrap_json({
             "outcome": outcome,
             "reasoning": reasoning,
             "restatement": restatement,
+            "formalization_challenger": formalization_challenger,
+            "formalization_target": formalization_target,
+            "scores": scores,
         })
     )
 
@@ -177,6 +189,13 @@ class TestAdjudicatorValidator:
             "outcome": "rebuttal_valid",
             "reasoning": "ok",
             "restatement": "ok",
+            "formalization_challenger": "P1: X\nC: Y",
+            "formalization_target": "P1: A\nC: B",
+            "scores": {
+                "challenger_logic": 0.5, "challenger_ethics": 1.0,
+                "defender_logic": 0.5, "defender_ethics": 1.0,
+                "challenger_combined": 0.75, "defender_combined": 0.75,
+            },
         })
         raw = f"<reasoning>{inner_json}</reasoning>"
         # The brace-depth scanner will find it even inside reasoning tags,
@@ -220,15 +239,90 @@ class TestAdjudicatorValidator:
         assert result.is_valid is False
         assert any("restatement" in e.lower() for e in result.errors)
 
-    def test_missing_scores_is_not_failure(self):
-        """Scores are optional — missing scores should still be valid."""
+    def test_missing_scores_is_failure(self):
+        """Scores are required — missing scores should fail validation."""
         raw = _wrap_json({
             "outcome": "critique_valid",
             "reasoning": "The critique was valid.",
             "restatement": "Whether X holds.",
+            "formalization_challenger": "P1: X\nC: Y",
+            "formalization_target": "P1: A\nC: B",
         })
         result = validate_adjudicator_output(raw)
-        assert result.is_valid is True
+        assert result.is_valid is False
+        assert any("scores" in e.lower() for e in result.errors)
+
+    def test_missing_formalization_challenger(self):
+        """Missing formalization_challenger should fail validation."""
+        raw = _wrap_json({
+            "outcome": "critique_valid",
+            "reasoning": "ok",
+            "restatement": "ok",
+            "formalization_target": "P1: A\nC: B",
+            "scores": {
+                "challenger_logic": 0.5, "challenger_ethics": 1.0,
+                "defender_logic": 0.5, "defender_ethics": 1.0,
+                "challenger_combined": 0.75, "defender_combined": 0.75,
+            },
+        })
+        result = validate_adjudicator_output(raw)
+        assert result.is_valid is False
+        assert any("formalization_challenger" in e for e in result.errors)
+
+    def test_missing_formalization_target(self):
+        """Missing formalization_target should fail validation."""
+        raw = _wrap_json({
+            "outcome": "critique_valid",
+            "reasoning": "ok",
+            "restatement": "ok",
+            "formalization_challenger": "P1: X\nC: Y",
+            "scores": {
+                "challenger_logic": 0.5, "challenger_ethics": 1.0,
+                "defender_logic": 0.5, "defender_ethics": 1.0,
+                "challenger_combined": 0.75, "defender_combined": 0.75,
+            },
+        })
+        result = validate_adjudicator_output(raw)
+        assert result.is_valid is False
+        assert any("formalization_target" in e for e in result.errors)
+
+    def test_missing_individual_score_key(self):
+        """Missing a single score key should fail validation."""
+        raw = _wrap_json({
+            "outcome": "critique_valid",
+            "reasoning": "ok",
+            "restatement": "ok",
+            "formalization_challenger": "P1: X\nC: Y",
+            "formalization_target": "P1: A\nC: B",
+            "scores": {
+                "challenger_logic": 0.5, "challenger_ethics": 1.0,
+                "defender_logic": 0.5, "defender_ethics": 1.0,
+                "challenger_combined": 0.75,
+                # missing defender_combined
+            },
+        })
+        result = validate_adjudicator_output(raw)
+        assert result.is_valid is False
+        assert any("defender_combined" in e for e in result.errors)
+
+    def test_score_out_of_range(self):
+        """Score values outside [0.0, 1.0] should fail validation."""
+        raw = _wrap_json({
+            "outcome": "critique_valid",
+            "reasoning": "ok",
+            "restatement": "ok",
+            "formalization_challenger": "P1: X\nC: Y",
+            "formalization_target": "P1: A\nC: B",
+            "scores": {
+                "challenger_logic": 1.5,  # out of range
+                "challenger_ethics": 1.0,
+                "defender_logic": 0.5, "defender_ethics": 1.0,
+                "challenger_combined": 0.75, "defender_combined": 0.75,
+            },
+        })
+        result = validate_adjudicator_output(raw)
+        assert result.is_valid is False
+        assert any("out of range" in e.lower() for e in result.errors)
 
 
 # ===========================================================================

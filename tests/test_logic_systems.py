@@ -2,10 +2,11 @@
 Unit tests for the logic_systems module.
 
 Tests cover:
-- All 7 logic system keys exist in LOGIC_SYSTEMS
+- All 8 logic system keys exist in LOGIC_SYSTEMS
 - Every system dict has required keys (label, description, criteria)
 - Every criteria dict has the three required sub-keys
-- Each criteria list is non-empty
+- Each criteria list is non-empty (except NONE)
+- NONE system has empty criteria lists
 - get_logic_system() returns a dict (not a string)
 - get_logic_system() raises KeyError for unknown keys
 - get_logic_system_description() returns a non-empty string
@@ -29,7 +30,11 @@ EXPECTED_KEYS = [
     "DIALECTICAL",
     "FUZZY_MULTIVALUED",
     "PARACONSISTENT",
+    "NONE",
 ]
+
+# Systems that should have non-empty criteria lists
+SYSTEMS_WITH_CRITERIA = [k for k in EXPECTED_KEYS if k != "NONE"]
 
 REQUIRED_DICT_KEYS = {"label", "description", "criteria"}
 REQUIRED_CRITERIA_KEYS = {"critique_valid", "rebuttal_valid", "unresolved"}
@@ -43,6 +48,7 @@ EXPECTED_COUNTS = {
     "DIALECTICAL": (6, 5, 3),
     "FUZZY_MULTIVALUED": (6, 6, 3),
     "PARACONSISTENT": (5, 5, 3),
+    "NONE": (0, 0, 0),
 }
 
 
@@ -52,10 +58,10 @@ EXPECTED_COUNTS = {
 
 @pytest.mark.unit
 def test_all_systems_in_dict():
-    """All 7 logic system keys exist in LOGIC_SYSTEMS."""
+    """All 8 logic system keys exist in LOGIC_SYSTEMS."""
     for key in EXPECTED_KEYS:
         assert key in LOGIC_SYSTEMS, f"Missing logic system key: {key}"
-    assert len(LOGIC_SYSTEMS) == 7
+    assert len(LOGIC_SYSTEMS) == 8
 
 
 @pytest.mark.unit
@@ -89,9 +95,9 @@ def test_criteria_has_required_keys(key):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("key", EXPECTED_KEYS)
+@pytest.mark.parametrize("key", SYSTEMS_WITH_CRITERIA)
 def test_criteria_lists_are_non_empty(key):
-    """Each criteria list has at least one item."""
+    """Each non-NONE system's criteria lists have at least one item."""
     criteria = LOGIC_SYSTEMS[key]["criteria"]
     for outcome in REQUIRED_CRITERIA_KEYS:
         items = criteria[outcome]
@@ -129,7 +135,27 @@ def test_description_is_non_empty_string(key):
 
 
 # ==============================================
-# 3. Criteria Count Tests
+# 3. NONE System Special Cases
+# ==============================================
+
+@pytest.mark.unit
+def test_none_has_empty_criteria():
+    """NONE system has empty criteria lists (no logical evaluation)."""
+    criteria = LOGIC_SYSTEMS["NONE"]["criteria"]
+    assert criteria["critique_valid"] == []
+    assert criteria["rebuttal_valid"] == []
+    assert criteria["unresolved"] == []
+
+
+@pytest.mark.unit
+def test_none_has_description():
+    """NONE system still has a non-empty description."""
+    desc = LOGIC_SYSTEMS["NONE"]["description"]
+    assert isinstance(desc, str) and len(desc) > 0
+
+
+# ==============================================
+# 4. Criteria Count Tests
 # ==============================================
 
 @pytest.mark.unit
@@ -149,7 +175,7 @@ def test_criteria_counts(key):
 
 
 # ==============================================
-# 4. Lookup Function Tests
+# 5. Lookup Function Tests
 # ==============================================
 
 @pytest.mark.unit
@@ -216,7 +242,7 @@ def test_get_logic_system_label_unknown_key():
 
 
 # ==============================================
-# 5. Superset Verification
+# 6. Superset Verification
 # ==============================================
 
 @pytest.mark.unit

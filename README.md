@@ -389,10 +389,8 @@ stages:
 
 defense_boost:
   enabled: true
-  base_boost: 0.02
-  boost_increment: 0.01
-  max_boost_per_defense: 0.05
-  max_cumulative_boost: 0.20
+  flat_boost: 0.02
+  max_cumulative_boost: 0.15
 
 parallel:
   enabled: true
@@ -455,14 +453,14 @@ Model selection significantly impacts debate quality and computational cost. For
 
 ### Defense Boost System
 
-When a belief node survives an adversarial challenge (`rebuttal_valid`), the system automatically applies a formula-driven strength increase:
+When a belief node survives an adversarial challenge (`rebuttal_valid`), the system automatically applies a flat strength increase:
 
 ```
-boost(n) = min(base_boost + boost_increment * n, max_boost_per_defense)
-new_strength = min(current + boost, original_strength + max_cumulative_boost, 1.0)
+boost = flat_boost  (constant per defense, regardless of streak length)
+new_strength = min(current + flat_boost, original_strength + max_cumulative_boost, 1.0)
 ```
 
-Where `n` = consecutive successful defenses. The boost resets to 0 when a node loses a defense. Configurable via the `defense_boost` section.
+The boost resets to 0 consecutive defenses when a node loses a defense. Configurable via the `defense_boost` section.
 
 ---
 

@@ -43,8 +43,36 @@ from chal.utilities.training_data import DebateRecorder
 from chal.utilities.reporting import generate_analysis_report, generate_analysis_json
 from chal.utilities.parallel import ParallelDispatcher, WorkItem
 import tiktoken
+import time
 import json
 import re
+from dataclasses import dataclass, field
+
+
+@dataclass
+class DebateMetrics:
+    """Accumulates operational metrics throughout a debate run."""
+
+    total_retries: int = 0
+    total_rate_limit_hits: int = 0
+    total_output_tokens: int = 0
+    total_input_tokens: int = 0
+    start_time: float = 0.0
+    end_time: float = 0.0
+
+    @property
+    def duration_s(self) -> float:
+        return round(self.end_time - self.start_time, 2) if self.end_time else 0.0
+
+    def to_dict(self) -> dict:
+        return {
+            "total_retries": self.total_retries,
+            "total_rate_limit_hits": self.total_rate_limit_hits,
+            "total_output_tokens": self.total_output_tokens,
+            "total_input_tokens": self.total_input_tokens,
+            "duration_s": self.duration_s,
+        }
+
 
 # === Path Configuration ===
 # Get the project root directory (CHAL/)
@@ -92,6 +120,7 @@ class DebateController:
         self.dispatcher = ParallelDispatcher(max_workers=par_workers, enabled=par_enabled)
 
         self.challenge_rebuttal_pairs = []
+        self.all_challenge_rebuttal_pairs = []
         self.opening_positions = []
 
         # Separate tracking for debug log vs clean markdown transcript
@@ -115,6 +144,7 @@ class DebateController:
             ethics_weight=adj_cfg.ethics_weight,
             logic_sys=logic_sys_dict,
             ethics_sys=ethics_sys_dict,
+            threshold=adj_cfg.threshold,
         )
         adjudicator_agent = create_agent(
             name="Adjudicator",
@@ -129,10 +159,22 @@ class DebateController:
             ethics_weight=adj_cfg.ethics_weight,
             logic_sys=get_logic_system_description(adj_cfg.logic_system),
             ethics_sys=get_ethics_system_description(adj_cfg.ethics_system),
+            threshold=adj_cfg.threshold,
         )
 
         # Initialize agent statistics
         self.agent_stats = initialize_agent_stats([agent.name for agent in self.agents])
+
+        # Operational metrics accumulator
+        self.metrics = DebateMetrics()
+
+        # Wire rate-limit callback into every agent (including adjudicator)
+        def _on_rate_limit():
+            self.metrics.total_rate_limit_hits += 1
+
+        for agent in self.agents:
+            agent._on_rate_limit = _on_rate_limit
+        adjudicator_agent._on_rate_limit = _on_rate_limit
 
         # Initialize convergence tracking
         self.convergence_history = []
@@ -144,6 +186,32 @@ class DebateController:
         self._progress_callback: Optional[Callable[[str, Dict[str, Any]], None]] = None
         # Error recovery callback (set by run() caller)
         self._on_error: Optional[Callable[[str, Exception, int], str]] = None
+
+    def _accumulate_tokens(self, response) -> None:
+        """Extract token counts from a Message's metadata and add to metrics."""
+        if response is None or not hasattr(response, "metadata") or response.metadata is None:
+            return
+        usage = response.metadata.get("usage")
+        if not usage:
+            return
+        # Anthropic: input_tokens/output_tokens  OpenAI/XAI/Perplexity: prompt_tokens/completion_tokens
+        self.metrics.total_input_tokens += (
+            usage.get("input_tokens", 0) or usage.get("prompt_tokens", 0)
+        )
+        self.metrics.total_output_tokens += (
+            usage.get("output_tokens", 0) or usage.get("completion_tokens", 0)
+        )
+
+    def _accumulate_tokens_from_usage(self, usage: dict) -> None:
+        """Accumulate tokens from a raw usage dict."""
+        if not usage:
+            return
+        self.metrics.total_input_tokens += (
+            usage.get("input_tokens", 0) or usage.get("prompt_tokens", 0)
+        )
+        self.metrics.total_output_tokens += (
+            usage.get("output_tokens", 0) or usage.get("completion_tokens", 0)
+        )
 
     def _call_agent(self, agent, messages, agent_name: str = "", **kwargs) -> Optional[str]:
         """Call agent.generate() with error recovery via on_error callback.
@@ -164,7 +232,9 @@ class DebateController:
         name = agent_name or getattr(agent, "name", "unknown")
         while True:
             try:
-                return agent.generate(messages, **kwargs)
+                response = agent.generate(messages, **kwargs)
+                self._accumulate_tokens(response)
+                return response
             except Exception as e:
                 if self._on_error is None:
                     raise
@@ -309,6 +379,7 @@ class DebateController:
 
         # Retry loop
         for attempt in range(1, max_retries + 1):
+            self.metrics.total_retries += 1
             self._log(f"[{stage_label}] Parse retry {attempt}/{max_retries} for {agent_name}", "WARN")
             try:
                 result = generate_fn()
@@ -410,22 +481,58 @@ class DebateController:
         self.round_histories["round-0"] = []
         self.current_round_key = "round-0"
 
-        # --- GATHER: Fire all opening-position calls in parallel ---
-        s1_max_retries = self.config.stages.parse_retries if self.config else 3
-        items = [
-            WorkItem(
-                key=agent.name,
-                callable=lambda a=agent: _generate_opening_position(
-                    a, topic, max_retries=s1_max_retries, log_fn=self._log,
-                ),
-                context={"agent": agent},
-            )
-            for agent in self.agents
-        ]
-        results = self.dispatcher.run(items)
+        # --- Partition agents: custom (pre-loaded belief) vs generation (need LLM) ---
+        custom_agents = [a for a in self.agents if a.get_internal_belief_obj() is not None]
+        generation_agents = [a for a in self.agents if a.get_internal_belief_obj() is None]
 
-        # --- APPLY: Process results sequentially in deterministic agent order ---
-        for agent in self.agents:
+        # --- Handle custom agents (no LLM call) ---
+        for agent in custom_agents:
+            self._log(f"\n--- Processing agent: {agent.name} (custom belief pre-loaded) ---", "INFO")
+            self._log(f"[Stage 1] Skipping generation for {agent.name} — custom belief pre-loaded", "INFO")
+
+            belief_obj = agent.get_internal_belief_obj()
+            md_view = agent.get_internal_belief()
+
+            agent.all_beliefs_held.append(json.dumps(belief_obj, ensure_ascii=False, indent=2))
+            self.debug_log.append(f"\n--- PRE-LOADED BELIEF JSON FOR {agent.name} ---\n{json.dumps(belief_obj, ensure_ascii=False, indent=2)}\n--- END PRE-LOADED JSON ---\n")
+
+            synthetic_response = Message(role="assistant", content=md_view)
+            self.round_histories[self.current_round_key].append(synthetic_response)
+
+            if self.recorder:
+                self.recorder.record_belief_formation(
+                    agent_id=agent.name,
+                    inputs={
+                        "topic": topic,
+                        "persona": getattr(agent, 'persona_label', ''),
+                    },
+                    belief=belief_obj,
+                    raw_response="[custom belief pre-loaded from file]",
+                )
+
+            markdown_content = f"\n## {agent.name} - Opening Statement (Custom Belief)\n\n{md_view}\n"
+            self._add_to_markdown(markdown_content)
+            self._notify("agent_complete", {"agent_name": agent.name, "stage": 1, "action": "Custom belief loaded"})
+
+        # --- GATHER: Fire opening-position calls for generation agents in parallel ---
+        if generation_agents:
+            s1_max_retries = self.config.stages.parse_retries if self.config else 3
+            items = [
+                WorkItem(
+                    key=agent.name,
+                    callable=lambda a=agent: _generate_opening_position(
+                        a, topic, max_retries=s1_max_retries, log_fn=self._log,
+                    ),
+                    context={"agent": agent},
+                )
+                for agent in generation_agents
+            ]
+            results = self.dispatcher.run(items)
+        else:
+            results = {}
+
+        # --- APPLY: Process generation results sequentially in deterministic agent order ---
+        for agent in generation_agents:
             work_result = results[agent.name]
             self._log(f"\n--- Processing agent: {agent.name} ---", "INFO")
 
@@ -441,6 +548,8 @@ class DebateController:
                 continue
 
             r = work_result.result  # dict from _generate_opening_position
+            self._accumulate_tokens_from_usage(r.get("usage", {}))
+            self.metrics.total_retries += len(r.get("retry_records", []))
             response = r["response"]
             belief_obj = r["belief_obj"]
             md_view = r["md_view"]
@@ -600,6 +709,8 @@ class DebateController:
                 continue
 
             r = work_result.result
+            self._accumulate_tokens_from_usage(r.get("usage", {}))
+            self.metrics.total_retries += len(r.get("retry_records", []))
 
             response = r["response"]
             prompt = r["prompt"]
@@ -754,6 +865,8 @@ class DebateController:
                 continue
 
             r = work_result.result
+            self._accumulate_tokens_from_usage(r.get("usage", {}))
+            self.metrics.total_retries += len(r.get("retry_records", []))
             response = r["response"]
             prompt = r["prompt"]
             rebuttals = r["rebuttals"]
@@ -906,6 +1019,10 @@ class DebateController:
 
             resolution = r["resolution"]
 
+            # Accumulate operational metrics from adjudicator
+            self._accumulate_tokens_from_usage(resolution.pop("_usage", {}))
+            self.metrics.total_retries += resolution.pop("_retry_count", 0)
+
             # Log the per-pair prompt and raw response for debugging
             pair_label = f"Stage 4 - Adjudication ({entry['challenger']} → {entry['target']})"
             if resolution.get("_debug_prompt"):
@@ -979,6 +1096,12 @@ class DebateController:
                 "attack_strategy": entry.get("attack_strategy", ""),
                 "outcome": outcome
             })
+
+        # Accumulate pairs across rounds with round tagging
+        current_round = int(self.current_round_key.split("-")[1]) if self.current_round_key else 1
+        for pair in self.challenge_rebuttal_pairs:
+            pair["round_num"] = current_round
+        self.all_challenge_rebuttal_pairs.extend(self.challenge_rebuttal_pairs)
 
         return self.challenge_rebuttal_pairs
 
@@ -1066,6 +1189,11 @@ class DebateController:
 
             r = work_result.result
 
+            # Accumulate operational metrics from Stage 5 pure function
+            for u in r.get("usages", []):
+                self._accumulate_tokens_from_usage(u)
+            self.metrics.total_retries += r.get("retry_count", 0)
+
             # 1. Replay prompt/response logging
             for api_call in r["api_calls"]:
                 if not api_call.get("is_retry"):
@@ -1146,6 +1274,7 @@ class DebateController:
             """
             self._progress_callback = progress_callback
             self._on_error = on_error
+            self.metrics.start_time = time.time()
 
             self._notify("debate_start", {
                 "topic": topic,
@@ -1288,20 +1417,29 @@ class DebateController:
                     text_for_embedding = agent.get_internal_belief()  # legacy fallback
                     embedding_tracker.embed_belief(text_for_embedding, agent_name=agent.name, round_num=self.max_rounds)
             # Save the embeddings
-            # Ensure storage directory exists
-            STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-            embedding_tracker.save_embeddings(STORAGE_DIR / "embeddings.npz")
+            output_dir = self.config.outputs.storage_dir if self.config else STORAGE_DIR
+            output_dir.mkdir(parents=True, exist_ok=True)
+            agent_info = {
+                a.name: {"model": a.model, "provider": a.provider, "persona": a.persona}
+                for a in self.config.agents
+            } if self.config else None
+            topic = self.config.topic if self.config else None
+            embedding_tracker.save_embeddings(
+                output_dir / "embeddings.npz",
+                agent_info=agent_info,
+                topic=topic,
+            )
 
             # Generate belief graph visualization (if enabled)
             if self.config and hasattr(self.config.outputs, 'generate_graph_visualization') and self.config.outputs.generate_graph_visualization:
                 self._log("Generating interactive belief graph visualization...", "INFO")
 
                 try:
-                    graph_output_path = STORAGE_DIR / self.config.outputs.graph_file
+                    graph_output_path = self.config.outputs.storage_dir / self.config.outputs.graph_file
                     html_content = export_debate_graph(
                         agents=self.agents,
                         topic=self.topic,
-                        challenge_rebuttal_pairs=self.challenge_rebuttal_pairs,
+                        challenge_rebuttal_pairs=self.all_challenge_rebuttal_pairs,
                         output_path=graph_output_path
                     )
 
@@ -1316,14 +1454,18 @@ class DebateController:
             # Calculate final performance scores
             self.agent_stats = calculate_performance_scores(self.agent_stats)
 
+            # Finalize timing
+            self.metrics.end_time = time.time()
+
             # Assemble expanded stats: attack histograms, adjudicator verdicts,
             # final_snapshot per agent, and the top-level "_debate_aggregate"
             # sentinel summarising debate-wide totals.
             self.agent_stats = finalize_agent_stats(
                 self.agent_stats,
-                self.challenge_rebuttal_pairs,
+                self.all_challenge_rebuttal_pairs,
                 self.agents,
                 self.max_rounds,
+                operational_metrics=self.metrics.to_dict(),
             )
 
             # Log agent stats (display handled by callback / display layer)
@@ -1362,7 +1504,7 @@ class DebateController:
                     report_md = generate_analysis_report(
                         config=self.config,
                         agents=self.agents,
-                        challenge_rebuttal_pairs=self.challenge_rebuttal_pairs,
+                        challenge_rebuttal_pairs=self.all_challenge_rebuttal_pairs,
                         agent_stats=self.agent_stats,
                         convergence_history=self.convergence_history if self.convergence_history else None,
                         opening_positions=self.opening_positions,
@@ -1376,7 +1518,7 @@ class DebateController:
                     report_json = generate_analysis_json(
                         config=self.config,
                         agents=self.agents,
-                        challenge_rebuttal_pairs=self.challenge_rebuttal_pairs,
+                        challenge_rebuttal_pairs=self.all_challenge_rebuttal_pairs,
                         agent_stats=self.agent_stats,
                         convergence_history=self.convergence_history if self.convergence_history else None,
                     )
@@ -1395,6 +1537,8 @@ class DebateController:
             self._notify("debate_complete", {
                 "agent_stats": self.agent_stats,
                 "convergence_history": self.convergence_history,
+                "total_duration_s": self.metrics.duration_s,
+                "operational_metrics": self.metrics.to_dict(),
             })
 
             return {
@@ -1403,7 +1547,8 @@ class DebateController:
                 "full_transcript": "\n".join(self.full_transcript),  # Legacy: markdown transcript
                 "markdown_transcript": "\n".join(self.markdown_transcript),  # New: clean markdown
                 "debug_log": "\n".join(self.debug_log),  # New: comprehensive debug log
-                "agent_stats": self.agent_stats
+                "agent_stats": self.agent_stats,
+                "operational_metrics": self.metrics.to_dict(),
             }
 
 # --- Pure Functions for Parallel Dispatch ---
@@ -1520,6 +1665,11 @@ def _generate_opening_position(agent, topic: str, max_retries: int = 3,
                 if retry_count >= max_validation_retries:
                     break
 
+    # Extract usage for token accumulation by the controller
+    usage = {}
+    if response and hasattr(response, "metadata") and response.metadata:
+        usage = response.metadata.get("usage", {})
+
     return {
         "response": response,
         "belief_obj": belief_obj,
@@ -1529,6 +1679,7 @@ def _generate_opening_position(agent, topic: str, max_retries: int = 3,
         "graph_metrics": graph_metrics,
         "validation_logs": validation_logs,
         "retry_records": retry_records,
+        "usage": usage,
     }
 
 
@@ -1584,6 +1735,10 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
     if not questions:
         parsed_challenges = parse_challenges(response.content)
 
+    usage = {}
+    if response and hasattr(response, "metadata") and response.metadata:
+        usage = response.metadata.get("usage", {})
+
     return {
         "response": response,
         "prompt": prompt,
@@ -1592,6 +1747,7 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
         "ch_belief_obj": ch_belief_obj,
         "tg_belief_obj": tg_belief_obj,
         "retry_records": retry_records,
+        "usage": usage,
     }
 
 
@@ -1676,6 +1832,10 @@ def _generate_rebuttal(target_agent, relevant_entries, topic, config,
         rebuttals = []
         patches = []
 
+    usage = {}
+    if response and hasattr(response, "metadata") and response.metadata:
+        usage = response.metadata.get("usage", {})
+
     return {
         "response": response,
         "prompt": prompt,
@@ -1685,6 +1845,7 @@ def _generate_rebuttal(target_agent, relevant_entries, topic, config,
         "tgt_belief_obj": tgt_belief_obj,
         "relevant_entries": relevant_entries,
         "retry_records": retry_records,
+        "usage": usage,
     }
 
 
@@ -1994,6 +2155,9 @@ def _run_stage5_cbs_two_phase(
         phase1_patches = phase1_patches_block.get("patches", [])
 
     if phase1_patches:
+        # Cap response_sufficiency on new counterpositions before validation
+        cap_phase1_counterposition_sufficiency(phase1_patches, log_entries)
+
         log_entries.append((f"Phase 1: parsed {len(phase1_patches)} patch(es) for {name}", "INFO"))
         debug_entries.append(
             f"\n--- PHASE 1 PATCHES FOR {name} ---\n"
@@ -2173,6 +2337,16 @@ def _run_stage5_cbs_two_phase(
     except Exception as e:
         log_entries.append((f"Graph validation error for {name}: {e}", "ERROR"))
 
+    # Collect usage from all API calls and retry records
+    usages = []
+    retry_count = len(phase1_retries) + len(phase2_retries)
+    for call in api_calls:
+        resp = call.get("response")
+        if resp and hasattr(resp, "metadata") and resp.metadata:
+            u = resp.metadata.get("usage", {})
+            if u:
+                usages.append(u)
+
     return {
         "flow": "cbs_two_phase",
         "api_calls": api_calls,
@@ -2185,6 +2359,8 @@ def _run_stage5_cbs_two_phase(
         "reverted": reverted,
         "log_entries": log_entries,
         "debug_entries": debug_entries,
+        "usages": usages,
+        "retry_count": retry_count,
     }
 
 
@@ -2235,6 +2411,16 @@ def _run_stage5_legacy(
         name, response.content, prior_json, relevant_entries, md_view_fallback
     )
 
+    # Collect usage from all API calls and retry records
+    usages = []
+    retry_count = len(retry_records)
+    for call in api_calls:
+        resp = call.get("response")
+        if resp and hasattr(resp, "metadata") and resp.metadata:
+            u = resp.metadata.get("usage", {})
+            if u:
+                usages.append(u)
+
     return {
         "flow": "legacy",
         "api_calls": api_calls,
@@ -2247,6 +2433,8 @@ def _run_stage5_legacy(
         "reverted": patch_result["reverted"],
         "log_entries": log_entries + patch_result["log_entries"],
         "debug_entries": debug_entries + patch_result["debug_entries"],
+        "usages": usages,
+        "retry_count": retry_count,
     }
 
 
@@ -2408,29 +2596,76 @@ def summarize_changes(patches: list, before: dict, after: dict) -> str:
 
 def compute_defense_boost(
     consecutive_defenses: int,
-    base_boost: float = 0.02,
-    boost_increment: float = 0.01,
-    max_boost_per_defense: float = 0.05,
+    flat_boost: float = 0.02,
 ) -> float:
-    """Calculate per-defense strength boost using stepwise curve.
+    """Return the flat per-defense strength boost.
 
-    boost(n) = min(base_boost + boost_increment * n, max_boost_per_defense)
-
-    All parameters are sourced from DefenseBoostConfig; defaults here match
-    the config defaults for convenience in testing.
+    Every successful defense adds the same constant boost regardless of
+    streak length.
 
     Args:
         consecutive_defenses: Number of consecutive successful defenses (1-indexed).
-        base_boost: Starting constant in the formula.
-        boost_increment: Added per consecutive defense.
-        max_boost_per_defense: Per-defense ceiling.
+        flat_boost: Constant boost amount per defense.
 
     Returns:
         The strength boost amount for this defense.
     """
     if consecutive_defenses < 1:
         return 0.0
-    return min(base_boost + boost_increment * consecutive_defenses, max_boost_per_defense)
+    return flat_boost
+
+
+def _gather_dependency_nodes(belief: dict, node_id: str) -> list[str]:
+    """BFS backward through the dependency graph to collect all supporting node IDs.
+
+    Traversal edges:
+    - C# → depends_on (A#, E#, C#)
+    - A# → supported_by_definitions (D#)
+    - E# → supported_by_definitions (D#)
+    - D# → (leaf — no further dependencies)
+
+    Returns a deduplicated list of dependency IDs (excludes the input node
+    itself).  Skips retracted nodes.
+    """
+    # Build lookup: node_id → node dict
+    node_map: dict[str, dict] = {}
+    for key in ("definitions", "assumptions", "evidence", "claims"):
+        for node in belief.get(key, []):
+            nid = node.get("id", "")
+            if nid:
+                node_map[nid] = node
+
+    result: list[str] = []
+    visited: set[str] = {node_id}
+    queue: list[str] = [node_id]
+
+    while queue:
+        current_id = queue.pop(0)
+        current_node = node_map.get(current_id)
+        if current_node is None:
+            continue
+
+        # Determine which field holds this node's dependencies
+        dep_ids: list[str] = []
+        if current_id.startswith("C"):
+            dep_ids = current_node.get("depends_on", [])
+        elif current_id.startswith(("A", "E")):
+            dep_ids = current_node.get("supported_by_definitions", [])
+        # D# nodes are leaves — no further dependencies
+
+        for dep_id in dep_ids:
+            if dep_id in visited:
+                continue
+            visited.add(dep_id)
+            dep_node = node_map.get(dep_id)
+            if dep_node is None:
+                continue
+            if dep_node.get("status") == "retracted":
+                continue
+            result.append(dep_id)
+            queue.append(dep_id)
+
+    return result
 
 
 def apply_defense_boosts(
@@ -2517,6 +2752,10 @@ def apply_defense_boosts(
             continue
 
         if status == "rebuttal_valid":
+            # Track all nodes that receive a direct boost in this verdict
+            # so we can cascade afterward without double-boosting
+            directly_boosted: dict[str, float] = {}  # tid -> boost amount
+
             for tid in target_ids:
                 if tid not in node_lookup:
                     continue
@@ -2539,9 +2778,7 @@ def apply_defense_boosts(
                 # Calculate and apply boost (using config parameters)
                 boost = compute_defense_boost(
                     new_count,
-                    base_boost=boost_config.base_boost,
-                    boost_increment=boost_config.boost_increment,
-                    max_boost_per_defense=boost_config.max_boost_per_defense,
+                    flat_boost=boost_config.flat_boost,
                 )
                 original = node["original_strength"]
                 current = node.get("strength", 0.5)
@@ -2563,6 +2800,49 @@ def apply_defense_boosts(
                         f"({current:.2f} >= {ceiling:.2f}), no increase",
                         "DEBUG",
                     ))
+                directly_boosted[tid] = boost
+
+            # --- CASCADE: Apply same boost to all dependency nodes ---
+            cascade_ids: set[str] = set()
+            for tid in directly_boosted:
+                for dep_id in _gather_dependency_nodes(belief, tid):
+                    cascade_ids.add(dep_id)
+            # Remove any IDs already boosted as direct targets
+            cascade_ids -= set(directly_boosted.keys())
+
+            # Use the maximum boost amount from the direct targets
+            if directly_boosted:
+                cascade_boost = max(directly_boosted.values())
+            else:
+                cascade_boost = 0.0
+
+            for dep_id in sorted(cascade_ids):
+                if dep_id not in node_lookup:
+                    continue
+                dep_coll, dep_idx = node_lookup[dep_id]
+                dep_node = belief[dep_coll][dep_idx]
+
+                if dep_node.get("status") == "retracted":
+                    continue
+
+                # Ensure original_strength is set
+                if "original_strength" not in dep_node:
+                    dep_node["original_strength"] = dep_node.get("strength", 0.5)
+
+                dep_original = dep_node["original_strength"]
+                dep_current = dep_node.get("strength", 0.5)
+                dep_ceiling = min(dep_original + boost_config.max_cumulative_boost, 1.0)
+                dep_new = min(dep_current + cascade_boost, dep_ceiling)
+
+                if dep_new > dep_current:
+                    log_entries.append((
+                        f"Defense boost (cascade): {dep_id} ({dep_coll}) for "
+                        f"{agent_name}: {dep_current:.2f} → {dep_new:.2f} "
+                        f"(cascade boost +{cascade_boost:.2f}, "
+                        f"ceiling {dep_ceiling:.2f})",
+                        "INFO",
+                    ))
+                    dep_node["strength"] = round(dep_new, 4)
 
         elif status == "critique_valid":
             # Reset consecutive defense counter for targeted nodes
@@ -2581,6 +2861,40 @@ def apply_defense_boosts(
                     ))
 
     return belief
+
+
+def cap_phase1_counterposition_sufficiency(
+    patches: list[dict],
+    log_entries: list | None = None,
+) -> list[dict]:
+    """Downgrade 'sufficient' → 'partial' on new counterpositions in Phase 1.
+
+    When an agent loses an argument (CRITIQUE_VALID), Phase 1 forces them to
+    add a counterposition acknowledging the vulnerability.  Allowing immediate
+    "sufficient" lets the agent claim it has fully addressed an argument it
+    just lost—defeating the purpose.  This function caps the maximum
+    response_sufficiency at "partial" so the agent must refine its position
+    in Phase 2 or later rounds before reaching "sufficient".
+
+    Only affects ``add_counterposition`` operations; ``update_counterposition``
+    is untouched (agents can always upgrade *existing* counterpositions).
+
+    Mutates ``patches`` in-place and returns the same list for convenience.
+    """
+    for patch in patches:
+        if patch.get("op") == "add_counterposition":
+            item = patch.get("item")
+            # NOTE: "moot" is intentionally not capped here — it indicates the
+            # counterposition targets a retracted claim and is already obsolete.
+            if isinstance(item, dict) and item.get("response_sufficiency") == "sufficient":
+                item["response_sufficiency"] = "partial"
+                if log_entries is not None:
+                    log_entries.append((
+                        f"Phase 1 sufficiency cap: {item.get('id', '?')} "
+                        f"downgraded from 'sufficient' → 'partial'",
+                        "INFO",
+                    ))
+    return patches
 
 
 def filter_strength_increases(phase2_patches: list, intermediate_belief: dict) -> list:

@@ -514,10 +514,8 @@ def test_defense_boost_config_defaults():
     from chal.config import DefenseBoostConfig
     cfg = DefenseBoostConfig()
     assert cfg.enabled is True
-    assert cfg.base_boost == 0.02
-    assert cfg.boost_increment == 0.01
-    assert cfg.max_boost_per_defense == 0.05
-    assert cfg.max_cumulative_boost == 0.20
+    assert cfg.flat_boost == 0.02
+    assert cfg.max_cumulative_boost == 0.15
 
 
 def test_defense_boost_config_from_yaml(tmp_path):
@@ -542,9 +540,7 @@ def test_defense_boost_config_from_yaml(tmp_path):
           ethics_system: "None"
         defense_boost:
           enabled: false
-          base_boost: 0.05
-          boost_increment: 0.02
-          max_boost_per_defense: 0.10
+          flat_boost: 0.05
           max_cumulative_boost: 0.30
     """)
     config_file = tmp_path / "defense_boost_test.yaml"
@@ -554,9 +550,7 @@ def test_defense_boost_config_from_yaml(tmp_path):
     cfg = DebateConfig.from_yaml(config_file)
 
     assert cfg.defense_boost.enabled is False
-    assert cfg.defense_boost.base_boost == 0.05
-    assert cfg.defense_boost.boost_increment == 0.02
-    assert cfg.defense_boost.max_boost_per_defense == 0.10
+    assert cfg.defense_boost.flat_boost == 0.05
     assert cfg.defense_boost.max_cumulative_boost == 0.30
 
 
@@ -588,7 +582,7 @@ def test_defense_boost_config_missing_section(tmp_path):
     cfg = DebateConfig.from_yaml(config_file)
 
     assert cfg.defense_boost.enabled is True
-    assert cfg.defense_boost.base_boost == 0.02
+    assert cfg.defense_boost.flat_boost == 0.02
 
 
 def test_defense_boost_config_to_dict():
@@ -598,10 +592,8 @@ def test_defense_boost_config_to_dict():
 
     assert "defense_boost" in d
     assert d["defense_boost"]["enabled"] is True
-    assert d["defense_boost"]["base_boost"] == 0.02
-    assert d["defense_boost"]["boost_increment"] == 0.01
-    assert d["defense_boost"]["max_boost_per_defense"] == 0.05
-    assert d["defense_boost"]["max_cumulative_boost"] == 0.20
+    assert d["defense_boost"]["flat_boost"] == 0.02
+    assert d["defense_boost"]["max_cumulative_boost"] == 0.15
 
 
 def test_defense_boost_config_in_debate_config():
@@ -609,6 +601,134 @@ def test_defense_boost_config_in_debate_config():
     config = load_config('default')
     assert hasattr(config, "defense_boost")
     assert config.defense_boost.enabled is True
+
+
+# ==============================================
+# Custom Belief File Tests
+# ==============================================
+
+def test_agent_config_belief_file_default_none():
+    """AgentConfig.belief_file defaults to None."""
+    from chal.config import AgentConfig
+    cfg = AgentConfig(name="Test", persona="EMPIRICIST")
+    assert cfg.belief_file is None
+
+def test_agent_config_belief_file_set():
+    """AgentConfig accepts a belief_file path."""
+    from chal.config import AgentConfig
+    cfg = AgentConfig(name="Test", persona="NONE", belief_file="/path/to/belief.json")
+    assert cfg.belief_file == "/path/to/belief.json"
+
+def test_from_yaml_parses_belief_file(tmp_path):
+    """from_yaml correctly reads belief_file and resolves relative paths."""
+    import textwrap
+    from chal.config import DebateConfig
+
+    # Create a dummy belief file so the path exists
+    belief_path = tmp_path / "my_belief.json"
+    belief_path.write_text('{}')
+
+    yaml_content = textwrap.dedent(f"""\
+        metadata:
+          name: "Belief Test"
+          version: "1.0"
+        debate:
+          topic: "Test"
+          max_rounds: 1
+        agents:
+          - name: "Agent-Custom"
+            persona: "none"
+            model: "o4-mini"
+            provider: "openai"
+            belief_file: "my_belief.json"
+          - name: "Agent-Normal"
+            persona: "EMPIRICIST"
+            model: "o4-mini"
+            provider: "openai"
+    """)
+
+    yaml_file = tmp_path / "test_config.yaml"
+    yaml_file.write_text(yaml_content)
+
+    config = DebateConfig.from_yaml(yaml_file)
+
+    # Custom agent should have resolved belief_file path
+    assert config.agents[0].belief_file is not None
+    assert config.agents[0].belief_file.endswith("my_belief.json")
+    # Normal agent should have None
+    assert config.agents[1].belief_file is None
+
+def test_to_dict_includes_belief_file():
+    """to_dict includes belief_file when set, omits when None."""
+    from chal.config import DebateConfig, AgentConfig
+
+    config = DebateConfig(
+        agents=[
+            AgentConfig(name="A", persona="NONE", belief_file="/path/b.json"),
+            AgentConfig(name="B", persona="EMPIRICIST"),
+        ]
+    )
+    d = config.to_dict()
+    assert "belief_file" in d["agents"][0]
+    assert d["agents"][0]["belief_file"] == "/path/b.json"
+    assert "belief_file" not in d["agents"][1]
+
+
+# ==============================================
+# PCA Plot Config Tests
+# ==============================================
+
+def test_output_config_pca_plot_file_default():
+    """OutputConfig.pca_plot_file defaults to 'belief_trajectories_pca.png'."""
+    from chal.config import OutputConfig
+    cfg = OutputConfig(storage_dir=Path("/tmp"))
+    assert cfg.pca_plot_file == "belief_trajectories_pca.png"
+
+
+def test_pca_plot_file_in_default_config():
+    """Default config includes pca_plot_file."""
+    config = load_config('default')
+    assert config.outputs.pca_plot_file == "belief_trajectories_pca.png"
+
+
+def test_pca_plot_file_to_dict_roundtrip():
+    """pca_plot_file round-trips through to_dict()."""
+    config = load_config('default')
+    d = config.to_dict()
+    assert "pca_plot_file" in d["outputs"]
+    assert d["outputs"]["pca_plot_file"] == "belief_trajectories_pca.png"
+
+
+def test_pca_plot_file_from_yaml(tmp_path):
+    """pca_plot_file is parsed from YAML correctly."""
+    yaml_content = textwrap.dedent("""\
+        metadata:
+          name: "PCA Test"
+          version: "1.0"
+        debate:
+          topic: "Test topic"
+          max_rounds: 1
+        agents:
+          - name: "Agent-A"
+            persona: "EMPIRICIST"
+            model: "gpt-4o"
+            temperature: 0.7
+        adjudication:
+          model: "gpt-4o"
+          logic_weight: 1.0
+          ethics_weight: 0.0
+          logic_system: "Classical logic"
+          ethics_system: "None"
+        outputs:
+          pca_plot_file: "custom_pca.png"
+    """)
+    config_file = tmp_path / "pca_test.yaml"
+    config_file.write_text(yaml_content)
+
+    from chal.config import DebateConfig
+    config = DebateConfig.from_yaml(config_file)
+
+    assert config.outputs.pca_plot_file == "custom_pca.png"
 
 
 if __name__ == "__main__":

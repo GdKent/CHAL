@@ -103,6 +103,7 @@ def log_debate(
         "winner": winner,
         "config_snapshot": str(snapshot_path),
         "output_dir": str(config.outputs.storage_dir),
+        "operational_metrics": results.get("operational_metrics", {}),
     }
 
     debates = _read_history()

@@ -1,0 +1,534 @@
+{
+  "schema_version": "CBS",
+  "belief_id": "BELIEF-Agent-Pragmatist-001",
+  "version": 1,
+  "metadata": {
+    "topic_query": "Is capital punishment justifiable?",
+    "agent_persona": "Pragmatist"
+  },
+  "definitions": [
+    {
+      "id": "D1",
+      "term": "capital punishment",
+      "definition": "The state‐sanctioned execution of individuals convicted of certain crimes.",
+      "strength": 0.95,
+      "strength_justification": "0.95 — clear legal definition, widely agreed but minor jurisdictional variations",
+      "status": "active",
+      "used_by": [
+        "A3",
+        "A4",
+        "A5",
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "original_strength": 0.95,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D2",
+      "term": "justifiable",
+      "definition": "Permissible only if the practice yields net gains in human flourishing, as measured by safety, well‐being, and social stability.",
+      "strength": 0.9,
+      "strength_justification": "0.90 — standard pragmatist normative criterion; some contestation about metrics",
+      "status": "active",
+      "used_by": [
+        "A1"
+      ],
+      "original_strength": 0.9,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D3",
+      "term": "human flourishing",
+      "definition": "A state in which individuals and communities enjoy security, well‐being, and capacity to pursue meaningful goals.",
+      "strength": 0.85,
+      "strength_justification": "0.85 — broadly accepted in ethics though multi‐dimensional",
+      "status": "active",
+      "used_by": [
+        "A1"
+      ],
+      "original_strength": 0.85,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D4",
+      "term": "life without parole",
+      "definition": "A criminal sentence of incarceration until natural death with no possibility of release.",
+      "strength": 0.95,
+      "strength_justification": "0.95 — clear penal definition",
+      "status": "active",
+      "used_by": [
+        "A2"
+      ],
+      "original_strength": 0.95,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D5",
+      "term": "deterrence",
+      "definition": "The reduction of crime incidence due to the fear of punishment.",
+      "strength": 0.9,
+      "strength_justification": "0.90 — standard criminological concept with operational measures",
+      "status": "active",
+      "used_by": [
+        "E1"
+      ],
+      "original_strength": 0.9,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D6",
+      "term": "wrongful execution",
+      "definition": "The irreversible execution of a person later proven innocent.",
+      "strength": 0.9,
+      "strength_justification": "0.90 — morally and legally salient concept, empirically traceable",
+      "status": "active",
+      "used_by": [
+        "A3",
+        "E3"
+      ],
+      "original_strength": 0.9,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D7",
+      "term": "cost-effectiveness",
+      "definition": "Comparison of benefits delivered per unit of financial cost.",
+      "strength": 0.85,
+      "strength_justification": "0.85 — economic principle, contested metrics but broadly used",
+      "status": "active",
+      "used_by": [
+        "A4",
+        "E2"
+      ],
+      "original_strength": 0.85,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "D8",
+      "term": "racial bias",
+      "definition": "Systematic disparity in treatment or outcomes across racial groups not explained by legal factors.",
+      "strength": 0.85,
+      "strength_justification": "0.85 — sociological concept with clear operational studies",
+      "status": "active",
+      "used_by": [
+        "A5",
+        "E4"
+      ],
+      "original_strength": 0.85,
+      "consecutive_defenses": 0
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A1",
+      "type": "methodological",
+      "statement": "Punishments are justifiable only if they produce net gains in human flourishing (benefits outweigh moral, social, and financial costs).",
+      "supports_claims": [
+        "C2",
+        "C3"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — core pragmatist criterion, some normative contestation",
+      "supported_by_definitions": [
+        "D2",
+        "D3"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A2",
+      "type": "empirical",
+      "statement": "Life without parole effectively incapacitates dangerous offenders and prevents further offenses.",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — supported by corrections data, though rare escape cases exist",
+      "supported_by_definitions": [
+        "D4"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A3",
+      "type": "empirical",
+      "statement": "There is a non-zero risk of wrongful execution under current judicial processes.",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.8,
+      "status": "active",
+      "strength_justification": "0.80 — exoneration statistics and fallibility studies confirm risk",
+      "supported_by_definitions": [
+        "D1",
+        "D6"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A4",
+      "type": "empirical",
+      "statement": "Capital punishment cases impose higher financial costs than life without parole cases.",
+      "supports_claims": [
+        "C2"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — multiple state budget analyses show 1.5–2× cost",
+      "supported_by_definitions": [
+        "D1",
+        "D7"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "A5",
+      "type": "empirical",
+      "statement": "Capital punishment is applied with significant racial and socioeconomic biases.",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — sentencing data reveal consistent disparities",
+      "supported_by_definitions": [
+        "D1",
+        "D8"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "type": "empirical",
+      "summary": "2012 National Research Council meta‐analysis finds no credible deterrent effect of the death penalty compared to non‐capital alternatives.",
+      "source": "National Research Council (2012)",
+      "supports_claims": [
+        "C1"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "strength_justification": "0.70 — rigorous meta‐analysis but heterogeneous data",
+      "supported_by_definitions": [
+        "D1",
+        "D5"
+      ],
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E2",
+      "type": "empirical",
+      "summary": "State budget reviews show death‐penalty prosecutions cost roughly 1.5–2× more than life‐without‐parole cases.",
+      "source": "Various state auditor reports",
+      "supports_claims": [
+        "C2"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "strength_justification": "0.75 — consistent across several jurisdictions",
+      "supported_by_definitions": [
+        "D1",
+        "D7"
+      ],
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E3",
+      "type": "empirical",
+      "summary": "Since 1973, 185 individuals have been exonerated from death row in the U.S.",
+      "source": "Innocence Project data",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.8,
+      "status": "active",
+      "strength_justification": "0.80 — well‐documented registry, though some cases under review",
+      "supported_by_definitions": [
+        "D1",
+        "D6"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "E4",
+      "type": "empirical",
+      "summary": "Black defendants are over four times as likely to be sentenced to death for killing white victims than vice versa.",
+      "source": "FBI/U.S. Sentencing Commission",
+      "supports_claims": [
+        "C3"
+      ],
+      "strength": 0.8,
+      "status": "active",
+      "strength_justification": "0.80 — large dataset, controls for offense severity",
+      "supported_by_definitions": [
+        "D1",
+        "D8"
+      ],
+      "original_strength": 0.8,
+      "consecutive_defenses": 0
+    }
+  ],
+  "claims": [
+    {
+      "id": "C1",
+      "type": "descriptive",
+      "statement": "Capital punishment does not yield greater deterrence of homicide compared to life without parole.",
+      "depends_on": [
+        "E1",
+        "A2"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Meta-analysis finds no credible deterrent effect of death penalty versus non-capital alternatives.",
+          "reference": "E1"
+        },
+        {
+          "role": "premise",
+          "text": "Life without parole incapacitates offenders, so any deterrent difference hinges on differential incarceration risk.",
+          "reference": "A2"
+        },
+        {
+          "role": "inference",
+          "text": "If life without parole fully incapacitates and death penalty shows no extra deterrence, then death penalty adds no deterrent value.",
+          "inference_type": "deductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Capital punishment does not yield greater deterrence of homicide compared to life without parole."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "New controlled studies comparing homicide rates in matched jurisdictions with and without the death penalty will show no significant difference.",
+          "test": "Use panel regression with fixed effects for jurisdictions and time.",
+          "decision_criterion": "If >50% of new studies find significant positive deterrent effect (p<0.05), this claim is falsified.",
+          "potential_falsifiers": [
+            "A jurisdiction with death penalty consistently shows >10% lower homicide rates after controlling for confounders"
+          ]
+        }
+      ],
+      "strength_justification": "0.70 — limited by E1 (0.70) and A2 (0.70); lowest=0.70",
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C2",
+      "type": "normative",
+      "statement": "Capital punishment is not cost-effective relative to life without parole, given its higher financial costs and no commensurate benefits.",
+      "depends_on": [
+        "A1",
+        "E2",
+        "C1"
+      ],
+      "strength": 0.7,
+      "status": "active",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Capital punishment cases cost 1.5–2× more than life-without-parole cases.",
+          "reference": "E2"
+        },
+        {
+          "role": "premise",
+          "text": "Capital punishment yields no greater deterrence than life without parole.",
+          "reference": "C1"
+        },
+        {
+          "role": "premise",
+          "text": "Punishments must produce net gains in human flourishing to be justifiable.",
+          "reference": "A1"
+        },
+        {
+          "role": "inference",
+          "text": "Higher cost with no added public-safety benefit implies a net loss in societal flourishing.",
+          "inference_type": "deductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Capital punishment is not cost-effective relative to life without parole, given its higher financial costs and no commensurate benefits."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "Comprehensive cost-benefit analyses across all death-penalty states will show negative net benefit when monetizing lives saved.",
+          "test": "Aggregate state-level budget and crime data.",
+          "decision_criterion": "If >75% of states show positive net benefit, this claim is falsified."
+        }
+      ],
+      "strength_justification": "0.70 — supported by A1 (0.75), E2 (0.75), C1 (0.70); limited by C1 (0.70)",
+      "original_strength": 0.7,
+      "consecutive_defenses": 0
+    },
+    {
+      "id": "C3",
+      "type": "normative",
+      "statement": "Capital punishment causes irreparable harm through wrongful executions and perpetuates social injustices due to racial bias.",
+      "depends_on": [
+        "A1",
+        "A3",
+        "A5",
+        "E3",
+        "E4"
+      ],
+      "strength": 0.75,
+      "status": "active",
+      "inference_chain": [
+        {
+          "role": "premise",
+          "text": "Judicial fallibility carries a non-zero risk of wrongful execution.",
+          "reference": "A3"
+        },
+        {
+          "role": "premise",
+          "text": "Death penalty is applied with significant racial bias.",
+          "reference": "A5"
+        },
+        {
+          "role": "premise",
+          "text": "Multiple exonerations document actual wrongful executions or near-executions.",
+          "reference": "E3"
+        },
+        {
+          "role": "premise",
+          "text": "Statistical data confirm racial disparity in sentencing outcomes.",
+          "reference": "E4"
+        },
+        {
+          "role": "premise",
+          "text": "Punishments must produce net gains in flourishing to be justifiable.",
+          "reference": "A1"
+        },
+        {
+          "role": "inference",
+          "text": "Irreversible harms and systemic injustice outweigh any putative benefits.",
+          "inference_type": "inductive"
+        },
+        {
+          "role": "conclusion",
+          "text": "Capital punishment causes irreparable harm through wrongful executions and perpetuates social injustices due to racial bias."
+        }
+      ],
+      "predictions": [
+        {
+          "statement": "Elimination of racial bias and zero wrongful exonerations would be necessary to mitigate irreparable harms.",
+          "test": "Track bias metrics and exonerations over a decade.",
+          "decision_criterion": "If exonerations drop to zero and bias index <0.05, this claim is challenged."
+        }
+      ],
+      "strength_justification": "0.75 — supported by A1 (0.75), A3 (0.80), A5 (0.75), E3 (0.80), E4 (0.80); lowest=0.75",
+      "original_strength": 0.75,
+      "consecutive_defenses": 0
+    }
+  ],
+  "counterpositions": [
+    {
+      "id": "X1",
+      "targets": [
+        "C1"
+      ],
+      "attack_type": "rebutting",
+      "attack_strategy": "present_counter_example",
+      "statement": "Some single-state studies find a modest deterrent effect of executions under certain conditions.",
+      "my_response": "Those studies often lack controls for confounders; meta-analysis across jurisdictions shows no consistent effect (E1).",
+      "response_sufficiency": "partial"
+    },
+    {
+      "id": "X2",
+      "targets": [
+        "C2"
+      ],
+      "attack_type": "undercutting",
+      "attack_strategy": "challenge_normative_inference",
+      "statement": "Cost-effectiveness overlooks retributive justice values that may justify higher costs.",
+      "my_response": "Retributive aims can be satisfied by alternative punishments with lower risk and cost; pragmatic justice prioritizes net social benefit (A1).",
+      "response_sufficiency": "partial"
+    },
+    {
+      "id": "X3",
+      "targets": [
+        "A3"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_evidence",
+      "statement": "Modern appeals and DNA testing have reduced wrongful execution risk to near zero.",
+      "my_response": "Even a near-zero risk of irreversible harm remains unacceptable when alternatives eliminate death risk entirely.",
+      "response_sufficiency": "sufficient"
+    },
+    {
+      "id": "X4",
+      "targets": [
+        "A5"
+      ],
+      "attack_type": "undermining",
+      "attack_strategy": "challenge_evidence",
+      "statement": "Racial disparities reflect broader social inequities, not the punishment itself.",
+      "my_response": "Regardless of root causes, capital punishment is a vector for bias; removing it would reduce at least one systemic injustice.",
+      "response_sufficiency": "partial"
+    }
+  ],
+  "uncertainties": [
+    {
+      "id": "U1",
+      "targets": [
+        "C1"
+      ],
+      "question": "Are there specific crime contexts where the death penalty confers deterrence that broad meta-analyses miss?",
+      "status": "active",
+      "importance": "medium"
+    },
+    {
+      "id": "U2",
+      "targets": [
+        "A3"
+      ],
+      "question": "What is the current empirical estimate of wrongful execution risk given modern safeguards?",
+      "status": "active",
+      "importance": "high"
+    },
+    {
+      "id": "U3",
+      "targets": [
+        "A5"
+      ],
+      "question": "To what extent can legal reforms eliminate racial bias in capital sentencing?",
+      "status": "active",
+      "importance": "medium"
+    }
+  ],
+  "thesis": {
+    "stance": "Grounded in empirical evidence (E1–E4) and a pragmatic consequentialist criterion (A1), I conclude that capital punishment is unjustifiable: it fails to deter more than life without parole (C1), is not cost-effective (C2), and causes irreversible harms through wrongful executions and racial bias (C3). These outcomes fall short of promoting human flourishing and impose net social costs.",
+    "summary_bullets": [
+      "No credible deterrent benefit over life without parole (C1)",
+      "Higher financial cost without commensurate safety gains (C2)",
+      "Irreversible wrongful executions and systemic racial injustice (C3)",
+      "Fails the pragmatist criterion of net human flourishing (A1)"
+    ],
+    "strength": 0.54,
+    "strength_reasoning": "avg(0.70, 0.70, 0.75) × (3^1/(3^1+1)) = 0.7167 × (3/4) = 0.5375 ≈ 0.54"
+  },
+  "changelog": [
+    {
+      "version": 1,
+      "changes": [
+        "Initial belief formation"
+      ]
+    }
+  ]
+}

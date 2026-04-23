@@ -207,6 +207,9 @@ equally valid). Your criterion for integration is explanatory adequacy: \
 a synthesis must account for more data across more domains than any \
 single perspective alone."""
 
+# No epistemic lens — the agent argues purely from its belief structure.
+NONE = ""
+
 
 # === Lookup Structures ===
 
@@ -223,6 +226,7 @@ PERSONAS = {
     "PANPSYCHIST": PANPSYCHIST,
     "SIMULATIONIST": SIMULATIONIST,
     "SYNTHESIST": SYNTHESIST,
+    "NONE": NONE,
 }
 
 PERSONA_LABELS = {
@@ -238,6 +242,7 @@ PERSONA_LABELS = {
     "PANPSYCHIST": "Panpsychist",
     "SIMULATIONIST": "Simulationist",
     "SYNTHESIST": "Synthesist",
+    "NONE": "None",
 }
 
 PERSONA_DESCRIPTIONS = {
@@ -253,6 +258,7 @@ PERSONA_DESCRIPTIONS = {
     "PANPSYCHIST": "Consciousness is fundamental to all matter",
     "SIMULATIONIST": "Evaluates claims via simulation hypothesis",
     "SYNTHESIST": "Integrates science, spirituality, and systems",
+    "NONE": "No persona — argues purely from the belief structure (recommended only for advanced custom beliefs)",
 }
 
 

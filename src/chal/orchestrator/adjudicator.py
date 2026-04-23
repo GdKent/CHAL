@@ -23,12 +23,19 @@ import re
 VALID_VERDICTS = {"critique_valid", "rebuttal_valid", "unresolved"}
 
 ADJUDICATOR_REMEDIATION_HINTS = (
+    "MOST COMMON ERROR: Your previous response placed the JSON inside the "
+    "<reasoning> tags. The JSON block MUST appear AFTER the closing </reasoning> tag.\n\n"
     "Remember: You MUST output BOTH parts:\n"
     "1. A <reasoning>...</reasoning> block with your analysis\n"
     "2. A SEPARATE fenced ```json ... ``` block with the structured verdict\n\n"
     "The JSON block must appear OUTSIDE the reasoning tags. "
     "Do NOT nest JSON inside <reasoning>.\n"
-    'The JSON must contain at minimum: "outcome", "reasoning", and "restatement" fields.'
+    'The JSON must contain at minimum: "outcome", "reasoning", and "restatement" fields.\n\n'
+    "Correct output structure:\n\n"
+    "<reasoning>Your analysis here...</reasoning>\n\n"
+    "```json\n"
+    '{"outcome": "...", "reasoning": "...", "restatement": "...", ...}\n'
+    "```"
 )
 
 
@@ -100,7 +107,9 @@ def validate_adjudicator_output(raw_response: str) -> ValidationResult:
     3. Required field ``outcome`` exists and is a recognized verdict.
     4. Required field ``reasoning`` exists and is non-empty.
     5. Required field ``restatement`` exists and is non-empty.
-    6. ``scores`` is optional (warning only, not a failure).
+    6. Required field ``formalization_challenger`` exists and is non-empty.
+    7. Required field ``formalization_target`` exists and is non-empty.
+    8. Required field ``scores`` exists with all 6 numeric keys in [0.0, 1.0].
     """
     errors: list[str] = []
     data = _extract_json_from_response(raw_response)
@@ -134,11 +143,84 @@ def validate_adjudicator_output(raw_response: str) -> ValidationResult:
     if not restatement or not isinstance(restatement, str) or not restatement.strip():
         errors.append("JSON block is missing required field 'restatement'.")
 
+    # Required: formalization_challenger
+    fc = data.get("formalization_challenger")
+    if not fc or not isinstance(fc, str) or not fc.strip():
+        errors.append("JSON block is missing required field 'formalization_challenger'.")
+
+    # Required: formalization_target
+    ft = data.get("formalization_target")
+    if not ft or not isinstance(ft, str) or not ft.strip():
+        errors.append("JSON block is missing required field 'formalization_target'.")
+
+    # Required: scores (dict with 6 numeric keys)
+    scores = data.get("scores")
+    if not isinstance(scores, dict):
+        errors.append("JSON block is missing required field 'scores' (must be a dict).")
+    else:
+        required_score_keys = [
+            "challenger_logic", "challenger_ethics",
+            "defender_logic", "defender_ethics",
+            "challenger_combined", "defender_combined",
+        ]
+        for key in required_score_keys:
+            val = scores.get(key)
+            if val is None:
+                errors.append(f"scores is missing required key '{key}'.")
+            elif not isinstance(val, (int, float)):
+                errors.append(f"scores['{key}'] must be a number, got {type(val).__name__}.")
+            elif not (0.0 <= val <= 1.0):
+                errors.append(f"scores['{key}'] = {val} is out of range [0.0, 1.0].")
+
     return ValidationResult(
         is_valid=len(errors) == 0,
         errors=errors,
         parsed_data=data,
     )
+
+
+def enforce_verdict(scores: dict, logic_weight: float, ethics_weight: float, threshold: float = 0.15) -> dict:
+    """Recompute combined scores and determine verdict from math.
+
+    Applies the scoring formula: combined = logic_weight * logic + ethics_weight * ethics.
+    If challenger_combined - defender_combined >= threshold -> critique_valid.
+    If defender_combined - challenger_combined >= threshold -> rebuttal_valid.
+    Otherwise -> unresolved.
+
+    Args:
+        scores: Dict with challenger_logic, challenger_ethics, defender_logic, defender_ethics.
+        logic_weight: Weight for logic scores (0.0-1.0).
+        ethics_weight: Weight for ethics scores (0.0-1.0).
+        threshold: Minimum gap for a decisive verdict (default 0.15).
+
+    Returns:
+        Dict with computed_verdict, challenger_combined, defender_combined, gap.
+    """
+    cl = scores.get("challenger_logic", 0.5)
+    ce = scores.get("challenger_ethics", 0.5)
+    dl = scores.get("defender_logic", 0.5)
+    de = scores.get("defender_ethics", 0.5)
+
+    challenger_combined = logic_weight * cl + ethics_weight * ce
+    defender_combined = logic_weight * dl + ethics_weight * de
+
+    # Round to 4 decimal places before comparison to eliminate IEEE 754
+    # floating-point noise (e.g. 0.14999999999999991 instead of 0.15).
+    gap = round(challenger_combined - defender_combined, 4)
+
+    if gap >= threshold:
+        computed_verdict = "critique_valid"
+    elif gap <= -threshold:
+        computed_verdict = "rebuttal_valid"
+    else:
+        computed_verdict = "unresolved"
+
+    return {
+        "computed_verdict": computed_verdict,
+        "challenger_combined": round(challenger_combined, 4),
+        "defender_combined": round(defender_combined, 4),
+        "gap": gap,
+    }
 
 
 class Adjudicator:
@@ -158,7 +240,7 @@ class Adjudicator:
     }
 
     def __init__(self, adjudicator_agent: Agent, logic_weight: float = 1.0, ethics_weight: float = 0.0,
-                 logic_sys: str = "", ethics_sys: str = "") -> None:
+                 logic_sys: str = "", ethics_sys: str = "", threshold: float = 0.15) -> None:
         """
         Initialize the Adjudicator with evaluation frameworks and weights.
 
@@ -174,6 +256,7 @@ class Adjudicator:
         self.ethics_weight = ethics_weight
         self.logic_sys = logic_sys
         self.ethics_sys = ethics_sys
+        self.threshold = threshold
         # Determine mode label from weights
         if ethics_weight < 0.01:
             self._mode = "logic_only"
@@ -239,6 +322,12 @@ class Adjudicator:
         )
         raw_response = response.content
 
+        # Extract usage and retry count for operational metrics
+        _usage = {}
+        if response.metadata:
+            _usage = response.metadata.get("usage", {})
+        _retry_count = len(retry_records)
+
         # Parse JSON — use the shared extractor (same logic the validator uses)
         result = _extract_json_from_response(raw_response)
 
@@ -260,15 +349,37 @@ class Adjudicator:
         full_reasoning = reasoning_match.group(1).strip() if reasoning_match else ""
 
         if result is not None:
+            llm_verdict = _normalize_verdict(result.get("outcome", ""))
+            scores = result.get("scores", {})
+
+            # Programmatic verdict enforcement
+            enforcement = enforce_verdict(scores, self.logic_weight, self.ethics_weight, self.threshold)
+            computed_verdict = enforcement["computed_verdict"]
+
+            override_occurred = (computed_verdict != llm_verdict)
+            if override_occurred and log_fn:
+                log_fn(
+                    f"Verdict override: LLM said '{llm_verdict}' but math says "
+                    f"'{computed_verdict}' (gap={enforcement['gap']})",
+                    "WARNING",
+                )
+
             return {
-                "status": _normalize_verdict(result.get("outcome", "")),
+                "status": computed_verdict,
                 "reasoning": full_reasoning or result.get("reasoning", ""),
                 "restatement": result.get("restatement", ""),
                 "formalizations": {
                     "challenger": result.get("formalization_challenger", ""),
                     "target": result.get("formalization_target", "")
                 },
-                "scores": result.get("scores", {}),
+                "scores": scores,
+                "override_occurred": override_occurred,
+                "llm_verdict": llm_verdict,
+                "challenger_combined": enforcement["challenger_combined"],
+                "defender_combined": enforcement["defender_combined"],
+                "gap": enforcement["gap"],
+                "_usage": _usage,
+                "_retry_count": _retry_count,
                 **_debug,
             }
 
@@ -286,5 +397,7 @@ class Adjudicator:
             "restatement": "Unable to parse restatement",
             "formalizations": {"challenger": "", "target": ""},
             "scores": {},
+            "_usage": _usage,
+            "_retry_count": _retry_count,
             **_debug,
         }

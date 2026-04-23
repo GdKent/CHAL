@@ -284,14 +284,14 @@ class TestRoundEvents:
         display.handle_event("round_complete", {
             "round": 1,
             "scores": {
-                "Agent-A": {"performance_score": 7.2, "sustained": 1, "overruled": 0},
-                "Agent-B": {"performance_score": 6.8, "sustained": 0, "overruled": 1},
+                "Agent-A": {"performance_score": 0.45},
+                "Agent-B": {"performance_score": 0.30},
             },
         })
         output = _get_output(buf)
         assert "Performance Scores" in output
         assert "Agent-A" in output
-        assert "7.2" in output
+        assert "+0.4500" in output
 
     @pytest.mark.unit
     def test_round_complete_shows_convergence(self):
@@ -364,15 +364,15 @@ class TestTableHelpers:
         """_show_performance_table renders agent scores."""
         display, buf = _make_display()
         stats = {
-            "Agent-A": {"performance_score": 8.5, "sustained": 2, "overruled": 1},
-            "Agent-B": {"performance_score": 6.0, "sustained": 0, "overruled": 2},
+            "Agent-A": {"performance_score": 0.65},
+            "Agent-B": {"performance_score": 0.20},
         }
         display._show_performance_table(stats)
         output = _get_output(buf)
         assert "Agent-A" in output
-        assert "8.5" in output
+        assert "+0.6500" in output
         assert "Agent-B" in output
-        assert "6.0" in output
+        assert "+0.2000" in output
 
 
 
@@ -403,9 +403,11 @@ class TestPostDebateSummary:
 
     @pytest.mark.unit
     def test_debate_complete_shows_duration(self):
-        """debate_complete shows duration when total_duration_s is provided."""
+        """debate_complete shows duration via operational_metrics in summary table."""
         display, buf = _make_display()
-        display.handle_event("debate_complete", {"total_duration_s": 272})
+        display.handle_event("debate_complete", {
+            "operational_metrics": {"duration_s": 272},
+        })
         output = _get_output(buf)
         assert "4m 32s" in output
 
@@ -423,13 +425,13 @@ class TestPostDebateSummary:
         display, buf = _make_display()
         display.handle_event("debate_complete", {
             "agent_stats": {
-                "Agent-A": {"performance_score": 7.5, "sustained": 2, "overruled": 1},
-                "Agent-B": {"performance_score": 5.0, "sustained": 1, "overruled": 2},
+                "Agent-A": {"performance_score": 0.55},
+                "Agent-B": {"performance_score": 0.30},
             },
         })
         output = _get_output(buf)
         assert "Agent-A" in output
-        assert "7.5" in output
+        assert "+0.5500" in output
 
     @pytest.mark.unit
     def test_debate_complete_shows_convergence(self):
@@ -452,6 +454,41 @@ class TestPostDebateSummary:
         display.handle_event("debate_complete", {})
         output = _get_output(buf)
         assert "Debate complete!" in output
+
+    @pytest.mark.unit
+    def test_debate_complete_shows_debate_summary(self):
+        """debate_complete renders the Debate Summary table with operational metrics."""
+        display, buf = _make_display()
+        display.handle_event("debate_complete", {
+            "agent_stats": {
+                "_debate_aggregate": {
+                    "adjudication_verdicts": {"critique_valid": 3, "rebuttal_valid": 2, "unresolved": 1},
+                    "total_verdict_overrides": 1,
+                }
+            },
+            "operational_metrics": {
+                "total_retries": 2,
+                "total_rate_limit_hits": 0,
+                "total_input_tokens": 48230,
+                "total_output_tokens": 12450,
+                "duration_s": 272,
+            },
+        })
+        output = _get_output(buf)
+        assert "Debate Summary" in output
+        assert "Total Exchanges" in output
+        assert "Total Retries" in output
+        assert "Output Tokens" in output
+        assert "12,450" in output
+
+    @pytest.mark.unit
+    def test_debate_summary_handles_missing_metrics(self):
+        """debate_complete with no _debate_aggregate or operational_metrics still renders."""
+        display, buf = _make_display()
+        display.handle_event("debate_complete", {"agent_stats": {}})
+        output = _get_output(buf)
+        # Should not crash and should still render the summary
+        assert "Debate Summary" in output
 
     @pytest.mark.unit
     def test_output_files_saved_event(self):

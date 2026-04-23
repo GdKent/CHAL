@@ -157,6 +157,7 @@ class XAIAgent(Agent):
                 temperature=temperature,
                 key_pool=self.key_pool,
                 current_key=self.api_key,
+                on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
 
             usage = {}
@@ -183,7 +184,8 @@ class XAIAgent(Agent):
 # --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
 def retry_xai_chat_completion(client, model, messages, temperature,
                                max_retries=5, base_delay=60.0,
-                               key_pool=None, current_key=""):
+                               key_pool=None, current_key="",
+                               on_rate_limit=None):
     """
     Wrapper to retry xAI chat completions with exponential backoff.
 
@@ -219,7 +221,9 @@ def retry_xai_chat_completion(client, model, messages, temperature,
             if code in (grpc.StatusCode.RESOURCE_EXHAUSTED,
                         grpc.StatusCode.UNAVAILABLE,
                         grpc.StatusCode.DEADLINE_EXCEEDED):
-                # On rate limit (RESOURCE_EXHAUSTED) with key pool: rotate
+                # On rate limit: fire callback, then rotate key and retry
+                if code == grpc.StatusCode.RESOURCE_EXHAUSTED and on_rate_limit:
+                    on_rate_limit()
                 if code == grpc.StatusCode.RESOURCE_EXHAUSTED and key_pool is not None:
                     key_pool.mark_rate_limited("xai", current_key, cooldown_seconds=60)
                     current_key = key_pool.get_key("xai")

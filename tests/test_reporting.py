@@ -72,7 +72,7 @@ def _make_agent_stats():
     """Create sample agent stats."""
     return {
         "Agent-A": {
-            "performance_score": 5.0,
+            "performance_score": 0.45,
             "successful_critiques": 2,
             "successful_rebuttals": 1,
             "failed_rebuttals": 0,
@@ -80,7 +80,7 @@ def _make_agent_stats():
             "total_arguments": 3,
         },
         "Agent-B": {
-            "performance_score": 2.0,
+            "performance_score": 0.20,
             "successful_critiques": 0,
             "successful_rebuttals": 1,
             "failed_rebuttals": 1,
@@ -145,7 +145,7 @@ class TestGenerateAnalysisReport:
 
         assert "Agent-A" in report
         assert "Agent-B" in report
-        assert "5.00" in report  # Agent-A's score
+        assert "+0.4500" in report  # Agent-A's APS score
 
     @pytest.mark.unit
     def test_contains_belief_evolution(self):
@@ -262,7 +262,7 @@ class TestGenerateAnalysisJSON:
         result = generate_analysis_json(config, agents, [], stats)
 
         assert "Agent-A" in result["agent_summaries"]
-        assert result["agent_summaries"]["Agent-A"]["performance_score"] == 5.0
+        assert result["agent_summaries"]["Agent-A"]["performance_score"] == 0.45
 
     @pytest.mark.unit
     def test_convergence_history_included_when_provided(self):

@@ -388,94 +388,253 @@ CARE_ETHICS = {
 }
 
 BALANCED = {
-    "label": "Balanced (Consequentialist-Deontological)",
+    "label": "Balanced (Rule-Utilitarian)",
     "description": (
-        "Balanced consequentialist-deontological: weigh both outcomes/welfare "
-        "and autonomy/rights. Neither consequences nor duties alone are "
-        "sufficient; evaluate arguments for both their practical impact and "
-        "their respect for moral principles."
+        "Rule-utilitarian synthesis: evaluate arguments by whether they follow "
+        "rules that, if generally adopted, would maximize aggregate well-being. "
+        "This combines consequentialist outcome analysis with respect for moral "
+        "rules, rights, and duties — not as absolute constraints, but as "
+        "welfare-maximizing heuristics whose violation demands strong "
+        "justification. This is the most thorough general-purpose ethics "
+        "system — it evaluates outcome quality, stakeholder impact, duty "
+        "adherence, rights respect, and the coherence of trade-offs between them."
     ),
     "criteria": {
         "critique_valid": [
+            # --- Integration criteria (rule-utilitarian bridge) ---
             (
-                "Dual-axis failure — the position violates moral duties AND "
-                "produces worse aggregate outcomes, failing on both the "
-                "deontological and consequentialist dimensions"
+                "Dual-axis failure — the position violates moral rules AND "
+                "produces worse aggregate outcomes, failing on both the duty "
+                "and consequence dimensions"
             ),
             (
                 "One-sided ethical reasoning — the position considers only "
-                "consequences while ignoring duties, or only duties while "
-                "ignoring consequences, when both are relevant"
+                "consequences while ignoring duty-based rules, or only rules "
+                "while ignoring consequences, when both are relevant"
             ),
             (
-                "Disproportionate duty — the position respects a moral duty but "
-                "at a disproportionate cost to overall well-being that a balanced "
-                "framework cannot justify (the duty-consequence trade-off is "
-                "unreasonable)"
+                "Disproportionate rule adherence — the position follows a moral "
+                "rule at a disproportionate cost to overall well-being that "
+                "rule-utilitarian reasoning cannot justify (the rule produces "
+                "worse outcomes than any available alternative)"
             ),
             (
                 "Disproportionate consequence — the position produces good "
-                "outcomes but through means that violate duties in a way the good "
-                "consequences cannot adequately redeem"
+                "outcomes but through means that violate well-established moral "
+                "rules in a way the good consequences cannot adequately redeem"
             ),
             (
                 "Opaque trade-offs — the position fails to make its trade-offs "
-                "between consequences and duties explicit, obscuring the ethical "
-                "reasoning and preventing proper evaluation"
+                "between consequences and moral rules explicit, obscuring the "
+                "ethical reasoning and preventing proper evaluation"
             ),
             (
                 "Rights-welfare blindspot — the position attends to either the "
                 "rights of individuals or the welfare of the broader group, but "
                 "not both"
             ),
-        ],
-        "rebuttal_valid": [
+            # --- Consequentialist criteria ---
             (
-                "The defender demonstrates the position satisfies both "
-                "consequentialist and deontological considerations — it produces "
-                "good outcomes without violating moral duties"
+                "Net harm — the position leads to outcomes that demonstrably "
+                "increase net suffering or decrease net well-being for affected "
+                "parties"
             ),
             (
-                "The defender shows that the trade-off between duties and "
+                "Stakeholder neglect — the position ignores or underweights "
+                "significant negative consequences for a substantial number of "
+                "affected people"
+            ),
+            (
+                "Utility miscalculation — the position miscounts, double-counts, "
+                "or omits relevant stakeholders in its assessment of consequences"
+            ),
+            (
+                "Short-termism — the position favors immediate benefits while "
+                "ignoring foreseeable long-term harms that would outweigh them"
+            ),
+            (
+                "Distributional blindness — the position fails to account for "
+                "how harms and benefits are distributed (e.g., concentrated "
+                "severe harm to a few vs. diffuse mild benefit to many)"
+            ),
+            (
+                "Rule generalization failure — the position's approach, if "
+                "adopted as a general rule, would produce worse aggregate "
+                "outcomes than available alternative rules"
+            ),
+            # --- Deontological criteria ---
+            (
+                "Universalizability failure — the maxim behind the endorsed "
+                "action, if universalized as a rule for all rational agents, "
+                "leads to a contradiction or is self-defeating"
+            ),
+            (
+                "Instrumentalization — the position treats persons merely as "
+                "means to an end rather than as ends in themselves, violating "
+                "their inherent dignity"
+            ),
+            (
+                "Duty violation — the position requires violating a recognized "
+                "moral rule (truth-telling, promise-keeping, non-maleficence) "
+                "without adequate justification from a competing rule or from "
+                "sufficiently severe consequences"
+            ),
+            (
+                "Autonomy infringement — the position endorses an action that "
+                "would override or undermine the rational autonomy of affected "
+                "agents without their consent and without outcome-based "
+                "justification"
+            ),
+            (
+                "Rights violation — the position requires infringing a "
+                "fundamental right (bodily autonomy, freedom of conscience, due "
+                "process) without demonstrating that the infringement is "
+                "necessary to prevent substantially worse outcomes"
+            ),
+            (
+                "Consequentialist smuggling — the position appeals solely to "
+                "good outcomes to justify an action that violates well-"
+                "established moral rules, without acknowledging the rule "
+                "violation or explaining why outcomes override in this case"
+            ),
+        ],
+        "rebuttal_valid": [
+            # --- Integration criteria (rule-utilitarian bridge) ---
+            (
+                "The defender demonstrates the position satisfies both "
+                "consequentialist and rule-based considerations — it produces "
+                "good outcomes without violating moral rules"
+            ),
+            (
+                "The defender shows that the trade-off between rules and "
                 "consequences is explicitly acknowledged and proportionally "
                 "balanced"
             ),
             (
                 "The critique applies only one ethical lens (purely "
-                "consequentialist or purely deontological) where the balanced "
+                "consequentialist or purely rule-based) where the balanced "
                 "framework requires both"
             ),
             (
                 "The defender demonstrates good outcomes are achieved WITHOUT "
-                "violating moral duties, so no trade-off is actually required"
+                "violating moral rules, so no trade-off is actually required"
             ),
             (
-                "The defender shows the apparent duty violation is a justified "
+                "The defender shows the apparent rule violation is a justified "
                 "exception given the severity of consequences, with explicit "
-                "reasoning for why consequences override in this case"
+                "reasoning for why outcomes override the rule in this case"
             ),
             (
                 "The defender demonstrates attention to both individual rights "
                 "and aggregate welfare, addressing the interests of both"
             ),
+            # --- Consequentialist criteria ---
+            (
+                "The defender demonstrates the challenged position actually "
+                "produces better aggregate outcomes than the alternative the "
+                "challenger proposes or implies"
+            ),
+            (
+                "The critique's proposed alternative would itself cause greater "
+                "net suffering when all consequences are considered"
+            ),
+            (
+                "The critique exaggerates or fabricates harms without evidence "
+                "of actual negative consequences"
+            ),
+            (
+                "The defender accounts for long-term consequences that reverse "
+                "the critique's short-term harm analysis"
+            ),
+            (
+                "The defender shows the identified harm is outweighed by "
+                "proportionally greater benefits across the full set of affected "
+                "stakeholders"
+            ),
+            (
+                "The critique applies utilitarian calculus inconsistently — "
+                "holding the defender to a standard it does not apply to its own "
+                "position"
+            ),
+            # --- Deontological criteria ---
+            (
+                "The defender demonstrates the rule or maxim underlying the "
+                "position is universalizable without contradiction when properly "
+                "formulated"
+            ),
+            (
+                "The defender shows the position respects all persons as ends "
+                "and the critique mischaracterizes the relationship between "
+                "agents"
+            ),
+            (
+                "No moral rule is actually violated, or the defender shows that "
+                "competing rules are properly prioritized (e.g., the rule "
+                "against harm overrides the rule of non-interference when "
+                "stakes are sufficiently high)"
+            ),
+            (
+                "The critique itself advocates a course of action that would "
+                "violate a stronger or more fundamental moral rule"
+            ),
+            (
+                "The defender demonstrates that the autonomy of rational agents "
+                "is preserved or enhanced by the defended position"
+            ),
+            (
+                "The apparent rights conflict resolves in favor of the defended "
+                "position under established priority rules (e.g., preventing "
+                "serious harm takes precedence over lesser liberty constraints)"
+            ),
         ],
         "unresolved": [
+            # --- Integration criteria (rule-utilitarian bridge) ---
             (
                 "The position performs well on one ethical axis (consequences or "
-                "duties) but poorly on the other, and neither the framework nor "
+                "rules) but poorly on the other, and neither the framework nor "
                 "the evidence provides a clear method for weighing them against "
                 "each other"
             ),
             (
                 "Both positions make defensible but different trade-offs between "
-                "consequentialist and deontological considerations, each "
+                "consequentialist and rule-based considerations, each "
                 "sacrificing something the other preserves"
             ),
             (
-                "The disagreement turns on the relative weight of duties vs. "
-                "consequences in this particular situation, which the balanced "
-                "framework intentionally leaves as a matter of judgment rather "
-                "than a fixed rule"
+                "The disagreement turns on the relative weight of rules vs. "
+                "consequences in this particular situation, which the rule-"
+                "utilitarian framework leaves as a matter of judgment rather "
+                "than a fixed formula"
+            ),
+            # --- Consequentialist criteria ---
+            (
+                "Both positions would produce significant benefits and "
+                "significant harms, with no clear method to determine which has "
+                "better net outcomes given available information"
+            ),
+            (
+                "The utility comparison requires empirical data about "
+                "consequences that neither side can provide"
+            ),
+            (
+                "The disagreement turns on how to weigh incommensurable goods "
+                "(e.g., liberty vs. safety, equality vs. efficiency) where "
+                "reasonable aggregation methods diverge"
+            ),
+            # --- Deontological criteria ---
+            (
+                "Genuine rule conflict — two legitimate moral rules point in "
+                "opposite directions and no clear priority principle resolves "
+                "which takes precedence"
+            ),
+            (
+                "The universalizability test yields ambiguous results because "
+                "the outcome depends on how the maxim is formulated, and both "
+                "formulations are reasonable"
+            ),
+            (
+                "Both positions respect moral rules but disagree about which "
+                "rule applies to the situation or which takes priority"
             ),
         ],
     },

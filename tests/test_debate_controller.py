@@ -23,10 +23,13 @@ from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
 from chal.orchestrator.debate_controller import (
     DebateController,
+    DebateMetrics,
     summarize_changes,
     filter_strength_increases,
     apply_defense_boosts,
     compute_defense_boost,
+    cap_phase1_counterposition_sufficiency,
+    _gather_dependency_nodes,
     _extract_first_json_block,
     _generate_rebuttal,
     _extract_all_json_blocks,
@@ -912,45 +915,45 @@ class TestApplyDefenseBoosts:
         result = apply_defense_boosts(belief, pairs, [], "Agent-A")
         assert result["claims"][0]["consecutive_defenses"] == 1
 
-    def test_first_defense_boost_is_003(self):
-        """First successful defense gives +0.03 boost."""
+    def test_first_defense_boost_is_002(self):
+        """First successful defense gives +0.02 flat boost."""
         belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
         original = belief["claims"][0]["strength"]
         belief["claims"][0]["original_strength"] = original
         belief["claims"][0]["consecutive_defenses"] = 0
         pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
         result = apply_defense_boosts(belief, pairs, [], "Agent-A")
-        assert abs(result["claims"][0]["strength"] - (original + 0.03)) < 0.001
+        assert abs(result["claims"][0]["strength"] - (original + 0.02)) < 0.001
 
-    def test_second_defense_boost_is_004(self):
-        """Second consecutive defense gives +0.04 boost."""
+    def test_second_defense_boost_is_002(self):
+        """Second consecutive defense also gives +0.02 (no escalation)."""
         belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
         original = belief["claims"][0]["strength"]
         belief["claims"][0]["original_strength"] = original
         belief["claims"][0]["consecutive_defenses"] = 1  # Already defended once
         pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
         result = apply_defense_boosts(belief, pairs, [], "Agent-A")
-        assert abs(result["claims"][0]["strength"] - (original + 0.04)) < 0.001
+        assert abs(result["claims"][0]["strength"] - (original + 0.02)) < 0.001
 
-    def test_third_plus_defense_boost_caps_at_005(self):
-        """Third+ defense gives +0.05 (max per-defense boost)."""
+    def test_fifth_defense_boost_is_002(self):
+        """Fifth defense also gives +0.02 (no escalation, flat boost)."""
         belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
         original = belief["claims"][0]["strength"]
         belief["claims"][0]["original_strength"] = original
-        belief["claims"][0]["consecutive_defenses"] = 2
+        belief["claims"][0]["consecutive_defenses"] = 4
         pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
         result = apply_defense_boosts(belief, pairs, [], "Agent-A")
-        assert abs(result["claims"][0]["strength"] - (original + 0.05)) < 0.001
+        assert abs(result["claims"][0]["strength"] - (original + 0.02)) < 0.001
 
-    def test_ceiling_original_plus_020(self):
-        """Node strength cannot exceed original_strength + 0.20."""
+    def test_ceiling_original_plus_015(self):
+        """Node strength cannot exceed original_strength + 0.15."""
         belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
-        belief["claims"][0]["strength"] = 0.85
-        belief["claims"][0]["original_strength"] = 0.70  # Ceiling = 0.90
+        belief["claims"][0]["strength"] = 0.83
+        belief["claims"][0]["original_strength"] = 0.70  # Ceiling = 0.85
         belief["claims"][0]["consecutive_defenses"] = 5
         pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
         result = apply_defense_boosts(belief, pairs, [], "Agent-A")
-        assert result["claims"][0]["strength"] <= 0.90
+        assert result["claims"][0]["strength"] <= 0.85
 
     def test_ceiling_absolute_10(self):
         """Node strength cannot exceed 1.0."""
@@ -1000,20 +1003,19 @@ class TestApplyDefenseBoosts:
         assert result["claims"][0]["strength"] == original_strength
 
     def test_compute_defense_boost_formula(self):
-        """Verify the stepwise formula: min(base_boost + boost_increment*n, max_boost_per_defense)."""
+        """Verify the flat boost: every defense returns the same constant."""
         assert compute_defense_boost(0) == 0.0
-        assert abs(compute_defense_boost(1) - 0.03) < 0.001
-        assert abs(compute_defense_boost(2) - 0.04) < 0.001
-        assert abs(compute_defense_boost(3) - 0.05) < 0.001
-        assert abs(compute_defense_boost(4) - 0.05) < 0.001
-        assert abs(compute_defense_boost(10) - 0.05) < 0.001
+        assert abs(compute_defense_boost(1) - 0.02) < 0.001
+        assert abs(compute_defense_boost(2) - 0.02) < 0.001
+        assert abs(compute_defense_boost(3) - 0.02) < 0.001
+        assert abs(compute_defense_boost(5) - 0.02) < 0.001
+        assert abs(compute_defense_boost(10) - 0.02) < 0.001
 
-    def test_compute_defense_boost_custom_params(self):
-        """Custom config parameters change the boost curve."""
-        assert abs(compute_defense_boost(1, base_boost=0.05, boost_increment=0.02,
-                                          max_boost_per_defense=0.10) - 0.07) < 0.001
-        assert abs(compute_defense_boost(3, base_boost=0.05, boost_increment=0.02,
-                                          max_boost_per_defense=0.10) - 0.10) < 0.001
+    def test_compute_defense_boost_custom_flat_boost(self):
+        """Custom flat_boost parameter changes the boost amount."""
+        assert abs(compute_defense_boost(1, flat_boost=0.05) - 0.05) < 0.001
+        assert abs(compute_defense_boost(3, flat_boost=0.05) - 0.05) < 0.001
+        assert abs(compute_defense_boost(10, flat_boost=0.10) - 0.10) < 0.001
 
     def test_defense_boost_disabled_via_config(self):
         """When enabled=False, no boosts are applied."""
@@ -1224,27 +1226,31 @@ class TestDependencyCeilingAfterDefenseBoosts:
     """Tests for the dependency ceiling enforcement that runs after defense boosts."""
 
     def test_defense_boost_respects_dependency_ceiling(self):
-        """Claim C1 (0.60) depends on A1 (0.55). After boost, C1 should cap at 0.55."""
+        """Claim C1 (0.60) depends on A1 (0.55). After cascade boost, A1 is lifted
+        to 0.57, so C1's ceiling is now 0.57 (not the old 0.55)."""
         belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
         belief["claims"][0]["strength"] = 0.60
         belief["claims"][0]["depends_on"] = ["A1"]
         belief["claims"][0]["original_strength"] = 0.60
         belief["claims"][0]["consecutive_defenses"] = 0
         belief["assumptions"][0]["strength"] = 0.55
-        # Apply defense boost — C1 gets boosted from 0.60 → ~0.63
+        belief["assumptions"][0]["original_strength"] = 0.55
+        # Apply defense boost — C1 direct boost 0.60→0.62; A1 cascade boost 0.55→0.57
         pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
         result = apply_defense_boosts(belief, pairs, [], "Agent-A")
         assert result["claims"][0]["strength"] > 0.60, \
             "C1 should have been boosted above 0.60 before ceiling"
-        # Now apply dependency ceiling
+        assert result["assumptions"][0]["strength"] == pytest.approx(0.57, abs=0.001), \
+            "A1 should have been cascade-boosted to 0.57"
+        # Now apply dependency ceiling — C1 (0.62) capped at A1's new 0.57
         logs = _apply_dependency_ceiling(result)
-        assert result["claims"][0]["strength"] == 0.55, \
-            f"C1 should be capped at A1's 0.55, got {result['claims'][0]['strength']}"
+        assert result["claims"][0]["strength"] == pytest.approx(0.57, abs=0.001), \
+            f"C1 should be capped at cascade-boosted A1's 0.57, got {result['claims'][0]['strength']}"
         assert len(logs) == 1, "Should have one ceiling log entry"
         assert "Dependency ceiling" in logs[0][0]
 
     def test_defense_boost_ceiling_allows_boost_within_deps(self):
-        """Claim C1 (0.60) depends on A1 (0.90). Boost to ~0.63 is within ceiling — no cap."""
+        """Claim C1 (0.60) depends on A1 (0.90). Boost to ~0.62 is within ceiling — no cap."""
         belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
         belief["claims"][0]["strength"] = 0.60
         belief["claims"][0]["depends_on"] = ["A1"]
@@ -1255,7 +1261,7 @@ class TestDependencyCeilingAfterDefenseBoosts:
         result = apply_defense_boosts(belief, pairs, [], "Agent-A")
         boosted_strength = result["claims"][0]["strength"]
         assert boosted_strength > 0.60, "C1 should have been boosted"
-        # Apply dependency ceiling — should NOT cap since 0.63 < 0.90
+        # Apply dependency ceiling — should NOT cap since 0.62 < 0.90
         logs = _apply_dependency_ceiling(result)
         assert result["claims"][0]["strength"] == boosted_strength, \
             "C1 should remain at boosted strength (below A1's 0.90)"
@@ -1821,7 +1827,12 @@ def test_adjudicator_retries_on_missing_json():
         '<reasoning>The critique was valid.</reasoning>\n\n'
         '```json\n'
         '{"outcome": "critique_valid", "reasoning": "Valid critique.", '
-        '"restatement": "Whether C1 is supported."}\n'
+        '"restatement": "Whether C1 is supported.", '
+        '"formalization_challenger": "P1: C1 is weak\\nC: Therefore C1 fails", '
+        '"formalization_target": "P1: C1 is defended\\nC: Therefore C1 holds", '
+        '"scores": {"challenger_logic": 0.75, "challenger_ethics": 1.0, '
+        '"defender_logic": 0.45, "defender_ethics": 1.0, '
+        '"challenger_combined": 0.75, "defender_combined": 0.45}}\n'
         '```'
     )
     agent = create_mock_agent("AdjudicatorRetry", responses=[no_json, valid_json])
@@ -1938,3 +1949,588 @@ def test_stage5_retries_on_empty_patches_with_critique_valid():
             final_belief = agent.set_internal_belief_obj.call_args[0][0]
             c1 = next(c for c in final_belief["claims"] if c["id"] == "C1")
             assert c1["strength"] == pytest.approx(0.55, abs=0.01)
+
+
+# ==============================================
+# 18. Phase 1 Counterposition Sufficiency Cap
+# ==============================================
+
+
+class TestCapPhase1CounterpositionSufficiency:
+    """Tests for cap_phase1_counterposition_sufficiency()."""
+
+    def test_downgrades_sufficient_to_partial(self):
+        """add_counterposition with 'sufficient' is downgraded to 'partial'."""
+        patches = [{
+            "op": "add_counterposition",
+            "item": {
+                "id": "X1", "targets": ["C1"],
+                "attack_type": "rebutting",
+                "statement": "Test",
+                "my_response": "Some response",
+                "response_sufficiency": "sufficient",
+            }
+        }]
+        cap_phase1_counterposition_sufficiency(patches)
+        assert patches[0]["item"]["response_sufficiency"] == "partial"
+
+    def test_partial_unchanged(self):
+        """add_counterposition with 'partial' is left unchanged."""
+        patches = [{
+            "op": "add_counterposition",
+            "item": {
+                "id": "X1", "targets": ["C1"],
+                "attack_type": "rebutting",
+                "statement": "Test",
+                "my_response": "Some response",
+                "response_sufficiency": "partial",
+            }
+        }]
+        cap_phase1_counterposition_sufficiency(patches)
+        assert patches[0]["item"]["response_sufficiency"] == "partial"
+
+    def test_unaddressed_unchanged(self):
+        """add_counterposition with 'unaddressed' is left unchanged."""
+        patches = [{
+            "op": "add_counterposition",
+            "item": {
+                "id": "X1", "targets": ["C1"],
+                "attack_type": "rebutting",
+                "statement": "Test",
+                "my_response": "",
+                "response_sufficiency": "unaddressed",
+            }
+        }]
+        cap_phase1_counterposition_sufficiency(patches)
+        assert patches[0]["item"]["response_sufficiency"] == "unaddressed"
+
+    def test_moot_unchanged(self):
+        """add_counterposition with 'moot' is left unchanged (not downgraded)."""
+        patches = [{
+            "op": "add_counterposition",
+            "item": {
+                "id": "X1", "targets": ["C1"],
+                "attack_type": "rebutting",
+                "statement": "Test",
+                "my_response": "",
+                "response_sufficiency": "moot",
+            }
+        }]
+        cap_phase1_counterposition_sufficiency(patches)
+        assert patches[0]["item"]["response_sufficiency"] == "moot"
+
+    def test_update_counterposition_not_affected(self):
+        """update_counterposition to 'sufficient' is NOT downgraded."""
+        patches = [{
+            "op": "update_counterposition",
+            "target_id": "X1",
+            "changes": {"response_sufficiency": "sufficient"},
+        }]
+        cap_phase1_counterposition_sufficiency(patches)
+        assert patches[0]["changes"]["response_sufficiency"] == "sufficient"
+
+    def test_multiple_patches_mixed(self):
+        """Multiple patches: only add_counterposition with 'sufficient' is downgraded."""
+        patches = [
+            {"op": "update_claim", "target_id": "C1", "changes": {"strength": 0.5}},
+            {
+                "op": "add_counterposition",
+                "item": {
+                    "id": "X1", "targets": ["C1"],
+                    "attack_type": "rebutting",
+                    "statement": "Test",
+                    "my_response": "Response",
+                    "response_sufficiency": "sufficient",
+                },
+            },
+            {
+                "op": "add_counterposition",
+                "item": {
+                    "id": "X2", "targets": ["C2"],
+                    "attack_type": "undermining",
+                    "statement": "Test 2",
+                    "my_response": "Response 2",
+                    "response_sufficiency": "partial",
+                },
+            },
+        ]
+        cap_phase1_counterposition_sufficiency(patches)
+        assert patches[1]["item"]["response_sufficiency"] == "partial"
+        assert patches[2]["item"]["response_sufficiency"] == "partial"
+
+    def test_logs_downgrade(self):
+        """Downgrade emits a log entry."""
+        patches = [{
+            "op": "add_counterposition",
+            "item": {
+                "id": "X3", "targets": ["C1"],
+                "attack_type": "rebutting",
+                "statement": "Test",
+                "my_response": "Response",
+                "response_sufficiency": "sufficient",
+            }
+        }]
+        log_entries = []
+        cap_phase1_counterposition_sufficiency(patches, log_entries)
+        assert len(log_entries) == 1
+        assert "X3" in log_entries[0][0]
+        assert "partial" in log_entries[0][0]
+
+    def test_no_log_when_no_downgrade(self):
+        """No log entry when nothing is downgraded."""
+        patches = [{
+            "op": "add_counterposition",
+            "item": {
+                "id": "X1", "targets": ["C1"],
+                "attack_type": "rebutting",
+                "statement": "Test",
+                "my_response": "Response",
+                "response_sufficiency": "partial",
+            }
+        }]
+        log_entries = []
+        cap_phase1_counterposition_sufficiency(patches, log_entries)
+        assert len(log_entries) == 0
+
+
+# ==============================================
+# 19. _gather_dependency_nodes() Tests
+# ==============================================
+
+
+class TestGatherDependencyNodes:
+    """Tests for _gather_dependency_nodes() BFS helper."""
+
+    def test_claim_gathers_assumptions_and_evidence(self):
+        """C1 depends_on [A1, E1] → returns [A1, E1]."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        deps = _gather_dependency_nodes(belief, "C1")
+        assert set(deps) == {"A1", "E1", "D1"}
+
+    def test_assumption_gathers_definitions(self):
+        """A1 supported_by_definitions [D1] → returns [D1]."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        deps = _gather_dependency_nodes(belief, "A1")
+        assert deps == ["D1"]
+
+    def test_evidence_gathers_definitions(self):
+        """E1 supported_by_definitions [D1] → returns [D1]."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        deps = _gather_dependency_nodes(belief, "E1")
+        assert deps == ["D1"]
+
+    def test_definition_is_leaf(self):
+        """D1 has no further dependencies → returns []."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        deps = _gather_dependency_nodes(belief, "D1")
+        assert deps == []
+
+    def test_claim_full_chain(self):
+        """C1 → A1, E1 → D1. Full BFS returns all three."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        deps = _gather_dependency_nodes(belief, "C1")
+        assert "A1" in deps
+        assert "E1" in deps
+        assert "D1" in deps
+        assert len(deps) == 3
+
+    def test_skips_retracted_dependency(self):
+        """Retracted A1 is excluded from BFS results."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=2, num_evidence=1)
+        belief["assumptions"][0]["status"] = "retracted"
+        belief["claims"][0]["depends_on"] = ["A1", "A2"]
+        deps = _gather_dependency_nodes(belief, "C1")
+        assert "A1" not in deps
+        assert "A2" in deps
+
+    def test_deduplicates(self):
+        """D1 reachable via both A1 and E1 → appears once."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        deps = _gather_dependency_nodes(belief, "C1")
+        assert deps.count("D1") == 1
+
+    def test_nonexistent_dep_skipped(self):
+        """depends_on references non-existent ID → skipped gracefully."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["depends_on"] = ["A1", "A99"]
+        deps = _gather_dependency_nodes(belief, "C1")
+        assert "A1" in deps
+        assert "A99" not in deps
+
+    def test_claim_depends_on_claim(self):
+        """C2 depends_on [C1], C1 depends_on [A1] → returns [C1, A1, E1, D1]."""
+        belief = create_sample_belief(num_claims=2, num_assumptions=1, num_evidence=1)
+        belief["claims"][1]["depends_on"] = ["C1"]
+        deps = _gather_dependency_nodes(belief, "C2")
+        assert "C1" in deps
+        assert "A1" in deps
+        assert "D1" in deps
+
+    def test_nonexistent_root_returns_empty(self):
+        """Unknown root node → returns []."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        deps = _gather_dependency_nodes(belief, "Z99")
+        assert deps == []
+
+
+# ==============================================
+# 20. Cascading Defense Boost Tests
+# ==============================================
+
+
+class TestCascadingDefenseBoosts:
+    """Tests for cascading defense boosts to dependency nodes."""
+
+    def test_cascade_assumption_to_definitions(self):
+        """A1 defended → D1 (its supported_by_definitions) also boosted."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["assumptions"][0]["strength"] = 0.70
+        belief["assumptions"][0]["original_strength"] = 0.70
+        belief["definitions"][0]["strength"] = 0.80
+        belief["definitions"][0]["original_strength"] = 0.80
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["A1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        # A1 should be boosted
+        assert result["assumptions"][0]["strength"] > 0.70
+        # D1 should also be boosted (cascade)
+        assert result["definitions"][0]["strength"] > 0.80
+
+    def test_cascade_evidence_to_definitions(self):
+        """E1 defended → D1 (its supported_by_definitions) also boosted."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["evidence"][0]["strength"] = 0.70
+        belief["evidence"][0]["original_strength"] = 0.70
+        belief["definitions"][0]["strength"] = 0.80
+        belief["definitions"][0]["original_strength"] = 0.80
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["E1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["evidence"][0]["strength"] > 0.70
+        assert result["definitions"][0]["strength"] > 0.80
+
+    def test_cascade_claim_to_full_chain(self):
+        """C1 defended → A1, E1 boosted, AND D1 also boosted."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["assumptions"][0]["strength"] = 0.70
+        belief["assumptions"][0]["original_strength"] = 0.70
+        belief["evidence"][0]["strength"] = 0.70
+        belief["evidence"][0]["original_strength"] = 0.70
+        belief["definitions"][0]["strength"] = 0.80
+        belief["definitions"][0]["original_strength"] = 0.80
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["strength"] > 0.60, "C1 direct boost"
+        assert result["assumptions"][0]["strength"] > 0.70, "A1 cascade boost"
+        assert result["evidence"][0]["strength"] > 0.70, "E1 cascade boost"
+        assert result["definitions"][0]["strength"] > 0.80, "D1 cascade boost"
+
+    def test_cascade_skips_retracted_deps(self):
+        """Retracted dependency is not cascade-boosted."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=2, num_evidence=1)
+        belief["claims"][0]["depends_on"] = ["A1", "A2"]
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["assumptions"][0]["status"] = "retracted"
+        belief["assumptions"][0]["strength"] = 0.30
+        belief["assumptions"][1]["strength"] = 0.70
+        belief["assumptions"][1]["original_strength"] = 0.70
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["assumptions"][0]["strength"] == 0.30, "Retracted A1 not boosted"
+        assert result["assumptions"][1]["strength"] > 0.70, "Active A2 cascade boosted"
+
+    def test_cascade_deduplicates(self):
+        """D1 reachable via both A1 and E1 → boosted exactly once."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["definitions"][0]["strength"] = 0.80
+        belief["definitions"][0]["original_strength"] = 0.80
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        # D1 should get exactly +0.02 (one boost), not +0.04
+        expected = round(0.80 + 0.02, 4)
+        assert result["definitions"][0]["strength"] == expected, \
+            f"D1 should be boosted once to {expected}, got {result['definitions'][0]['strength']}"
+
+    def test_cascade_respects_cumulative_ceiling(self):
+        """Cascade node near ceiling → capped at original_strength + max_cumulative_boost."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["assumptions"][0]["strength"] = 0.99
+        belief["assumptions"][0]["original_strength"] = 0.80
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        # A1 original=0.80, max_cumulative=0.15 → ceiling=0.95, current=0.99 → already above ceiling → no increase
+        assert result["assumptions"][0]["strength"] <= 1.0
+
+    def test_cascade_respects_absolute_ceiling(self):
+        """Cascade node with high original → absolute cap at 1.0."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["assumptions"][0]["strength"] = 0.98
+        belief["assumptions"][0]["original_strength"] = 0.95
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        # 0.98 + 0.02 = 1.00 → capped at 1.0 (min(0.95+0.15, 1.0) = 1.0)
+        assert result["assumptions"][0]["strength"] <= 1.0
+
+    def test_cascade_does_not_increment_consecutive_defenses(self):
+        """Cascade nodes' consecutive_defenses unchanged — only direct target incremented."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][0]["consecutive_defenses"] == 1, "Direct target incremented"
+        assert result["assumptions"][0]["consecutive_defenses"] == 0, "Cascade node NOT incremented"
+        assert result["evidence"][0]["consecutive_defenses"] == 0, "Cascade node NOT incremented"
+        assert result["definitions"][0]["consecutive_defenses"] == 0, "Cascade node NOT incremented"
+
+    def test_cascade_definition_leaf_no_further(self):
+        """D# defended → no cascade (leaf node)."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["definitions"][0]["strength"] = 0.80
+        belief["definitions"][0]["original_strength"] = 0.80
+        old_a1 = belief["assumptions"][0]["strength"]
+        old_e1 = belief["evidence"][0]["strength"]
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["D1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["definitions"][0]["strength"] > 0.80, "D1 directly boosted"
+        assert result["assumptions"][0]["strength"] == old_a1, "A1 not cascade boosted (D1 is leaf)"
+        assert result["evidence"][0]["strength"] == old_e1, "E1 not cascade boosted (D1 is leaf)"
+
+    def test_cascade_claim_depends_on_claim(self):
+        """C2 depends on C1 which depends on A1 → full chain boosted."""
+        belief = create_sample_belief(num_claims=2, num_assumptions=1, num_evidence=1)
+        belief["claims"][1]["depends_on"] = ["C1"]
+        belief["claims"][1]["strength"] = 0.50
+        belief["claims"][1]["original_strength"] = 0.50
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["assumptions"][0]["strength"] = 0.70
+        belief["assumptions"][0]["original_strength"] = 0.70
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C2"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        assert result["claims"][1]["strength"] > 0.50, "C2 direct boost"
+        assert result["claims"][0]["strength"] > 0.60, "C1 cascade boost"
+        assert result["assumptions"][0]["strength"] > 0.70, "A1 cascade boost"
+
+    def test_cascade_disabled_when_boost_disabled(self):
+        """defense_boost.enabled=False → no cascade either."""
+        from chal.config import DefenseBoostConfig
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["original_strength"] = 0.60
+        config = DefenseBoostConfig(enabled=False)
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["C1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A", boost_config=config)
+        assert result["claims"][0]["strength"] == 0.60
+        assert result["assumptions"][0]["strength"] == 0.80
+        assert result["definitions"][0]["strength"] == 0.90
+
+    def test_cascade_logs_distinguish_direct_from_cascade(self):
+        """Log entries distinguish '(cascade)' from direct boosts."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=1)
+        belief["assumptions"][0]["strength"] = 0.70
+        belief["assumptions"][0]["original_strength"] = 0.70
+        belief["definitions"][0]["strength"] = 0.80
+        belief["definitions"][0]["original_strength"] = 0.80
+        log_entries = []
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["A1"]}]
+        apply_defense_boosts(belief, pairs, log_entries, "Agent-A")
+        log_messages = [entry[0] for entry in log_entries]
+        direct_logs = [m for m in log_messages if "Defense boost:" in m and "(cascade)" not in m]
+        cascade_logs = [m for m in log_messages if "(cascade)" in m]
+        assert len(direct_logs) >= 1, "Should have at least one direct boost log"
+        assert len(cascade_logs) >= 1, "Should have at least one cascade boost log"
+
+
+class TestCascadeCeilingInteraction:
+    """Tests for cascade boost interaction with dependency ceiling."""
+
+    def test_cascade_lifts_ceiling_bottleneck(self):
+        """C1 (0.60) → A1 (0.55) → D1 (0.55). A1 defended: A1 and D1 both boosted.
+        Post-ceiling C1 now capped at boosted A1 instead of old 0.55."""
+        belief = create_sample_belief(num_claims=1, num_assumptions=1, num_evidence=0)
+        belief["claims"][0]["strength"] = 0.60
+        belief["claims"][0]["depends_on"] = ["A1"]
+        belief["claims"][0]["original_strength"] = 0.60
+        belief["assumptions"][0]["strength"] = 0.55
+        belief["assumptions"][0]["original_strength"] = 0.55
+        belief["definitions"][0]["strength"] = 0.55
+        belief["definitions"][0]["original_strength"] = 0.55
+        pairs = [{"resolution": {"status": "rebuttal_valid"}, "target_ids": ["A1"]}]
+        result = apply_defense_boosts(belief, pairs, [], "Agent-A")
+        # A1 boosted from 0.55 → 0.57
+        assert result["assumptions"][0]["strength"] == pytest.approx(0.57, abs=0.001)
+        # D1 cascade boosted from 0.55 → 0.57
+        assert result["definitions"][0]["strength"] == pytest.approx(0.57, abs=0.001)
+        # Now apply dependency ceiling — C1 (0.60) should be capped at A1's new 0.57
+        logs = _apply_dependency_ceiling(result)
+        assert result["claims"][0]["strength"] == pytest.approx(0.57, abs=0.001), \
+            "C1 should be capped at boosted A1's 0.57, not the old 0.55"
+
+
+# ==============================================
+# Operational Metrics: DebateMetrics Tests
+# ==============================================
+
+
+@pytest.mark.unit
+def test_debate_metrics_initialized(simple_config, mock_agents):
+    """Test that a new controller initializes DebateMetrics with zeroed counters."""
+    controller = DebateController(mock_agents, config=simple_config)
+
+    assert isinstance(controller.metrics, DebateMetrics)
+    assert controller.metrics.total_retries == 0
+    assert controller.metrics.total_rate_limit_hits == 0
+    assert controller.metrics.total_output_tokens == 0
+    assert controller.metrics.total_input_tokens == 0
+
+
+@pytest.mark.unit
+def test_accumulate_tokens_anthropic_format(simple_config, mock_agents):
+    """Test _accumulate_tokens with Anthropic-style usage metadata."""
+    controller = DebateController(mock_agents, config=simple_config)
+    response = Message(
+        role="assistant",
+        content="Some response",
+        metadata={"usage": {"input_tokens": 100, "output_tokens": 50}},
+    )
+
+    controller._accumulate_tokens(response)
+
+    assert controller.metrics.total_input_tokens == 100
+    assert controller.metrics.total_output_tokens == 50
+
+
+@pytest.mark.unit
+def test_accumulate_tokens_openai_format(simple_config, mock_agents):
+    """Test _accumulate_tokens with OpenAI-style usage metadata."""
+    controller = DebateController(mock_agents, config=simple_config)
+    response = Message(
+        role="assistant",
+        content="Some response",
+        metadata={"usage": {"prompt_tokens": 200, "completion_tokens": 80}},
+    )
+
+    controller._accumulate_tokens(response)
+
+    assert controller.metrics.total_input_tokens == 200
+    assert controller.metrics.total_output_tokens == 80
+
+
+@pytest.mark.unit
+def test_accumulate_tokens_none_metadata_safe(simple_config, mock_agents):
+    """Test _accumulate_tokens handles None metadata without crashing."""
+    controller = DebateController(mock_agents, config=simple_config)
+    response = Message(role="assistant", content="Some response", metadata=None)
+
+    controller._accumulate_tokens(response)
+
+    assert controller.metrics.total_input_tokens == 0
+    assert controller.metrics.total_output_tokens == 0
+
+
+@pytest.mark.unit
+def test_accumulate_tokens_cumulative(simple_config, mock_agents):
+    """Test _accumulate_tokens accumulates across multiple calls."""
+    controller = DebateController(mock_agents, config=simple_config)
+    response_1 = Message(
+        role="assistant",
+        content="First",
+        metadata={"usage": {"input_tokens": 100, "output_tokens": 50}},
+    )
+    response_2 = Message(
+        role="assistant",
+        content="Second",
+        metadata={"usage": {"input_tokens": 200, "output_tokens": 80}},
+    )
+
+    controller._accumulate_tokens(response_1)
+    controller._accumulate_tokens(response_2)
+
+    assert controller.metrics.total_input_tokens == 300
+    assert controller.metrics.total_output_tokens == 130
+
+
+@pytest.mark.unit
+def test_accumulate_tokens_from_usage_dict(simple_config, mock_agents):
+    """Test _accumulate_tokens_from_usage with a raw usage dict."""
+    controller = DebateController(mock_agents, config=simple_config)
+
+    controller._accumulate_tokens_from_usage({"input_tokens": 300, "output_tokens": 150})
+
+    assert controller.metrics.total_input_tokens == 300
+    assert controller.metrics.total_output_tokens == 150
+
+
+@pytest.mark.unit
+def test_debate_metrics_to_dict():
+    """Test DebateMetrics.to_dict() returns all expected keys and values."""
+    metrics = DebateMetrics(
+        total_retries=5,
+        total_rate_limit_hits=2,
+        total_output_tokens=1000,
+        total_input_tokens=5000,
+        start_time=100.0,
+        end_time=105.5,
+    )
+
+    result = metrics.to_dict()
+
+    assert result["total_retries"] == 5
+    assert result["total_rate_limit_hits"] == 2
+    assert result["total_output_tokens"] == 1000
+    assert result["total_input_tokens"] == 5000
+    assert result["duration_s"] == 5.5
+
+
+@pytest.mark.unit
+def test_debate_metrics_duration_s_zero_when_no_end():
+    """Test duration_s is 0.0 when end_time is 0.0 (default)."""
+    metrics = DebateMetrics(start_time=100.0, end_time=0.0)
+
+    assert metrics.duration_s == 0.0
+
+
+@pytest.mark.unit
+def test_retry_on_parse_failure_increments_metrics(simple_config, mock_agents):
+    """Test that _retry_on_parse_failure increments total_retries on each retry iteration."""
+    controller = DebateController(mock_agents, config=simple_config)
+
+    call_count = 0
+
+    def generate_fn():
+        nonlocal call_count
+        call_count += 1
+        return {"attempt": call_count}
+
+    valid_count = 0
+
+    def is_valid_fn(result):
+        nonlocal valid_count
+        valid_count += 1
+        # Fail on the first call, succeed on the second
+        return valid_count >= 2
+
+    controller._retry_on_parse_failure(generate_fn, is_valid_fn, "Test", "TestAgent")
+
+    assert controller.metrics.total_retries == 2
+
+
+@pytest.mark.unit
+def test_rate_limit_callback_wired_to_agents(simple_config, mock_agents):
+    """Test that rate-limit callbacks are wired to agents and increment metrics."""
+    controller = DebateController(mock_agents, config=simple_config)
+
+    for agent in controller.agents:
+        assert hasattr(agent, "_on_rate_limit")
+
+    controller.agents[0]._on_rate_limit()
+
+    assert controller.metrics.total_rate_limit_hits == 1
