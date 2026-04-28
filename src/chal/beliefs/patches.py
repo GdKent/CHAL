@@ -639,7 +639,7 @@ def apply_patches(
         "changes": changes,
     })
 
-    return updated
+    return updated  # type: ignore[no-any-return]
 
 
 # --- Validation constants ---
@@ -777,9 +777,8 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 err(i, "update_thesis change must be 'weaken' or 'strengthen'")
 
             # Validate stance
-            if stance is not None:
-                if not isinstance(stance, str) or not stance.strip():
-                    err(i, "update_thesis stance must be a non-empty string")
+            if stance is not None and (not isinstance(stance, str) or not stance.strip()):
+                err(i, "update_thesis stance must be a non-empty string")
 
             # Validate summary_bullets
             if summary_bullets is not None:
@@ -809,12 +808,10 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                         err(i, "update_claim strength must be between 0.0 and 1.0")
                 if "status" in changes and changes["status"] not in _STATUS_ENUM:
                     err(i, f"update_claim status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
-                if "strength_justification" in changes:
-                    if not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip():
-                        err(i, "update_claim strength_justification must be a non-empty string")
-                if "statement" in changes:
-                    if not isinstance(changes["statement"], str) or not changes["statement"].strip():
-                        err(i, "update_claim statement must be a non-empty string")
+                if "strength_justification" in changes and (not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip()):
+                    err(i, "update_claim strength_justification must be a non-empty string")
+                if "statement" in changes and (not isinstance(changes["statement"], str) or not changes["statement"].strip()):
+                    err(i, "update_claim statement must be a non-empty string")
                 if "inference_chain" in changes:
                     ic = changes["inference_chain"]
                     if not isinstance(ic, list) or len(ic) == 0:
@@ -872,14 +869,13 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                     if not isinstance(ic, list) or len(ic) == 0:
                         err(i, "add_claim inference_chain must be a non-empty array")
                     elif isinstance(ic, list) and len(ic) > 0:
-                        ic_errors: list[str] = []
-                        validate_inference_chain(ic, item.get("id", "?"), ic_errors)
-                        for ic_err in ic_errors:
+                        ic_errors_2: list[str] = []
+                        validate_inference_chain(ic, item.get("id", "?"), ic_errors_2)
+                        for ic_err in ic_errors_2:
                             err(i, ic_err)
                 # Validate strength_justification
-                if "strength_justification" in item:
-                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
-                        err(i, "add_claim strength_justification must be a non-empty string")
+                if "strength_justification" in item and (not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip()):
+                    err(i, "add_claim strength_justification must be a non-empty string")
                 # Track new ID for forward references within the batch
                 if i not in errors:
                     claim_ids.add(item["id"])
@@ -904,15 +900,12 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 if "type" in item and item["type"] not in _EVIDENCE_TYPE_ENUM:
                     err(i, f"add_evidence type must be one of: {', '.join(sorted(_EVIDENCE_TYPE_ENUM))}")
                 # Non-empty strings
-                if "summary" in item:
-                    if not isinstance(item["summary"], str) or not item["summary"].strip():
-                        err(i, "add_evidence summary must be a non-empty string")
-                if "source" in item:
-                    if not isinstance(item["source"], str) or not item["source"].strip():
-                        err(i, "add_evidence source must be a non-empty string")
-                if "strength_justification" in item:
-                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
-                        err(i, "add_evidence strength_justification must be a non-empty string")
+                if "summary" in item and (not isinstance(item["summary"], str) or not item["summary"].strip()):
+                    err(i, "add_evidence summary must be a non-empty string")
+                if "source" in item and (not isinstance(item["source"], str) or not item["source"].strip()):
+                    err(i, "add_evidence source must be a non-empty string")
+                if "strength_justification" in item and (not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip()):
+                    err(i, "add_evidence strength_justification must be a non-empty string")
                 # supports_claims validation
                 if "supports_claims" in item:
                     rtc = item["supports_claims"]
@@ -972,15 +965,12 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 if "type" in changes and changes["type"] not in _EVIDENCE_TYPE_ENUM:
                     err(i, f"update_evidence type must be one of: {', '.join(sorted(_EVIDENCE_TYPE_ENUM))}")
                 # Non-empty strings
-                if "strength_justification" in changes:
-                    if not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip():
-                        err(i, "update_evidence strength_justification must be a non-empty string")
-                if "summary" in changes:
-                    if not isinstance(changes["summary"], str) or not changes["summary"].strip():
-                        err(i, "update_evidence summary must be a non-empty string")
-                if "source" in changes:
-                    if not isinstance(changes["source"], str) or not changes["source"].strip():
-                        err(i, "update_evidence source must be a non-empty string")
+                if "strength_justification" in changes and (not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip()):
+                    err(i, "update_evidence strength_justification must be a non-empty string")
+                if "summary" in changes and (not isinstance(changes["summary"], str) or not changes["summary"].strip()):
+                    err(i, "update_evidence summary must be a non-empty string")
+                if "source" in changes and (not isinstance(changes["source"], str) or not changes["source"].strip()):
+                    err(i, "update_evidence source must be a non-empty string")
                 # supported_by_definitions validation
                 if "supported_by_definitions" in changes:
                     sbd = changes["supported_by_definitions"]
@@ -1012,9 +1002,8 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 err(i, f"update_assumption new_type must be one of: {', '.join(sorted(_ASSUMPTION_TYPE_ENUM))}")
 
             # new_statement non-empty
-            if new_statement is not None:
-                if not isinstance(new_statement, str) or not new_statement.strip():
-                    err(i, "update_assumption new_statement must be a non-empty string")
+            if new_statement is not None and (not isinstance(new_statement, str) or not new_statement.strip()):
+                err(i, "update_assumption new_statement must be a non-empty string")
 
             if has_changes:
                 # Whitelist check
@@ -1031,12 +1020,10 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 if "type" in changes and changes["type"] not in _ASSUMPTION_TYPE_ENUM:
                     err(i, f"update_assumption type must be one of: {', '.join(sorted(_ASSUMPTION_TYPE_ENUM))}")
                 # Non-empty strings
-                if "strength_justification" in changes:
-                    if not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip():
-                        err(i, "update_assumption strength_justification must be a non-empty string")
-                if "statement" in changes:
-                    if not isinstance(changes["statement"], str) or not changes["statement"].strip():
-                        err(i, "update_assumption statement must be a non-empty string")
+                if "strength_justification" in changes and (not isinstance(changes["strength_justification"], str) or not changes["strength_justification"].strip()):
+                    err(i, "update_assumption strength_justification must be a non-empty string")
+                if "statement" in changes and (not isinstance(changes["statement"], str) or not changes["statement"].strip()):
+                    err(i, "update_assumption statement must be a non-empty string")
                 # supported_by_definitions validation
                 if "supported_by_definitions" in changes:
                     sbd = changes["supported_by_definitions"]
@@ -1072,9 +1059,8 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 if "status" in item and item["status"] not in _STATUS_ENUM:
                     err(i, f"add_assumption status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
                 # strength_justification non-empty
-                if "strength_justification" in item:
-                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
-                        err(i, "add_assumption strength_justification must be a non-empty string")
+                if "strength_justification" in item and (not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip()):
+                    err(i, "add_assumption strength_justification must be a non-empty string")
                 # supports_claims validation
                 if "supports_claims" in item and isinstance(item["supports_claims"], list):
                     for ref in item["supports_claims"]:
@@ -1125,14 +1111,12 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                             if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["counterposition_targets"]:
                                 err(i, f"add_counterposition targets contains '{ref}' — only C#/A#/E#/D# IDs allowed")
                 # Non-empty strings
-                if "statement" in item:
-                    if not isinstance(item["statement"], str) or not item["statement"].strip():
-                        err(i, "add_counterposition statement must be a non-empty string")
+                if "statement" in item and (not isinstance(item["statement"], str) or not item["statement"].strip()):
+                    err(i, "add_counterposition statement must be a non-empty string")
                 if "my_response" in item:
                     sufficiency = item.get("response_sufficiency", "")
-                    if sufficiency not in ("unaddressed", "moot"):
-                        if not isinstance(item["my_response"], str) or not item["my_response"].strip():
-                            err(i, "add_counterposition my_response must be a non-empty string (required when response_sufficiency is not 'unaddressed' or 'moot')")
+                    if sufficiency not in ("unaddressed", "moot") and (not isinstance(item["my_response"], str) or not item["my_response"].strip()):
+                        err(i, "add_counterposition my_response must be a non-empty string (required when response_sufficiency is not 'unaddressed' or 'moot')")
                 # Track new ID for forward references within the batch
                 if i not in errors:
                     counterposition_ids.add(item["id"])
@@ -1166,12 +1150,10 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 if "attack_type" in changes and changes["attack_type"] not in _ATTACK_TYPE_ENUM:
                     err(i, f"update_counterposition attack_type must be one of: {', '.join(sorted(_ATTACK_TYPE_ENUM))}")
                 # Non-empty strings
-                if "statement" in changes:
-                    if not isinstance(changes["statement"], str) or not changes["statement"].strip():
-                        err(i, "update_counterposition statement must be a non-empty string")
-                if "my_response" in changes:
-                    if not isinstance(changes["my_response"], str) or not changes["my_response"].strip():
-                        err(i, "update_counterposition my_response must be a non-empty string")
+                if "statement" in changes and (not isinstance(changes["statement"], str) or not changes["statement"].strip()):
+                    err(i, "update_counterposition statement must be a non-empty string")
+                if "my_response" in changes and (not isinstance(changes["my_response"], str) or not changes["my_response"].strip()):
+                    err(i, "update_counterposition my_response must be a non-empty string")
 
         elif op == "add_uncertainty":
             item = patch.get("item")
@@ -1199,9 +1181,8 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                             if isinstance(ref, str) and len(ref) >= 2 and ref[0] not in ALLOWED_REF_PREFIXES["uncertainty_targets"]:
                                 err(i, f"add_uncertainty targets contains '{ref}' — only A#/E#/C#/D# IDs allowed")
                 # Question non-empty
-                if "question" in item:
-                    if not isinstance(item["question"], str) or not item["question"].strip():
-                        err(i, "add_uncertainty question must be a non-empty string")
+                if "question" in item and (not isinstance(item["question"], str) or not item["question"].strip()):
+                    err(i, "add_uncertainty question must be a non-empty string")
                 # Status enum
                 if "status" in item and item["status"] not in _UNCERTAINTY_STATUS_ENUM:
                     err(i, f"add_uncertainty status must be one of: {', '.join(sorted(_UNCERTAINTY_STATUS_ENUM))}")
@@ -1242,15 +1223,12 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                     if field not in item:
                         err(i, f"add_definition item missing required field '{field}'")
                 # Non-empty strings
-                if "term" in item:
-                    if not isinstance(item["term"], str) or not item["term"].strip():
-                        err(i, "add_definition term must be a non-empty string")
-                if "definition" in item:
-                    if not isinstance(item["definition"], str) or not item["definition"].strip():
-                        err(i, "add_definition definition must be a non-empty string")
-                if "strength_justification" in item:
-                    if not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip():
-                        err(i, "add_definition strength_justification must be a non-empty string")
+                if "term" in item and (not isinstance(item["term"], str) or not item["term"].strip()):
+                    err(i, "add_definition term must be a non-empty string")
+                if "definition" in item and (not isinstance(item["definition"], str) or not item["definition"].strip()):
+                    err(i, "add_definition definition must be a non-empty string")
+                if "strength_justification" in item and (not isinstance(item["strength_justification"], str) or not item["strength_justification"].strip()):
+                    err(i, "add_definition strength_justification must be a non-empty string")
                 # Strength validation
                 if "strength" in item:
                     s = item["strength"]
@@ -1303,12 +1281,10 @@ def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, l
                 if "status" in patch_changes and patch_changes["status"] not in _STATUS_ENUM:
                     err(i, f"update_definition status must be one of: {', '.join(sorted(_STATUS_ENUM))}")
                 # Non-empty strings
-                if "definition" in patch_changes:
-                    if not isinstance(patch_changes["definition"], str) or not patch_changes["definition"].strip():
-                        err(i, "update_definition definition must be a non-empty string")
-                if "strength_justification" in patch_changes:
-                    if not isinstance(patch_changes["strength_justification"], str) or not patch_changes["strength_justification"].strip():
-                        err(i, "update_definition strength_justification must be a non-empty string")
+                if "definition" in patch_changes and (not isinstance(patch_changes["definition"], str) or not patch_changes["definition"].strip()):
+                    err(i, "update_definition definition must be a non-empty string")
+                if "strength_justification" in patch_changes and (not isinstance(patch_changes["strength_justification"], str) or not patch_changes["strength_justification"].strip()):
+                    err(i, "update_definition strength_justification must be a non-empty string")
                 # used_by validation
                 if "used_by" in patch_changes:
                     used_by = patch_changes["used_by"]

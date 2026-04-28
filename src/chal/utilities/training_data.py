@@ -254,8 +254,8 @@ class DebateRecorder:
 
         # Build agent model lookup from metadata
         agent_models = {}
-        for a in self.metadata.get("agents", []):
-            agent_models[a["agent_id"]] = a.get("model", "unknown")
+        for a in self.metadata.get("agents", []):  # type: ignore[union-attr]
+            agent_models[a["agent_id"]] = a.get("model", "unknown")  # type: ignore[union-attr, index]
 
         for event in self.timeline:
             if event["type"] == "belief_formation":

@@ -177,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             console.print(f"[red]Error loading configuration:[/red] {e}")
             return 1
 
-        config, action = run_wizard(console, prefill=prefill)
+        config, action = run_wizard(console, prefill=prefill)  # type: ignore[assignment]
 
         if action == "cancel" or config is None:
             console.print("[dim]Cancelled.[/dim]")
@@ -191,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         # Interactive wizard mode (no args)
         try:
-            config, action = run_wizard(console)
+            config, action = run_wizard(console)  # type: ignore[assignment]
         except KeyboardInterrupt:
             console.print("\n[dim]Cancelled.[/dim]")
             return 0

@@ -56,7 +56,6 @@ def export_debate_graph(
     # Build graph data for Cytoscape
     nodes = []
     edges = []
-    node_id_counter = 0
 
     # Color scheme by node type
     node_colors = {

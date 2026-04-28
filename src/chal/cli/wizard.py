@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 
 import questionary
-import yaml
+import yaml  # type: ignore[import-untyped]
 from prompt_toolkit.filters import has_completions
 from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
 from prompt_toolkit.styles import Style as PTKStyle
@@ -626,7 +626,7 @@ def ask_main_menu() -> str:
     Returns:
         One of "about", "debate", "gauntlet", "exit".
     """
-    return _ask(questionary.select(
+    return _ask(questionary.select(  # type: ignore[no-any-return]
         "What would you like to do?",
         choices=[
             Choice("About CHAL", value="about"),
@@ -678,7 +678,7 @@ def ask_preset() -> DebateConfig | None:
     """
     presets = _scan_presets()
     choices = [Choice("Custom (configure from scratch)", value="__custom__")]
-    for label, config_name, path in presets:
+    for label, _config_name, path in presets:
         choices.append(Choice(label, value=str(path)))
 
     result = _ask(questionary.select(
@@ -698,7 +698,7 @@ def ask_preset() -> DebateConfig | None:
 
 def ask_topic(default: str = "") -> str:
     """Step 1: Ask for the debate topic."""
-    return _ask(questionary.text(
+    return _ask(questionary.text(  # type: ignore[no-any-return]
         "What topic should the agents debate?",
         default=default,
         instruction="(free text \u2014 e.g. 'Does free will exist?')",
@@ -710,7 +710,7 @@ def ask_num_agents(default: int = 2) -> int:
     answer = _ask(questionary.text(
         "How many agents should participate? (2-6)",
         default=str(default),
-        validate=lambda t: _validate_int_range(t, 2, 6),
+        validate=lambda t: _validate_int_range(t, 2, 6),  # type: ignore[arg-type]
     ), help_text=HELP_NUM_AGENTS)
     return int(answer)
 
@@ -782,12 +782,12 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
             else:
                 raise
 
-    name = d_name or f"Agent-{d_persona.capitalize()}"
+    name = d_name or f"Agent-{d_persona.capitalize()}"  # type: ignore[union-attr]
 
     return AgentConfig(
         name=name,
-        persona=d_persona,
-        model=d_model,
+        persona=d_persona,  # type: ignore[arg-type]
+        model=d_model,  # type: ignore[arg-type]
         temperature=d_temp,
         provider=d_provider,
         belief_file=d_belief_file,
@@ -799,7 +799,7 @@ def ask_num_rounds(default: int = 1) -> int:
     answer = _ask(questionary.text(
         "Number of debate rounds:",
         default=str(default),
-        validate=lambda t: _validate_int_range(t, 1, 10),
+        validate=lambda t: _validate_int_range(t, 1, 10),  # type: ignore[arg-type]
     ), help_text=HELP_NUM_ROUNDS)
     return int(answer)
 
@@ -931,7 +931,7 @@ def ask_output_toggles(default: OutputConfig | None = None) -> dict[str, bool]:
 
 def ask_parallelization(default: bool = True) -> bool:
     """Step 10: Ask whether to enable parallel API dispatch."""
-    return _ask(questionary.confirm(
+    return _ask(questionary.confirm(  # type: ignore[no-any-return]
         "Enable parallel API dispatch? (recommended)",
         default=default,
     ), help_text=HELP_PARALLELIZATION)
@@ -1065,7 +1065,7 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
 
 def ask_review_action() -> str:
     """Ask user what to do after reviewing the configuration."""
-    return _ask(questionary.select(
+    return _ask(questionary.select(  # type: ignore[no-any-return]
         "Proceed with this configuration?",
         choices=[
             Choice("Launch debate", value="launch"),
@@ -1088,7 +1088,7 @@ def ask_edit_section() -> str:
         Choice("Parallelization", value="parallelization"),
     ]
 
-    return _ask(questionary.select(
+    return _ask(questionary.select(  # type: ignore[no-any-return]
         "Which section would you like to edit?",
         choices=choices,
     ), help_text=HELP_EDIT_SECTION)
@@ -1235,7 +1235,7 @@ def _step_api_keys(state: dict) -> bool:
 
 def _build_config(state: dict) -> DebateConfig:
     """Build a DebateConfig from wizard state dict."""
-    pf = state.get('prefill')
+    state.get('prefill')
 
     output_flags = state.get('output_flags', {})
     outputs = OutputConfig(storage_dir=DEFAULT_STORAGE_DIR)

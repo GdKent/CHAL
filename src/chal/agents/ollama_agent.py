@@ -31,7 +31,7 @@ class OllamaAgent(Agent):
         system_prompt (str): Optional instruction that defines the agent's persona or behavior.
     """
 
-    def __init__(self, model: str, name: str, api_key: str = None, system_prompt: str = ""):
+    def __init__(self, model: str, name: str, api_key: str | None = None, system_prompt: str = ""):
         # api_key is accepted but ignored -- Ollama runs locally and requires no authentication
         super().__init__(name=name, model=model, system_prompt=system_prompt,
                          temperature=0.7)

@@ -387,7 +387,7 @@ def _write_best_agent_beliefs(config: DebateConfig, results: dict, controller) -
     def _get_position(positions_key: str) -> str:
         positions = results.get(positions_key) or []
         if best_idx is not None and 0 <= best_idx < len(positions):
-            return positions[best_idx]
+            return positions[best_idx]  # type: ignore[no-any-return]
         return "(position unavailable)"
 
     initial_text = _get_position("initial_positions")
@@ -433,6 +433,6 @@ def _get_initial_belief_obj(agent) -> dict:
     if isinstance(raw, dict):
         return raw
     try:
-        return json.loads(raw)
+        return json.loads(raw)  # type: ignore[no-any-return]
     except (json.JSONDecodeError, TypeError):
         return {"error": "initial belief unparseable", "raw": str(raw)}

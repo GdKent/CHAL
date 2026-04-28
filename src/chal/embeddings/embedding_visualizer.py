@@ -154,7 +154,7 @@ class BeliefTrajectoryPlotter:
         reduced = reducer.fit_transform(all_vecs)
 
         reduced_by_agent: dict[str, list[np.ndarray]] = {}
-        for coord, agent in zip(reduced, agent_labels):
+        for coord, agent in zip(reduced, agent_labels, strict=False):
             if agent not in reduced_by_agent:
                 reduced_by_agent[agent] = []
             reduced_by_agent[agent].append(coord)
@@ -175,7 +175,7 @@ class BeliefTrajectoryPlotter:
         reduced = pca.fit_transform(all_vecs)
 
         reduced_by_agent: dict[str, list[np.ndarray]] = {}
-        for coord, agent in zip(reduced, agent_labels):
+        for coord, agent in zip(reduced, agent_labels, strict=False):
             if agent not in reduced_by_agent:
                 reduced_by_agent[agent] = []
             reduced_by_agent[agent].append(coord)
@@ -284,7 +284,7 @@ class BeliefTrajectoryPlotter:
         agent_colors = {}
 
         for agent, coords in reduced_by_agent.items():
-            coords = np.array(coords)
+            coords = np.array(coords)  # type: ignore[assignment]
 
             # Use custom color if provided, otherwise try persona colormap,
             # then fall back to the default color cycle.
@@ -307,55 +307,55 @@ class BeliefTrajectoryPlotter:
 
             # Plot the line and points
             if agent_info:
-                ax.plot(coords[:, 0], coords[:, 1], marker='o', color=color)
+                ax.plot(coords[:, 0], coords[:, 1], marker='o', color=color)  # type: ignore[call-overload]
             else:
-                ax.plot(coords[:, 0], coords[:, 1], marker='o', label=agent, color=color)
+                ax.plot(coords[:, 0], coords[:, 1], marker='o', label=agent, color=color)  # type: ignore[call-overload]
 
             # Draw arrows between embeddings
             for i in range(len(coords) - 1):
                 start = coords[i]
                 end = coords[i + 1]
                 ax.annotate(
-                    '', xy=end, xytext=start,
+                    '', xy=end, xytext=start,  # type: ignore[arg-type]
                     arrowprops=dict(arrowstyle='->', color=color, lw=1.5),
-                    annotation_clip=False
-                )
+                    annotation_clip=False,
+                )  # type: ignore[call-overload]
 
             # Add "Start" and "End" labels, and place provider logo at start
             if agent_info and agent in agent_info:
                 # Logo present: put "Start" label above the point, logo to the left
-                ax.text(coords[0, 0], coords[0, 1], f"{agent} Start",
-                        fontsize=13, fontweight='bold', ha='center', va='bottom', color=color)
-                ax.text(coords[-1, 0], coords[-1, 1], f"{agent} End",
-                        fontsize=13, fontweight='bold', ha='left', va='top', color=color)
+                ax.text(coords[0, 0], coords[0, 1], f"{agent} Start",  # type: ignore[call-overload]
+                        fontsize=13, fontweight='bold', ha='center', va='bottom', color=color)  # type: ignore[arg-type]
+                ax.text(coords[-1, 0], coords[-1, 1], f"{agent} End",  # type: ignore[call-overload]
+                        fontsize=13, fontweight='bold', ha='left', va='top', color=color)  # type: ignore[arg-type]
 
                 provider = agent_info[agent].get("provider", "")
                 logo_img = self._load_logo(provider)
                 if logo_img is not None:
                     im = OffsetImage(logo_img, zoom=0.04)
                     ab = AnnotationBbox(
-                        im, (coords[0, 0], coords[0, 1]),
+                        im, (coords[0, 0], coords[0, 1]),  # type: ignore[call-overload]
                         xybox=(-30, -15),
                         xycoords='data',
                         boxcoords="offset points",
                         frameon=False,
-                    )
+                    )  # type: ignore[arg-type]
                     ax.add_artist(ab)
                 elif provider:
                     # Fallback: colored circle with letter
-                    ax.plot(coords[0, 0], coords[0, 1], 'o', color=color, markersize=15, zorder=5)
-                    ax.text(coords[0, 0], coords[0, 1], provider[0].upper(),
+                    ax.plot(coords[0, 0], coords[0, 1], 'o', color=color, markersize=15, zorder=5)  # type: ignore[call-overload]
+                    ax.text(coords[0, 0], coords[0, 1], provider[0].upper(),  # type: ignore[call-overload]
                             fontsize=10, ha='center', va='center', color='white',
-                            fontweight='bold', zorder=6)
+                            fontweight='bold', zorder=6)  # type: ignore[arg-type]
             else:
-                ax.text(coords[0, 0], coords[0, 1], f"{agent} Start",
-                        fontsize=11, fontweight='bold', ha='right', va='bottom', color=color)
-                ax.text(coords[-1, 0], coords[-1, 1], f"{agent} End",
-                        fontsize=11, fontweight='bold', ha='left', va='top', color=color)
+                ax.text(coords[0, 0], coords[0, 1], f"{agent} Start",  # type: ignore[call-overload]
+                        fontsize=11, fontweight='bold', ha='right', va='bottom', color=color)  # type: ignore[arg-type]
+                ax.text(coords[-1, 0], coords[-1, 1], f"{agent} End",  # type: ignore[call-overload]
+                        fontsize=11, fontweight='bold', ha='left', va='top', color=color)  # type: ignore[arg-type]
 
-        ax.set_title(title or "Agent Belief Trajectories", fontsize=18, fontweight='bold')
-        ax.set_xlabel(xlabel, fontsize=13, fontweight='bold')
-        ax.set_ylabel(ylabel, fontsize=13, fontweight='bold')
+        ax.set_title(title or "Agent Belief Trajectories", fontsize=18, fontweight='bold')  # type: ignore[call-overload]
+        ax.set_xlabel(xlabel, fontsize=13, fontweight='bold')  # type: ignore[call-overload]
+        ax.set_ylabel(ylabel, fontsize=13, fontweight='bold')  # type: ignore[call-overload]
         if agent_info:
             # Build custom legend with logos
             legend_rows = []
@@ -384,20 +384,20 @@ class BeliefTrajectoryPlotter:
                 # Add text label
                 label_text = f"{agent} ({model})" if model else agent
                 text_box = TextArea(label_text, textprops=dict(color=color, fontsize=11, fontweight='bold'))
-                row_children.append(text_box)
+                row_children.append(text_box)  # type: ignore[arg-type]
 
-                row = HPacker(children=row_children, align="center", pad=2, sep=4)
-                legend_rows.append(row)
+                row = HPacker(children=row_children, align="center", pad=2, sep=4)  # type: ignore[call-overload, arg-type]
+                legend_rows.append(row)  # type: ignore[arg-type]
 
-            legend_box = VPacker(children=legend_rows, align="left", pad=4, sep=4)
+            legend_box = VPacker(children=legend_rows, align="left", pad=4, sep=4)  # type: ignore[call-overload, arg-type]
             anchored = AnchoredOffsetbox(
                 loc='upper right',
                 child=legend_box,
                 pad=0.5,
                 frameon=True,
                 borderpad=0.5,
-                prop=dict(size=9),
-            )
+                prop=dict(size=9),  # type: ignore[arg-type]
+            )  # type: ignore[arg-type]
             anchored.patch.set_facecolor('white')
             anchored.patch.set_alpha(0.9)
             anchored.patch.set_boxstyle("round,pad=0.3")

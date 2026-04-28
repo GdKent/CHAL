@@ -40,7 +40,7 @@ class XAIAgent(Agent):
         name (str): Display name for the agent, e.g., "Agent-Empiricist".
     """
 
-    def __init__(self, model: str, name: str, api_key: str = None,
+    def __init__(self, model: str, name: str, api_key: str | None = None,
                  system_prompt: str = "", key_pool=None):
         """
         Initializes the XAIAgent with model and optional prompt/key.
@@ -91,7 +91,7 @@ class XAIAgent(Agent):
             def _make_call(rotated_client):
                 c = rotated_client if rotated_client is not None else self._client
                 try:
-                    chat = c.chat.create(
+                    chat = c.chat.create(  # type: ignore[union-attr]
                         model=self.model,
                         messages=messages,
                         temperature=temperature,
@@ -112,7 +112,7 @@ class XAIAgent(Agent):
                 rate_limit_errors=(_XAIRateLimitError,),
                 retryable_errors=(_XAIRetryableError,),
                 key_pool=self.key_pool,
-                current_key=self.api_key,
+                current_key=self.api_key,  # type: ignore[arg-type]
                 rebuild_client_fn=lambda key: Client(api_key=key),
                 on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
@@ -127,7 +127,7 @@ class XAIAgent(Agent):
 
             return Message(
                 role="assistant",
-                content=response.content,
+                content=response.content,  # type: ignore[arg-type]
                 metadata={"model": self.model, "usage": usage}
             )
 

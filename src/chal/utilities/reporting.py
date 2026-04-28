@@ -8,6 +8,7 @@ Produces a structured Markdown report and/or JSON analysis from debate results.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from datetime import datetime
 
@@ -17,8 +18,8 @@ def generate_analysis_report(
     agents: list,
     challenge_rebuttal_pairs: list,
     agent_stats: dict,
-    convergence_history: list = None,
-    opening_positions: list = None,
+    convergence_history: list | None = None,
+    opening_positions: list | None = None,
 ) -> str:
     """
     Generate a Markdown analysis report for a completed debate.
@@ -137,10 +138,8 @@ def generate_analysis_report(
         final_obj = agent.get_internal_belief_obj() if hasattr(agent, 'get_internal_belief_obj') else None
 
         if all_beliefs and len(all_beliefs) > 0:
-            try:
+            with contextlib.suppress(json.JSONDecodeError, TypeError):
                 initial_obj = json.loads(all_beliefs[0])
-            except (json.JSONDecodeError, TypeError):
-                pass
 
         if initial_obj and final_obj:
             # Thesis comparison
@@ -194,7 +193,7 @@ def generate_analysis_json(
     agents: list,
     challenge_rebuttal_pairs: list,
     agent_stats: dict,
-    convergence_history: list = None,
+    convergence_history: list | None = None,
 ) -> dict:
     """
     Generate a structured JSON analysis report.

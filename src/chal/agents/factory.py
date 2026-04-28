@@ -82,7 +82,7 @@ def create_agent(name: str, model: str, provider: str = "openai",
     if provider_lower in ("openai", "anthropic"):
         kwargs["max_tokens"] = max_tokens
 
-    return agent_class(**kwargs)
+    return agent_class(**kwargs)  # type: ignore[no-any-return]
 
 
 def create_agent_from_config(agent_cfg, key_pool=None) -> Agent:

@@ -688,7 +688,7 @@ def get_ethics_system_description(key: str) -> str:
     Raises:
         KeyError: If the key does not match any known ethics system.
     """
-    return ETHICS_SYSTEMS[key.upper()]["description"]
+    return ETHICS_SYSTEMS[key.upper()]["description"]  # type: ignore[return-value]
 
 
 def get_ethics_system_label(key: str) -> str:
@@ -704,4 +704,4 @@ def get_ethics_system_label(key: str) -> str:
     Raises:
         KeyError: If the key does not match any known ethics system.
     """
-    return ETHICS_SYSTEMS[key.upper()]["label"]
+    return ETHICS_SYSTEMS[key.upper()]["label"]  # type: ignore[return-value]

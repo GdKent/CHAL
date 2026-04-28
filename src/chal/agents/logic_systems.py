@@ -863,7 +863,7 @@ def get_logic_system_description(key: str) -> str:
     Raises:
         KeyError: If the key does not match any known logic system.
     """
-    return LOGIC_SYSTEMS[key.upper()]["description"]
+    return LOGIC_SYSTEMS[key.upper()]["description"]  # type: ignore[return-value]
 
 
 def get_logic_system_label(key: str) -> str:
@@ -879,4 +879,4 @@ def get_logic_system_label(key: str) -> str:
     Raises:
         KeyError: If the key does not match any known logic system.
     """
-    return LOGIC_SYSTEMS[key.upper()]["label"]
+    return LOGIC_SYSTEMS[key.upper()]["label"]  # type: ignore[return-value]

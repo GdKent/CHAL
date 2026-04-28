@@ -37,7 +37,7 @@ def _read_history() -> list[dict[str, Any]]:
     try:
         with open(HISTORY_FILE, encoding="utf-8") as f:
             data = json.load(f)
-        return data.get("debates", [])
+        return data.get("debates", [])  # type: ignore[no-any-return]
     except (json.JSONDecodeError, OSError):
         return []
 

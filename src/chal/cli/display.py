@@ -208,7 +208,7 @@ class DebateDisplay:
 
         # Advance the progress bar
         if self._progress and self._round_task_id is not None:
-            self._progress.update(self._round_task_id, completed=round_num)
+            self._progress.update(self._round_task_id, completed=round_num)  # type: ignore[arg-type]
 
         # Show adjudication results table (if any collected this round)
         if self._round_adjudications:
@@ -299,7 +299,7 @@ class DebateDisplay:
             table.add_row(
                 r.get("challenger", "?"),
                 r.get("target", "?"),
-                Text(outcome, style=style),
+                Text(outcome, style=style),  # type: ignore[arg-type]
             )
 
         self.console.print()
@@ -421,6 +421,6 @@ class DebateDisplay:
             ).ask()
             if action is None:
                 return "abort"
-            return action
+            return action  # type: ignore[no-any-return]
         except Exception:
             return "abort"

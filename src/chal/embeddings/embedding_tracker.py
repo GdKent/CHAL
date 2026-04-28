@@ -30,7 +30,7 @@ class BeliefEmbeddingTracker:
         self.model = SentenceTransformer(model_name)
         self.embeddings: dict[str, list[np.ndarray]] = {}
         self.metadata: dict = {}
-        self._model_dim: int = self.model.get_sentence_embedding_dimension()
+        self._model_dim: int | None = self.model.get_sentence_embedding_dimension()
 
     # ------------------------------------------------------------------
     # Helper methods
@@ -50,18 +50,18 @@ class BeliefEmbeddingTracker:
             Unweighted mean if all strengths are zero.
         """
         if not items:
-            return np.zeros(self._model_dim, dtype=np.float32)
+            return np.zeros(self._model_dim, dtype=np.float32)  # type: ignore[arg-type]
 
         texts = [it["text"] for it in items]
         strengths = np.array([it["strength"] for it in items], dtype=np.float32)
-        vectors = self.model.encode(texts, convert_to_numpy=True)  # (N, dim)
+        vectors = self.model.encode(texts, convert_to_numpy=True)  # type: ignore[arg-type]  # (N, dim)
 
         total_weight = strengths.sum()
         if total_weight == 0.0:
-            return vectors.mean(axis=0)
+            return vectors.mean(axis=0)  # type: ignore[call-overload, no-any-return]
 
         weighted = (vectors * strengths[:, np.newaxis]).sum(axis=0) / total_weight
-        return weighted.astype(np.float32)
+        return weighted.astype(np.float32)  # type: ignore[no-any-return]
 
     def _simple_average_embedding(self, texts: list[str]) -> np.ndarray:
         """Compute an unweighted average embedding for a list of texts.
@@ -74,10 +74,10 @@ class BeliefEmbeddingTracker:
             Zero vector if *texts* is empty.
         """
         if not texts:
-            return np.zeros(self._model_dim, dtype=np.float32)
+            return np.zeros(self._model_dim, dtype=np.float32)  # type: ignore[arg-type]
 
         vectors = self.model.encode(texts, convert_to_numpy=True)  # (N, dim)
-        return vectors.mean(axis=0).astype(np.float32)
+        return vectors.mean(axis=0).astype(np.float32)  # type: ignore[no-any-return]
 
     @staticmethod
     def _normalize_scalars(scalars: dict[str, float]) -> np.ndarray:
@@ -157,7 +157,7 @@ class BeliefEmbeddingTracker:
         if thesis_text:
             thesis_vec = self.model.encode(thesis_text, convert_to_numpy=True).astype(np.float32)
         else:
-            thesis_vec = np.zeros(self._model_dim, dtype=np.float32)
+            thesis_vec = np.zeros(self._model_dim, dtype=np.float32)  # type: ignore[arg-type]
 
         # Uncertainties — simple average
         uncertainties_vec = self._simple_average_embedding(proj["uncertainties"])
@@ -190,7 +190,7 @@ class BeliefEmbeddingTracker:
         if agent_name not in self.embeddings:
             self.embeddings[agent_name] = []
         self.embeddings[agent_name].append(full_vector)
-        return full_vector
+        return full_vector  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Original public API
@@ -220,7 +220,7 @@ class BeliefEmbeddingTracker:
         if agent_name not in self.embeddings:
             self.embeddings[agent_name] = []
         self.embeddings[agent_name].append(embedding)
-        return embedding
+        return embedding  # type: ignore[no-any-return]
 
 
     def get_agent_trajectory(self, agent_name: str) -> list[np.ndarray]:
@@ -257,7 +257,7 @@ class BeliefEmbeddingTracker:
         """
         save_dict = {agent: np.stack(vectors) for agent, vectors in self.embeddings.items()}
         if agent_info or topic:
-            save_dict["__metadata__"] = np.array({"agent_info": agent_info or {}, "topic": topic or ""})
+            save_dict["__metadata__"] = np.array({"agent_info": agent_info or {}, "topic": topic or ""})  # type: ignore[call-overload]
         np.savez_compressed(str(filepath), **save_dict)
 
 

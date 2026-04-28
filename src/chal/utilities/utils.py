@@ -10,7 +10,6 @@ from __future__ import annotations
 import re
 
 
-
 def sanitize_filename(name: str) -> str:
     """Convert a string to a filesystem-safe filename (no extension).
 
@@ -171,13 +170,12 @@ def validate_stage2_questions(questions: list[dict]) -> tuple[bool, list[str]]:
 
         # --- attack_strategy ---
         attack_strategy = q.get("attack_strategy", "")
-        if attack_type in VALID_ATTACK_STRATEGIES and attack_strategy:
-            if attack_strategy not in VALID_ATTACK_STRATEGIES[attack_type]:
-                errors.append(
-                    f"{label}: attack_strategy '{attack_strategy}' is not valid "
-                    f"for attack_type '{attack_type}' "
-                    f"(valid: {', '.join(sorted(VALID_ATTACK_STRATEGIES[attack_type]))})"
-                )
+        if attack_type in VALID_ATTACK_STRATEGIES and attack_strategy and attack_strategy not in VALID_ATTACK_STRATEGIES[attack_type]:
+            errors.append(
+                f"{label}: attack_strategy '{attack_strategy}' is not valid "
+                f"for attack_type '{attack_type}' "
+                f"(valid: {', '.join(sorted(VALID_ATTACK_STRATEGIES[attack_type]))})"
+            )
 
     return (len(errors) == 0), errors
 
@@ -302,7 +300,7 @@ def update_agent_stats(agent_stats: dict, record: dict):
             - 'target': the agent who responded,
             - 'resolution': one of ['critique_valid', 'rebuttal_valid', 'unresolved']
     """
-    resolution = record.get('resolution')['status']
+    resolution = record.get('resolution')['status']  # type: ignore[index]
     challenger = record.get('challenger')
     target = record.get('target')
 
@@ -547,19 +545,19 @@ def compute_attack_histograms(
             continue
         hist = agent_stats[challenger]["cross_examination_attacks"]
         hist["total"] += 1
-        aggregate["attacks_total"] += 1
+        aggregate["attacks_total"] += 1  # type: ignore[operator]
 
         attack_type = pair.get("attack_type", "")
         if attack_type in hist["by_type"]:
             hist["by_type"][attack_type] += 1
-        if attack_type in aggregate["attacks_by_type"]:
-            aggregate["attacks_by_type"][attack_type] += 1
+        if attack_type in aggregate["attacks_by_type"]:  # type: ignore[operator]
+            aggregate["attacks_by_type"][attack_type] += 1  # type: ignore[index]
 
         attack_strategy = pair.get("attack_strategy", "")
         if attack_strategy in hist["by_strategy"]:
             hist["by_strategy"][attack_strategy] += 1
-        if attack_strategy in aggregate["attacks_by_strategy"]:
-            aggregate["attacks_by_strategy"][attack_strategy] += 1
+        if attack_strategy in aggregate["attacks_by_strategy"]:  # type: ignore[operator]
+            aggregate["attacks_by_strategy"][attack_strategy] += 1  # type: ignore[index]
 
     return aggregate
 

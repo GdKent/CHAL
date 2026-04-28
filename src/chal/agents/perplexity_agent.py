@@ -37,7 +37,7 @@ class PerplexityAgent(Agent):
         name (str): Display name for the agent, e.g., "Agent-Empiricist".
     """
 
-    def __init__(self, model: str, name: str, api_key: str = None,
+    def __init__(self, model: str, name: str, api_key: str | None = None,
                  system_prompt: str = "", key_pool=None):
         """
         Initializes the PerplexityAgent with model and optional prompt/key.
@@ -52,7 +52,7 @@ class PerplexityAgent(Agent):
         super().__init__(name=name, model=model, system_prompt=system_prompt,
                          temperature=0.7, key_pool=key_pool)
         self.api_key = api_key or os.getenv("PERPLEXITY_API_KEY")
-        self._client = None  # Lazy init: created on first generate() call
+        self._client: Perplexity | None = None  # Lazy init: created on first generate() call
 
     def generate(self, history: list[Message], temperature: float = 0.7) -> Message:
         """
@@ -82,9 +82,9 @@ class PerplexityAgent(Agent):
         try:
             def _make_call(rotated_client):
                 c = rotated_client if rotated_client is not None else self._client
-                return c.chat.completions.create(
+                return c.chat.completions.create(  # type: ignore[union-attr]
                     model=self.model,
-                    messages=messages,
+                    messages=messages,  # type: ignore[arg-type]
                     temperature=temperature,
                 )
 
@@ -94,7 +94,7 @@ class PerplexityAgent(Agent):
                 rate_limit_errors=(perplexity_module.RateLimitError,),
                 retryable_errors=(perplexity_module.InternalServerError, perplexity_module.APIConnectionError),
                 key_pool=self.key_pool,
-                current_key=self.api_key,
+                current_key=self.api_key,  # type: ignore[arg-type]
                 rebuild_client_fn=lambda key: Perplexity(api_key=key),
                 on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
@@ -109,7 +109,7 @@ class PerplexityAgent(Agent):
 
             return Message(
                 role="assistant",
-                content=response.choices[0].message.content,
+                content=response.choices[0].message.content,  # type: ignore[arg-type]
                 metadata={"model": response.model, "usage": usage}
             )
 

@@ -32,7 +32,7 @@ class AnthropicAgent(Agent):
         name (str): Display name for the agent, e.g., "Agent-Rationalist".
     """
 
-    def __init__(self, model: str, name: str, api_key: str = None,
+    def __init__(self, model: str, name: str, api_key: str | None = None,
                  system_prompt: str = "", key_pool=None, max_tokens: int = 65536):
         """
         Initializes the AnthropicAgent with model and optional prompt/key.
@@ -84,8 +84,8 @@ class AnthropicAgent(Agent):
                     "temperature": temperature,
                 }
                 if self.system_prompt:
-                    kwargs["system"] = self.system_prompt
-                return c.messages.create(**kwargs)
+                    kwargs["system"] = self.system_prompt  # type: ignore[assignment]
+                return c.messages.create(**kwargs)  # type: ignore[call-overload]
 
             response = retry_api_call(
                 call_fn=_make_call,
@@ -93,15 +93,15 @@ class AnthropicAgent(Agent):
                 rate_limit_errors=(anthropic.RateLimitError,),
                 retryable_errors=(anthropic.InternalServerError, anthropic.APIConnectionError),
                 key_pool=self.key_pool,
-                current_key=self.api_key,
+                current_key=self.api_key,  # type: ignore[arg-type]
                 rebuild_client_fn=lambda key: anthropic.Anthropic(api_key=key),
                 on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
 
             return Message(
                 role="assistant",
-                content=response.content[0].text,
-                metadata={"model": response.model, "usage": dict(response.usage)}
+                content=response.content[0].text,  # type: ignore[union-attr]
+                metadata={"model": response.model, "usage": dict(response.usage)}  # type: ignore[arg-type]
             )
 
         except Exception as e:

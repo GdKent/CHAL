@@ -167,7 +167,7 @@ class KeyPool:
                 raise ValueError(
                     f"Key not found for provider '{provider}'. "
                     f"Cannot mark an unregistered key as rate-limited."
-                )
+                ) from None
             cooldown_key = f"{provider}:{idx}"
             self._cooldowns[cooldown_key] = time.monotonic() + cooldown_seconds
 

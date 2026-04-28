@@ -120,7 +120,8 @@ def belief_to_markdown(belief: dict[str, Any]) -> str:
 
     def list_block(title: str, key: str, formatter):
         items = belief.get(key) or []
-        if not items: return
+        if not items:
+            return
         md.append(f"\n# {title}")
         for item in items:
             md.append(formatter(item))
@@ -148,7 +149,8 @@ def belief_to_markdown(belief: dict[str, Any]) -> str:
 
     def claim_fmt(c):
         parts = [f"- [{c.get('id','')}] ({c.get('type','')}) {c.get('statement','')}"]
-        if c.get("depends_on"): parts.append(f"  - Depends on: {', '.join(c['depends_on'])}")
+        if c.get("depends_on"):
+            parts.append(f"  - Depends on: {', '.join(c['depends_on'])}")
         if c.get("inference_chain"):
             parts.append("  - Inference chain:")
             for step in c["inference_chain"]:
@@ -360,7 +362,7 @@ def project_for_component_embedding(belief: dict[str, Any]) -> dict[str, Any]:
     def _avg_strength(items: list) -> float:
         if not items:
             return 0.0
-        return sum(i.get("strength", 0.0) for i in items) / len(items)
+        return sum(i.get("strength", 0.0) for i in items) / len(items)  # type: ignore[no-any-return]
 
     all_counterpositions = belief.get("counterpositions") or []
     all_uncertainties = belief.get("uncertainties") or []

@@ -49,10 +49,10 @@ from chal.beliefs.patches import initialize_defense_tracking
 from chal.config import AdjudicationConfig, DebateConfig, DefenseBoostConfig
 from chal.embeddings.embedding_tracker import BeliefEmbeddingTracker
 from chal.orchestrator.adjudicator import Adjudicator
+from chal.utilities.debug_log_writer import DebugLogHandler, DebugLogWriter
 from chal.utilities.parallel import ParallelDispatcher, WorkItem
 from chal.utilities.reporting import generate_analysis_json, generate_analysis_report
 from chal.utilities.training_data import DebateRecorder
-from chal.utilities.debug_log_writer import DebugLogHandler, DebugLogWriter
 from chal.utilities.utils import (
     calculate_performance_scores,
     finalize_agent_stats,
@@ -134,9 +134,9 @@ class DebateController:
         par_workers = config.parallel.max_workers if config else 5
         self.dispatcher = ParallelDispatcher(max_workers=par_workers, enabled=par_enabled)
 
-        self.current_round_pairs = []
-        self.all_rounds_pairs = []
-        self.opening_positions = []
+        self.current_round_pairs: list[dict[str, Any]] = []
+        self.all_rounds_pairs: list[list[dict[str, Any]]] = []
+        self.opening_positions: list[Any] = []
 
         # Real-time debug log (streams to file when log_file_path is set)
         self.debug_log = DebugLogWriter(file_path=log_file_path)
@@ -153,7 +153,7 @@ class DebateController:
         _logging.getLogger("chal").addHandler(self._debug_log_handler)
 
         self.round_histories: dict[str, list[Message]] = {} # A dictionary of full debate rounds for tracking and memory efficient prompting
-        self.current_round_key = None  # Tracks the active round name like "round-1"
+        self.current_round_key: str | None = None  # Tracks the active round name like "round-1"
         self.last_challenges: dict[str, dict[str, str]] = {} # A dictionary of challenges issued (Stage 2): {challenger: {target: challenge}}
         self.last_rebuttals: dict[str, str] = {} # A dictionary of rebuttals per agent (Stage 3): {agent_name: combined rebuttal}
         self.previous_rounds_challenges: dict[str, list] = {}  # Track challenges from previous rounds for anti-repetition: {agent_name: [challenges]}
@@ -197,8 +197,8 @@ class DebateController:
             self.metrics.total_rate_limit_hits += 1
 
         for agent in self.agents:
-            agent._on_rate_limit = _on_rate_limit
-        adjudicator_agent._on_rate_limit = _on_rate_limit
+            agent._on_rate_limit = _on_rate_limit  # type: ignore[attr-defined]
+        adjudicator_agent._on_rate_limit = _on_rate_limit  # type: ignore[attr-defined]
 
         # Training data recorder (initialized in run() if save_training_data is enabled)
         self.recorder: DebateRecorder | None = None
@@ -255,7 +255,7 @@ class DebateController:
             try:
                 response = agent.generate(messages, **kwargs)
                 self._accumulate_tokens(response)
-                return response
+                return response  # type: ignore[no-any-return]
             except Exception as e:
                 if self._on_error is None:
                     raise
@@ -515,6 +515,7 @@ class DebateController:
             self.debug_log.write(f"\n--- PRE-LOADED BELIEF JSON FOR {agent.name} ---\n{json.dumps(belief_obj, ensure_ascii=False, indent=2)}\n--- END PRE-LOADED JSON ---\n")
 
             synthetic_response = Message(role="assistant", content=md_view)
+            assert self.current_round_key is not None
             self.round_histories[self.current_round_key].append(synthetic_response)
 
             if self.recorder:
@@ -538,7 +539,7 @@ class DebateController:
             items = [
                 WorkItem(
                     key=agent.name,
-                    callable=lambda a=agent: _generate_opening_position(
+                    callable=lambda a=agent: _generate_opening_position(  # type: ignore[misc]
                         a, topic, max_retries=s1_max_retries, log_fn=self._log,
                     ),
                     context={"agent": agent},
@@ -547,7 +548,7 @@ class DebateController:
             ]
             results = self.dispatcher.run(items)
         else:
-            results = {}
+            results = {}  # type: ignore[assignment]
 
         # --- APPLY: Process generation results sequentially in deterministic agent order ---
         for agent in generation_agents:
@@ -609,6 +610,7 @@ class DebateController:
                 agent.all_beliefs_held.append(md_view) # track beliefs
 
             # Log result
+            assert self.current_round_key is not None
             self.round_histories[self.current_round_key].append(response)
 
             # Record training data
@@ -691,7 +693,7 @@ class DebateController:
         items = [
             WorkItem(
                 key=f"{c.name}→{t.name}",
-                callable=lambda c=c, t=t: _generate_cross_examination(
+                callable=lambda c=c, t=t: _generate_cross_examination(  # type: ignore[misc]
                     challenger=c, target=t, topic=topic, config=self.config,
                     previous_challenges=self.previous_rounds_challenges.get(f"{c.name}→{t.name}", []),
                     max_retries=s2_max_retries,
@@ -733,6 +735,7 @@ class DebateController:
             self._log(f"Received response ({len(response.content)} chars)", "INFO")
             self._log_response(challenger_name, response.content, f"Stage 2 - Questions for {target_name}")
 
+            assert self.current_round_key is not None
             self.round_histories[self.current_round_key].append(response)
 
             # Fallback to legacy parser if needed (keeps backward compat)
@@ -824,7 +827,7 @@ class DebateController:
         self._notify("stage_start", {"stage": 3, "name": "Rebuttals"})
 
         # Group all challenges targeting each agent
-        grouped_entries = {}
+        grouped_entries: dict[str, list[Any]] = {}
         for entry in self.current_round_pairs:
             target = entry["target"]
             grouped_entries.setdefault(target, []).append(entry)
@@ -850,7 +853,7 @@ class DebateController:
         items = [
             WorkItem(
                 key=target_agent.name,
-                callable=lambda ta=target_agent, re=relevant_entries: _generate_rebuttal(
+                callable=lambda ta=target_agent, re=relevant_entries: _generate_rebuttal(  # type: ignore[misc]
                     target_agent=ta, relevant_entries=re, topic=topic, config=self.config,
                     max_retries=s3_max_retries, log_fn=self._log,
                 ),
@@ -889,6 +892,7 @@ class DebateController:
             self._log(f"Received response ({len(response.content)} chars)", "INFO")
             self._log_response(target_name, response.content, "Stage 3 - Rebuttals")
 
+            assert self.current_round_key is not None
             self.round_histories[self.current_round_key].append(response)
 
             if rebuttals:
@@ -985,7 +989,7 @@ class DebateController:
         items = [
             WorkItem(
                 key=f"{entry['challenger']}→{entry['target']}:{entry.get('qid', f'Q{i}')}",
-                callable=lambda e=entry: _run_adjudication(
+                callable=lambda e=entry: _run_adjudication(  # type: ignore[misc]
                     self.adjudicator, e, agent_by_name,
                     max_retries=adj_max_retries, log_fn=self._log,
                 ),
@@ -1110,7 +1114,7 @@ class DebateController:
         current_round = int(self.current_round_key.split("-")[1]) if self.current_round_key else 1
         for pair in self.current_round_pairs:
             pair["round_num"] = current_round
-        self.all_rounds_pairs.extend(self.current_round_pairs)
+        self.all_rounds_pairs.extend(self.current_round_pairs)  # type: ignore[arg-type]
 
         return self.current_round_pairs
 
@@ -1142,7 +1146,7 @@ class DebateController:
         self._notify("stage_start", {"stage": 5, "name": "Belief Updates"})
 
         # Group all adjudicated results by target agent
-        grouped_by_target = {}
+        grouped_by_target: dict[str, list[Any]] = {}
         for entry in self.current_round_pairs:
             target = entry["target"]
             grouped_by_target.setdefault(target, []).append(entry)
@@ -1158,7 +1162,7 @@ class DebateController:
         items = [
             WorkItem(
                 key=agent.name,
-                callable=lambda a=agent, re=grouped_by_target[agent.name]: _run_stage5_for_agent(
+                callable=lambda a=agent, re=grouped_by_target[agent.name]: _run_stage5_for_agent(  # type: ignore[misc]
                     agent=a,
                     relevant_entries=re,
                     last_rebuttals_patches=self.last_rebuttals_patches.get(a.name, []),
@@ -1208,6 +1212,7 @@ class DebateController:
                     self._log_prompt(name, api_call["prompt"], api_call["label"])
                 self._log(f"Received response ({len(api_call['response'].content)} chars)", "INFO")
                 self._log_response(name, api_call["response"].content, api_call["label"])
+                assert self.current_round_key is not None
                 self.round_histories[self.current_round_key].append(api_call["response"])
 
             # 2. Replay deferred log entries
@@ -1312,6 +1317,7 @@ class DebateController:
             for round_idx in range(self.max_rounds):
                 round_num = round_idx + 1
                 self.current_round_key = f"round-{round_num}"
+                assert self.current_round_key is not None
                 self.round_histories[self.current_round_key] = []  # Initialize storage
                 self._notify("round_start", {"round": round_num, "total_rounds": self.max_rounds})
 
@@ -1381,7 +1387,7 @@ class DebateController:
                 a.name: {"model": a.model, "provider": a.provider, "persona": a.persona}
                 for a in self.config.agents
             } if self.config else None
-            topic = self.config.topic if self.config else None
+            topic = self.config.topic if self.config else None  # type: ignore[assignment]
             embedding_tracker.save_embeddings(
                 output_dir / "embeddings.npz",
                 agent_info=agent_info,
@@ -1397,7 +1403,7 @@ class DebateController:
                     html_content = export_debate_graph(
                         agents=self.agents,
                         topic=self.topic,
-                        current_round_pairs=self.all_rounds_pairs,
+                        current_round_pairs=self.all_rounds_pairs,  # type: ignore[arg-type]
                         output_path=graph_output_path
                     )
 
@@ -1549,6 +1555,7 @@ def _generate_opening_position(agent, topic: str, max_retries: int = 3,
 
         while retry_count < max_validation_retries and not validation_passed:
             try:
+                assert belief_obj is not None
                 graph = BeliefGraph(belief_obj)
                 graph_errors = graph.validate_links()
 
@@ -1665,7 +1672,7 @@ def _generate_cross_examination(challenger, target, topic, config, previous_chal
         agent_belief_json=ch_belief_json,
         opponent_belief_json=tg_belief_json,
         max_questions=max_questions,
-        previous_challenges=previous_challenges if previous_challenges else None,
+        previous_challenges=previous_challenges if previous_challenges else None,  # type: ignore[arg-type]
     )
 
     stage_request = [Message(role="user", content=prompt)]
@@ -1876,8 +1883,8 @@ def _apply_patches_and_validate(
     from chal.beliefs.patches import apply_patches, validate_patches
 
     log_entries = []
-    debug_entries = []
-    patches = []
+    debug_entries: list[str] = []
+    patches: list[dict[str, Any]] = []
 
     blocks = _extract_all_json_blocks(response_content)
 
@@ -2031,9 +2038,9 @@ def _run_stage5_for_agent(
     name = agent.name
     prior_json = agent.get_internal_belief_obj()
     md_view_fallback = agent.get_internal_belief()
-    api_calls = []
+    api_calls: list[dict[str, Any]] = []
     log_entries = []
-    debug_entries = []
+    debug_entries: list[str] = []
 
     log_entries.append((f"\n--- Updating belief for: {name} ---", "INFO"))
     log_entries.append((f"Agent received {len(relevant_entries)} adjudication result(s)", "INFO"))
@@ -2440,14 +2447,14 @@ def _extract_first_json_block(text: str) -> dict[str, Any] | None:
     m = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
     if m:
         try:
-            return json.loads(m.group(1))
+            return json.loads(m.group(1))  # type: ignore[no-any-return]
         except Exception:
             return None
     # No fenced block — try to parse the first raw JSON object
     raw = re.search(r"(\{.*\})", text, flags=re.DOTALL)
     if raw:
         try:
-            return json.loads(raw.group(1))
+            return json.loads(raw.group(1))  # type: ignore[no-any-return]
         except Exception:
             return None
     return None
@@ -2465,9 +2472,7 @@ def _validate_cross_exam_result(r: dict) -> bool:
     if questions:
         is_valid, _errors = validate_stage2_questions(questions)
         return is_valid
-    if r.get("parsed_challenges"):
-        return True
-    return False
+    return bool(r.get("parsed_challenges"))
 
 
 def _extract_all_json_blocks(text: str) -> list[str]:
@@ -2577,12 +2582,11 @@ def summarize_changes(patches: list, before: dict, after: dict) -> str:
     # Detect propagated strength changes not directly caused by patches
     before_thesis_str = before.get("thesis", {}).get("strength")
     after_thesis_str = after.get("thesis", {}).get("strength")
-    if before_thesis_str is not None and after_thesis_str is not None:
-        if abs(after_thesis_str - before_thesis_str) > 0.001:
-            # Check if thesis was explicitly patched
-            thesis_patched = any(p.get("op") == "update_thesis" for p in patches)
-            if not thesis_patched:
-                lines.append(f"- [propagated] Thesis strength: {before_thesis_str:.2f} → {after_thesis_str:.2f}")
+    if before_thesis_str is not None and after_thesis_str is not None and abs(after_thesis_str - before_thesis_str) > 0.001:
+        # Check if thesis was explicitly patched
+        thesis_patched = any(p.get("op") == "update_thesis" for p in patches)
+        if not thesis_patched:
+            lines.append(f"- [propagated] Thesis strength: {before_thesis_str:.2f} → {after_thesis_str:.2f}")
 
     return "\n".join(lines) if lines else "(no changes)"
 
@@ -2804,10 +2808,7 @@ def apply_defense_boosts(
             cascade_ids -= set(directly_boosted.keys())
 
             # Use the maximum boost amount from the direct targets
-            if directly_boosted:
-                cascade_boost = max(directly_boosted.values())
-            else:
-                cascade_boost = 0.0
+            cascade_boost = max(directly_boosted.values()) if directly_boosted else 0.0
 
             for dep_id in sorted(cascade_ids):
                 if dep_id not in node_lookup:
@@ -2937,16 +2938,15 @@ def filter_strength_increases(phase2_patches: list, intermediate_belief: dict) -
             changes = patch.get("changes", {})
             new_strength = changes.get("strength")
 
-            if new_strength is not None and tid in current_strengths:
-                if new_strength > current_strengths[tid]:
-                    # Strip the strength increase; keep everything else
-                    patch = copy.deepcopy(patch)
-                    del patch["changes"]["strength"]
-                    # Also strip strength_justification if strength was removed
-                    patch["changes"].pop("strength_justification", None)
-                    # If changes dict is now empty, skip the whole patch
-                    if not patch.get("changes"):
-                        continue
+            if new_strength is not None and tid in current_strengths and new_strength > current_strengths[tid]:
+                # Strip the strength increase; keep everything else
+                patch = copy.deepcopy(patch)
+                del patch["changes"]["strength"]
+                # Also strip strength_justification if strength was removed
+                patch["changes"].pop("strength_justification", None)
+                # If changes dict is now empty, skip the whole patch
+                if not patch.get("changes"):
+                    continue
             filtered.append(patch)
 
         elif op == "update_thesis":
@@ -2961,10 +2961,9 @@ def filter_strength_increases(phase2_patches: list, intermediate_belief: dict) -
                 patch = copy.deepcopy(patch)
                 patch.pop("new_strength", None)
                 # Keep stance/summary_bullets/strength_reasoning if present
-                if not any(k in patch for k in ("stance", "summary_bullets", "strength_reasoning")):
-                    if patch.get("op"):
-                        # Only has op — skip entirely
-                        continue
+                if not any(k in patch for k in ("stance", "summary_bullets", "strength_reasoning")) and patch.get("op"):
+                    # Only has op — skip entirely
+                    continue
             filtered.append(patch)
 
         else:
@@ -2989,7 +2988,7 @@ def chunk_transcript_by_tokens(text: str, max_tokens: int = 10000, model: str = 
     lines = text.split("\n")
 
     chunks = []
-    current_chunk = []
+    current_chunk: list[Any] = []
     current_token_count = 0
 
     for line in lines:

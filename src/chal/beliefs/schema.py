@@ -859,13 +859,12 @@ def validate_belief(belief: dict[str, Any]) -> list[str]:
         a_strat = item.get("attack_strategy")
         if a_strat is None or a_strat == "":
             errors.append(f"Counterposition '{x_id}' is missing required 'attack_strategy' field")
-        elif at in VALID_ATTACK_STRATEGIES:
-            if a_strat not in VALID_ATTACK_STRATEGIES[at]:
-                errors.append(
-                    f"Counterposition '{x_id}' attack_strategy '{a_strat}' is not valid "
-                    f"for attack_type '{at}' "
-                    f"(valid: {', '.join(sorted(VALID_ATTACK_STRATEGIES[at]))})"
-                )
+        elif at in VALID_ATTACK_STRATEGIES and a_strat not in VALID_ATTACK_STRATEGIES[at]:
+            errors.append(
+                f"Counterposition '{x_id}' attack_strategy '{a_strat}' is not valid "
+                f"for attack_type '{at}' "
+                f"(valid: {', '.join(sorted(VALID_ATTACK_STRATEGIES[at]))})"
+            )
 
     VALID_CLAIM_STATUSES = {"active", "revised", "retracted"}
     for item in belief.get("claims", []) or []:

@@ -37,7 +37,7 @@ class OpenAIAgent(Agent):
         name (str): Display name for the agent, e.g., "Agent-Empiricist".
     """
 
-    def __init__(self, model: str, name: str, api_key: str = None,
+    def __init__(self, model: str, name: str, api_key: str | None = None,
                  system_prompt: str = "", key_pool=None,
                  max_tokens: int = 65536):
         """
@@ -55,7 +55,7 @@ class OpenAIAgent(Agent):
                          temperature=0.7, key_pool=key_pool)
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.max_tokens = max_tokens
-        self._client = None  # Lazy init: created on first generate() call
+        self._client: OpenAI | None = None  # Lazy init: created on first generate() call
 
     def generate(self, history: list[Message], temperature: float = 0.7) -> Message:
         """
@@ -96,11 +96,11 @@ class OpenAIAgent(Agent):
                 c = rotated_client if rotated_client is not None else self._client
                 kwargs = {"model": self.model, "messages": messages}
                 if is_reasoning_model:
-                    kwargs["max_completion_tokens"] = self.max_tokens
+                    kwargs["max_completion_tokens"] = self.max_tokens  # type: ignore[assignment]
                 else:
-                    kwargs["temperature"] = temperature
-                    kwargs["max_tokens"] = self.max_tokens
-                return c.chat.completions.create(**kwargs)
+                    kwargs["temperature"] = temperature  # type: ignore[assignment]
+                    kwargs["max_tokens"] = self.max_tokens  # type: ignore[assignment]
+                return c.chat.completions.create(**kwargs)  # type: ignore[call-overload, union-attr]
 
             response = retry_api_call(
                 call_fn=_make_call,
@@ -108,15 +108,15 @@ class OpenAIAgent(Agent):
                 rate_limit_errors=(openai.RateLimitError,),
                 retryable_errors=(openai.InternalServerError, openai.APIConnectionError),
                 key_pool=self.key_pool,
-                current_key=self.api_key,
+                current_key=self.api_key,  # type: ignore[arg-type]
                 rebuild_client_fn=lambda key: OpenAI(api_key=key),
                 on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
 
             return Message(
                 role="assistant",
-                content=response.choices[0].message.content,
-                metadata={"model": response.model, "usage": dict(response.usage)}
+                content=response.choices[0].message.content,  # type: ignore[arg-type]
+                metadata={"model": response.model, "usage": dict(response.usage)}  # type: ignore[arg-type]
             )
 
         except Exception as e:

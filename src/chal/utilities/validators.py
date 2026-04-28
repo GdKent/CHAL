@@ -170,7 +170,7 @@ def validate_stage1_output(raw_response: str) -> ValidationResult:
                 f"Invalid ID format '{nid}' in '{collection}'. "
                 f"Expected format like 'D1', 'A2', 'C3', etc."
             )
-        return nid
+        return nid  # type: ignore[no-any-return]
 
     # 7. Claims
     for node in (belief.get("claims") or []):

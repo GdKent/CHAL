@@ -170,7 +170,7 @@ class BeliefGraph:
         errors: list[str] = []
 
         # Check that all edges point to existing nodes
-        for from_id, to_id, edge_type in self.edges:
+        for from_id, to_id, _edge_type in self.edges:
             if not self._node_exists(from_id):
                 errors.append(f"BLOCKING ERROR: Edge references non-existent source node: {from_id}")
             if not self._node_exists(to_id):
@@ -209,9 +209,8 @@ class BeliefGraph:
             rec_stack.add(node_id)
 
             for neighbor in adj.get(node_id, []):
-                if neighbor not in visited:
-                    if dfs(neighbor):
-                        return True
+                if neighbor not in visited and dfs(neighbor):
+                    return True
                 elif neighbor in rec_stack:
                     return True  # Cycle found
 
@@ -219,12 +218,7 @@ class BeliefGraph:
             return False
 
         # Check all components
-        for node_id in self.nodes:
-            if node_id not in visited:
-                if dfs(node_id):
-                    return True
-
-        return False
+        return any(node_id not in visited and dfs(node_id) for node_id in self.nodes)
 
     def _find_orphaned_claims(self) -> list[str]:
         """

@@ -766,7 +766,7 @@ def build_debate_context(stage_description: str) -> str:
 
 
 def build_stage_1_belief_prompt_cbs(topic: str, agent_name: str, persona_label: str,
-                                    breadth_sensitivity: float = None) -> str:
+                                    breadth_sensitivity: float | None = None) -> str:
     """
     Build a Stage-1 prompt that elicits a JSON-structured belief object.
 
@@ -1101,7 +1101,7 @@ Then output exactly one fenced JSON code block (```json ... ```) containing your
 </instructions>"""
     )
 
-def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, previous_challenges: list = None, targeted_claims_json: str = "") -> str:
+def build_stage_2_prompt(topic: str, agent_name: str, opponent_name: str, agent_belief_json: str, opponent_belief_json: str, max_questions: int = 5, previous_challenges: list | None = None, targeted_claims_json: str = "") -> str:
     """
     Stage 2: Cross-Examination Prompt.
 
@@ -1443,7 +1443,7 @@ def build_stage_5_belief_update_prompt_cbs(agent_name: str,
                                              challenge_rebuttal_pairs: list[dict],
                                              prior_belief_json: str,
                                              stage_3_patches_json: str = "",
-                                             breadth_sensitivity: float = None) -> str:
+                                             breadth_sensitivity: float | None = None) -> str:
     """
     Stage 5: Belief update via PATCH operations based on adjudication outcomes.
 
@@ -1671,7 +1671,7 @@ Self-check:
 """
 
 
-def compute_position_analysis(belief: dict, breadth_sensitivity: float = None) -> str:
+def compute_position_analysis(belief: dict, breadth_sensitivity: float | None = None) -> str:
     """
     Compute a dynamic <position_analysis> block from a parsed belief dict.
 
@@ -2007,7 +2007,7 @@ def compute_position_analysis(belief: dict, breadth_sensitivity: float = None) -
 def build_stage_5_phase2_introspection_prompt(agent_name: str,
                                                intermediate_belief_json: str,
                                                phase1_changes_summary: str,
-                                               breadth_sensitivity: float = None) -> str:
+                                               breadth_sensitivity: float | None = None) -> str:
     """
     Stage 5 Phase 2: Introspective evaluation and thesis rewrite.
 

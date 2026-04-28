@@ -18,7 +18,6 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
-
 T = TypeVar("T")
 
 
@@ -81,7 +80,7 @@ class ParallelDispatcher:
         self.max_workers = max_workers
         self.enabled = enabled
 
-    def run(self, items: list[WorkItem]) -> Ordereddict[str, WorkResult]:
+    def run(self, items: list[WorkItem]) -> OrderedDict[str, WorkResult]:
         """Execute all work items and return results in submission order.
 
         Args:
@@ -109,9 +108,9 @@ class ParallelDispatcher:
     # Internal
     # ------------------------------------------------------------------
 
-    def _run_sequential(self, items: list[WorkItem]) -> Ordereddict[str, WorkResult]:
+    def _run_sequential(self, items: list[WorkItem]) -> OrderedDict[str, WorkResult]:
         """Run items one-by-one in a plain for-loop."""
-        results: Ordereddict[str, WorkResult] = OrderedDict()
+        results: OrderedDict[str, WorkResult] = OrderedDict()
         for item in items:
             start = time.monotonic()
             try:
@@ -131,9 +130,9 @@ class ParallelDispatcher:
                 )
         return results
 
-    def _run_parallel(self, items: list[WorkItem]) -> Ordereddict[str, WorkResult]:
+    def _run_parallel(self, items: list[WorkItem]) -> OrderedDict[str, WorkResult]:
         """Run items concurrently in a ThreadPoolExecutor."""
-        results: Ordereddict[str, WorkResult] = OrderedDict()
+        results: OrderedDict[str, WorkResult] = OrderedDict()
 
         # Pre-allocate slots in submission order so the final OrderedDict
         # preserves that order regardless of completion order.
@@ -157,7 +156,7 @@ class ParallelDispatcher:
             if exc is not None:
                 future_results[item.key] = WorkResult(
                     key=item.key,
-                    error=exc,
+                    error=exc,  # type: ignore[arg-type]
                     duration_seconds=elapsed,
                     context=item.context,
                 )

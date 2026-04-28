@@ -67,7 +67,7 @@ def _extract_json_from_response(text: str) -> dict | None:
     fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
     if fence_match:
         try:
-            return json.loads(fence_match.group(1))
+            return json.loads(fence_match.group(1))  # type: ignore[no-any-return]
         except json.JSONDecodeError:
             pass
 
@@ -77,7 +77,7 @@ def _extract_json_from_response(text: str) -> dict | None:
         if ch in '{[':
             try:
                 result, _ = decoder.raw_decode(text, i)
-                return result
+                return result  # type: ignore[no-any-return]
             except json.JSONDecodeError:
                 continue
 
