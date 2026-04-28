@@ -5,10 +5,12 @@ Central configuration management for CHAL debates.
 Handles YAML loading, path resolution, and runtime settings.
 """
 
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-import yaml
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent  # CHAL/
@@ -25,7 +27,8 @@ class AgentConfig:
     model: str = "gpt-4o"
     temperature: float = 0.7
     provider: str = "openai"  # "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
-    belief_file: Optional[str] = None  # Path to a pre-defined CBS belief JSON file (skips Stage 1)
+    belief_file: str | None = None  # Path to a pre-defined CBS belief JSON file (skips Stage 1)
+    max_tokens: int = 65536
 
 
 _VALID_WEIGHT_COMBOS = {(1.0, 0.0), (0.5, 0.5), (0.0, 1.0)}
@@ -156,10 +159,9 @@ class DebateConfig:
     # Core settings
     topic: str = ""
     max_rounds: int = 1
-    stage3_mode: str = "rebuttal"  # Only supported mode: "rebuttal"
 
     # Component configs
-    agents: List[AgentConfig] = field(default_factory=list)
+    agents: list[AgentConfig] = field(default_factory=list)
     adjudication: AdjudicationConfig = field(default_factory=AdjudicationConfig)
     stages: StageConfig = field(default_factory=StageConfig)
     outputs: OutputConfig = field(default_factory=lambda: OutputConfig(storage_dir=DEFAULT_STORAGE_DIR))
@@ -167,9 +169,9 @@ class DebateConfig:
     defense_boost: DefenseBoostConfig = field(default_factory=DefenseBoostConfig)
 
     @classmethod
-    def from_yaml(cls, config_path: Path) -> 'DebateConfig':
+    def from_yaml(cls, config_path: Path) -> DebateConfig:
         """Load configuration from YAML file."""
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, encoding='utf-8') as f:
             data = yaml.safe_load(f)
 
         # Parse metadata
@@ -181,7 +183,7 @@ class DebateConfig:
         for a in data.get('agents', []):
             # Resolve belief_file path relative to the YAML file's directory
             belief_file_raw = a.get('belief_file')
-            belief_file: Optional[str] = None
+            belief_file: str | None = None
             if belief_file_raw:
                 bf_path = Path(belief_file_raw)
                 if not bf_path.is_absolute():
@@ -194,6 +196,7 @@ class DebateConfig:
                 temperature=a.get('temperature', 0.7),
                 provider=a.get('provider', 'openai'),
                 belief_file=belief_file,
+                max_tokens=a.get('max_tokens', 65536),
             ))
 
         # Parse adjudication
@@ -273,7 +276,6 @@ class DebateConfig:
             version=meta.get('version', '1.0'),
             topic=debate_data.get('topic', ''),
             max_rounds=debate_data.get('max_rounds', 1),
-            stage3_mode=debate_data.get('stage3_mode', 'rebuttal'),
             agents=agents,
             adjudication=adjudication,
             stages=stages,
@@ -283,7 +285,7 @@ class DebateConfig:
         )
 
     @classmethod
-    def from_name(cls, config_name: str) -> 'DebateConfig':
+    def from_name(cls, config_name: str) -> DebateConfig:
         """Load config by name from configurations/ directory."""
         config_path = CONFIG_DIR / f"{config_name}.yaml"
         if not config_path.exists():
@@ -308,7 +310,6 @@ class DebateConfig:
             "debate": {
                 "topic": self.topic,
                 "max_rounds": self.max_rounds,
-                "stage3_mode": self.stage3_mode,
             },
             "agents": [
                 {
@@ -319,6 +320,7 @@ class DebateConfig:
                         "temperature": a.temperature,
                         "provider": a.provider,
                         "belief_file": a.belief_file,
+                        "max_tokens": a.max_tokens,
                     }.items() if v is not None
                 }
                 for a in self.agents

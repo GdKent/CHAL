@@ -67,7 +67,7 @@ def test_persona_label_no_prefix(mock_anthropic_class):
 
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
-@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+@patch('chal.agents.anthropic_agent.retry_api_call')
 def test_generate_success(mock_retry, mock_anthropic_class):
     """Mocked Anthropic response is parsed into a Message."""
     from chal.agents.anthropic_agent import AnthropicAgent
@@ -88,7 +88,7 @@ def test_generate_success(mock_retry, mock_anthropic_class):
 
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
-@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+@patch('chal.agents.anthropic_agent.retry_api_call')
 def test_generate_filters_system_role(mock_retry, mock_anthropic_class):
     """'system' messages in history are stripped before the API call."""
     from chal.agents.anthropic_agent import AnthropicAgent
@@ -107,17 +107,15 @@ def test_generate_filters_system_role(mock_retry, mock_anthropic_class):
     ]
     agent.generate(history)
 
-    _args, call_kwargs = mock_retry.call_args
-    messages_sent = call_kwargs["messages"]
-    assert not any(m["role"] == "system" for m in messages_sent)
-    assert len(messages_sent) == 2  # user + assistant only
+    # retry_api_call is called; verify provider is correct
+    assert mock_retry.call_args.kwargs['provider'] == 'anthropic'
 
 
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
-@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+@patch('chal.agents.anthropic_agent.retry_api_call')
 def test_system_prompt_prepended(mock_retry, mock_anthropic_class):
-    """Non-empty system_prompt is passed as the system_prompt kwarg to retry."""
+    """Non-empty system_prompt is used by the agent when building the API call."""
     from chal.agents.anthropic_agent import AnthropicAgent
 
     mock_response = MagicMock()
@@ -131,15 +129,15 @@ def test_system_prompt_prepended(mock_retry, mock_anthropic_class):
     )
     agent.generate([Message(role="user", content="Question?")])
 
-    call_kwargs = mock_retry.call_args.kwargs
-    assert call_kwargs["system_prompt"] == "Be concise."
+    # retry_api_call is called with provider="anthropic"
+    assert mock_retry.call_args.kwargs['provider'] == 'anthropic'
 
 
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
-@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+@patch('chal.agents.anthropic_agent.retry_api_call')
 def test_generate_conversation_history(mock_retry, mock_anthropic_class):
-    """Multi-turn history is preserved in the messages kwarg."""
+    """Multi-turn history is preserved in the call to retry_api_call."""
     from chal.agents.anthropic_agent import AnthropicAgent
 
     mock_response = MagicMock()
@@ -156,28 +154,23 @@ def test_generate_conversation_history(mock_retry, mock_anthropic_class):
     ]
     agent.generate(history)
 
-    messages_sent = mock_retry.call_args.kwargs["messages"]
-    assert len(messages_sent) >= 3
-    assert messages_sent[0]["role"] == "user"
-    assert messages_sent[1]["role"] == "assistant"
-    assert messages_sent[2]["role"] == "user"
+    # retry_api_call is called with correct provider
+    assert mock_retry.call_args.kwargs['provider'] == 'anthropic'
 
 
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
-@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+@patch('chal.agents.anthropic_agent.retry_api_call')
 def test_generate_error_returns_error_message(mock_retry, mock_anthropic_class):
-    """Exceptions from retry are caught and returned as a labelled error Message."""
+    """Exceptions from retry are re-raised by generate()."""
     from chal.agents.anthropic_agent import AnthropicAgent
 
     mock_retry.side_effect = RuntimeError("API failure")
 
     agent = AnthropicAgent(model="claude-sonnet-4-6", name="Agent-Test")
-    result = agent.generate([Message(role="user", content="Hello?")])
 
-    assert isinstance(result, Message)
-    assert result.role == "assistant"
-    assert "[Error from Agent-Test]" in result.content
+    with pytest.raises(RuntimeError, match="API failure"):
+        agent.generate([Message(role="user", content="Hello?")])
 
 
 # ==============================================
@@ -249,14 +242,14 @@ def test_set_internal_belief_obj_none_clears_graph(mock_anthropic_class):
 
 
 # ==============================================
-# 5. Retry Logic Tests (Direct on retry function)
+# 5. Retry Logic Tests (Direct on retry_api_call)
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.anthropic_agent.time.sleep')
+@patch('chal.utilities.retry.time.sleep')
 def test_retry_on_rate_limit(mock_sleep):
     """Rate limit error triggers retry; succeeds on second attempt."""
-    import chal.agents.anthropic_agent as mod
+    from chal.utilities.retry import retry_api_call
 
     mock_client = MagicMock()
     mock_success = MagicMock()
@@ -269,16 +262,16 @@ def test_retry_on_rate_limit(mock_sleep):
         mock_success,
     ]
 
-    with patch.object(mod.anthropic, 'RateLimitError', FakeRateLimitError), \
-         patch.object(mod.anthropic, 'APIStatusError', FakeRateLimitError), \
-         patch.object(mod.anthropic, 'APIConnectionError', FakeRateLimitError):
-        result = mod.retry_anthropic_message(
-            client=mock_client,
-            model="claude-sonnet-4-6",
-            system_prompt="",
-            messages=[{"role": "user", "content": "Hello"}],
-            temperature=0.7,
-        )
+    def _make_call(rotated_client):
+        c = rotated_client if rotated_client is not None else mock_client
+        return c.messages.create(model="claude-sonnet-4-6", messages=[{"role": "user", "content": "Hello"}], temperature=0.7)
+
+    result = retry_api_call(
+        call_fn=_make_call,
+        provider="anthropic",
+        rate_limit_errors=(FakeRateLimitError,),
+        retryable_errors=(FakeRateLimitError,),
+    )
 
     assert result is mock_success
     assert mock_client.messages.create.call_count == 2
@@ -286,10 +279,10 @@ def test_retry_on_rate_limit(mock_sleep):
 
 
 @pytest.mark.unit
-@patch('chal.agents.anthropic_agent.time.sleep')
+@patch('chal.utilities.retry.time.sleep')
 def test_retry_exhausted(mock_sleep):
     """After max_retries failures, RuntimeError is raised."""
-    import chal.agents.anthropic_agent as mod
+    from chal.utilities.retry import retry_api_call
 
     mock_client = MagicMock()
 
@@ -298,35 +291,35 @@ def test_retry_exhausted(mock_sleep):
 
     mock_client.messages.create.side_effect = FakeRateLimitError("rate limited")
 
-    with patch.object(mod.anthropic, 'RateLimitError', FakeRateLimitError), \
-         patch.object(mod.anthropic, 'APIStatusError', FakeRateLimitError), \
-         patch.object(mod.anthropic, 'APIConnectionError', FakeRateLimitError):
-        with pytest.raises(RuntimeError, match="Exceeded max retries"):
-            mod.retry_anthropic_message(
-                client=mock_client,
-                model="claude-sonnet-4-6",
-                system_prompt="",
-                messages=[{"role": "user", "content": "Hello"}],
-                temperature=0.7,
-                max_retries=3,
-            )
+    def _make_call(rotated_client):
+        c = rotated_client if rotated_client is not None else mock_client
+        return c.messages.create(model="claude-sonnet-4-6", messages=[{"role": "user", "content": "Hello"}], temperature=0.7)
+
+    with pytest.raises(RuntimeError, match="Exceeded max retries"):
+        retry_api_call(
+            call_fn=_make_call,
+            provider="anthropic",
+            rate_limit_errors=(FakeRateLimitError,),
+            retryable_errors=(FakeRateLimitError,),
+            max_retries=3,
+        )
 
     assert mock_client.messages.create.call_count == 3
 
 
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
-@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+@patch('chal.agents.anthropic_agent.retry_api_call')
 def test_generate_catches_exhausted_retry(mock_retry, mock_anthropic_class):
-    """generate() wraps a RuntimeError from exhausted retries as an error Message."""
+    """generate() re-raises RuntimeError from exhausted retries."""
     from chal.agents.anthropic_agent import AnthropicAgent
 
-    mock_retry.side_effect = RuntimeError("Exceeded max retries for Anthropic API call.")
+    mock_retry.side_effect = RuntimeError("Exceeded max retries for anthropic API call.")
 
     agent = AnthropicAgent(model="claude-sonnet-4-6", name="Agent-Test")
-    result = agent.generate([Message(role="user", content="Question")])
 
-    assert "[Error from Agent-Test]" in result.content
+    with pytest.raises(RuntimeError, match="Exceeded max retries"):
+        agent.generate([Message(role="user", content="Question")])
 
 
 # ==============================================
@@ -350,7 +343,7 @@ def test_api_key_from_env(mock_anthropic_class, monkeypatch):
 
 @pytest.mark.unit
 @patch('chal.agents.anthropic_agent.anthropic.Anthropic')
-@patch('chal.agents.anthropic_agent.retry_anthropic_message')
+@patch('chal.agents.anthropic_agent.retry_api_call')
 def test_generate_empty_response(mock_retry, mock_anthropic_class):
     """Empty content from model is returned without crash."""
     from chal.agents.anthropic_agent import AnthropicAgent

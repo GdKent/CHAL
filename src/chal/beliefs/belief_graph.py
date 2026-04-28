@@ -23,7 +23,8 @@ The graph enables:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, List, Set, Tuple, Optional
+
+from typing import Any
 
 
 class BeliefGraph:
@@ -37,7 +38,7 @@ class BeliefGraph:
         version: Version number of the source belief
     """
 
-    def __init__(self, belief: Dict[str, Any]):
+    def __init__(self, belief: dict[str, Any]):
         """
         Construct graph from a CBS belief object.
 
@@ -49,8 +50,8 @@ class BeliefGraph:
         self.version = belief.get("version", 1)
 
         # Build node and edge structures
-        self.nodes: Dict[str, Dict[str, Any]] = {}
-        self.edges: List[Tuple[str, str, str]] = []  # (from_id, to_id, edge_type)
+        self.nodes: dict[str, dict[str, Any]] = {}
+        self.edges: list[tuple[str, str, str]] = []  # (from_id, to_id, edge_type)
 
         self._build_graph()
 
@@ -144,7 +145,7 @@ class BeliefGraph:
             for target_id in uncertainty.get("targets", []):
                 self.edges.append((u_id, target_id, "questions"))
 
-    def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
+    def get_node(self, node_id: str) -> dict[str, Any] | None:
         """Get node data by ID."""
         node = self.nodes.get(node_id)
         return node["data"] if node else None
@@ -153,7 +154,7 @@ class BeliefGraph:
         """Check if a node exists in the graph."""
         return node_id in self.nodes
 
-    def validate_links(self) -> List[str]:
+    def validate_links(self) -> list[str]:
         """
         Validate all dependency links in the belief graph.
 
@@ -166,7 +167,7 @@ class BeliefGraph:
         - No circular dependencies (BLOCKING)
         - No orphaned claims (BLOCKING)
         """
-        errors: List[str] = []
+        errors: list[str] = []
 
         # Check that all edges point to existing nodes
         for from_id, to_id, edge_type in self.edges:
@@ -194,14 +195,14 @@ class BeliefGraph:
             True if a cycle exists, False otherwise
         """
         # Build adjacency list
-        adj: Dict[str, List[str]] = {node_id: [] for node_id in self.nodes}
+        adj: dict[str, list[str]] = {node_id: [] for node_id in self.nodes}
         for from_id, to_id, _ in self.edges:
             if from_id in adj:
                 adj[from_id].append(to_id)
 
         # DFS with recursion stack tracking
-        visited: Set[str] = set()
-        rec_stack: Set[str] = set()
+        visited: set[str] = set()
+        rec_stack: set[str] = set()
 
         def dfs(node_id: str) -> bool:
             visited.add(node_id)
@@ -225,7 +226,7 @@ class BeliefGraph:
 
         return False
 
-    def _find_orphaned_claims(self) -> List[str]:
+    def _find_orphaned_claims(self) -> list[str]:
         """
         Find claims that have no incoming support edges (no evidence or assumptions).
 
@@ -252,7 +253,7 @@ class BeliefGraph:
 
         return list(orphans)
 
-    def get_support_chain(self, node_id: str) -> List[str]:
+    def get_support_chain(self, node_id: str) -> list[str]:
         """
         Get all nodes that support this node (recursive traversal backwards).
 
@@ -273,7 +274,7 @@ class BeliefGraph:
         backtrack(node_id)
         return list(support)
 
-    def get_dependent_nodes(self, node_id: str) -> List[str]:
+    def get_dependent_nodes(self, node_id: str) -> list[str]:
         """
         Get all nodes that depend on this node (recursive traversal forwards).
 
@@ -294,7 +295,7 @@ class BeliefGraph:
         forward_track(node_id)
         return list(dependents)
 
-    def find_critical_paths(self) -> List[List[str]]:
+    def find_critical_paths(self) -> list[list[str]]:
         """
         Identify single-point-of-failure chains from assumptions to thesis.
 
@@ -305,7 +306,7 @@ class BeliefGraph:
         Returns:
             List of paths, where each path is a list of node IDs
         """
-        critical_paths: List[List[str]] = []
+        critical_paths: list[list[str]] = []
 
         # Find all assumption nodes
         assumptions = [node_id for node_id, node in self.nodes.items() if node["type"] == "assumption"]
@@ -326,7 +327,7 @@ class BeliefGraph:
 
         return critical_paths
 
-    def _find_all_paths(self, start_id: str, end_id: str) -> List[List[str]]:
+    def _find_all_paths(self, start_id: str, end_id: str) -> list[list[str]]:
         """
         Find all paths from start_id to end_id.
 
@@ -337,9 +338,9 @@ class BeliefGraph:
         Returns:
             List of paths, where each path is a list of node IDs
         """
-        all_paths: List[List[str]] = []
+        all_paths: list[list[str]] = []
 
-        def dfs(current_id: str, path: List[str], visited: Set[str]):
+        def dfs(current_id: str, path: list[str], visited: set[str]):
             if current_id == end_id:
                 all_paths.append(path.copy())
                 return
@@ -355,7 +356,7 @@ class BeliefGraph:
         dfs(start_id, [start_id], {start_id})
         return all_paths
 
-    def get_graph_metrics(self) -> Dict[str, Any]:
+    def get_graph_metrics(self) -> dict[str, Any]:
         """
         Calculate structural metrics for the belief graph.
 

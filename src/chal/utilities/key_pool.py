@@ -16,17 +16,8 @@ from __future__ import annotations
 import os
 import threading
 import time
-from typing import Dict, List, Optional
 
-# Provider → environment variable mapping (canonical source in cli/api_keys.py,
-# duplicated here to avoid a circular import from the utilities layer).
-PROVIDER_ENV_VARS: Dict[str, str] = {
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "google": "GOOGLE_API_KEY",
-    "xai": "XAI_API_KEY",
-    "perplexity": "PERPLEXITY_API_KEY",
-}
+from chal.constants import PROVIDER_ENV_VARS
 
 
 class KeyPool:
@@ -49,9 +40,9 @@ class KeyPool:
     """
 
     def __init__(self) -> None:
-        self._keys: Dict[str, List[str]] = {}          # provider -> [key1, key2, ...]
-        self._cooldowns: Dict[str, float] = {}          # "provider:idx" -> expiry timestamp
-        self._next_index: Dict[str, int] = {}            # provider -> round-robin index
+        self._keys: dict[str, list[str]] = {}          # provider -> [key1, key2, ...]
+        self._cooldowns: dict[str, float] = {}          # "provider:idx" -> expiry timestamp
+        self._next_index: dict[str, int] = {}            # provider -> round-robin index
         self._lock: threading.Lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -80,7 +71,7 @@ class KeyPool:
             if keys:
                 self.register_keys(provider, keys)
 
-    def register_keys(self, provider: str, keys: List[str]) -> None:
+    def register_keys(self, provider: str, keys: list[str]) -> None:
         """Register one or more API keys for a provider.
 
         Overwrites any previously registered keys for this provider.
@@ -193,7 +184,7 @@ class KeyPool:
         """Return True if at least one key is registered for a provider."""
         return self.key_count(provider) > 0
 
-    def registered_providers(self) -> List[str]:
+    def registered_providers(self) -> list[str]:
         """Return list of providers that have at least one key registered."""
         with self._lock:
             return [p for p, keys in self._keys.items() if keys]

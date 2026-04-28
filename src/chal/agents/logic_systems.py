@@ -15,6 +15,7 @@ Usage:
     all_keys = list(LOGIC_SYSTEMS.keys())
 """
 
+from __future__ import annotations
 
 # === Logic System Definitions ===
 

@@ -506,7 +506,7 @@ def test_markdown_transcript_clean(simple_config, mock_agents):
     controller = DebateController(mock_agents, config=simple_config)
 
     # Transcript attribute should exist after init
-    assert hasattr(controller, "markdown_transcript") or hasattr(controller, "full_transcript")
+    assert hasattr(controller, "markdown_transcript")
 
 
 # ==============================================
@@ -1347,7 +1347,7 @@ def _setup_two_phase_controller():
         controller.last_rebuttals_patches = {}
 
         # Set up adjudication outcomes targeting Agent-A
-        controller.challenge_rebuttal_pairs = [{
+        controller.current_round_pairs = [{
             "target": "Agent-A",
             "challenger": "Agent-B",
             "challenge": "Your C1 is weak",
@@ -1435,7 +1435,7 @@ def test_stage_5_transcript_logs_both_phases():
 
     controller.run_stage_5_update_positions()
 
-    debug_text = "\n".join(controller.debug_log)
+    debug_text = controller.debug_log.get_contents()
     assert "PHASE 1 PATCHES" in debug_text
     assert "PHASE 2 PATCHES" in debug_text
 
@@ -1536,7 +1536,7 @@ def test_retry_retries_on_initial_error():
     )
 
     assert result == good_data
-    log_text = "\n".join(controller.debug_log)
+    log_text = controller.debug_log.get_contents()
     assert "Initial call error" in log_text
 
 
@@ -1557,7 +1557,7 @@ def test_retry_exhaustion_returns_last_result():
     )
 
     assert result == bad_data  # Last result, not None
-    log_text = "\n".join(controller.debug_log)
+    log_text = controller.debug_log.get_contents()
     assert "All 2 retries exhausted" in log_text
 
 
@@ -1577,7 +1577,7 @@ def test_retry_exhaustion_returns_none_on_all_exceptions():
     )
 
     assert result is None
-    log_text = "\n".join(controller.debug_log)
+    log_text = controller.debug_log.get_contents()
     assert "All 2 retries exhausted" in log_text
 
 
@@ -1622,7 +1622,7 @@ def test_retry_logs_warnings_and_success():
     )
 
     assert result == good_data
-    log_text = "\n".join(controller.debug_log)
+    log_text = controller.debug_log.get_contents()
     assert "Output validation failed for Agent-X" in log_text
     assert "Parse retry 1/3" in log_text
     assert "Retry 1 succeeded for Agent-X" in log_text
@@ -1651,7 +1651,7 @@ def test_retry_respects_config_parse_retries():
     )
 
     assert call_count == 1  # Only 1 retry allowed
-    log_text = "\n".join(controller.debug_log)
+    log_text = controller.debug_log.get_contents()
     assert "All 1 retries exhausted" in log_text
 
 
@@ -1925,7 +1925,7 @@ def test_stage5_retries_on_empty_patches_with_critique_valid():
         controller.current_positions = {}
         controller.last_rebuttals_patches = {}
 
-        controller.challenge_rebuttal_pairs = [{
+        controller.current_round_pairs = [{
             "target": "Agent-A",
             "challenger": "Agent-B",
             "challenge": "C1 is weak",

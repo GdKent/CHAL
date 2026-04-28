@@ -5,27 +5,47 @@ Agent factory: maps a provider string to the correct Agent subclass and
 returns an instantiated agent. This is the single place in the codebase that
 knows which provider name maps to which class.
 
-Imports for each provider are deferred (inside the if-blocks) so that only
-the SDK that is actually used needs to be installed. A project using only
-OpenAI does not need `anthropic` or `google-genai` present.
+A registry dict + importlib.import_module() keep imports lazy so that only
+the SDK for the provider actually used needs to be installed. A project
+using only OpenAI does not need `anthropic` or `google-genai` present.
 """
+
+from __future__ import annotations
+
+import importlib
 
 from chal.agents.base import Agent
 
+# ---------------------------------------------------------------------------
+# Registry: provider name -> (module_path, class_name)
+# ---------------------------------------------------------------------------
+_AGENT_REGISTRY: dict[str, tuple[str, str]] = {
+    "openai": ("chal.agents.openai_agent", "OpenAIAgent"),
+    "anthropic": ("chal.agents.anthropic_agent", "AnthropicAgent"),
+    "google": ("chal.agents.google_agent", "GoogleAgent"),
+    "xai": ("chal.agents.xai_agent", "XAIAgent"),
+    "perplexity": ("chal.agents.perplexity_agent", "PerplexityAgent"),
+    "ollama": ("chal.agents.ollama_agent", "OllamaAgent"),
+}
+
 
 def create_agent(name: str, model: str, provider: str = "openai",
-                 system_prompt: str = "", key_pool=None) -> Agent:
+                 system_prompt: str = "", key_pool=None,
+                 max_tokens: int = 65536) -> Agent:
     """
     Instantiate an agent for the given provider.
 
     Args:
         name (str): Display name for the agent, e.g. "Agent-Skeptic".
         model (str): Model identifier, e.g. "gpt-4o", "claude-sonnet-4-6".
-        provider (str): One of "openai", "anthropic", "google", "ollama", "xai", "perplexity". Default "openai".
+        provider (str): One of "openai", "anthropic", "google", "ollama",
+            "xai", "perplexity". Default "openai".
         system_prompt (str): Optional initial system prompt.
         key_pool: Optional KeyPool instance for multi-key rotation.
             When provided, the agent's initial API key is drawn from the pool
             and the pool is stored on the agent for rate-limit-aware rotation.
+        max_tokens (int): Maximum tokens for API responses (currently used by
+            Anthropic only). Default 65536.
 
     Returns:
         Agent: A fully initialised agent instance.
@@ -33,46 +53,36 @@ def create_agent(name: str, model: str, provider: str = "openai",
     Raises:
         ValueError: If provider is not one of the supported values.
     """
-    provider = provider.lower().strip()
+    provider_lower = provider.lower().strip()
 
-    # Build common kwargs shared by all providers
-    kwargs = {"model": model, "name": name, "system_prompt": system_prompt}
+    # --- Validate provider against registry ---
+    if provider_lower not in _AGENT_REGISTRY:
+        available = ", ".join(sorted(_AGENT_REGISTRY.keys()))
+        raise ValueError(
+            f"Unknown provider '{provider_lower}'. "
+            f"Available: {available}"
+        )
+
+    # --- Lazily import the agent class ---
+    module_path, class_name = _AGENT_REGISTRY[provider_lower]
+    module = importlib.import_module(module_path)
+    agent_class = getattr(module, class_name)
+
+    # --- Build kwargs ---
+    kwargs: dict = {"model": model, "name": name, "system_prompt": system_prompt}
 
     # When a key pool is available and has keys for this provider,
     # draw the initial key from it and pass the pool for rotation.
-    if key_pool is not None and key_pool.has_keys(provider):
-        kwargs["api_key"] = key_pool.get_key(provider)
+    # Ollama is local — no API key or key pool needed.
+    if provider_lower != "ollama" and key_pool is not None and key_pool.has_keys(provider_lower):
+        kwargs["api_key"] = key_pool.get_key(provider_lower)
         kwargs["key_pool"] = key_pool
 
-    if provider == "openai":
-        from chal.agents.openai_agent import OpenAIAgent
-        return OpenAIAgent(**kwargs)
+    # Provider-specific kwargs
+    if provider_lower in ("openai", "anthropic"):
+        kwargs["max_tokens"] = max_tokens
 
-    elif provider == "anthropic":
-        from chal.agents.anthropic_agent import AnthropicAgent
-        return AnthropicAgent(**kwargs)
-
-    elif provider == "google":
-        from chal.agents.google_agent import GoogleAgent
-        return GoogleAgent(**kwargs)
-
-    elif provider == "ollama":
-        from chal.agents.ollama_agent import OllamaAgent
-        # Ollama is local — no API key or key pool needed
-        return OllamaAgent(model=model, name=name, system_prompt=system_prompt)
-
-    elif provider == "xai":
-        from chal.agents.xai_agent import XAIAgent
-        return XAIAgent(**kwargs)
-
-    elif provider == "perplexity":
-        from chal.agents.perplexity_agent import PerplexityAgent
-        return PerplexityAgent(**kwargs)
-
-    else:
-        raise ValueError(
-            f"Unknown provider '{provider}'. Must be one of: openai, anthropic, google, ollama, xai, perplexity"
-        )
+    return agent_class(**kwargs)
 
 
 def create_agent_from_config(agent_cfg, key_pool=None) -> Agent:
@@ -91,4 +101,5 @@ def create_agent_from_config(agent_cfg, key_pool=None) -> Agent:
         model=agent_cfg.model,
         provider=agent_cfg.provider,
         key_pool=key_pool,
+        max_tokens=agent_cfg.max_tokens,
     )

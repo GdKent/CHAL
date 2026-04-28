@@ -10,9 +10,9 @@ Acronyms:
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List
-import json
+
 import re
+from typing import Any
 
 try:
     # 'jsonschema' is a small validation library; if it's not present, we degrade gracefully.
@@ -27,7 +27,7 @@ SCHEMA_VERSION = "CBS"  # CBS = CHAL Belief Schema
 
 
 # Minimal JSON Schema (JSON = JavaScript Object Notation).
-CBS_JSON_SCHEMA: Dict[str, Any] = {
+CBS_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",  # Top-level artifact must be a JSON object (i.e., key/value map)
     "required": [      # Keys that MUST be present for a valid belief object
         "schema_version",
@@ -391,7 +391,7 @@ ALLOWED_REF_PREFIXES = {
 
 def _validate_ref_prefixes(
     refs: list, field_name: str, allowed_prefixes: set,
-    node_id: str, errors: List[str]
+    node_id: str, errors: list[str]
 ) -> None:
     """Validate that all IDs in *refs* have an allowed prefix letter."""
     for ref in refs:
@@ -407,7 +407,7 @@ def _validate_ref_prefixes(
 
 
 def _validate_sequential_ids(
-    nodes: list, prefix: str, errors: List[str]
+    nodes: list, prefix: str, errors: list[str]
 ) -> None:
     """Validate that IDs for a given prefix are sequential starting from 1 with no gaps.
 
@@ -440,7 +440,7 @@ _IC_REFERENCE_RE = re.compile(r"^[ACE]\d+$")
 def validate_inference_chain(
     ic: list,
     claim_id: str,
-    errors: List[str],
+    errors: list[str],
 ) -> None:
     """Validate the structural integrity of a claim's inference_chain.
 
@@ -557,7 +557,7 @@ def validate_inference_chain(
         )
 
 
-def validate_belief(belief: Dict[str, Any]) -> List[str]:
+def validate_belief(belief: dict[str, Any]) -> list[str]:
     """
     Validate a CBS belief object.
     Returns a list of human-readable validation errors (empty list means OK).
@@ -566,7 +566,7 @@ def validate_belief(belief: Dict[str, Any]) -> List[str]:
     - If 'jsonschema' (JSON Schema validator) is not available, we perform essential checks only.
     - This validator intentionally focuses on structural validity, not semantic argument quality.
     """
-    errors: List[str] = []
+    errors: list[str] = []
 
     # --- Minimal presence checks (robust even without jsonschema installed) ---
     for k in ("schema_version", "belief_id", "version", "metadata", "thesis",

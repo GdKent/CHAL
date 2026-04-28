@@ -26,7 +26,6 @@ from chal.cli.wizard import (
     ask_topic,
     ask_num_agents,
     ask_agent_config,
-    ask_stage3_mode,
     ask_num_rounds,
     ask_adjudicator_config,
     ask_output_toggles,
@@ -183,16 +182,6 @@ class TestAskAgentConfig:
         assert result.name == "Agent-Test"
         assert result.persona == "SKEPTIC"
 
-
-class TestAskStage3Mode:
-
-    @pytest.mark.unit
-    @patch("chal.cli.wizard.questionary.select")
-    def test_rebuttal_no_sub_options(self, mock_select):
-        mock_select.return_value.ask.return_value = "rebuttal"
-        mode, opts = ask_stage3_mode()
-        assert mode == "rebuttal"
-        assert opts == {}
 
 class TestAskNumRounds:
 
@@ -513,8 +502,6 @@ class TestRunWizard:
                 "no",                               # agent 1: belief file
                 "RATIONALIST", "openai",           # agent 2: persona, provider
                 "no",                               # agent 2: belief file
-                "open",                             # stage 2
-                "rebuttal",                         # stage 3
                 "openai",                           # adjudicator provider
                 "CLASSICAL_INFORMAL_BAYESIAN",     # adjudicator logic system
                 "NONE",                             # adjudicator ethics system
@@ -557,8 +544,6 @@ class TestRunWizard:
                 "no",                            # agent 1: belief file
                 "SKEPTIC", "anthropic",          # agent 2: persona, provider
                 "no",                            # agent 2: belief file
-                "open",
-                "rebuttal",
                 "openai",                        # adjudicator provider
                 "CLASSICAL_INFORMAL_BAYESIAN",   # adjudicator logic system
                 "NONE",                          # adjudicator ethics system
@@ -584,7 +569,6 @@ class TestRunWizard:
             assert config.agents[0].persona == "EMPIRICIST"
             assert config.agents[1].persona == "SKEPTIC"
             assert config.agents[1].provider == "anthropic"
-            assert config.stage3_mode == "rebuttal"
             assert config.max_rounds == 3
             assert config.outputs.save_transcript is True
             assert config.outputs.save_training_data is False
@@ -616,8 +600,6 @@ class TestRunWizard:
                 "no",                            # agent 1: belief file
                 "RATIONALIST", "openai",         # agent 2: persona, provider
                 "no",                            # agent 2: belief file
-                "open",
-                "rebuttal",
                 "openai",                        # adjudicator provider
                 "CLASSICAL_INFORMAL_BAYESIAN",   # adjudicator logic system
                 "NONE",                          # adjudicator ethics system

@@ -13,6 +13,7 @@ Usage:
     all_keys = list(PERSONAS.keys())
 """
 
+from __future__ import annotations
 
 # === Persona Definitions ===
 

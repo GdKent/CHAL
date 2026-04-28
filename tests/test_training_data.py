@@ -27,7 +27,6 @@ from tests.utils import create_sample_belief
 def _make_mock_config(mode="rebuttal", max_rounds=2):
     """Create a mock config for recorder tests."""
     config = Mock()
-    config.stage3_mode = mode
     config.max_rounds = max_rounds
     config.adjudication = Mock()
     config.adjudication.model = "gpt-4o"

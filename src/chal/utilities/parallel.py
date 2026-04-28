@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import time
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor, Future
+from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from typing import Any, TypeVar
+
 
 T = TypeVar("T")
 
@@ -32,7 +34,7 @@ class WorkItem:
     """
     key: str
     callable: Callable[[], Any]
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -48,9 +50,9 @@ class WorkResult:
     """
     key: str
     result: Any = None
-    error: Optional[Exception] = None
+    error: Exception | None = None
     duration_seconds: float = 0.0
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 class ParallelDispatcher:
@@ -79,7 +81,7 @@ class ParallelDispatcher:
         self.max_workers = max_workers
         self.enabled = enabled
 
-    def run(self, items: List[WorkItem]) -> OrderedDict[str, WorkResult]:
+    def run(self, items: list[WorkItem]) -> Ordereddict[str, WorkResult]:
         """Execute all work items and return results in submission order.
 
         Args:
@@ -107,9 +109,9 @@ class ParallelDispatcher:
     # Internal
     # ------------------------------------------------------------------
 
-    def _run_sequential(self, items: List[WorkItem]) -> OrderedDict[str, WorkResult]:
+    def _run_sequential(self, items: list[WorkItem]) -> Ordereddict[str, WorkResult]:
         """Run items one-by-one in a plain for-loop."""
-        results: OrderedDict[str, WorkResult] = OrderedDict()
+        results: Ordereddict[str, WorkResult] = OrderedDict()
         for item in items:
             start = time.monotonic()
             try:
@@ -129,14 +131,14 @@ class ParallelDispatcher:
                 )
         return results
 
-    def _run_parallel(self, items: List[WorkItem]) -> OrderedDict[str, WorkResult]:
+    def _run_parallel(self, items: list[WorkItem]) -> Ordereddict[str, WorkResult]:
         """Run items concurrently in a ThreadPoolExecutor."""
-        results: OrderedDict[str, WorkResult] = OrderedDict()
+        results: Ordereddict[str, WorkResult] = OrderedDict()
 
         # Pre-allocate slots in submission order so the final OrderedDict
         # preserves that order regardless of completion order.
-        futures_map: Dict[Future, WorkItem] = {}
-        start_times: Dict[str, float] = {}
+        futures_map: dict[Future, WorkItem] = {}
+        start_times: dict[str, float] = {}
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             for item in items:
@@ -148,7 +150,7 @@ class ParallelDispatcher:
 
         # Collect results in original submission order
         # Build a lookup from futures
-        future_results: Dict[str, WorkResult] = {}
+        future_results: dict[str, WorkResult] = {}
         for future, item in futures_map.items():
             elapsed = time.monotonic() - start_times[item.key]
             exc = future.exception()

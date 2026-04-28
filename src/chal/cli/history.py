@@ -14,7 +14,7 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from rich.console import Console
 from rich.table import Table
@@ -30,19 +30,19 @@ def _ensure_history_dir() -> None:
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _read_history() -> List[Dict[str, Any]]:
+def _read_history() -> list[dict[str, Any]]:
     """Read the history file and return the debates list."""
     if not HISTORY_FILE.exists():
         return []
     try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+        with open(HISTORY_FILE, encoding="utf-8") as f:
             data = json.load(f)
         return data.get("debates", [])
     except (json.JSONDecodeError, OSError):
         return []
 
 
-def _write_history(debates: List[Dict[str, Any]]) -> None:
+def _write_history(debates: list[dict[str, Any]]) -> None:
     """Write the debates list to the history file."""
     HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
@@ -51,7 +51,7 @@ def _write_history(debates: List[Dict[str, Any]]) -> None:
 
 def log_debate(
     config: DebateConfig,
-    results: Dict[str, Any],
+    results: dict[str, Any],
     duration_s: float = 0,
 ) -> str:
     """Log a completed debate to the history file and save a config snapshot.
@@ -113,7 +113,7 @@ def log_debate(
     return debate_id
 
 
-def list_debates() -> List[Dict[str, Any]]:
+def list_debates() -> list[dict[str, Any]]:
     """Return all debate entries from the history file."""
     return _read_history()
 
@@ -138,7 +138,7 @@ def load_debate_config(debate_id: str) -> DebateConfig:
     return DebateConfig.from_yaml(snapshot_path)
 
 
-def format_history_table(debates: List[Dict[str, Any]], console: Console) -> None:
+def format_history_table(debates: list[dict[str, Any]], console: Console) -> None:
     """Render the debate history as a Rich table.
 
     Args:

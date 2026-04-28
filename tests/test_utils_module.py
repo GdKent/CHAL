@@ -463,8 +463,7 @@ def test_display_agent_stats_includes_all_metrics(capsys):
     display_agent_stats(stats)
 
     # Capture printed output
-    captured = capsys.readouterr()
-    display = captured.out
+    display = capsys.readouterr().out
 
     # Should mention all metrics
     assert "critique" in display.lower() or "5" in display

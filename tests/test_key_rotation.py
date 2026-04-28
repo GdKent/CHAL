@@ -21,12 +21,13 @@ from chal.utilities.key_pool import KeyPool
 # ==============================================
 
 class TestOpenAIKeyRotation:
-    """Tests for key rotation in the OpenAI retry wrapper."""
+    """Tests for key rotation in the generic retry_api_call wrapper (OpenAI scenario)."""
 
     def test_retry_rotates_key_on_rate_limit(self):
         """On RateLimitError, the wrapper rotates to the next key and retries."""
         import openai
-        from chal.agents.openai_agent import retry_openai_chat_completion
+        from openai import OpenAI
+        from chal.utilities.retry import retry_api_call
 
         pool = KeyPool()
         pool.register_keys("openai", ["sk-a", "sk-b"])
@@ -48,21 +49,24 @@ class TestOpenAIKeyRotation:
         ]
 
         # Patch OpenAI constructor to return our mock
-        with patch("chal.agents.openai_agent.OpenAI") as MockOpenAI:
-            new_client = MagicMock()
-            new_client.chat.completions.create.return_value = mock_response
-            MockOpenAI.return_value = new_client
+        new_client = MagicMock()
+        new_client.chat.completions.create.return_value = mock_response
 
-            result = retry_openai_chat_completion(
-                client=mock_client,
-                model="gpt-4o",
-                messages=[{"role": "user", "content": "test"}],
-                temperature=0.7,
-                max_retries=3,
-                base_delay=0.01,
-                key_pool=pool,
-                current_key="sk-a",
-            )
+        def _make_call(rotated_client):
+            c = rotated_client if rotated_client is not None else mock_client
+            return c.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": "test"}], temperature=0.7)
+
+        result = retry_api_call(
+            call_fn=_make_call,
+            provider="openai",
+            rate_limit_errors=(openai.RateLimitError,),
+            retryable_errors=(openai.APIStatusError, openai.APIConnectionError),
+            key_pool=pool,
+            current_key="sk-a",
+            rebuild_client_fn=lambda key: new_client,
+            max_retries=3,
+            base_delay=0.01,
+        )
 
         assert result == mock_response
         # Original client was called once (rate limited)
@@ -73,7 +77,7 @@ class TestOpenAIKeyRotation:
     def test_retry_without_pool_uses_backoff(self):
         """Without a key pool, RateLimitError triggers exponential backoff."""
         import openai
-        from chal.agents.openai_agent import retry_openai_chat_completion
+        from chal.utilities.retry import retry_api_call
 
         mock_client = MagicMock()
         mock_response = MagicMock()
@@ -88,12 +92,16 @@ class TestOpenAIKeyRotation:
             mock_response,
         ]
 
-        with patch("time.sleep") as mock_sleep:
-            result = retry_openai_chat_completion(
-                client=mock_client,
-                model="gpt-4o",
-                messages=[{"role": "user", "content": "test"}],
-                temperature=0.7,
+        def _make_call(rotated_client):
+            c = rotated_client if rotated_client is not None else mock_client
+            return c.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": "test"}], temperature=0.7)
+
+        with patch("chal.utilities.retry.time.sleep") as mock_sleep:
+            result = retry_api_call(
+                call_fn=_make_call,
+                provider="openai",
+                rate_limit_errors=(openai.RateLimitError,),
+                retryable_errors=(openai.APIStatusError, openai.APIConnectionError),
                 max_retries=3,
                 base_delay=0.01,
                 key_pool=None,
@@ -107,7 +115,7 @@ class TestOpenAIKeyRotation:
     def test_retry_max_retries_exhausted(self):
         """After max retries, RuntimeError is raised."""
         import openai
-        from chal.agents.openai_agent import retry_openai_chat_completion
+        from chal.utilities.retry import retry_api_call
 
         mock_client = MagicMock()
         rate_limit_err = openai.RateLimitError(
@@ -117,13 +125,17 @@ class TestOpenAIKeyRotation:
         )
         mock_client.chat.completions.create.side_effect = rate_limit_err
 
-        with patch("time.sleep"):
+        def _make_call(rotated_client):
+            c = rotated_client if rotated_client is not None else mock_client
+            return c.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": "test"}], temperature=0.7)
+
+        with patch("chal.utilities.retry.time.sleep"):
             with pytest.raises(RuntimeError, match="Exceeded max retries"):
-                retry_openai_chat_completion(
-                    client=mock_client,
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": "test"}],
-                    temperature=0.7,
+                retry_api_call(
+                    call_fn=_make_call,
+                    provider="openai",
+                    rate_limit_errors=(openai.RateLimitError,),
+                    retryable_errors=(openai.APIStatusError, openai.APIConnectionError),
                     max_retries=2,
                     base_delay=0.01,
                     key_pool=None,
@@ -136,12 +148,12 @@ class TestOpenAIKeyRotation:
 # ==============================================
 
 class TestAnthropicKeyRotation:
-    """Tests for key rotation in the Anthropic retry wrapper."""
+    """Tests for key rotation in the generic retry_api_call wrapper (Anthropic scenario)."""
 
     def test_retry_rotates_key_on_rate_limit(self):
         """On RateLimitError, the wrapper rotates to the next key."""
         import anthropic
-        from chal.agents.anthropic_agent import retry_anthropic_message
+        from chal.utilities.retry import retry_api_call
 
         pool = KeyPool()
         pool.register_keys("anthropic", ["ant-a", "ant-b"])
@@ -163,22 +175,24 @@ class TestAnthropicKeyRotation:
             mock_response,
         ]
 
-        with patch("chal.agents.anthropic_agent.anthropic.Anthropic") as MockAnthropicCls:
-            new_client = MagicMock()
-            new_client.messages.create.return_value = mock_response
-            MockAnthropicCls.return_value = new_client
+        new_client = MagicMock()
+        new_client.messages.create.return_value = mock_response
 
-            result = retry_anthropic_message(
-                client=mock_client,
-                model="claude-sonnet-4-6",
-                messages=[{"role": "user", "content": "test"}],
-                system_prompt="test",
-                temperature=0.7,
-                max_retries=3,
-                base_delay=0.01,
-                key_pool=pool,
-                current_key="ant-a",
-            )
+        def _make_call(rotated_client):
+            c = rotated_client if rotated_client is not None else mock_client
+            return c.messages.create(model="claude-sonnet-4-6", messages=[{"role": "user", "content": "test"}], temperature=0.7)
+
+        result = retry_api_call(
+            call_fn=_make_call,
+            provider="anthropic",
+            rate_limit_errors=(anthropic.RateLimitError,),
+            retryable_errors=(anthropic.APIStatusError, anthropic.APIConnectionError),
+            key_pool=pool,
+            current_key="ant-a",
+            rebuild_client_fn=lambda key: new_client,
+            max_retries=3,
+            base_delay=0.01,
+        )
 
         assert result == mock_response
 

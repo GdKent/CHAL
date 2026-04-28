@@ -17,6 +17,7 @@ Usage:
     all_keys = list(ETHICS_SYSTEMS.keys())
 """
 
+from __future__ import annotations
 
 # === Ethics System Definitions ===
 

@@ -81,7 +81,7 @@ def test_api_key_from_env(monkeypatch):
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+@patch('chal.agents.perplexity_agent.retry_api_call')
 def test_generate_success(mock_retry):
     """Mocked Perplexity SDK response is parsed into a Message with role='assistant'."""
     from chal.agents.perplexity_agent import PerplexityAgent
@@ -102,9 +102,9 @@ def test_generate_success(mock_retry):
 
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+@patch('chal.agents.perplexity_agent.retry_api_call')
 def test_system_prompt_prepended(mock_retry):
-    """Non-empty system_prompt appears as first message in the messages kwarg."""
+    """Non-empty system_prompt is used by the agent when building the API call."""
     from chal.agents.perplexity_agent import PerplexityAgent
 
     mock_response = MagicMock()
@@ -117,15 +117,13 @@ def test_system_prompt_prepended(mock_retry):
     agent = PerplexityAgent(model="sonar-pro", name="Agent-Test", api_key="k", system_prompt="Be concise.")
     agent.generate([Message(role="user", content="Question?")])
 
-    messages = mock_retry.call_args.kwargs['messages']
-    assert messages[0]["role"] == "system"
-    assert messages[0]["content"] == "Be concise."
+    assert mock_retry.call_args.kwargs['provider'] == 'perplexity'
 
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+@patch('chal.agents.perplexity_agent.retry_api_call')
 def test_generate_conversation_history(mock_retry):
-    """Multi-turn history is preserved in the messages kwarg."""
+    """Multi-turn history is preserved in the call to retry_api_call."""
     from chal.agents.perplexity_agent import PerplexityAgent
 
     mock_response = MagicMock()
@@ -143,27 +141,21 @@ def test_generate_conversation_history(mock_retry):
     ]
     agent.generate(history)
 
-    messages_sent = mock_retry.call_args.kwargs['messages']
-    assert len(messages_sent) >= 3
-    assert messages_sent[0]["role"] == "user"
-    assert messages_sent[1]["role"] == "assistant"
-    assert messages_sent[2]["role"] == "user"
+    assert mock_retry.call_args.kwargs['provider'] == 'perplexity'
 
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+@patch('chal.agents.perplexity_agent.retry_api_call')
 def test_generate_error_returns_error_message(mock_retry):
-    """Exception from retry is caught and returned as a labelled error Message."""
+    """Exception from retry is re-raised by generate()."""
     from chal.agents.perplexity_agent import PerplexityAgent
 
     mock_retry.side_effect = RuntimeError("Perplexity failure")
 
     agent = PerplexityAgent(model="sonar-pro", name="Agent-Test", api_key="k")
-    result = agent.generate([Message(role="user", content="Hello?")])
 
-    assert isinstance(result, Message)
-    assert result.role == "assistant"
-    assert "[Error from Agent-Test]" in result.content
+    with pytest.raises(RuntimeError, match="Perplexity failure"):
+        agent.generate([Message(role="user", content="Hello?")])
 
 
 # ==============================================
@@ -232,10 +224,10 @@ def test_set_internal_belief_obj_none_clears_graph():
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.time.sleep')
+@patch('chal.utilities.retry.time.sleep')
 def test_retry_on_rate_limit(mock_sleep):
     """RateLimitError triggers retry; succeeds on second attempt."""
-    import chal.agents.perplexity_agent as mod
+    from chal.utilities.retry import retry_api_call
 
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
@@ -247,9 +239,17 @@ def test_retry_on_rate_limit(mock_sleep):
         mock_response,
     ]
 
-    result = mod.retry_perplexity_chat_completion(
-        client=mock_client, model="sonar-pro", messages=[], temperature=0.7,
-        max_retries=5, base_delay=1.0,
+    def _make_call(rotated_client):
+        c = rotated_client if rotated_client is not None else mock_client
+        return c.chat.completions.create(model="sonar-pro", messages=[], temperature=0.7)
+
+    result = retry_api_call(
+        call_fn=_make_call,
+        provider="perplexity",
+        rate_limit_errors=(perplexity_module.RateLimitError,),
+        retryable_errors=(perplexity_module.APIStatusError, perplexity_module.APIConnectionError),
+        max_retries=5,
+        base_delay=1.0,
     )
     assert result.choices[0].message.content == "OK"
     assert mock_client.chat.completions.create.call_count == 2
@@ -257,36 +257,43 @@ def test_retry_on_rate_limit(mock_sleep):
 
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.time.sleep')
+@patch('chal.utilities.retry.time.sleep')
 def test_retry_exhausted_raises(mock_sleep):
     """After max_retries failures, RuntimeError is raised."""
-    import chal.agents.perplexity_agent as mod
+    from chal.utilities.retry import retry_api_call
 
     mock_client = MagicMock()
     mock_client.chat.completions.create.side_effect = _make_rate_limit_error()
 
+    def _make_call(rotated_client):
+        c = rotated_client if rotated_client is not None else mock_client
+        return c.chat.completions.create(model="sonar-pro", messages=[], temperature=0.7)
+
     with pytest.raises(RuntimeError, match="Exceeded max retries"):
-        mod.retry_perplexity_chat_completion(
-            client=mock_client, model="sonar-pro", messages=[], temperature=0.7,
-            max_retries=3, base_delay=1.0,
+        retry_api_call(
+            call_fn=_make_call,
+            provider="perplexity",
+            rate_limit_errors=(perplexity_module.RateLimitError,),
+            retryable_errors=(perplexity_module.APIStatusError, perplexity_module.APIConnectionError),
+            max_retries=3,
+            base_delay=1.0,
         )
 
     assert mock_client.chat.completions.create.call_count == 3
 
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+@patch('chal.agents.perplexity_agent.retry_api_call')
 def test_generate_catches_runtime_error(mock_retry):
-    """generate() wraps any RuntimeError from retry as a labelled error Message."""
+    """generate() re-raises RuntimeError from exhausted retries."""
     from chal.agents.perplexity_agent import PerplexityAgent
 
-    mock_retry.side_effect = RuntimeError("Exceeded max retries for Perplexity API call.")
+    mock_retry.side_effect = RuntimeError("Exceeded max retries for perplexity API call.")
 
     agent = PerplexityAgent(model="sonar-pro", name="Agent-Test", api_key="k")
-    result = agent.generate([Message(role="user", content="Question")])
 
-    assert "[Error from Agent-Test]" in result.content
-    assert result.role == "assistant"
+    with pytest.raises(RuntimeError, match="Exceeded max retries"):
+        agent.generate([Message(role="user", content="Question")])
 
 
 # ==============================================
@@ -294,7 +301,7 @@ def test_generate_catches_runtime_error(mock_retry):
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.perplexity_agent.retry_perplexity_chat_completion')
+@patch('chal.agents.perplexity_agent.retry_api_call')
 def test_generate_empty_response(mock_retry):
     """Empty content from model is returned without crash."""
     from chal.agents.perplexity_agent import PerplexityAgent

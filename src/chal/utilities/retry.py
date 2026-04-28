@@ -7,6 +7,9 @@ Provides `generate_with_retry`, a wrapper around Agent.generate() that
 validates the response using a caller-supplied validator function and
 retries with targeted correction hints on failure.
 
+Also provides `retry_api_call`, a generic retry wrapper for provider API
+calls with optional key rotation and exponential backoff.
+
 Each stage in the debate pipeline supplies its own validator
 (see validators.py); this module provides the shared retry loop.
 """
@@ -14,10 +17,73 @@ Each stage in the debate pipeline supplies its own validator
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Tuple
+from typing import Any
 
 from chal.agents.base import Agent, Message
+from chal.log import logger
+
+
+def retry_api_call(
+    call_fn,
+    provider: str,
+    rate_limit_errors: tuple = (),
+    retryable_errors: tuple = (),
+    key_pool=None,
+    current_key: str = "",
+    rebuild_client_fn=None,
+    max_retries: int = 5,
+    base_delay: float = 60.0,
+    on_rate_limit=None,
+):
+    """Generic retry wrapper for provider API calls with key rotation.
+
+    Args:
+        call_fn: Callable that takes a client (or None) and returns the API response.
+                 Signature: call_fn(client) -> response, where client may be None
+                 if no key rotation is needed.
+        provider: Provider name for logging (e.g., "openai", "anthropic").
+        rate_limit_errors: Exception types that indicate rate limiting.
+        retryable_errors: Exception types that should trigger exponential backoff.
+        key_pool: Optional KeyPool instance for key rotation.
+        current_key: Current API key being used.
+        rebuild_client_fn: Callable that takes a new API key and returns a new client.
+                          Required if key_pool is provided.
+        max_retries: Maximum number of retry attempts.
+        base_delay: Base delay in seconds for exponential backoff.
+        on_rate_limit: Optional callback fired when a rate limit is hit.
+
+    Returns:
+        The API response from call_fn.
+
+    Raises:
+        RuntimeError: If all retries are exhausted.
+    """
+    client = None  # Will be set by rebuild_client_fn if key rotation occurs
+
+    for attempt in range(max_retries):
+        try:
+            return call_fn(client)
+        except rate_limit_errors as e:
+            if on_rate_limit:
+                on_rate_limit()
+            if key_pool is not None and rebuild_client_fn is not None:
+                key_pool.mark_rate_limited(provider, current_key, cooldown_seconds=60)
+                current_key = key_pool.get_key(provider)
+                client = rebuild_client_fn(current_key)
+                logger.warning(f"[KeyPool] Rotated {provider} API key after rate limit (attempt {attempt+1}/{max_retries}).")
+                continue
+            # No key pool — fall through to backoff
+            wait = base_delay * (2 ** attempt)
+            logger.warning(f"[Retry {attempt+1}/{max_retries}] {provider} rate limit: {e}. Retrying in {wait:.1f}s.")
+            time.sleep(wait)
+        except retryable_errors as e:
+            wait = base_delay * (2 ** attempt)
+            logger.warning(f"[Retry {attempt+1}/{max_retries}] {provider} API error: {e}. Retrying in {wait:.1f}s.")
+            time.sleep(wait)
+
+    raise RuntimeError(f"Exceeded max retries for {provider} API call.")
 
 
 @dataclass
@@ -41,14 +107,14 @@ class RetryRecord:
 
 def generate_with_retry(
     agent: Agent,
-    messages: List[Message],
+    messages: list[Message],
     validator_fn: Callable[[str], ValidationResult],
     max_retries: int = 3,
     stage_label: str = "Unknown",
     log_fn: Callable[[str, str], None] | None = None,
     temperature: float | None = None,
     remediation_hints: str = "",
-) -> Tuple[Message, list[RetryRecord]]:
+) -> tuple[Message, list[RetryRecord]]:
     """Wrap an Agent.generate() call with validation and retry.
 
     On each attempt the response is passed through *validator_fn*.  If

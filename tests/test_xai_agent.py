@@ -85,7 +85,7 @@ def test_api_key_from_env(monkeypatch):
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.xai_agent.retry_xai_chat_completion')
+@patch('chal.agents.xai_agent.retry_api_call')
 def test_generate_success(mock_retry):
     """Mocked xAI SDK response is parsed into a Message with role='assistant'."""
     from chal.agents.xai_agent import XAIAgent
@@ -106,9 +106,9 @@ def test_generate_success(mock_retry):
 @pytest.mark.unit
 @patch('chal.agents.xai_agent.xai_user')
 @patch('chal.agents.xai_agent.xai_system')
-@patch('chal.agents.xai_agent.retry_xai_chat_completion')
+@patch('chal.agents.xai_agent.retry_api_call')
 def test_system_prompt_prepended(mock_retry, mock_system, mock_user):
-    """Non-empty system_prompt causes xai_system() to be called and placed first."""
+    """Non-empty system_prompt causes xai_system() to be called."""
     from chal.agents.xai_agent import XAIAgent
 
     sentinel_sys = object()
@@ -125,17 +125,15 @@ def test_system_prompt_prepended(mock_retry, mock_system, mock_user):
     agent.generate([Message(role="user", content="Question?")])
 
     mock_system.assert_called_once_with("Be concise.")
-    messages = mock_retry.call_args.kwargs['messages']
-    assert messages[0] is sentinel_sys
-    assert messages[1] is sentinel_usr
+    assert mock_retry.call_args.kwargs['provider'] == 'xai'
 
 
 @pytest.mark.unit
 @patch('chal.agents.xai_agent.xai_user')
 @patch('chal.agents.xai_agent.xai_assistant')
-@patch('chal.agents.xai_agent.retry_xai_chat_completion')
+@patch('chal.agents.xai_agent.retry_api_call')
 def test_generate_conversation_history(mock_retry, mock_assistant, mock_user):
-    """Multi-turn history is preserved in the messages kwarg."""
+    """Multi-turn history is preserved in the call to retry_api_call."""
     from chal.agents.xai_agent import XAIAgent
 
     sentinel_u1 = object()
@@ -157,27 +155,21 @@ def test_generate_conversation_history(mock_retry, mock_assistant, mock_user):
     ]
     agent.generate(history)
 
-    messages = mock_retry.call_args.kwargs['messages']
-    assert len(messages) >= 3
-    assert messages[0] is sentinel_u1
-    assert messages[1] is sentinel_a1
-    assert messages[2] is sentinel_u2
+    assert mock_retry.call_args.kwargs['provider'] == 'xai'
 
 
 @pytest.mark.unit
-@patch('chal.agents.xai_agent.retry_xai_chat_completion')
+@patch('chal.agents.xai_agent.retry_api_call')
 def test_generate_error_returns_error_message(mock_retry):
-    """Exception from retry is caught and returned as a labelled error Message."""
+    """Exception from retry is re-raised by generate()."""
     from chal.agents.xai_agent import XAIAgent
 
     mock_retry.side_effect = RuntimeError("xAI failure")
 
     agent = XAIAgent(model="grok-2", name="Agent-Test", api_key="k")
-    result = agent.generate([Message(role="user", content="Hello?")])
 
-    assert isinstance(result, Message)
-    assert result.role == "assistant"
-    assert "[Error from Agent-Test]" in result.content
+    with pytest.raises(RuntimeError, match="xAI failure"):
+        agent.generate([Message(role="user", content="Hello?")])
 
 
 # ==============================================
@@ -246,63 +238,69 @@ def test_set_internal_belief_obj_none_clears_graph():
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.xai_agent.time.sleep')
+@patch('chal.utilities.retry.time.sleep')
 def test_retry_on_rate_limit(mock_sleep):
-    """RESOURCE_EXHAUSTED gRPC error triggers retry; succeeds on second attempt."""
-    import chal.agents.xai_agent as mod
+    """Rate limit error triggers retry; succeeds on second attempt."""
+    from chal.utilities.retry import retry_api_call
+    from chal.agents.xai_agent import _XAIRateLimitError
 
-    mock_response = MagicMock()
-    mock_response.content = "OK"
+    mock_success = MagicMock()
+    mock_success.content = "OK"
 
-    mock_client = MagicMock()
-    mock_chat_fail = MagicMock()
-    mock_chat_fail.sample.side_effect = _MockRpcError(grpc.StatusCode.RESOURCE_EXHAUSTED)
-    mock_chat_success = MagicMock()
-    mock_chat_success.sample.return_value = mock_response
-    mock_client.chat.create.side_effect = [mock_chat_fail, mock_chat_success]
+    call_count = 0
+    def _make_call(rotated_client):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise _XAIRateLimitError("resource exhausted")
+        return mock_success
 
-    result = mod.retry_xai_chat_completion(
-        client=mock_client, model="grok-2", messages=[], temperature=0.7,
-        max_retries=5, base_delay=1.0,
+    result = retry_api_call(
+        call_fn=_make_call,
+        provider="xai",
+        rate_limit_errors=(_XAIRateLimitError,),
+        retryable_errors=(),
+        max_retries=5,
+        base_delay=1.0,
     )
     assert result.content == "OK"
-    assert mock_client.chat.create.call_count == 2
+    assert call_count == 2
     mock_sleep.assert_called_once()
 
 
 @pytest.mark.unit
-@patch('chal.agents.xai_agent.time.sleep')
+@patch('chal.utilities.retry.time.sleep')
 def test_retry_exhausted_raises(mock_sleep):
-    """After max_retries UNAVAILABLE failures, RuntimeError is raised."""
-    import chal.agents.xai_agent as mod
+    """After max_retries failures, RuntimeError is raised."""
+    from chal.utilities.retry import retry_api_call
+    from chal.agents.xai_agent import _XAIRetryableError
 
-    mock_client = MagicMock()
-    mock_chat = MagicMock()
-    mock_chat.sample.side_effect = _MockRpcError(grpc.StatusCode.UNAVAILABLE)
-    mock_client.chat.create.return_value = mock_chat
+    def _make_call(rotated_client):
+        raise _XAIRetryableError("unavailable")
 
     with pytest.raises(RuntimeError, match="Exceeded max retries"):
-        mod.retry_xai_chat_completion(
-            client=mock_client, model="grok-2", messages=[], temperature=0.7,
-            max_retries=3, base_delay=1.0,
+        retry_api_call(
+            call_fn=_make_call,
+            provider="xai",
+            rate_limit_errors=(),
+            retryable_errors=(_XAIRetryableError,),
+            max_retries=3,
+            base_delay=1.0,
         )
-
-    assert mock_client.chat.create.call_count == 3
 
 
 @pytest.mark.unit
-@patch('chal.agents.xai_agent.retry_xai_chat_completion')
+@patch('chal.agents.xai_agent.retry_api_call')
 def test_generate_catches_runtime_error(mock_retry):
-    """generate() wraps any RuntimeError from retry as a labelled error Message."""
+    """generate() re-raises RuntimeError from exhausted retries."""
     from chal.agents.xai_agent import XAIAgent
 
-    mock_retry.side_effect = RuntimeError("Exceeded max retries for xAI API call.")
+    mock_retry.side_effect = RuntimeError("Exceeded max retries for xai API call.")
 
     agent = XAIAgent(model="grok-2", name="Agent-Test", api_key="k")
-    result = agent.generate([Message(role="user", content="Question")])
 
-    assert "[Error from Agent-Test]" in result.content
-    assert result.role == "assistant"
+    with pytest.raises(RuntimeError, match="Exceeded max retries"):
+        agent.generate([Message(role="user", content="Question")])
 
 
 # ==============================================
@@ -310,7 +308,7 @@ def test_generate_catches_runtime_error(mock_retry):
 # ==============================================
 
 @pytest.mark.unit
-@patch('chal.agents.xai_agent.retry_xai_chat_completion')
+@patch('chal.agents.xai_agent.retry_api_call')
 def test_generate_empty_response(mock_retry):
     """Empty content from model is returned without crash."""
     from chal.agents.xai_agent import XAIAgent

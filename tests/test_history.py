@@ -51,7 +51,6 @@ def _make_results() -> dict:
         },
         "convergence_history": [{"convergence_score": 0.72}],
         "synthesis": "",
-        "full_transcript": "",
         "debug_log": "",
         "initial_positions": [],
         "final_positions": [],

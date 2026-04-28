@@ -12,13 +12,16 @@ The adjudicator performs logical evaluation in a single API call, returning:
 This replaces the previous 3-call approach, reducing API latency by ~66%.
 """
 
-from typing import Any, Callable, Dict
+from __future__ import annotations
+
+import json
+import re
+from collections.abc import Callable
+from typing import Any
 
 from chal.agents.base import Agent, Message
 from chal.agents.prompts import build_adjudicator_per_pair_prompt
 from chal.utilities.retry import ValidationResult, generate_with_retry
-import json
-import re
 
 VALID_VERDICTS = {"critique_valid", "rebuttal_valid", "unresolved"}
 
@@ -49,52 +52,35 @@ def _normalize_verdict(raw: str) -> str:
 
 
 def _extract_json_from_response(text: str) -> dict | None:
-    """Try to extract a JSON object from *text*.
+    """Extract and parse JSON from an LLM response string.
 
-    Attempts fenced ```json block first, then brace-depth scanning.
-    Returns the parsed dict, or None if nothing was found.
+    Handles JSON wrapped in markdown code fences or embedded in prose.
+    Uses ``json.JSONDecoder.raw_decode`` instead of hand-rolled brace scanning.
+
+    Args:
+        text: Raw LLM response that may contain JSON.
+
+    Returns:
+        Parsed JSON as a dictionary, or ``None`` if no valid JSON object is found.
     """
-    # 1. Fenced block
-    fenced = re.search(r'```json\s*(\{.*?\})\s*```', text, flags=re.DOTALL)
-    if fenced:
+    # 1. Try markdown code fences first
+    fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
+    if fence_match:
         try:
-            return json.loads(fenced.group(1))
+            return json.loads(fence_match.group(1))
         except json.JSONDecodeError:
             pass
 
-    # 2. Brace-depth scanning
-    i = 0
-    while i < len(text):
-        if text[i] == '{':
-            depth, in_string, escape_next = 0, False, False
-            for j in range(i, len(text)):
-                ch = text[j]
-                if escape_next:
-                    escape_next = False
-                    continue
-                if ch == '\\' and in_string:
-                    escape_next = True
-                    continue
-                if ch == '"':
-                    in_string = not in_string
-                    continue
-                if in_string:
-                    continue
-                if ch == '{':
-                    depth += 1
-                elif ch == '}':
-                    depth -= 1
-                    if depth == 0:
-                        try:
-                            return json.loads(text[i:j + 1])
-                        except json.JSONDecodeError:
-                            pass
-                        i = j + 1
-                        break
-            else:
-                i += 1
-        else:
-            i += 1
+    # 2. Try raw_decode to find first JSON object in text
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch in '{[':
+            try:
+                result, _ = decoder.raw_decode(text, i)
+                return result
+            except json.JSONDecodeError:
+                continue
+
     return None
 
 
@@ -276,7 +262,7 @@ class Adjudicator:
         target_belief_excerpt_json: str = "",
         max_retries: int = 3,
         log_fn: Callable[[str, str], None] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Evaluate a challenge-rebuttal pair, retrying on malformed output.
 

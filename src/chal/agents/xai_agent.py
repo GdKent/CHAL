@@ -14,15 +14,19 @@ SDK: xai-sdk (v1+). Import path: `from xai_sdk import Client`.
 The SDK uses gRPC to communicate with xAI's API.
 """
 
+from __future__ import annotations
+
 import os
-import time
+
 import grpc
 from xai_sdk import Client
-from xai_sdk.chat import user as xai_user, system as xai_system, assistant as xai_assistant
+from xai_sdk.chat import assistant as xai_assistant
+from xai_sdk.chat import system as xai_system
+from xai_sdk.chat import user as xai_user
+
 from chal.agents.base import Agent, Message
-from typing import List
-from dotenv import load_dotenv
-load_dotenv()
+from chal.log import logger
+from chal.utilities.retry import retry_api_call
 
 
 class XAIAgent(Agent):
@@ -48,82 +52,12 @@ class XAIAgent(Agent):
             system_prompt (str, optional): Optional system message to set agent behavior.
             key_pool: Optional KeyPool instance for rate-limit-aware key rotation.
         """
-        self.model = model
-        self.name = name
+        super().__init__(name=name, model=model, system_prompt=system_prompt,
+                         temperature=0.7, key_pool=key_pool)
         self.api_key = api_key or os.getenv("XAI_API_KEY")
-        self.system_prompt = system_prompt
-        self.internal_belief = ""
-        self.internal_belief_obj = None
-        self.belief_graph = None
-        self.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
-        self.all_beliefs_held = []
-        self.key_pool = key_pool
         self._client = None  # Lazy init: created on first generate() call
 
-    def set_internal_belief(self, belief_text: str) -> None:
-        """
-        Sets the agent's internal belief, typically after Stages 1 or 5.
-        """
-        self.internal_belief = belief_text
-
-    def get_internal_belief(self) -> str:
-        """
-        Retrieves the agent's internal belief for use in prompting.
-        """
-        return self.internal_belief
-
-    def set_internal_belief_obj(self, belief_obj: dict | None) -> None:
-        """
-        Stores the structured CBS belief object (JSON as Python dict).
-        Auto-rebuilds the persistent belief graph when the belief object changes.
-        """
-        self.internal_belief_obj = belief_obj
-
-        if belief_obj:
-            try:
-                from chal.beliefs.belief_graph import BeliefGraph
-                self.belief_graph = BeliefGraph(belief_obj)
-            except Exception as e:
-                print(f"Warning: Could not build belief graph for {self.name}: {e}")
-                self.belief_graph = None
-        else:
-            self.belief_graph = None
-
-    def get_internal_belief_obj(self) -> dict | None:
-        """
-        Returns the structured belief object if available.
-        """
-        return self.internal_belief_obj
-
-    def get_belief_graph(self):
-        """
-        Returns the persistent BeliefGraph object if available.
-        The graph is automatically rebuilt when set_internal_belief_obj() is called.
-
-        Returns:
-            BeliefGraph object or None if no belief object is set or graph construction failed.
-        """
-        return self.belief_graph
-
-    def receive_system_prompt(self, prompt: str) -> None:
-        """
-        Assigns the agent's system-level behavior rules and norms.
-
-        Args:
-            prompt (str): The shared, universal system prompt applied to all agents.
-        """
-        self.system_prompt = prompt
-
-    def receive_role_card(self, prompt: str) -> None:
-        """
-        Appends the agent's unique worldview or stance to their system prompt.
-
-        Args:
-            prompt (str): A string defining the specific position the agent must uphold.
-        """
-        self.system_prompt = self.system_prompt + "\n\n" + prompt
-
-    def generate(self, history: List[Message], temperature: float = 0.7) -> Message:
+    def generate(self, history: list[Message], temperature: float = 0.7) -> Message:
         """
         Constructs a prompt from conversation history, sends it to xAI,
         and returns the model's reply wrapped in a Message object.
@@ -150,13 +84,36 @@ class XAIAgent(Agent):
             self._client = Client(api_key=self.api_key)
 
         try:
-            response = retry_xai_chat_completion(
-                client=self._client,
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
+            # xAI uses gRPC errors; we detect rate limits (RESOURCE_EXHAUSTED)
+            # and re-raise as _XAIRateLimitError so retry_api_call can distinguish
+            # them. UNAVAILABLE/DEADLINE_EXCEEDED are retryable; other codes
+            # are re-raised immediately.
+            def _make_call(rotated_client):
+                c = rotated_client if rotated_client is not None else self._client
+                try:
+                    chat = c.chat.create(
+                        model=self.model,
+                        messages=messages,
+                        temperature=temperature,
+                    )
+                    return chat.sample()
+                except grpc.RpcError as e:
+                    code = e.code()
+                    if code == grpc.StatusCode.RESOURCE_EXHAUSTED:
+                        raise _XAIRateLimitError(e.details()) from e
+                    if code in (grpc.StatusCode.UNAVAILABLE,
+                                grpc.StatusCode.DEADLINE_EXCEEDED):
+                        raise _XAIRetryableError(e.details()) from e
+                    raise
+
+            response = retry_api_call(
+                call_fn=_make_call,
+                provider="xai",
+                rate_limit_errors=(_XAIRateLimitError,),
+                retryable_errors=(_XAIRetryableError,),
                 key_pool=self.key_pool,
                 current_key=self.api_key,
+                rebuild_client_fn=lambda key: Client(api_key=key),
                 on_rate_limit=getattr(self, '_on_rate_limit', None),
             )
 
@@ -175,66 +132,15 @@ class XAIAgent(Agent):
             )
 
         except Exception as e:
-            return Message(
-                role="assistant",
-                content=f"[Error from {self.name}]: {str(e)}"
-            )
+            logger.error(f"[API Error] {self.name} ({self.model}): {e}")
+            raise
 
 
-# --- Utility Function for Retry Calls to the API if Rate Limits are Exceeded ---
-def retry_xai_chat_completion(client, model, messages, temperature,
-                               max_retries=5, base_delay=60.0,
-                               key_pool=None, current_key="",
-                               on_rate_limit=None):
-    """
-    Wrapper to retry xAI chat completions with exponential backoff.
+class _XAIRateLimitError(Exception):
+    """Internal sentinel for xAI RESOURCE_EXHAUSTED (rate limit) errors."""
+    pass
 
-    When a KeyPool is provided, RESOURCE_EXHAUSTED errors (rate limits)
-    trigger key rotation: the current key is marked as cooling down, a
-    fresh key is drawn from the pool, the client is rebuilt, and the
-    request is retried immediately.
 
-    Args:
-        client: Instantiated xai_sdk.Client
-        model (str): xAI model name
-        messages (list): List of xai_sdk.chat message objects
-        temperature (float): Sampling temperature
-        max_retries (int): Max retry attempts
-        base_delay (float): Delay factor in seconds
-        key_pool: Optional KeyPool for rate-limit-aware key rotation.
-        current_key (str): The API key currently in use.
-
-    Returns:
-        xai_sdk.chat.Response: The xAI SDK response object
-    """
-    for attempt in range(max_retries):
-        try:
-            chat = client.chat.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-            )
-            return chat.sample()
-
-        except grpc.RpcError as e:
-            code = e.code()
-            if code in (grpc.StatusCode.RESOURCE_EXHAUSTED,
-                        grpc.StatusCode.UNAVAILABLE,
-                        grpc.StatusCode.DEADLINE_EXCEEDED):
-                # On rate limit: fire callback, then rotate key and retry
-                if code == grpc.StatusCode.RESOURCE_EXHAUSTED and on_rate_limit:
-                    on_rate_limit()
-                if code == grpc.StatusCode.RESOURCE_EXHAUSTED and key_pool is not None:
-                    key_pool.mark_rate_limited("xai", current_key, cooldown_seconds=60)
-                    current_key = key_pool.get_key("xai")
-                    client = Client(api_key=current_key)
-                    print(f"[KeyPool] Rotated xai API key after rate limit (attempt {attempt+1}/{max_retries}).")
-                    continue
-
-                wait = base_delay * (2 ** attempt)
-                print(f"[Retry {attempt+1}/{max_retries}] xAI API call failed: {e.details()}. Retrying in {wait:.1f} seconds.")
-                time.sleep(wait)
-            else:
-                raise
-
-    raise RuntimeError("Exceeded max retries for xAI API call.")
+class _XAIRetryableError(Exception):
+    """Internal sentinel for xAI retryable gRPC errors (UNAVAILABLE, DEADLINE_EXCEEDED)."""
+    pass

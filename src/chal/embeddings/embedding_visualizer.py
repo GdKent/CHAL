@@ -1,14 +1,23 @@
 # embedding_visualizer.py
 
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox, TextArea, HPacker, VPacker, AnchoredOffsetbox
-from umap import UMAP
-from typing import Dict, List, Optional
+from __future__ import annotations
+
 from itertools import cycle
 from pathlib import Path
 
-PROVIDER_LOGOS: Dict[str, str] = {
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.offsetbox import (
+    AnchoredOffsetbox,
+    AnnotationBbox,
+    HPacker,
+    OffsetImage,
+    TextArea,
+    VPacker,
+)
+from umap import UMAP
+
+PROVIDER_LOGOS: dict[str, str] = {
     "openai": "openai.png",
     "anthropic": "claude.png",
     "google": "gemini.png",
@@ -20,7 +29,7 @@ PROVIDER_LOGOS: Dict[str, str] = {
 # Persona-to-colormap mapping for trajectory plots.
 # Single-run plots sample the darkest shade (position 0.95).
 # Future multi-run overlays sample different hues across [0.35, 0.95].
-PERSONA_COLORMAPS: Dict[str, str] = {
+PERSONA_COLORMAPS: dict[str, str] = {
     "EMPIRICIST": "RdPu",
     "SUPERNATURALIST": "Purples",
     "SKEPTIC": "Reds",
@@ -37,7 +46,7 @@ PERSONA_COLORMAPS: Dict[str, str] = {
 }
 
 
-def _persona_color(persona: str, position: float = 0.95) -> Optional[str]:
+def _persona_color(persona: str, position: float = 0.95) -> str | None:
     """Sample a color from a persona's colormap at the given position.
 
     Args:
@@ -52,7 +61,7 @@ def _persona_color(persona: str, position: float = 0.95) -> Optional[str]:
         return None
     cmap = plt.get_cmap(cmap_name)
     rgba = cmap(position)
-    return '#{:02x}{:02x}{:02x}'.format(int(rgba[0]*255), int(rgba[1]*255), int(rgba[2]*255))
+    return f'#{int(rgba[0]*255):02x}{int(rgba[1]*255):02x}{int(rgba[2]*255):02x}'
 
 
 class BeliefTrajectoryPlotter:
@@ -69,6 +78,15 @@ class BeliefTrajectoryPlotter:
         umap_min_dist: float = 0.1,
         metric: str = "euclidean",
     ):
+        """Initialize the plotter with UMAP dimensionality reduction settings.
+
+        Args:
+            n_components: Number of output dimensions (2 for 2D plots).
+            random_state: Seed for reproducible UMAP embeddings.
+            umap_n_neighbors: UMAP n_neighbors parameter (local neighborhood size).
+            umap_min_dist: UMAP min_dist parameter (minimum distance in output space).
+            metric: Distance metric for UMAP (e.g., "euclidean", "cosine").
+        """
         self.reducer = UMAP(
             n_components=n_components,
             n_neighbors=umap_n_neighbors,
@@ -85,7 +103,18 @@ class BeliefTrajectoryPlotter:
             "metric": metric,
         }
 
-    def flatten_embeddings(self, embeddings: Dict[str, List[np.ndarray]]) -> tuple:
+    def flatten_embeddings(self, embeddings: dict[str, list[np.ndarray]]) -> tuple:
+        """Flatten per-agent embedding lists into a single matrix with labels.
+
+        Args:
+            embeddings: Dict mapping agent names to lists of embedding vectors.
+
+        Returns:
+            Tuple of (stacked_vectors, agent_labels, round_indices).
+
+        Raises:
+            ValueError: If no embeddings are provided.
+        """
         all_vectors = []
         agent_labels = []
         round_indices = []
@@ -101,7 +130,18 @@ class BeliefTrajectoryPlotter:
 
         return np.stack(all_vectors), agent_labels, round_indices
 
-    def reduce_embeddings(self, embeddings: Dict[str, List[np.ndarray]]) -> dict:
+    def reduce_embeddings(self, embeddings: dict[str, list[np.ndarray]]) -> dict:
+        """Reduce high-dimensional embeddings to 2D/3D using UMAP.
+
+        Auto-clamps n_neighbors when the dataset is very small to prevent
+        UMAP from crashing.
+
+        Args:
+            embeddings: Dict mapping agent names to lists of embedding vectors.
+
+        Returns:
+            Dict mapping agent names to lists of reduced coordinate arrays.
+        """
         all_vecs, agent_labels, _ = self.flatten_embeddings(embeddings)
 
         # Auto-clamp n_neighbors when there are very few data points to prevent UMAP crash
@@ -113,7 +153,7 @@ class BeliefTrajectoryPlotter:
 
         reduced = reducer.fit_transform(all_vecs)
 
-        reduced_by_agent: Dict[str, List[np.ndarray]] = {}
+        reduced_by_agent: dict[str, list[np.ndarray]] = {}
         for coord, agent in zip(reduced, agent_labels):
             if agent not in reduced_by_agent:
                 reduced_by_agent[agent] = []
@@ -121,7 +161,7 @@ class BeliefTrajectoryPlotter:
 
         return reduced_by_agent
 
-    def reduce_embeddings_pca(self, embeddings: Dict[str, List[np.ndarray]]) -> dict:
+    def reduce_embeddings_pca(self, embeddings: dict[str, list[np.ndarray]]) -> dict:
         """Reduce embeddings to 2D using PCA.
 
         Unlike UMAP, PCA is a linear projection. The same input vector
@@ -134,7 +174,7 @@ class BeliefTrajectoryPlotter:
         pca = PCA(n_components=self.n_components, random_state=self._umap_params["random_state"])
         reduced = pca.fit_transform(all_vecs)
 
-        reduced_by_agent: Dict[str, List[np.ndarray]] = {}
+        reduced_by_agent: dict[str, list[np.ndarray]] = {}
         for coord, agent in zip(reduced, agent_labels):
             if agent not in reduced_by_agent:
                 reduced_by_agent[agent] = []
@@ -144,13 +184,13 @@ class BeliefTrajectoryPlotter:
 
     def plot_belief_trajectories(
         self,
-        embeddings: Dict[str, List[np.ndarray]],
-        output_path: Optional[Path] = None,
-        title: Optional[str] = None,
-        colors: Optional[Dict[str, str]] = None,
+        embeddings: dict[str, list[np.ndarray]],
+        output_path: Path | None = None,
+        title: str | None = None,
+        colors: dict[str, str] | None = None,
         figsize: tuple = (10, 7),
-        agent_info: Optional[Dict[str, Dict[str, str]]] = None,
-        topic: Optional[str] = None,
+        agent_info: dict[str, dict[str, str]] | None = None,
+        topic: str | None = None,
         xlabel: str = "UMAP Dimension 1",
         ylabel: str = "UMAP Dimension 2",
     ):
@@ -173,7 +213,7 @@ class BeliefTrajectoryPlotter:
         reduced_by_agent = self.reduce_embeddings(embeddings)
         self._plot(reduced_by_agent, output_path, title=title, colors=colors, figsize=figsize, agent_info=agent_info, topic=topic, xlabel=xlabel, ylabel=ylabel)
 
-    def plot_trajectories(self, reduced_by_agent: Dict[str, List[np.ndarray]], output_path: Optional[Path] = None, agent_info: Optional[Dict[str, Dict[str, str]]] = None, topic: Optional[str] = None, xlabel: str = "UMAP Dimension 1", ylabel: str = "UMAP Dimension 2"):
+    def plot_trajectories(self, reduced_by_agent: dict[str, list[np.ndarray]], output_path: Path | None = None, agent_info: dict[str, dict[str, str]] | None = None, topic: str | None = None, xlabel: str = "UMAP Dimension 1", ylabel: str = "UMAP Dimension 2"):
         """
         Plots 2D trajectories from already-reduced embeddings.
 
@@ -187,7 +227,7 @@ class BeliefTrajectoryPlotter:
         """
         self._plot(reduced_by_agent, output_path, agent_info=agent_info, topic=topic, xlabel=xlabel, ylabel=ylabel)
 
-    def _load_logo(self, provider: str) -> Optional[np.ndarray]:
+    def _load_logo(self, provider: str) -> np.ndarray | None:
         """Load a provider logo PNG from the assets directory."""
         logo_dir = Path(__file__).parent.parent / "assets" / "logos"
         filename = PROVIDER_LOGOS.get(provider)
@@ -200,13 +240,13 @@ class BeliefTrajectoryPlotter:
 
     def _plot(
         self,
-        reduced_by_agent: Dict[str, List[np.ndarray]],
-        output_path: Optional[Path] = None,
-        title: Optional[str] = None,
-        colors: Optional[Dict[str, str]] = None,
+        reduced_by_agent: dict[str, list[np.ndarray]],
+        output_path: Path | None = None,
+        title: str | None = None,
+        colors: dict[str, str] | None = None,
         figsize: tuple = (10, 7),
-        agent_info: Optional[Dict[str, Dict[str, str]]] = None,
-        topic: Optional[str] = None,
+        agent_info: dict[str, dict[str, str]] | None = None,
+        topic: str | None = None,
         xlabel: str = "UMAP Dimension 1",
         ylabel: str = "UMAP Dimension 2",
     ):
@@ -223,13 +263,13 @@ class BeliefTrajectoryPlotter:
 
     def _plot_inner(
         self,
-        reduced_by_agent: Dict[str, List[np.ndarray]],
-        output_path: Optional[Path],
-        title: Optional[str],
-        colors: Optional[Dict[str, str]],
+        reduced_by_agent: dict[str, list[np.ndarray]],
+        output_path: Path | None,
+        title: str | None,
+        colors: dict[str, str] | None,
         figsize: tuple,
-        agent_info: Optional[Dict[str, Dict[str, str]]],
-        topic: Optional[str] = None,
+        agent_info: dict[str, dict[str, str]] | None,
+        topic: str | None = None,
         xlabel: str = "UMAP Dimension 1",
         ylabel: str = "UMAP Dimension 2",
     ):
@@ -376,7 +416,7 @@ class BeliefTrajectoryPlotter:
 
 def generate_belief_trajectory_plot(
     config,
-    output_path: Optional[Path] = None,
+    output_path: Path | None = None,
 ) -> Path:
     """Generate a belief trajectory plot from saved embeddings.
 
@@ -422,7 +462,7 @@ def generate_belief_trajectory_plot(
 
 def generate_pca_trajectory_plot(
     config,
-    output_path: Optional[Path] = None,
+    output_path: Path | None = None,
 ) -> Path:
     """Generate a PCA belief trajectory plot from saved embeddings.
 

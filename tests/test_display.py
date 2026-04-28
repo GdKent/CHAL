@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 
 from rich.console import Console
 
-from chal.cli.display import DebateDisplay, _STAGE_NAMES, _STAGE_ICONS, _convergence_label
+from chal.cli.display import DebateDisplay, _STAGE_NAMES, _STAGE_ICONS
 
 
 # =========================================================================
@@ -504,30 +504,7 @@ class TestPostDebateSummary:
 
 
 # =========================================================================
-# 11. Convergence Label Helper
-# =========================================================================
-
-class TestConvergenceLabel:
-
-    @pytest.mark.unit
-    def test_strong_agreement(self):
-        assert _convergence_label(0.90) == "strong agreement"
-
-    @pytest.mark.unit
-    def test_moderate_agreement(self):
-        assert _convergence_label(0.65) == "moderate agreement"
-
-    @pytest.mark.unit
-    def test_partial_agreement(self):
-        assert _convergence_label(0.40) == "partial agreement"
-
-    @pytest.mark.unit
-    def test_divergent(self):
-        assert _convergence_label(0.20) == "divergent"
-
-
-# =========================================================================
-# 12. Error Handler (Phase 3)
+# 11. Error Handler (Phase 3)
 # =========================================================================
 
 class TestErrorHandler:

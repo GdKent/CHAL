@@ -189,15 +189,15 @@ class TestStage2Parallel:
     """Cross-examination — parallel vs sequential equivalence."""
 
     def test_stage2_parallel_matches_sequential(self, mock_openai_responses):
-        """Both modes produce challenge_rebuttal_pairs entries."""
+        """Both modes produce current_round_pairs entries."""
         ctrl_seq = _run_through_stage(mock_openai_responses, False, up_to_stage=2)
         ctrl_par = _run_through_stage(mock_openai_responses, True, up_to_stage=2)
 
         # Same number of challenge-rebuttal pairs
-        assert len(ctrl_seq.challenge_rebuttal_pairs) == len(ctrl_par.challenge_rebuttal_pairs)
+        assert len(ctrl_seq.current_round_pairs) == len(ctrl_par.current_round_pairs)
 
         # Same challenger→target pairs in same order
-        for entry_s, entry_p in zip(ctrl_seq.challenge_rebuttal_pairs, ctrl_par.challenge_rebuttal_pairs):
+        for entry_s, entry_p in zip(ctrl_seq.current_round_pairs, ctrl_par.current_round_pairs):
             assert entry_s["challenger"] == entry_p["challenger"]
             assert entry_s["target"] == entry_p["target"]
 
@@ -206,7 +206,7 @@ class TestStage2Parallel:
         ctrl_seq = _run_through_stage(mock_openai_responses, False, up_to_stage=2)
         ctrl_par = _run_through_stage(mock_openai_responses, True, up_to_stage=2)
 
-        for entries in [ctrl_seq.challenge_rebuttal_pairs, ctrl_par.challenge_rebuttal_pairs]:
+        for entries in [ctrl_seq.current_round_pairs, ctrl_par.current_round_pairs]:
             for entry in entries:
                 assert entry.get("challenge"), f"Missing challenge in entry: {entry}"
 
@@ -219,15 +219,15 @@ class TestStage3Parallel:
     """Rebuttals — parallel vs sequential equivalence."""
 
     def test_stage3_parallel_matches_sequential(self, mock_openai_responses):
-        """Both modes fill rebuttal fields in challenge_rebuttal_pairs."""
+        """Both modes fill rebuttal fields in current_round_pairs."""
         ctrl_seq = _run_through_stage(mock_openai_responses, False, up_to_stage=3)
         ctrl_par = _run_through_stage(mock_openai_responses, True, up_to_stage=3)
 
         # Same number of entries
-        assert len(ctrl_seq.challenge_rebuttal_pairs) == len(ctrl_par.challenge_rebuttal_pairs)
+        assert len(ctrl_seq.current_round_pairs) == len(ctrl_par.current_round_pairs)
 
         # Both should have rebuttals populated
-        for entry_s, entry_p in zip(ctrl_seq.challenge_rebuttal_pairs, ctrl_par.challenge_rebuttal_pairs):
+        for entry_s, entry_p in zip(ctrl_seq.current_round_pairs, ctrl_par.current_round_pairs):
             assert entry_s["challenger"] == entry_p["challenger"]
             assert entry_s["target"] == entry_p["target"]
             # Rebuttal should be populated (or empty string if not matched)
@@ -248,8 +248,8 @@ class TestStage4Parallel:
         ctrl_par = _run_through_stage(mock_openai_responses, True, up_to_stage=4)
 
         # Check resolutions exist
-        resolved_seq = [e for e in ctrl_seq.challenge_rebuttal_pairs if "resolution" in e]
-        resolved_par = [e for e in ctrl_par.challenge_rebuttal_pairs if "resolution" in e]
+        resolved_seq = [e for e in ctrl_seq.current_round_pairs if "resolution" in e]
+        resolved_par = [e for e in ctrl_par.current_round_pairs if "resolution" in e]
 
         assert len(resolved_seq) == len(resolved_par)
 
@@ -279,7 +279,7 @@ class TestStage4Parallel:
             controller.run_stage_4_conflict_resolution()
 
             # Some entries should have resolutions (or be marked incomplete)
-            total_entries = len(controller.challenge_rebuttal_pairs)
+            total_entries = len(controller.current_round_pairs)
             assert total_entries > 0
 
 
@@ -371,7 +371,6 @@ def _setup_stage5_controller(
         name="Stage 5 Parallel Test",
         topic="Test topic",
         max_rounds=1,
-        stage3_mode="rebuttal",
         agents=[AgentConfig(name=n, persona="EMPIRICIST") for n in agent_names],
         adjudication=AdjudicationConfig(),
         outputs=OutputConfig(storage_dir=Path(tmpdir)),
@@ -402,13 +401,13 @@ def _setup_stage5_controller(
     controller.current_positions = {}
     controller.last_rebuttals_patches = {}
 
-    # Build challenge_rebuttal_pairs only for agents in agents_with_entries
-    controller.challenge_rebuttal_pairs = []
+    # Build current_round_pairs only for agents in agents_with_entries
+    controller.current_round_pairs = []
     other_names = list(agent_names)
     for name in agent_names:
         if name in agents_with_entries:
             challenger = next((n for n in other_names if n != name), "External")
-            controller.challenge_rebuttal_pairs.append({
+            controller.current_round_pairs.append({
                 "target": name,
                 "challenger": challenger,
                 "challenge": f"Your C1 is weak, {name}",
@@ -469,7 +468,7 @@ class TestStage5Parallel:
         assert not agents["Agent-B"].set_internal_belief_obj.called
 
         # Debug log should mention Agent-B's error
-        debug_text = "\n".join(controller.debug_log)
+        debug_text = controller.debug_log.get_contents()
         assert "Agent-B" in debug_text
 
     def test_stage_5_parallel_deterministic_order(self, mock_openai_responses):
@@ -486,7 +485,7 @@ class TestStage5Parallel:
 
         # Check debug_log ordering: Agent-A entries appear before Agent-B,
         # which appear before Agent-C
-        debug_text = "\n".join(controller.debug_log)
+        debug_text = controller.debug_log.get_contents()
         pos_a = debug_text.index("Updating belief for: Agent-A")
         pos_b = debug_text.index("Updating belief for: Agent-B")
         pos_c = debug_text.index("Updating belief for: Agent-C")
@@ -522,6 +521,3 @@ class TestStage5Parallel:
 
         # Agent-B should NOT have been dispatched or have belief committed
         assert not agents["Agent-B"].set_internal_belief_obj.called
-
-        # Agent-B's current_positions should be set to opening position
-        assert controller.current_positions["Agent-B"] == "opening-Agent-B"

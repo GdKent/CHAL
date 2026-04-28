@@ -10,17 +10,16 @@ debate flows through this class.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, BarColumn, TextColumn, MofNCompleteColumn
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 from rich.table import Table
 from rich.text import Text
 
-
 # ── Stage name lookup ────────────────────────────────────────────────
-_STAGE_NAMES: Dict[int, str] = {
+_STAGE_NAMES: dict[int, str] = {
     0: "Briefing",
     1: "Opening Positions",
     2: "Cross-Examination",
@@ -29,7 +28,7 @@ _STAGE_NAMES: Dict[int, str] = {
     5: "Belief Updates",
 }
 
-_STAGE_ICONS: Dict[int, str] = {
+_STAGE_ICONS: dict[int, str] = {
     0: "\U0001f9e0",   # 🧠
     1: "\U0001f4d6",   # 📖
     2: "\u2694\ufe0f",  # ⚔️
@@ -70,6 +69,15 @@ class DebateDisplay:
         verbose: bool = False,
         interactive: bool = True,
     ) -> None:
+        """Initialize the display with debate dimensions and output settings.
+
+        Args:
+            console: Rich Console instance for output.
+            num_rounds: Total number of debate rounds.
+            num_agents: Total number of participating agents.
+            verbose: If True, show per-agent detail and adjudication tables.
+            interactive: If True, prompt the user on errors; otherwise auto-retry/abort.
+        """
         self.console = console
         self.num_rounds = num_rounds
         self.num_agents = num_agents
@@ -77,15 +85,21 @@ class DebateDisplay:
         self._interactive = interactive
 
         # Round progress bar (created once, updated per round)
-        self._progress: Optional[Progress] = None
-        self._round_task_id: Optional[int] = None
+        self._progress: Progress | None = None
+        self._round_task_id: int | None = None
 
         # Collect adjudication results within a round for table display
-        self._round_adjudications: List[Dict[str, str]] = []
+        self._round_adjudications: list[dict[str, str]] = []
+
+    def stop(self) -> None:
+        """Stop the progress bar if it is still running."""
+        if self._progress:
+            self._progress.stop()
+            self._progress = None
 
     # ── Public callback ──────────────────────────────────────────────
 
-    def handle_event(self, event: str, data: Dict[str, Any]) -> None:
+    def handle_event(self, event: str, data: dict[str, Any]) -> None:
         """Dispatch a progress event to the appropriate renderer.
 
         This method is designed to be passed as ``progress_callback`` to
@@ -97,7 +111,8 @@ class DebateDisplay:
 
     # ── Event handlers ───────────────────────────────────────────────
 
-    def _on_debate_start(self, data: Dict[str, Any]) -> None:
+    def _on_debate_start(self, data: dict[str, Any]) -> None:
+        """Render the opening panel and start the round progress bar."""
         topic = data.get("topic", "")
         n_agents = data.get("num_agents", self.num_agents)
         n_rounds = data.get("num_rounds", self.num_rounds)
@@ -124,7 +139,8 @@ class DebateDisplay:
             "Rounds", total=self.num_rounds, completed=0,
         )
 
-    def _on_stage_start(self, data: Dict[str, Any]) -> None:
+    def _on_stage_start(self, data: dict[str, Any]) -> None:
+        """Print the stage header with icon and optional extra context."""
         stage = data.get("stage", "?")
         name = data.get("name") or _STAGE_NAMES.get(stage, "")
         icon = _STAGE_ICONS.get(stage, "")
@@ -134,18 +150,21 @@ class DebateDisplay:
             f"\n  {icon}  [bold]Stage {stage}: {name}[/bold]{subtitle}"
         )
 
-    def _on_stage_complete(self, data: Dict[str, Any]) -> None:
+    def _on_stage_complete(self, data: dict[str, Any]) -> None:
+        """Print a dimmed completion line for the finished stage."""
         stage = data.get("stage", "?")
         name = data.get("name") or _STAGE_NAMES.get(stage, "")
         self.console.print(f"  [dim]Stage {stage} ({name}) complete[/dim]")
 
-    def _on_agent_start(self, data: Dict[str, Any]) -> None:
+    def _on_agent_start(self, data: dict[str, Any]) -> None:
+        """Show the agent name and action when verbose mode is enabled."""
         if self.verbose:
             agent = data.get("agent_name", "?")
             action = data.get("action", "")
             self.console.print(f"    [dim]{agent}[/dim]  {action}")
 
-    def _on_agent_complete(self, data: Dict[str, Any]) -> None:
+    def _on_agent_complete(self, data: dict[str, Any]) -> None:
+        """Print a green tick with the agent name and completed action."""
         agent = data.get("agent_name", "?")
         action = data.get("action", "")
         if self.verbose:
@@ -153,7 +172,8 @@ class DebateDisplay:
         else:
             self.console.print(f"    [green]>[/green] {agent}  {action}")
 
-    def _on_adjudication_result(self, data: Dict[str, Any]) -> None:
+    def _on_adjudication_result(self, data: dict[str, Any]) -> None:
+        """Collect the result and, in verbose mode, print the per-pair outcome."""
         self._round_adjudications.append(data)
         if self.verbose:
             challenger = data.get("challenger", "?")
@@ -166,7 +186,8 @@ class DebateDisplay:
                 f"[bold]{outcome}[/bold]"
             )
 
-    def _on_round_start(self, data: Dict[str, Any]) -> None:
+    def _on_round_start(self, data: dict[str, Any]) -> None:
+        """Print the round header banner and reset the adjudication collector."""
         round_num = data.get("round", "?")
         total = data.get("total_rounds", self.num_rounds)
         self.console.print(
@@ -181,7 +202,8 @@ class DebateDisplay:
         # Reset per-round adjudication collector
         self._round_adjudications = []
 
-    def _on_round_complete(self, data: Dict[str, Any]) -> None:
+    def _on_round_complete(self, data: dict[str, Any]) -> None:
+        """Advance the progress bar and show adjudication, performance, and convergence tables."""
         round_num = data.get("round", 0)
 
         # Advance the progress bar
@@ -205,7 +227,8 @@ class DebateDisplay:
                 f"  [dim]Convergence: {score:.2f}[/dim]"
             )
 
-    def _on_debate_complete(self, data: Dict[str, Any]) -> None:
+    def _on_debate_complete(self, data: dict[str, Any]) -> None:
+        """Stop the progress bar and render the final summary panel and tables."""
         # Stop progress bar
         if self._progress:
             self._progress.stop()
@@ -214,7 +237,7 @@ class DebateDisplay:
         self.console.print()
 
         # Build rich summary content
-        parts: List[str] = ["[bold green]Debate complete![/bold green]"]
+        parts: list[str] = ["[bold green]Debate complete![/bold green]"]
         topic = data.get("topic")
         if topic:
             parts.append(f"Topic: {topic}")
@@ -246,7 +269,7 @@ class DebateDisplay:
         # Debate summary table
         self._show_debate_summary(data)
 
-    def _on_output_files_saved(self, data: Dict[str, Any]) -> None:
+    def _on_output_files_saved(self, data: dict[str, Any]) -> None:
         """Show a summary of saved output files."""
         files = data.get("files", [])
         if files:
@@ -255,7 +278,7 @@ class DebateDisplay:
 
     # ── Table helpers ────────────────────────────────────────────────
 
-    def _show_adjudication_table(self, results: List[Dict[str, str]]) -> None:
+    def _show_adjudication_table(self, results: list[dict[str, str]]) -> None:
         """Render a compact adjudication results table."""
         table = Table(
             title="Adjudication Results",
@@ -282,7 +305,7 @@ class DebateDisplay:
         self.console.print()
         self.console.print(table)
 
-    def _show_performance_table(self, agent_stats: Dict[str, Any]) -> None:
+    def _show_performance_table(self, agent_stats: dict[str, Any]) -> None:
         """Render a compact performance leaderboard."""
         table = Table(
             title="Performance Scores",
@@ -306,7 +329,7 @@ class DebateDisplay:
 
         self.console.print(table)
 
-    def _show_debate_summary(self, data: Dict[str, Any]) -> None:
+    def _show_debate_summary(self, data: dict[str, Any]) -> None:
         """Render a comprehensive debate summary table."""
         agent_stats = data.get("agent_stats", {})
         agg = agent_stats.get("_debate_aggregate", {})

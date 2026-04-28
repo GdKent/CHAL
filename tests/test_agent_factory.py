@@ -26,7 +26,7 @@ from chal.config import AgentConfig
 def test_create_openai_agent(MockOpenAI):
     """provider='openai' dispatches to OpenAIAgent."""
     agent = create_agent("MyAgent", "gpt-4o", "openai")
-    MockOpenAI.assert_called_once_with(model="gpt-4o", name="MyAgent", system_prompt="")
+    MockOpenAI.assert_called_once_with(model="gpt-4o", name="MyAgent", system_prompt="", max_tokens=65536)
     assert agent is MockOpenAI.return_value
 
 
@@ -36,7 +36,8 @@ def test_create_anthropic_agent(MockAnthropic):
     """provider='anthropic' dispatches to AnthropicAgent."""
     agent = create_agent("MyAgent", "claude-sonnet-4-6", "anthropic")
     MockAnthropic.assert_called_once_with(
-        model="claude-sonnet-4-6", name="MyAgent", system_prompt=""
+        model="claude-sonnet-4-6", name="MyAgent", system_prompt="",
+        max_tokens=65536
     )
     assert agent is MockAnthropic.return_value
 
@@ -128,7 +129,8 @@ def test_system_prompt_forwarded(MockOpenAI):
     """system_prompt argument is forwarded to the agent constructor."""
     create_agent("MyAgent", "gpt-4o", "openai", system_prompt="Custom prompt")
     MockOpenAI.assert_called_once_with(
-        model="gpt-4o", name="MyAgent", system_prompt="Custom prompt"
+        model="gpt-4o", name="MyAgent", system_prompt="Custom prompt",
+        max_tokens=65536
     )
 
 
@@ -145,7 +147,8 @@ def test_create_agent_from_config_openai(MockOpenAI):
     )
     agent = create_agent_from_config(cfg)
     MockOpenAI.assert_called_once_with(
-        model="gpt-4o", name="Agent-Empiricist", system_prompt=""
+        model="gpt-4o", name="Agent-Empiricist", system_prompt="",
+        max_tokens=65536
     )
     assert agent is MockOpenAI.return_value
 
@@ -162,7 +165,8 @@ def test_create_agent_from_config_anthropic(MockAnthropic):
     )
     agent = create_agent_from_config(cfg)
     MockAnthropic.assert_called_once_with(
-        model="claude-sonnet-4-6", name="Agent-Claude", system_prompt=""
+        model="claude-sonnet-4-6", name="Agent-Claude", system_prompt="",
+        max_tokens=65536
     )
     assert agent is MockAnthropic.return_value
 

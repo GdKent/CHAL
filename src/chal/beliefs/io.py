@@ -12,17 +12,19 @@ Acronyms:
 """
 
 from __future__ import annotations
-from pathlib import Path
-from typing import Any, Dict, Tuple, Optional, List
+
 import json
 import re
-from chal.beliefs.schema import validate_belief, SCHEMA_VERSION
+from pathlib import Path
+from typing import Any
+
+from chal.beliefs.schema import validate_belief
 
 FALLBACK_MIN_STR = 0.0
 FALLBACK_MAX_STR = 1.0
 
 
-def load_belief_from_file(path: str | Path) -> Dict[str, Any]:
+def load_belief_from_file(path: str | Path) -> dict[str, Any]:
     """Load and validate a CBS belief object from a JSON file.
 
     Args:
@@ -40,7 +42,7 @@ def load_belief_from_file(path: str | Path) -> Dict[str, Any]:
         raise FileNotFoundError(f"Belief file not found: {path}")
 
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             belief_obj = json.load(f)
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON in belief file {path}: {exc}") from exc
@@ -60,12 +62,12 @@ def load_belief_from_file(path: str | Path) -> Dict[str, Any]:
     return belief_obj
 
 
-def parse_model_output_to_belief(output: str) -> Tuple[Optional[Dict[str, Any]], Optional[str], List[str]]:
+def parse_model_output_to_belief(output: str) -> tuple[dict[str, Any] | None, str | None, list[str]]:
     """
     Extract a JSON code block (```json ... ```) and an accompanying Markdown block.
     Returns: (belief_dict_or_None, markdown_or_None, errors)
     """
-    errors: List[str] = []
+    errors: list[str] = []
 
     # Extract JSON — try fenced block first, then fall back to raw JSON
     json_match = re.search(r"```json\s*(\{.*?\})\s*```", output, flags=re.DOTALL)
@@ -97,7 +99,7 @@ def parse_model_output_to_belief(output: str) -> Tuple[Optional[Dict[str, Any]],
     return belief_obj, markdown_view, errors
 
 
-def belief_to_markdown(belief: Dict[str, Any]) -> str:
+def belief_to_markdown(belief: dict[str, Any]) -> str:
     """
     Generate a stable Markdown view using the same IDs to ensure round-trip readability.
     """
@@ -235,7 +237,7 @@ def belief_to_markdown(belief: Dict[str, Any]) -> str:
     return "\n".join(md).strip()
 
 
-def project_for_embedding(belief: Dict[str, Any]) -> str:
+def project_for_embedding(belief: dict[str, Any]) -> str:
     """
     Create a concise, deterministic text summary for embedding.
     This avoids embedding huge JSON or verbose prose and keeps semantically stable signals.
@@ -278,7 +280,7 @@ def project_for_embedding(belief: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def project_for_component_embedding(belief: Dict[str, Any]) -> Dict[str, Any]:
+def project_for_component_embedding(belief: dict[str, Any]) -> dict[str, Any]:
     """
     Extract per-component text lists and scalar features from a CBS belief
     for rich, component-wise embedding.
@@ -343,7 +345,7 @@ def project_for_component_embedding(belief: Dict[str, Any]) -> Dict[str, Any]:
     ]
 
     # --- Counterpositions: group by response_sufficiency ---
-    counter_by_sufficiency: Dict[str, List[str]] = {
+    counter_by_sufficiency: dict[str, list[str]] = {
         "partial": [],
         "sufficient": [],
         "unaddressed": [],

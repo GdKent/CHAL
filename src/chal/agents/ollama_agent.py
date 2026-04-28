@@ -11,10 +11,14 @@ Usage:
 - No API key is needed -- all inference runs on localhost, free of charge.
 """
 
+from __future__ import annotations
+
 import time
+
 import ollama
+
 from chal.agents.base import Agent, Message
-from typing import List
+from chal.log import logger
 
 
 class OllamaAgent(Agent):
@@ -28,48 +32,12 @@ class OllamaAgent(Agent):
     """
 
     def __init__(self, model: str, name: str, api_key: str = None, system_prompt: str = ""):
-        self.model = model
-        self.name = name
-        # api_key is ignored -- Ollama runs locally and requires no authentication
-        self.system_prompt = system_prompt
-        self.internal_belief = ""
-        self.internal_belief_obj = None
-        self.belief_graph = None
-        self.persona_label = name.split("Agent-", 1)[-1] if "Agent-" in name else name
-        self.all_beliefs_held = []
+        # api_key is accepted but ignored -- Ollama runs locally and requires no authentication
+        super().__init__(name=name, model=model, system_prompt=system_prompt,
+                         temperature=0.7)
 
-    def set_internal_belief(self, belief_text: str) -> None:
-        self.internal_belief = belief_text
-
-    def get_internal_belief(self) -> str:
-        return self.internal_belief
-
-    def set_internal_belief_obj(self, belief_obj: dict | None) -> None:
-        self.internal_belief_obj = belief_obj
-
-        if belief_obj:
-            try:
-                from chal.beliefs.belief_graph import BeliefGraph
-                self.belief_graph = BeliefGraph(belief_obj)
-            except Exception as e:
-                print(f"Warning: Could not build belief graph for {self.name}: {e}")
-                self.belief_graph = None
-        else:
-            self.belief_graph = None
-
-    def get_internal_belief_obj(self) -> dict | None:
-        return self.internal_belief_obj
-
-    def get_belief_graph(self):
-        return self.belief_graph
-
-    def receive_system_prompt(self, prompt: str) -> None:
-        self.system_prompt = prompt
-
-    def receive_role_card(self, prompt: str) -> None:
-        self.system_prompt = self.system_prompt + "\n\n" + prompt
-
-    def generate(self, history: List[Message], temperature: float = 0.7) -> Message:
+    def generate(self, history: list[Message], temperature: float = 0.7) -> Message:
+        """Send conversation history to the local Ollama server and return the reply."""
         messages = [{"role": m.role, "content": m.content} for m in history]
 
         if self.system_prompt:
@@ -83,10 +51,8 @@ class OllamaAgent(Agent):
             )
 
         except Exception as e:
-            return Message(
-                role="assistant",
-                content=f"[Error from {self.name}]: {str(e)}"
-            )
+            logger.error(f"[API Error] {self.name} ({self.model}): {e}")
+            raise
 
 
 def retry_ollama_chat(model: str, messages: list, temperature: float,
@@ -111,7 +77,7 @@ def retry_ollama_chat(model: str, messages: list, temperature: float,
                     f"Model '{model}' not found locally. Run: ollama pull {model}"
                 ) from e
             wait = base_delay * (2 ** attempt)
-            print(f"[Retry {attempt+1}/{max_retries}] Ollama error: {e}. Retrying in {wait:.1f}s.")
+            logger.debug(f"[Retry {attempt+1}/{max_retries}] Ollama error: {e}. Retrying in {wait:.1f}s.")
             time.sleep(wait)
         except (ConnectionRefusedError, OSError) as e:
             raise RuntimeError(

@@ -287,7 +287,6 @@ def test_to_dict_round_trip():
         assert reloaded.name == original.name
         assert reloaded.topic == original.topic
         assert reloaded.max_rounds == original.max_rounds
-        assert reloaded.stage3_mode == original.stage3_mode
         assert len(reloaded.agents) == len(original.agents)
         for a_orig, a_new in zip(original.agents, reloaded.agents):
             assert a_orig.name == a_new.name
@@ -308,7 +307,6 @@ def test_to_yaml_writes_loadable_file(tmp_path):
         name="Wizard Test",
         topic="Is consciousness real?",
         max_rounds=2,
-        stage3_mode="rebuttal",
         agents=[
             AgentConfig(name="A1", persona="EMPIRICIST", model="gpt-4o", provider="openai"),
             AgentConfig(name="A2", persona="SKEPTIC", model="o1-mini", provider="openai"),

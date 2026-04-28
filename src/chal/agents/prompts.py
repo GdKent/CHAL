@@ -5,6 +5,8 @@ Contains reusable prompt strings for agent personas and the universal debate pro
 These can be imported and used when initializing agents in debate configurations.
 """
 
+from __future__ import annotations
+
 import json
 
 # === Persona Prompts (re-exported from epistemic_personas) ===
@@ -1357,7 +1359,7 @@ Can I refute it with evidence or logic, or should I concede? Am I rationalizing 
 point? If this question targets one of my counterpositions (X#), does their challenge strengthen the \
 counterposition or does my existing response hold?
 
-Then provide up to {max_rebuttals} rebuttals in a single JSON object containing both responses and patches.
+Then provide exactly {max_rebuttals} rebuttals (one for each question) in a single JSON object containing both responses and patches.
 
 ACTIONS (binding commitments):
 

@@ -6,9 +6,10 @@ Post-debate analysis report generator.
 Produces a structured Markdown report and/or JSON analysis from debate results.
 """
 
+from __future__ import annotations
+
 import json
 from datetime import datetime
-from typing import List
 
 
 def generate_analysis_report(
@@ -33,8 +34,8 @@ def generate_analysis_report(
     Returns:
         str: Complete Markdown report.
     """
-    sections: List[str] = []
-    mode = config.stage3_mode if config else "rebuttal"
+    sections: list[str] = []
+    mode = "rebuttal"
     topic = config.topic if config else "Unknown"
 
     # === Header ===
@@ -72,8 +73,8 @@ def generate_analysis_report(
             verdict_counts[status] += 1
 
     total_verdicts = sum(verdict_counts.values())
-    sections.append(f"| Verdict | Count | Percentage |")
-    sections.append(f"|---------|-------|------------|")
+    sections.append("| Verdict | Count | Percentage |")
+    sections.append("|---------|-------|------------|")
     for verdict, count in verdict_counts.items():
         pct = (count / total_verdicts * 100) if total_verdicts > 0 else 0
         sections.append(f"| {verdict} | {count} | {pct:.1f}% |")
@@ -208,7 +209,7 @@ def generate_analysis_json(
     Returns:
         dict: Machine-readable analysis data.
     """
-    mode = config.stage3_mode if config else "rebuttal"
+    mode = "rebuttal"
 
     # Verdict distribution
     verdict_counts = {"critique_valid": 0, "rebuttal_valid": 0, "unresolved": 0}

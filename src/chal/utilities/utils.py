@@ -5,8 +5,10 @@ Utility functions for parsing structured agent responses
 used across different stages of the CHAL debate controller.
 """
 
+from __future__ import annotations
+
 import re
-from typing import List
+
 
 
 def sanitize_filename(name: str) -> str:
@@ -357,6 +359,10 @@ def update_agent_stats(agent_stats: dict, record: dict):
     return agent_stats
 
 
+# NOTE: The per-exchange role-weighted score table (EXCHANGE_SCORE_WEIGHTS)
+# and the APS formula below use intentional hardcoded defaults. The YAML
+# `performance_scoring:` section that previously documented these weights
+# was removed because it was never actually parsed by the config loader.
 def calculate_performance_scores(agent_stats: dict) -> dict:
     """
     Calculates the Agent Performance Score (APS) for all agents.
@@ -433,7 +439,7 @@ def display_agent_stats(agent_stats: dict, show_performance_ranking: bool = True
 
         print(f"\nAgent: {agent}{rank_indicator}")
         print(f"  Performance Score (APS): {stats['performance_score']:+.4f}")
-        print(f"  ------------------------------")
+        print("  ------------------------------")
         print(f"  Successful Critiques: {stats['successful_critiques']}")
         print(f"  Failed Critiques: {stats['failed_critiques']}")
         print(f"  Successful Rebuttals: {stats['successful_rebuttals']}")

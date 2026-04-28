@@ -9,10 +9,12 @@ as training data in two formats:
   2. Belief training pairs (JSONL) - extracted input→belief target mappings
 """
 
+from __future__ import annotations
+
 import json
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 class DebateRecorder:
@@ -37,9 +39,9 @@ class DebateRecorder:
         self.topic = topic
         self.config = debate_config
         self.current_round = 0
-        self.timeline: List[Dict[str, Any]] = []
+        self.timeline: list[dict[str, Any]] = []
 
-        mode = debate_config.stage3_mode if debate_config else "rebuttal"
+        mode = "rebuttal"
 
         # Build metadata
         agent_meta = []
@@ -189,7 +191,7 @@ class DebateRecorder:
             },
         })
 
-    def record_event(self, event_type: str, data: Dict[str, Any]):
+    def record_event(self, event_type: str, data: dict[str, Any]):
         """Record a generic event in the timeline.
 
         Used for events that don't have a dedicated method.
@@ -245,7 +247,7 @@ class DebateRecorder:
             for pair in pairs:
                 f.write(json.dumps(pair, ensure_ascii=False) + '\n')
 
-    def _extract_belief_pairs(self) -> List[dict]:
+    def _extract_belief_pairs(self) -> list[dict]:
         """Extract belief training pairs from the timeline."""
         pairs = []
         mode = self.metadata.get("mode", "rebuttal")

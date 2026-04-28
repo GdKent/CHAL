@@ -11,16 +11,18 @@ Generates standalone HTML files that allow users to:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, List, Optional
+
 import json
 from pathlib import Path
+from typing import Any
+
 from chal.beliefs.belief_graph import BeliefGraph
 
 
 def export_debate_graph(
-    agents: List[Any],
+    agents: list[Any],
     topic: str,
-    challenge_rebuttal_pairs: List[Dict],
+    current_round_pairs: list[dict],
     output_path: Path
 ) -> str:
     """
@@ -29,7 +31,7 @@ def export_debate_graph(
     Args:
         agents: List of Agent objects with their beliefs
         topic: Debate topic
-        challenge_rebuttal_pairs: All Q&A exchanges from the debate
+        current_round_pairs: All Q&A exchanges from the debate
         output_path: Where to save the HTML file
 
     Returns:
@@ -86,9 +88,7 @@ def export_debate_graph(
             # Determine label
             if node_type == "definition":
                 label = f"{node_id}: {node_data.get('term', '')[:50]}"
-            elif node_type == "claim":
-                label = f"{node_id}: {node_data.get('statement', '')[:50]}..."
-            elif node_type == "assumption":
+            elif node_type == "claim" or node_type == "assumption":
                 label = f"{node_id}: {node_data.get('statement', '')[:50]}..."
             elif node_type == "evidence":
                 label = f"{node_id}: {node_data.get('summary', '')[:50]}..."
@@ -127,10 +127,10 @@ def export_debate_graph(
             })
 
     print(f"      [Graph] Total nodes: {len(nodes)}, Total edges: {len(edges)}")
-    print(f"      [Graph] Building Q&A overlay data...")
+    print("      [Graph] Building Q&A overlay data...")
     # Build Q&A overlay data
     qa_data = []
-    for pair in challenge_rebuttal_pairs:
+    for pair in current_round_pairs:
         challenger = pair.get("challenger", "Unknown")
         target = pair.get("target", "Unknown")
         question = pair.get("challenge", "")
@@ -151,7 +151,7 @@ def export_debate_graph(
             "resolution": resolution
         })
 
-    print(f"      [Graph] Generating HTML output...")
+    print("      [Graph] Generating HTML output...")
 
     # Pre-serialize JSON data to avoid hanging in f-string
     print(f"      [Graph] Serializing {len(nodes)} nodes...")
@@ -389,5 +389,5 @@ def export_debate_graph(
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html)
 
-    print(f"      [Graph] Done!")
+    print("      [Graph] Done!")
     return html

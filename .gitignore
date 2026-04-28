@@ -25,5 +25,8 @@ build/
 # Logs
 *.log
 
+# Runtime output artifacts
+src/chal/storage/
+
 # macOS system file
 .DS_Store

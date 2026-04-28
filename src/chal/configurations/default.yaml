@@ -23,10 +23,6 @@ debate:
   # - Stage 5: Belief Updates (revision)
   max_rounds: 1
 
-  # Stage 3 response mode:
-  # - "rebuttal": Single-shot rebuttals
-  stage3_mode: "rebuttal"
-
 # ============================================================================
 # AGENT CONFIGURATION
 # ============================================================================
@@ -118,52 +114,6 @@ stages:
 
   # Text length limits
   short_note_max_chars: 140            # Twitter-style short notes (conclusions, adjudication)
-
-# ============================================================================
-# PERFORMANCE SCORING
-# ============================================================================
-# Weighted scoring system to evaluate agent performance during debate
-performance_scoring:
-  # Enable/disable performance scoring calculations
-  enabled: true
-
-  # Weights for different debate outcomes
-  weights:
-    successful_critique: 3.0       # Critiques that won (critique_valid) - highest reward
-    successful_rebuttal: 2.0       # Rebuttals that won (rebuttal_valid) - moderate reward
-    failed_rebuttal: -2.0          # Rebuttals that lost (critique_valid) - moderate penalty
-    unresolved_argument: -0.5      # Arguments with unclear outcomes - minor penalty
-
-  # Calculate normalized score (score / total_arguments)
-  # Useful for comparing agents across debates with different argument counts
-  normalize_by_total_arguments: false
-
-  # Display options
-  display_in_round_summary: true   # Show performance scores after each round
-  display_in_final_summary: true   # Show performance scores in final statistics
-
-# ============================================================================
-# CONVERGENCE METRICS
-# ============================================================================
-# Measures semantic convergence by analyzing claim-level agreement between agents
-# Complements trajectory visualization with quantitative convergence scores
-convergence:
-  # Enable/disable convergence analysis
-  enabled: true
-
-  # Semantic similarity threshold for claim matching (0.0-1.0)
-  # Higher = stricter matching (claims must be more semantically similar)
-  # 0.75 recommended: captures paraphrased claims without false matches
-  # 0.85 = very strict (only nearly identical claims match)
-  # 0.65 = more lenient (related claims may match)
-  similarity_threshold: 0.75
-
-  # Display options
-  display_in_round_summary: true   # Show convergence analysis after each round
-  display_in_final_summary: true   # Show convergence trajectory in final statistics
-
-  # Track convergence history over rounds
-  track_history: true
 
 # ============================================================================
 # OUTPUT CONFIGURATION

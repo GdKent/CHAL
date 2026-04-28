@@ -11,9 +11,13 @@ Usage:
     chal --replay <id>                # Re-run a past debate
 """
 
+from __future__ import annotations
+
 import argparse
+import logging
 import sys
 
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.text import Text
 
@@ -105,14 +109,31 @@ Examples:
 
 def main(argv: list[str] | None = None) -> int:
     """CHAL CLI entry point."""
-    console = Console()
-    show_banner(console)
+    load_dotenv()
 
     args = parse_args(argv)
 
+    # Configure only the "chal" logger (not root) to avoid third-party noise.
+    # Logger level is always DEBUG so the DebugLogHandler in DebateController
+    # captures retry/backoff messages in log.txt.  The *console* handler
+    # controls what the user sees on screen (INFO by default, DEBUG with -v).
+    chal_logger = logging.getLogger("chal")
+    chal_logger.setLevel(logging.DEBUG)
+    _handler = logging.StreamHandler()
+    _handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    _handler.setFormatter(logging.Formatter("%(message)s"))
+    chal_logger.addHandler(_handler)
+
+    # Suppress noisy third-party loggers
+    for _lib in ("httpx", "httpcore", "sentence_transformers", "torch", "transformers"):
+        logging.getLogger(_lib).setLevel(logging.WARNING)
+
+    console = Console()
+    show_banner(console)
+
     # --history: show debate history and exit
     if args.history:
-        from chal.cli.history import list_debates, format_history_table
+        from chal.cli.history import format_history_table, list_debates
         debates = list_debates()
         format_history_table(debates, console)
         return 0

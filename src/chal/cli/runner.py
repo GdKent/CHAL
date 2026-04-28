@@ -5,21 +5,23 @@ Shared debate execution and output-saving logic used by both the interactive
 wizard and headless CLI mode.
 """
 
+from __future__ import annotations
+
 import json
 import time
 import traceback
 
 from rich.console import Console
 
-from chal.config import DebateConfig
-from chal.agents.factory import create_agent_from_config
 from chal.agents.epistemic_personas import get_persona
-from chal.beliefs.io import load_belief_from_file, belief_to_markdown
+from chal.agents.factory import create_agent_from_config
+from chal.beliefs.io import belief_to_markdown, load_belief_from_file
 from chal.beliefs.patches import initialize_defense_tracking
-from chal.orchestrator.debate_controller import DebateController
+from chal.cli.api_keys import create_key_pool, validate_api_keys
 from chal.cli.display import DebateDisplay
-from chal.cli.api_keys import validate_api_keys, create_key_pool
-from chal.utilities.utils import select_best_agent, sanitize_filename
+from chal.config import DebateConfig
+from chal.orchestrator.debate_controller import DebateController
+from chal.utilities.utils import sanitize_filename, select_best_agent
 
 
 def run_debate(
@@ -92,12 +94,18 @@ def run_debate(
                 f"({agent_cfg.persona}, {agent_cfg.provider}/{agent_cfg.model})"
             )
 
+    # Determine real-time log path (streams to disk during debate)
+    log_file_path = None
+    if config.outputs.save_debug_log:
+        log_file_path = config.outputs.storage_dir / config.outputs.debug_log_file
+
     # Create controller
     controller = DebateController(
         agents=agents,
         max_rounds=config.max_rounds,
         config=config,
         key_pool=key_pool,
+        log_file_path=log_file_path,
     )
 
     # Create display and wire callback
@@ -119,7 +127,16 @@ def run_debate(
             on_error=display.handle_error,
         )
     except Exception as e:
+        display.stop()
+        # Write the full traceback into the debug log before closing
+        controller.debug_log.write(f"\n{'=' * 80}")
+        controller.debug_log.write("FATAL EXCEPTION — debate aborted")
+        controller.debug_log.write(f"{'=' * 80}")
+        controller.debug_log.write(traceback.format_exc())
+        controller._close_debug_log()
         console.print(f"\n[red]Error during debate execution:[/red] {e}")
+        if log_file_path:
+            console.print(f"  [dim]Debug log (up to crash): {log_file_path}[/dim]")
         if verbose:
             console.print(traceback.format_exc())
         return 1
@@ -174,15 +191,20 @@ def save_debate_outputs(
     if config.outputs.save_transcript:
         path = config.outputs.storage_dir / config.outputs.transcript_file
         with open(path, "w", encoding="utf-8") as f:
-            f.write(results.get("markdown_transcript", results["full_transcript"]))
+            f.write(results["markdown_transcript"])
         console.print(f"  [green]>[/green] Transcript: {path.name}")
         saved_files.append(path.name)
 
     if config.outputs.save_debug_log:
         path = config.outputs.storage_dir / config.outputs.debug_log_file
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(results.get("debug_log", "No debug log available"))
-        console.print(f"  [green]>[/green] Debug log: {path.name}")
+        if path.exists():
+            # File was already streamed to disk in real time by DebugLogWriter.
+            console.print(f"  [green]>[/green] Debug log: {path.name} (real-time)")
+        else:
+            # Fallback: write from results dict (memory-only mode)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(results.get("debug_log", "No debug log available"))
+            console.print(f"  [green]>[/green] Debug log: {path.name}")
         saved_files.append(path.name)
 
     if config.outputs.save_initial_beliefs:
@@ -231,7 +253,9 @@ def save_debate_outputs(
     # Generate belief trajectory plot if enabled
     if config.outputs.plot_trajectories:
         try:
-            from chal.embeddings.embedding_visualizer import generate_belief_trajectory_plot
+            from chal.embeddings.embedding_visualizer import (
+                generate_belief_trajectory_plot,
+            )
             plot_path = generate_belief_trajectory_plot(config)
             console.print(
                 f"  [green]>[/green] Belief trajectory plot: {plot_path.name}"
@@ -247,7 +271,9 @@ def save_debate_outputs(
     # Generate PCA belief trajectory plot if enabled
     if config.outputs.plot_trajectories:
         try:
-            from chal.embeddings.embedding_visualizer import generate_pca_trajectory_plot
+            from chal.embeddings.embedding_visualizer import (
+                generate_pca_trajectory_plot,
+            )
             pca_plot_path = generate_pca_trajectory_plot(config)
             console.print(
                 f"  [green]>[/green] PCA trajectory plot: {pca_plot_path.name}"
@@ -270,7 +296,7 @@ def save_debate_outputs(
             export_debate_graph(
                 agents=controller.agents,
                 topic=config.topic,
-                challenge_rebuttal_pairs=controller.challenge_rebuttal_pairs,
+                current_round_pairs=controller.current_round_pairs,
                 output_path=graph_path,
             )
             console.print(f"  [green]>[/green] Interactive graph: {graph_path.name}")

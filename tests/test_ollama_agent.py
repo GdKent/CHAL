@@ -129,17 +129,15 @@ def test_generate_conversation_history(mock_retry):
 @pytest.mark.unit
 @patch('chal.agents.ollama_agent.retry_ollama_chat')
 def test_generate_error_returns_error_message(mock_retry):
-    """Exception from retry is caught and returned as a labelled error Message."""
+    """Exception from retry is re-raised by generate()."""
     from chal.agents.ollama_agent import OllamaAgent
 
     mock_retry.side_effect = RuntimeError("Ollama failure")
 
     agent = OllamaAgent(model="deepseek-r1:14b", name="Agent-Test")
-    result = agent.generate([Message(role="user", content="Hello?")])
 
-    assert isinstance(result, Message)
-    assert result.role == "assistant"
-    assert "[Error from Agent-Test]" in result.content
+    with pytest.raises(RuntimeError, match="Ollama failure"):
+        agent.generate([Message(role="user", content="Hello?")])
 
 
 # ==============================================
@@ -302,16 +300,15 @@ def test_connection_refused_raises_immediately(mock_ollama_mod):
 @pytest.mark.unit
 @patch('chal.agents.ollama_agent.retry_ollama_chat')
 def test_generate_catches_runtime_error(mock_retry):
-    """generate() wraps any RuntimeError from retry as a labelled error Message."""
+    """generate() re-raises RuntimeError from exhausted retries."""
     from chal.agents.ollama_agent import OllamaAgent
 
     mock_retry.side_effect = RuntimeError("Exceeded max retries for Ollama model 'deepseek-r1:14b'.")
 
     agent = OllamaAgent(model="deepseek-r1:14b", name="Agent-Test")
-    result = agent.generate([Message(role="user", content="Question")])
 
-    assert "[Error from Agent-Test]" in result.content
-    assert result.role == "assistant"
+    with pytest.raises(RuntimeError, match="Exceeded max retries"):
+        agent.generate([Message(role="user", content="Question")])
 
 
 # ==============================================

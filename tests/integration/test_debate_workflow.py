@@ -17,7 +17,7 @@ import pytest
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 from chal.orchestrator.debate_controller import DebateController
 from chal.config import DebateConfig, AgentConfig, AdjudicationConfig, OutputConfig
 from tests.utils import create_mock_agent, create_mock_belief_response, create_sample_belief
@@ -104,42 +104,7 @@ def test_multi_round_debate():
 
 
 # ==============================================
-# 3. Convergence Tracking Integration
-# ==============================================
-
-@pytest.mark.integration
-@patch('chal.embeddings.embedding_tracker.SentenceTransformer')
-def test_convergence_tracking_integration(mock_transformer_class):
-    """Test that embeddings and convergence metrics are tracked."""
-    mock_model = MagicMock()
-    mock_model.encode.return_value = MagicMock()
-    mock_transformer_class.return_value = mock_model
-
-    mock_agents = [create_mock_agent(f"Agent-{chr(65+i)}") for i in range(2)]
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        config = DebateConfig(
-            name="Convergence Test",
-            topic="Test Topic",
-            max_rounds=2,
-            agents=[
-                AgentConfig(name=f"Agent-{chr(65+i)}", persona="EMPIRICIST")
-                for i in range(2)
-            ],
-            adjudication=AdjudicationConfig(),
-            outputs=OutputConfig(
-                storage_dir=Path(tmpdir),
-                plot_trajectories=True
-            )
-        )
-
-        controller = DebateController(mock_agents, config=config)
-        assert hasattr(controller, "convergence_history")
-        pytest.skip(SKIP_MSG)
-
-
-# ==============================================
-# 4. Agent Stats Integration
+# 3. Agent Stats Integration
 # ==============================================
 
 @pytest.mark.integration

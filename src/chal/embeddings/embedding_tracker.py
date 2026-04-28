@@ -1,11 +1,11 @@
 # embedding_tracker.py
 
-from sentence_transformers import SentenceTransformer
-import numpy as np
-import os
-import json
-from typing import Dict, List, Union
+from __future__ import annotations
+
 from pathlib import Path
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 # Upper bound used to normalize count features into [0, 1] range.
 _COUNT_CAP = 20
@@ -28,7 +28,7 @@ class BeliefEmbeddingTracker:
         """
         self.model_name = model_name
         self.model = SentenceTransformer(model_name)
-        self.embeddings: Dict[str, List[np.ndarray]] = {}
+        self.embeddings: dict[str, list[np.ndarray]] = {}
         self.metadata: dict = {}
         self._model_dim: int = self.model.get_sentence_embedding_dimension()
 
@@ -37,7 +37,7 @@ class BeliefEmbeddingTracker:
     # ------------------------------------------------------------------
 
     def _weighted_average_embedding(
-        self, items: List[Dict[str, Union[str, float]]]
+        self, items: list[dict[str, str | float]]
     ) -> np.ndarray:
         """Compute a strength-weighted average embedding for a list of nodes.
 
@@ -63,7 +63,7 @@ class BeliefEmbeddingTracker:
         weighted = (vectors * strengths[:, np.newaxis]).sum(axis=0) / total_weight
         return weighted.astype(np.float32)
 
-    def _simple_average_embedding(self, texts: List[str]) -> np.ndarray:
+    def _simple_average_embedding(self, texts: list[str]) -> np.ndarray:
         """Compute an unweighted average embedding for a list of texts.
 
         Args:
@@ -80,7 +80,7 @@ class BeliefEmbeddingTracker:
         return vectors.mean(axis=0).astype(np.float32)
 
     @staticmethod
-    def _normalize_scalars(scalars: Dict[str, float]) -> np.ndarray:
+    def _normalize_scalars(scalars: dict[str, float]) -> np.ndarray:
         """Normalize the 11 scalar features into a consistent range.
 
         Counts are clamped to [0, _COUNT_CAP] then divided by _COUNT_CAP.
@@ -99,7 +99,7 @@ class BeliefEmbeddingTracker:
         other_count_keys = ["n_counterpositions", "n_uncertainties"]
         thesis_key = "thesis_strength"
 
-        values: List[float] = []
+        values: list[float] = []
         for k in count_keys:
             values.append(min(scalars.get(k, 0), _COUNT_CAP) / _COUNT_CAP)
         for k in strength_keys:
@@ -223,7 +223,7 @@ class BeliefEmbeddingTracker:
         return embedding
 
 
-    def get_agent_trajectory(self, agent_name: str) -> List[np.ndarray]:
+    def get_agent_trajectory(self, agent_name: str) -> list[np.ndarray]:
         """
         Returns all stored embeddings (over rounds) for a given agent.
 
@@ -231,22 +231,22 @@ class BeliefEmbeddingTracker:
             agent_name (str): The name of the agent.
 
         Returns:
-            List[np.ndarray]: List of embeddings from each round.
+            list[np.ndarray]: List of embeddings from each round.
         """
         return self.embeddings.get(agent_name, [])
 
 
-    def get_all_embeddings(self) -> Dict[str, List[np.ndarray]]:
+    def get_all_embeddings(self) -> dict[str, list[np.ndarray]]:
         """
         Returns the full dictionary of all agent embeddings.
 
         Returns:
-            Dict[str, List[np.ndarray]]
+            dict[str, list[np.ndarray]]
         """
         return self.embeddings
 
 
-    def save_embeddings(self, filepath: Union[str, Path], agent_info=None, topic=None):
+    def save_embeddings(self, filepath: str | Path, agent_info=None, topic=None):
         """
         Saves all embeddings to a .npz file for later use.
 
@@ -261,7 +261,7 @@ class BeliefEmbeddingTracker:
         np.savez_compressed(str(filepath), **save_dict)
 
 
-    def load_embeddings(self, filepath: Union[str, Path]):
+    def load_embeddings(self, filepath: str | Path):
         """
         Loads embeddings from a saved .npz file.
 

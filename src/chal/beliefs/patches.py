@@ -21,9 +21,11 @@ Supported patch operations:
 """
 
 from __future__ import annotations
-from typing import Dict, Any, List, Set
+
 import json
 import re
+from typing import Any
+
 from chal.beliefs.belief_graph import BeliefGraph
 from chal.beliefs.schema import ALLOWED_REF_PREFIXES, validate_inference_chain
 
@@ -77,11 +79,11 @@ def initialize_defense_tracking(belief: dict) -> dict:
 
 
 def apply_patches(
-    prior_belief: Dict[str, Any],
-    patches: List[Dict],
+    prior_belief: dict[str, Any],
+    patches: list[dict],
     propagate_strength: bool = True,
     breadth_sensitivity: float = BREADTH_SENSITIVITY
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Apply a list of patch operations to a belief object.
 
@@ -112,8 +114,8 @@ def apply_patches(
     updated["version"] = prior_belief.get("version", 1) + 1
 
     # Track changes for changelog
-    changes: List[str] = []
-    strength_changes: Dict[str, float] = {}  # {node_id: new_strength}
+    changes: list[str] = []
+    strength_changes: dict[str, float] = {}  # {node_id: new_strength}
 
     # Apply each patch
     for patch in patches:
@@ -500,7 +502,7 @@ def apply_patches(
 
             # Track live strengths for all node types so multi-hop propagation
             # sees updated values
-            current_strengths: Dict[str, float] = {}
+            current_strengths: dict[str, float] = {}
             for claim in updated.get("claims", []):
                 current_strengths[claim["id"]] = claim.get("strength", 0.5)
             for assumption in updated.get("assumptions", []):
@@ -509,7 +511,7 @@ def apply_patches(
                 current_strengths[ev["id"]] = ev.get("strength", 0.5)
 
             # Build a lookup for node status (to exclude retracted nodes from cap)
-            node_statuses: Dict[str, str] = {}
+            node_statuses: dict[str, str] = {}
             for claim in updated.get("claims", []):
                 node_statuses[claim["id"]] = claim.get("status", "active")
             for assumption in updated.get("assumptions", []):
@@ -641,38 +643,38 @@ def apply_patches(
 
 
 # --- Validation constants ---
-_STATUS_ENUM: Set[str] = {"active", "revised", "retracted"}
-_UNCERTAINTY_STATUS_ENUM: Set[str] = {"active", "resolved"}
-_IMPORTANCE_ENUM: Set[str] = {"high", "medium", "low"}
-_ASSUMPTION_TYPE_ENUM: Set[str] = {"foundational", "empirical", "methodological", "scoping"}
-_EVIDENCE_TYPE_ENUM: Set[str] = {"empirical", "conceptual", "expert_consensus"}
-_ATTACK_TYPE_ENUM: Set[str] = {"undermining", "rebutting", "undercutting"}
-_SUFFICIENCY_ENUM: Set[str] = {"sufficient", "partial", "unaddressed", "moot"}
-_CHANGE_ENUM: Set[str] = {"weaken", "strengthen"}
+_STATUS_ENUM: set[str] = {"active", "revised", "retracted"}
+_UNCERTAINTY_STATUS_ENUM: set[str] = {"active", "resolved"}
+_IMPORTANCE_ENUM: set[str] = {"high", "medium", "low"}
+_ASSUMPTION_TYPE_ENUM: set[str] = {"foundational", "empirical", "methodological", "scoping"}
+_EVIDENCE_TYPE_ENUM: set[str] = {"empirical", "conceptual", "expert_consensus"}
+_ATTACK_TYPE_ENUM: set[str] = {"undermining", "rebutting", "undercutting"}
+_SUFFICIENCY_ENUM: set[str] = {"sufficient", "partial", "unaddressed", "moot"}
+_CHANGE_ENUM: set[str] = {"weaken", "strengthen"}
 
-_UPDATE_CLAIM_WHITELIST: Set[str] = {
+_UPDATE_CLAIM_WHITELIST: set[str] = {
     "strength", "strength_justification", "statement", "status",
     "depends_on", "predictions", "inference_chain", "type",
 }
-_UPDATE_EVIDENCE_WHITELIST: Set[str] = {
+_UPDATE_EVIDENCE_WHITELIST: set[str] = {
     "strength", "strength_justification", "summary", "source",
     "status", "supports_claims", "type", "supported_by_definitions",
 }
-_UPDATE_ASSUMPTION_WHITELIST: Set[str] = {
+_UPDATE_ASSUMPTION_WHITELIST: set[str] = {
     "strength", "strength_justification", "statement", "status",
     "type", "supports_claims", "supported_by_definitions",
 }
-_UPDATE_COUNTERPOSITION_WHITELIST: Set[str] = {
+_UPDATE_COUNTERPOSITION_WHITELIST: set[str] = {
     "my_response", "response_sufficiency", "statement",
     "attack_type", "targets",
 }
-_UPDATE_DEFINITION_WHITELIST: Set[str] = {
+_UPDATE_DEFINITION_WHITELIST: set[str] = {
     "definition", "strength", "strength_justification", "status", "used_by",
 }
 _DEFINITION_ID_RE = re.compile(r"^D\d+$")
 
 
-def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, List[str]]:
+def validate_patches(patches: list[dict], belief: dict[str, Any]) -> dict[int, list[str]]:
     """
     Validate patch operations before applying them.
 
@@ -684,7 +686,7 @@ def validate_patches(patches: List[Dict], belief: Dict[str, Any]) -> Dict[int, L
         Dict mapping patch index to list of validation errors.
         Empty dict means all patches are valid.
     """
-    errors: Dict[int, List[str]] = {}
+    errors: dict[int, list[str]] = {}
 
     def err(idx: int, msg: str) -> None:
         errors.setdefault(idx, []).append(msg)

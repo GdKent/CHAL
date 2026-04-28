@@ -58,7 +58,6 @@ def _make_config(tmp_path: Path, **output_overrides) -> DebateConfig:
 def _make_results() -> dict:
     """Build a minimal results dict matching controller.run() output."""
     return {
-        "full_transcript": "Full transcript text.",
         "markdown_transcript": "Markdown transcript text.",
         "debug_log": "Debug log text.",
         "initial_positions": ["Belief A", "Belief B"],
@@ -435,7 +434,6 @@ def _make_best_belief_results(
 ) -> dict:
     """Build a results dict with the keys _write_best_agent_beliefs reads."""
     return {
-        "full_transcript": "transcript",
         "markdown_transcript": "markdown transcript",
         "debug_log": "log",
         "initial_positions": [a_initial, b_initial],

@@ -16,31 +16,35 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import yaml
 import questionary
+import yaml
+from prompt_toolkit.filters import has_completions
+from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
+from prompt_toolkit.styles import Style as PTKStyle
+from prompt_toolkit.styles import merge_styles
 from questionary import Choice
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
-from prompt_toolkit.filters import has_completions
-from prompt_toolkit.styles import Style as PTKStyle, merge_styles
-
+from chal.agents.epistemic_personas import PERSONA_DESCRIPTIONS, PERSONAS
+from chal.agents.ethics_systems import (
+    get_ethics_system_label,
+)
+from chal.agents.logic_systems import (
+    LOGIC_SYSTEMS,
+    get_logic_system_label,
+)
+from chal.cli.api_keys import PROVIDER_ENV_VARS
 from chal.config import (
-    AgentConfig,
+    CONFIG_DIR,
+    DEFAULT_STORAGE_DIR,
     AdjudicationConfig,
+    AgentConfig,
     DebateConfig,
     OutputConfig,
     ParallelConfig,
-    CONFIG_DIR,
-    DEFAULT_STORAGE_DIR,
 )
-from chal.agents.epistemic_personas import PERSONAS, PERSONA_DESCRIPTIONS
-from chal.agents.logic_systems import LOGIC_SYSTEMS, get_logic_system_label, get_logic_system_description
-from chal.agents.ethics_systems import ETHICS_SYSTEMS, get_ethics_system_label, get_ethics_system_description
-from chal.cli.api_keys import PROVIDER_ENV_VARS
-
 
 # =========================================================================
 # Constants
@@ -651,7 +655,7 @@ def _scan_presets() -> list[tuple[str, str, Path]]:
         return presets
     for p in sorted(CONFIG_DIR.glob("*.yaml")):
         try:
-            with open(p, "r", encoding="utf-8") as f:
+            with open(p, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             name = data.get("metadata", {}).get("name", p.stem)
             desc = data.get("metadata", {}).get("description", "")
@@ -788,17 +792,6 @@ def ask_agent_config(index: int, default: AgentConfig | None = None) -> AgentCon
         provider=d_provider,
         belief_file=d_belief_file,
     )
-
-
-def ask_stage3_mode(
-    default_mode: str = "rebuttal",
-) -> tuple[str, dict]:
-    """Step 5: Debate mode (always rebuttal).
-
-    Returns:
-        ("rebuttal", {}) — rebuttal is the only supported mode.
-    """
-    return "rebuttal", {}
 
 
 def ask_num_rounds(default: int = 1) -> int:
@@ -966,9 +959,6 @@ def ask_api_keys_for_config(state: dict) -> None:
     Skips providers that already have keys set in the environment and
     providers that don't need keys (e.g. ollama).
     """
-    from dotenv import load_dotenv
-    load_dotenv()
-
     console = Console()
 
     # Collect unique providers
@@ -1007,7 +997,7 @@ def ask_api_keys_for_config(state: dict) -> None:
             if not answer.strip():
                 break
             keys.append(answer.strip())
-            console.print(f"  [green]>[/green] Key set.")
+            console.print("  [green]>[/green] Key set.")
             add_more = _ask(questionary.confirm(
                 f"Add another {provider.capitalize()} key for rate-limit rotation?",
                 default=False,
@@ -1049,7 +1039,7 @@ def show_review_panel(config: DebateConfig, console: Console) -> None:
         agent_lines.append(line)
     table.add_row("Agents", "\n".join(agent_lines))
 
-    table.add_row("Stage 3", config.stage3_mode)
+    table.add_row("Stage 3", "rebuttal")
     table.add_row("Rounds", str(config.max_rounds))
     table.add_row(
         "Adjudicator",
@@ -1092,7 +1082,6 @@ def ask_edit_section() -> str:
         Choice("Topic", value="topic"),
         Choice("Number of agents", value="num_agents"),
         Choice("Agent configurations", value="agents"),
-        Choice("Stage 3 mode (debate style)", value="stage3"),
         Choice("Number of rounds", value="rounds"),
         Choice("Adjudicator", value="adjudicator"),
         Choice("Output toggles", value="outputs"),
@@ -1130,7 +1119,6 @@ def _populate_state_from_config(config: DebateConfig, state: dict) -> None:
     state['topic'] = config.topic
     state['num_agents'] = len(config.agents)
     state['agent_configs'] = list(config.agents)
-    state['stage3_mode'] = config.stage3_mode
     state['sub_options'] = {}
     state['max_rounds'] = config.max_rounds
     state['adjudication'] = config.adjudication
@@ -1199,14 +1187,6 @@ def _step_agents(state: dict) -> bool:
     return True
 
 
-def _step_stage3(state: dict) -> bool:
-    """Step 5: Debate mode (always rebuttal)."""
-    mode, new_sub_opts = ask_stage3_mode()
-    state['stage3_mode'] = mode
-    state['sub_options'] = new_sub_opts
-    return True
-
-
 def _step_rounds(state: dict) -> bool:
     """Step 6: Number of rounds."""
     pf = state.get('prefill')
@@ -1266,7 +1246,6 @@ def _build_config(state: dict) -> DebateConfig:
         name=f"Debate: {state['topic'][:50]}",
         topic=state['topic'],
         max_rounds=state['max_rounds'],
-        stage3_mode=state['stage3_mode'],
         agents=state['agent_configs'],
         adjudication=state['adjudication'],
         outputs=outputs,
@@ -1283,12 +1262,11 @@ _WIZARD_STEPS = [
     _step_topic,           # 1: Debate topic
     _step_num_agents,      # 2: Number of agents
     _step_agents,          # 3: Agent configurations
-    _step_stage3,          # 4: Debate mode
-    _step_rounds,          # 5: Number of rounds
-    _step_adjudicator,     # 6: Adjudicator
-    _step_outputs,         # 7: Output toggles
-    _step_parallelization, # 8: Parallelization toggle
-    _step_api_keys,        # 9: API key collection
+    _step_rounds,          # 4: Number of rounds
+    _step_adjudicator,     # 5: Adjudicator
+    _step_outputs,         # 6: Output toggles
+    _step_parallelization, # 7: Parallelization toggle
+    _step_api_keys,        # 8: API key collection
 ]
 
 
@@ -1434,10 +1412,6 @@ def _apply_edit(config: DebateConfig, section: str, console: Console) -> DebateC
             choices=agent_choices,
         ), help_text=HELP_PERSONA)
         config.agents[idx] = ask_agent_config(idx, default=config.agents[idx])
-
-    elif section == "stage3":
-        mode, sub_opts = ask_stage3_mode()
-        config.stage3_mode = mode
 
     elif section == "rounds":
         config.max_rounds = ask_num_rounds(default=config.max_rounds)
