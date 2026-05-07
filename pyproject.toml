@@ -82,7 +82,8 @@ select = [
     "SIM",  # flake8-simplify
 ]
 ignore = [
-    "E501",  # line length (handled by formatter)
+    "E501",   # line length (handled by formatter)
+    "UP038",  # deprecated rule; tuple form is faster than union in isinstance
 ]
 
 [tool.ruff.lint.isort]
