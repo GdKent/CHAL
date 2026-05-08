@@ -1,0 +1,220 @@
+{
+  "update_thesis_weaken": [
+    {"op": "update_thesis", "change": "weaken"}
+  ],
+  "update_thesis_strengthen": [
+    {"op": "update_thesis", "change": "strengthen"}
+  ],
+  "update_thesis_new_strength": [
+    {"op": "update_thesis", "new_strength": 0.55}
+  ],
+  "update_claim_strength": [
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "strength": 0.6
+      }
+    }
+  ],
+  "update_claim_status": [
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "status": "revised"
+      }
+    }
+  ],
+  "update_claim_multiple": [
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "strength": 0.65,
+        "status": "revised"
+      }
+    }
+  ],
+  "update_claim_retract": [
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "status": "retracted"
+      }
+    }
+  ],
+  "add_evidence": [
+    {
+      "op": "add_evidence",
+      "item": {
+        "id": "E2",
+        "type": "empirical",
+        "summary": "New evidence from recent study",
+        "source": "Smith et al. (2026)",
+        "strength": 0.8
+      }
+    }
+  ],
+  "update_evidence": [
+    {
+      "op": "update_evidence",
+      "target_id": "E1",
+      "changes": {
+        "strength": 0.9
+      }
+    }
+  ],
+  "update_assumption": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "new_statement": "Revised assumption statement"
+    }
+  ],
+  "update_assumption_type": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "new_type": "methodological"
+    }
+  ],
+  "update_assumption_both": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "new_statement": "Revised assumption",
+      "new_type": "methodological"
+    }
+  ],
+  "update_assumption_strength": [
+    {
+      "op": "update_assumption",
+      "target_id": "A1",
+      "changes": {
+        "strength": 0.7
+      }
+    }
+  ],
+  "multiple_patches": [
+    {"op": "update_thesis", "change": "weaken"},
+    {
+      "op": "update_claim",
+      "target_id": "C1",
+      "changes": {
+        "strength": 0.55,
+        "status": "revised"
+      }
+    },
+    {
+      "op": "add_evidence",
+      "item": {
+        "id": "E2",
+        "type": "conceptual",
+        "summary": "Additional supporting evidence",
+        "source": "Jones (2026)",
+        "strength": 0.75
+      }
+    }
+  ],
+  "add_counterposition": [
+    {
+      "op": "add_counterposition",
+      "item": {
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "rebutting",
+        "statement": "Counter-evidence contradicts C1",
+        "my_response": "The counter-evidence has methodological flaws",
+        "response_sufficiency": "partial"
+      }
+    }
+  ],
+  "update_counterposition": [
+    {
+      "op": "update_counterposition",
+      "target_id": "X1",
+      "changes": {
+        "response_sufficiency": "unaddressed"
+      }
+    }
+  ],
+  "add_uncertainty": [
+    {
+      "op": "add_uncertainty",
+      "item": {
+        "id": "U1",
+        "targets": ["C1"],
+        "question": "Can the explanatory gap be closed?",
+        "status": "active",
+        "importance": "high"
+      }
+    }
+  ],
+  "add_uncertainty_with_targets": [
+    {
+      "op": "add_uncertainty",
+      "item": {
+        "id": "U1",
+        "targets": ["C1"],
+        "question": "What is the mechanism?",
+        "status": "active",
+        "importance": "medium"
+      }
+    }
+  ],
+  "resolve_uncertainty": [
+    {
+      "op": "resolve_uncertainty",
+      "target_id": "U1",
+      "resolution_note": "Resolved by new claim C4 with evidence E3"
+    }
+  ],
+  "add_definition": [
+    {
+      "op": "add_definition",
+      "item": {
+        "id": "D2",
+        "term": "moral responsibility",
+        "definition": "The property of being an appropriate target of praise or blame for an action.",
+        "strength": 0.7,
+        "strength_justification": "0.70 — widely accepted in philosophical literature",
+        "status": "active",
+        "used_by": ["A1", "E1"]
+      }
+    }
+  ],
+  "update_definition_strength": [
+    {
+      "op": "update_definition",
+      "target_id": "D1",
+      "changes": {
+        "strength": 0.55,
+        "strength_justification": "0.55 — revised after challenge",
+        "status": "revised"
+      }
+    }
+  ],
+  "update_definition_retract": [
+    {
+      "op": "update_definition",
+      "target_id": "D1",
+      "changes": {
+        "status": "retracted"
+      }
+    }
+  ],
+  "invalid_missing_op": [
+    {
+      "target_id": "C1",
+      "changes": {"strength": 0.5}
+    }
+  ],
+  "invalid_unknown_op": [
+    {
+      "op": "delete_everything",
+      "target_id": "C1"
+    }
+  ]
+}

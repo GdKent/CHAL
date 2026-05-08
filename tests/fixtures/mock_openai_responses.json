@@ -1,0 +1,63 @@
+{
+  "belief_minimal": {
+    "role": "assistant",
+    "content": "```json\n{\n  \"schema_version\": \"CBS\",\n  \"belief_id\": \"BELIEF-MOCK-001\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Test topic\",\n    \"agent_persona\": \"Test Persona\"\n  },\n  \"thesis\": {\n    \"stance\": \"Test stance\",\n    \"summary_bullets\": [\"Test bullet 1\", \"Test bullet 2\"],\n    \"strength\": 0.75\n  }\n}\n```\n\nHere is my belief structure in CBS format."
+  },
+  "belief_complete": {
+    "role": "assistant",
+    "content": "```json\n{\n  \"schema_version\": \"CBS\",\n  \"belief_id\": \"BELIEF-MOCK-002\",\n  \"version\": 1,\n  \"metadata\": {\n    \"topic_query\": \"Does free will exist?\",\n    \"agent_persona\": \"Rationalist\"\n  },\n  \"thesis\": {\n    \"stance\": \"Free will exists within a compatibilist framework.\",\n    \"summary_bullets\": [\n      \"Determinism and free will are compatible\",\n      \"Rational deliberation grounds moral responsibility\"\n    ],\n    \"strength\": 0.80,\n    \"strength_reasoning\": \"Strong philosophical and empirical support for compatibilism.\"\n  },\n  \"definitions\": [\n    {\n      \"id\": \"D1\",\n      \"term\": \"Free will\",\n      \"definition\": \"The ability to act according to one's own reasons and desires without external compulsion.\",\n      \"strength\": 0.85,\n      \"strength_justification\": \"Well-established in compatibilist literature.\",\n      \"used_by\": [\"A1\"],\n      \"status\": \"active\"\n    }\n  ],\n  \"assumptions\": [\n    {\n      \"id\": \"A1\",\n      \"type\": \"empirical\",\n      \"statement\": \"Rational deliberation is real\",\n      \"supports_claims\": [\"C1\"],\n      \"strength\": 0.85,\n      \"strength_justification\": \"Supported by cognitive science research.\",\n      \"supported_by_definitions\": [\"D1\"],\n      \"status\": \"active\"\n    }\n  ],\n  \"claims\": [\n    {\n      \"id\": \"C1\",\n      \"type\": \"deductive\",\n      \"statement\": \"Humans can make choices based on reasons\",\n      \"depends_on\": [\"A1\", \"E1\"],\n      \"strength\": 0.85,\n      \"strength_justification\": \"Follows from assumption and evidence about rational deliberation.\",\n      \"status\": \"active\",\n      \"inference_chain\": [\n        {\"role\": \"premise\", \"text\": \"Rational deliberation is real (A1)\", \"reference\": \"A1\"},\n        {\"role\": \"premise\", \"text\": \"Studies confirm deliberation (E1)\", \"reference\": \"E1\"},\n        {\"role\": \"inference\", \"text\": \"Therefore humans make reason-based choices\", \"inference_type\": \"deductive\"},\n        {\"role\": \"conclusion\", \"text\": \"Humans can make choices based on reasons\"}\n      ],\n      \"predictions\": [\n        {\n          \"statement\": \"People report feeling in control during deliberate choices\",\n          \"test\": \"Survey after deliberate vs. reflexive choices\",\n          \"decision_criterion\": \"If >70% report control, prediction confirmed\"\n        }\n      ]\n    }\n  ],\n  \"evidence\": [\n    {\n      \"id\": \"E1\",\n      \"type\": \"empirical\",\n      \"summary\": \"Studies show rational deliberation\",\n      \"source\": \"Test et al. (2026)\",\n      \"supports_claims\": [\"C1\"],\n      \"strength\": 0.8,\n      \"strength_justification\": \"Peer-reviewed replicated study.\",\n      \"status\": \"active\"\n    }\n  ],\n  \"counterpositions\": [\n    {\n      \"id\": \"X1\",\n      \"targets\": [\"C1\"],\n      \"attack_type\": \"undercutting\",\n      \"attack_strategy\": \"challenge_inference_step\",\n      \"statement\": \"Deliberation may be epiphenomenal\",\n      \"my_response\": \"Bidirectional causation evidence suggests otherwise\",\n      \"response_sufficiency\": \"partial\"\n    }\n  ],\n  \"uncertainties\": [\n    {\n      \"id\": \"U1\",\n      \"targets\": [\"C1\"],\n      \"question\": \"To what extent is deliberation causally efficacious?\",\n      \"importance\": \"high\",\n      \"status\": \"active\"\n    }\n  ]\n}\n```"
+  },
+  "cross_examination_3": {
+    "role": "assistant",
+    "content": "```json\n{\"questions\": [{\"qid\": \"Q1\", \"text\": \"What empirical evidence supports your first assumption?\", \"target_ids\": [\"A1\"], \"attack_type\": \"undermining\", \"attack_strategy\": \"challenge_assumption\"}, {\"qid\": \"Q2\", \"text\": \"How do you address the counterargument from determinism?\", \"target_ids\": [\"C1\"], \"attack_type\": \"rebutting\", \"attack_strategy\": \"present_counter_evidence\"}, {\"qid\": \"Q3\", \"text\": \"Can you clarify the logical connection between your claims and thesis?\", \"target_ids\": [\"C1\"], \"attack_type\": \"undercutting\", \"attack_strategy\": \"challenge_inference_step\"}]}\n```"
+  },
+  "cross_examination_5": {
+    "role": "assistant",
+    "content": "```json\n{\"questions\": [{\"qid\": \"Q1\", \"text\": \"What empirical evidence supports your central claim?\", \"target_ids\": [\"C1\"], \"attack_type\": \"undermining\", \"attack_strategy\": \"challenge_evidence\"}, {\"qid\": \"Q2\", \"text\": \"How do you address potential circular reasoning in your argument?\", \"target_ids\": [\"C1\"], \"attack_type\": \"undercutting\", \"attack_strategy\": \"identify_circularity\"}, {\"qid\": \"Q3\", \"text\": \"Can you provide examples that illustrate your thesis?\", \"target_ids\": [\"A1\"], \"attack_type\": \"undermining\", \"attack_strategy\": \"demand_falsifiability\"}, {\"qid\": \"Q4\", \"text\": \"What are the weakest points in your argumentation?\", \"target_ids\": [\"C1\", \"A1\"], \"attack_type\": \"undermining\", \"attack_strategy\": \"expose_weak_foundation\"}, {\"qid\": \"Q5\", \"text\": \"How does your position differ from alternative frameworks?\", \"target_ids\": [\"C1\"], \"attack_type\": \"rebutting\", \"attack_strategy\": \"offer_alternative_explanation\"}]}\n```"
+  },
+  "rebuttals_3": {
+    "role": "assistant",
+    "content": "```json\n{\"rebuttals\": [{\"qid\": \"Q1\", \"answer\": \"Multiple studies demonstrate that rational deliberation occurs before action. See the cited research in my evidence section.\", \"action\": \"refute\", \"linked_ids\": [\"A1\", \"E1\"]}, {\"qid\": \"Q2\", \"answer\": \"Determinism is compatible with free will when we understand free will as acting according to one's own reasons, not as uncaused causation.\", \"action\": \"refute\", \"linked_ids\": [\"C1\"]}, {\"qid\": \"Q3\", \"answer\": \"The claims build from assumptions through evidence to support the thesis. Each inference is justified in the claim's inference_chain field.\", \"action\": \"refute\", \"linked_ids\": [\"C1\"]}], \"patches\": []}\n```"
+  },
+  "rebuttals_structured": {
+    "role": "assistant",
+    "content": "<reasoning>The first challenge targets C1 with valid methodological concerns. The second challenges A1, but my evidence E1 holds. The third raises an unresolved question about E2.</reasoning>\n\n```json\n{\n  \"rebuttals\": [\n    {\"qid\": \"Q1\", \"answer\": \"I concede that C1's strength was overstated given the methodological limitations of E1.\", \"action\": \"concede\", \"linked_ids\": [\"C1\", \"E1\"]},\n    {\"qid\": \"Q2\", \"answer\": \"A1 is well-supported by E1 which was replicated in 2025 with consistent results.\", \"action\": \"refute\", \"linked_ids\": [\"A1\", \"E1\"]},\n    {\"qid\": \"Q3\", \"answer\": \"This is an open question that requires further investigation into E2's source methodology.\", \"action\": \"defer\", \"linked_ids\": [\"E2\", \"C2\"]}\n  ],\n  \"patches\": [\n    {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"strength\": 0.6, \"strength_justification\": \"Lowered due to valid methodological concern about E1\"}},\n    {\"op\": \"add_uncertainty\", \"item\": {\"id\": \"U1\", \"targets\": [\"E2\", \"C2\"], \"question\": \"Is E2's source methodology sound?\", \"status\": \"active\"}}\n  ]\n}\n```"
+  },
+  "belief_update_patches": {
+    "role": "assistant",
+    "content": "Based on the adjudication outcomes, I'm revising my position:\n\n```json\n{\"patches\": [{\"op\": \"update_thesis\", \"new_strength\": 0.70}, {\"op\": \"update_claim\", \"target_id\": \"C1\", \"changes\": {\"strength\": 0.70}}]}\n```\n\nI acknowledge the strength of the critique regarding determinism."
+  },
+  "adjudicator_verdict": {
+    "role": "assistant",
+    "content": "<reasoning>The challenger raises a valid methodological concern about the evidence supporting C1. The target's rebuttal acknowledges the limitation but argues the evidence is still sufficient. The inference from A1 and E1 to C1 is logically sound but the evidence strength is debatable.</reasoning>\n\n```json\n{\"outcome\": \"rebuttal_valid\", \"reasoning\": \"The target successfully defended the core claim despite acknowledged methodological limitations.\", \"restatement\": \"Whether the evidence E1 sufficiently supports claim C1 given methodological concerns.\", \"scores\": {\"logical_rigor\": 0.7, \"evidence_quality\": 0.6}}\n```"
+  },
+  "malformed_json": {
+    "role": "assistant",
+    "content": "```json\n{\"schema_version\": \"CBS\", \"belief_id\": \"BROKEN\",\n```\nThis JSON is incomplete and malformed."
+  },
+  "no_json_block": {
+    "role": "assistant",
+    "content": "I believe that free will exists, but this response contains no JSON code block, so it cannot be parsed as a CBS belief structure."
+  },
+  "rate_limit_error": {
+    "error": {
+      "message": "Rate limit exceeded",
+      "type": "rate_limit_error",
+      "code": "rate_limit_exceeded"
+    }
+  },
+  "authentication_error": {
+    "error": {
+      "message": "Invalid API key",
+      "type": "invalid_request_error",
+      "code": "invalid_api_key"
+    }
+  },
+  "timeout_error": {
+    "error": {
+      "message": "Request timed out",
+      "type": "timeout",
+      "code": "timeout"
+    }
+  }
+}

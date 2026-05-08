@@ -1,0 +1,264 @@
+{
+  "minimal_valid": {
+    "schema_version": "CBS",
+    "belief_id": "BELIEF-FIXTURE-001",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Does free will exist?",
+      "agent_persona": "Empiricist"
+    },
+    "definitions": [],
+    "thesis": {
+      "stance": "Free will is an illusion created by deterministic processes.",
+      "summary_bullets": [
+        "Neuroscience shows decisions occur before conscious awareness",
+        "Physical determinism governs all events"
+      ],
+      "strength": 0.75
+    },
+    "assumptions": [],
+    "claims": [],
+    "evidence": [],
+    "counterpositions": [],
+    "uncertainties": []
+  },
+  "complete_valid": {
+    "schema_version": "CBS",
+    "belief_id": "BELIEF-FIXTURE-002",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Does free will exist?",
+      "agent_persona": "Rationalist"
+    },
+    "definitions": [
+      {
+        "id": "D1",
+        "term": "free will",
+        "definition": "The capacity of agents to choose between possible courses of action unimpeded, where 'unimpeded' means free from external coercion rather than from causal determination.",
+        "strength": 0.9,
+        "strength_justification": "Standard compatibilist definition with broad philosophical acceptance",
+        "status": "active",
+        "used_by": ["A1", "A2", "E2"]
+      },
+      {
+        "id": "D2",
+        "term": "rational deliberation",
+        "definition": "The cognitive process of weighing reasons for and against a course of action before arriving at a decision.",
+        "strength": 0.85,
+        "strength_justification": "Well-established concept in cognitive science and philosophy of mind",
+        "status": "active",
+        "used_by": ["A1", "E1"]
+      }
+    ],
+    "thesis": {
+      "stance": "Free will exists within a compatibilist framework.",
+      "summary_bullets": [
+        "Determinism and free will are compatible",
+        "Humans have the capacity for rational deliberation"
+      ],
+      "strength": 0.80
+    },
+    "assumptions": [
+      {
+        "id": "A1",
+        "type": "empirical",
+        "statement": "Rational deliberation is a real phenomenon",
+        "strength": 0.85,
+        "status": "active",
+        "strength_justification": "Well-established through cognitive science research",
+        "supported_by_definitions": ["D1", "D2"]
+      },
+      {
+        "id": "A2",
+        "type": "foundational",
+        "statement": "Causation does not eliminate agency",
+        "strength": 0.85,
+        "status": "active",
+        "strength_justification": "Standard compatibilist premise with broad philosophical support",
+        "supported_by_definitions": ["D1"]
+      }
+    ],
+    "claims": [
+      {
+        "id": "C1",
+        "type": "deductive",
+        "statement": "Humans can make choices based on reasons",
+        "depends_on": ["A1", "E1"],
+        "inference_chain": [
+          {"role": "premise", "text": "Rational beings deliberate (A1)", "reference": "A1"},
+          {"role": "premise", "text": "Studies show humans consider alternatives before deciding (E1)", "reference": "E1"},
+          {"role": "inference", "text": "Deliberation involves genuine choice-making capacity", "inference_type": "deductive"},
+          {"role": "conclusion", "text": "Humans can make choices based on reasons"}
+        ],
+        "strength": 0.85,
+        "strength_justification": "Strong empirical support",
+        "status": "active",
+        "predictions": [
+          {
+            "statement": "People will report feeling in control when making deliberate choices",
+            "test": "Survey participants after deliberate vs. reflexive choices",
+            "decision_criterion": "If >70% report feeling in control during deliberate choices, prediction is confirmed"
+          }
+        ]
+      },
+      {
+        "id": "C2",
+        "type": "inductive",
+        "statement": "Free will is compatible with determinism",
+        "depends_on": ["A2", "C1", "E2"],
+        "inference_chain": [
+          {"role": "premise", "text": "Causation does not eliminate agency (A2)", "reference": "A2"},
+          {"role": "premise", "text": "Humans can make choices based on reasons (C1)", "reference": "C1"},
+          {"role": "premise", "text": "Compatibilist arguments from Hume and Dennett (E2)", "reference": "E2"},
+          {"role": "inference", "text": "Agency is about responsiveness to reasons, not causal independence", "inference_type": "inductive"},
+          {"role": "conclusion", "text": "Free will is compatible with determinism"}
+        ],
+        "strength": 0.75,
+        "strength_justification": "Philosophical consensus among compatibilists",
+        "status": "active",
+        "predictions": [
+          {
+            "statement": "Compatibilist frameworks will continue to gain acceptance in philosophy",
+            "test": "Survey of academic philosophers on free will positions",
+            "decision_criterion": "If compatibilism remains the plurality position, prediction is confirmed"
+          }
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "id": "E1",
+        "type": "empirical",
+        "summary": "Studies show humans consider alternatives before deciding",
+        "source": "Libet et al. (1983)",
+        "supports_claims": ["C1"],
+        "strength": 0.8,
+        "status": "active",
+        "strength_justification": "Replicated across labs with converging methods",
+        "supported_by_definitions": ["D2"]
+      },
+      {
+        "id": "E2",
+        "type": "conceptual",
+        "summary": "Compatibilist arguments from Hume and Dennett",
+        "source": "Dennett (2003)",
+        "supports_claims": ["C2"],
+        "strength": 0.75,
+        "status": "active",
+        "strength_justification": "Broadly accepted in philosophical literature",
+        "supported_by_definitions": ["D1"]
+      }
+    ],
+    "counterpositions": [
+      {
+        "id": "X1",
+        "targets": ["C1"],
+        "attack_type": "undercutting",
+        "attack_strategy": "challenge_inference_step",
+        "statement": "Libet experiments show neural activity precedes conscious awareness of decision, undermining the inference from deliberation to genuine choice",
+        "my_response": "Libet experiments test only trivial decisions; complex rational deliberation may differ fundamentally",
+        "response_sufficiency": "partial"
+      },
+      {
+        "id": "X2",
+        "targets": ["A2"],
+        "attack_type": "undermining",
+        "attack_strategy": "challenge_assumption",
+        "statement": "If all events are determined by prior causes, agency is epiphenomenal regardless of how we define it",
+        "my_response": "This conflates causal determination with coercion; compatibilism distinguishes the two",
+        "response_sufficiency": "sufficient"
+      }
+    ],
+    "uncertainties": []
+  },
+  "invalid_circular": {
+    "schema_version": "CBS",
+    "belief_id": "BELIEF-INVALID-001",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Test topic",
+      "agent_persona": "Test"
+    },
+    "definitions": [],
+    "thesis": {
+      "stance": "Test stance",
+      "summary_bullets": ["Test bullet"],
+      "strength": 0.5
+    },
+    "assumptions": [],
+    "evidence": [],
+    "counterpositions": [],
+    "uncertainties": [],
+    "claims": [
+      {
+        "id": "C1",
+        "type": "deductive",
+        "statement": "Claim 1 depends on Claim 2",
+        "depends_on": ["C2"],
+
+        "strength": 0.7,
+        "strength_justification": "Test justification",
+        "status": "active",
+        "inference_chain": [
+          {"role": "premise", "text": "C2 implies C1", "reference": "C2"},
+          {"role": "inference", "text": "Therefore C1 follows", "inference_type": "deductive"},
+          {"role": "conclusion", "text": "Claim 1 depends on Claim 2"}
+        ],
+        "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
+      },
+      {
+        "id": "C2",
+        "type": "deductive",
+        "statement": "Claim 2 depends on Claim 1",
+        "depends_on": ["C1"],
+
+        "strength": 0.7,
+        "strength_justification": "Test justification",
+        "status": "active",
+        "inference_chain": [
+          {"role": "premise", "text": "C1 implies C2", "reference": "C1"},
+          {"role": "inference", "text": "Therefore C2 follows", "inference_type": "deductive"},
+          {"role": "conclusion", "text": "Claim 2 depends on Claim 1"}
+        ],
+        "predictions": [{"statement": "P2", "test": "T2", "decision_criterion": "DC2"}]
+      }
+    ]
+  },
+  "invalid_orphan": {
+    "schema_version": "CBS",
+    "belief_id": "BELIEF-INVALID-002",
+    "version": 1,
+    "metadata": {
+      "topic_query": "Test topic",
+      "agent_persona": "Test"
+    },
+    "definitions": [],
+    "thesis": {
+      "stance": "Test stance",
+      "summary_bullets": ["Test bullet"],
+      "strength": 0.5
+    },
+    "assumptions": [],
+    "evidence": [],
+    "counterpositions": [],
+    "uncertainties": [],
+    "claims": [
+      {
+        "id": "C1",
+        "type": "deductive",
+        "statement": "Orphaned claim with no support",
+        "depends_on": [],
+
+        "strength": 0.7,
+        "strength_justification": "Test justification",
+        "status": "active",
+        "inference_chain": [
+          {"role": "premise", "text": "Orphaned reasoning", "reference": "A1"},
+          {"role": "inference", "text": "Therefore orphaned claim follows", "inference_type": "deductive"},
+          {"role": "conclusion", "text": "Orphaned claim with no support"}
+        ],
+        "predictions": [{"statement": "P1", "test": "T1", "decision_criterion": "DC1"}]
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install poetry && poetry install
+      - run: poetry run ruff check src/chal/
+      - run: poetry run mypy src/chal/
+      - run: poetry run pytest

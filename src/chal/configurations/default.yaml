@@ -1,0 +1,201 @@
+# ============================================================================
+# CHAL Debate Configuration - Default
+# ============================================================================
+# This is the standard configuration for a full-featured philosophical debate
+# with all outputs and analysis enabled.
+
+metadata:
+  name: "Default Debate"
+  description: "Standard 2-agent philosophical debate with full analysis"
+  version: "1.0"
+
+# ============================================================================
+# DEBATE SETUP
+# ============================================================================
+debate:
+  # The central topic or question being debated
+  topic: "Does free will exist?"
+
+  # Number of debate rounds. Each round includes:
+  # - Stage 2: Cross-Examination (questions)
+  # - Stage 3: Rebuttals (answers)
+  # - Stage 4: Adjudication (evaluation)
+  # - Stage 5: Belief Updates (revision)
+  max_rounds: 1
+
+# ============================================================================
+# AGENT CONFIGURATION
+# ============================================================================
+# Define the debating agents and their personas.
+# Available personas: EMPIRICIST, RATIONALIST, SUPERNATURALIST, SKEPTIC,
+#                     PHENOMENOLOGIST, PRAGMATIST, CONSTRUCTIVIST, NIHILIST,
+#                     BAYESIAN, PANPSYCHIST, SIMULATIONIST
+agents:
+  - name: "Agent-Empiricist"
+    persona: "EMPIRICIST"              # Requires empirical evidence
+    model: "o4-mini"                   # OpenAI model to use
+    temperature: 0.7                   # Agent creativity (0.0-1.0, higher = more creative)
+    provider: "openai"                 # LLM provider: "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
+
+  - name: "Agent-Supernaturalist"
+    persona: "SUPERNATURALIST"         # Accepts non-empirical truths
+    model: "o4-mini"
+    temperature: 0.7
+    provider: "openai"
+    # belief_file: path/to/belief.json  # Optional: provide pre-defined CBS belief (skips Stage 1)
+
+  # Example custom belief agent with no persona:
+  # - name: Agent-Custom
+  #   persona: none                              # No epistemic lens (advanced beliefs only)
+  #   model: o4-mini
+  #   provider: openai
+  #   belief_file: path/to/custom_belief.json    # Pre-defined CBS belief (skips Stage 1)
+
+# --- Mixed-provider example (uncomment to use) ---
+# agents:
+#   - name: "Agent-Empiricist"
+#     persona: "EMPIRICIST"
+#     model: "gpt-4o"
+#     temperature: 0.7
+#     provider: "openai"
+#
+#   - name: "Agent-Supernaturalist"
+#     persona: "SUPERNATURALIST"
+#     model: "claude-sonnet-4-6"       # Anthropic model
+#     temperature: 0.7
+#     provider: "anthropic"
+#
+#   - name: "Agent-Skeptic"
+#     persona: "SKEPTIC"
+#     model: "gemini-2.0-flash"        # Google model
+#     temperature: 0.7
+#     provider: "google"
+#
+#   - name: "Agent-Rationalist"
+#     persona: "RATIONALIST"
+#     model: "deepseek-r1:14b"         # Local model — no API key required
+#     temperature: 0.7
+#     provider: "ollama"
+
+# ============================================================================
+# ADJUDICATION SETTINGS
+# ============================================================================
+# Controls how the neutral adjudicator evaluates challenge-rebuttal pairs
+adjudication:
+  # RECOMMENDED: Use "o4-mini" for superior logical reasoning at low cost
+  # - o4-mini: Best for pure logic evaluation (faster, cheaper, excellent reasoning)
+  # - o1: More thorough but slower and more expensive (use for high-stakes debates)
+  # - gpt-4o: Adequate but less rigorous than reasoning models
+  model: "o4-mini"                     # Model for the adjudicator
+  provider: "openai"                   # LLM provider: "openai" | "anthropic" | "google" | "ollama" | "xai" | "perplexity"
+
+  # Weighting for evaluation criteria (should sum to 1.0)
+  logic_weight: 1.0                    # Weight for logical rigor (0.0-1.0)
+  ethics_weight: 0.0                   # Weight for ethical considerations (0.0-1.0)
+
+  # Framework keys (see logic_systems.py and ethics_systems.py for options)
+  logic_system: "CLASSICAL_INFORMAL_BAYESIAN"
+  ethics_system: "NONE"
+
+# ============================================================================
+# STAGE PARAMETERS
+# ============================================================================
+# Fine-tune the behavior of each debate stage
+stages:
+  # Stage 2: Cross-Examination
+  max_questions_per_cross_exam: 5      # Max questions each agent asks per opponent
+
+  # Stage 3: Rebuttals
+  max_rebuttals_per_response: 5        # Max rebuttals per agent per round
+  max_rebuttal_length_chars: 1000       # Character limit per rebuttal
+
+  # Generation settings for structured outputs
+  generation_temperature: 0.2          # Low temperature for precise JSON (0.0-1.0)
+
+  # Text length limits
+  short_note_max_chars: 140            # Twitter-style short notes (conclusions, adjudication)
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+outputs:
+  # Directory where all outputs will be saved
+  storage_dir: "src/chal/storage"
+
+  # --- Narrative Outputs ---
+
+  # Clean markdown transcript of the debate (human-readable)
+  save_transcript: true
+  transcript_file: "debate_transcript.txt"
+
+  # --- Belief Snapshots ---
+
+  # Save initial agent beliefs from Stage 1 (per-agent JSON in sub-folder)
+  save_initial_beliefs: true
+  initial_beliefs_dir: "initial_beliefs"
+
+  # Save final agent beliefs after all updates (per-agent JSON in sub-folder)
+  save_final_beliefs: true
+  final_beliefs_dir: "final_beliefs"
+
+  # Best agent beliefs (the agent with the highest performance_score).
+  # Always emitted. The .json is raw CBS; the .txt is markdown.
+  best_beliefs_json_file: "best_initial_final_beliefs.json"
+  best_beliefs_text_file: "best_initial_final_beliefs.txt"
+
+  # --- Analysis Outputs ---
+
+  # Generate belief embeddings for trajectory visualization
+  # (Enables semantic analysis of belief evolution)
+  generate_embeddings: true
+  embeddings_file: "embeddings.npz"
+
+  # Plot 2D visualization of belief trajectories over time
+  # (Requires generate_embeddings = true)
+  plot_trajectories: true
+  trajectory_plot_file: "belief_trajectories.png"
+  pca_plot_file: "belief_trajectories_pca.png"
+
+  # Generate interactive HTML belief graph visualization
+  # (Shows argument structure as interactive node-edge graph using Cytoscape.js)
+  generate_graph_visualization: false
+  graph_file: "belief_graph.html"
+
+  # Save statistics about agent performance (wins, losses, etc.)
+  save_agent_stats: true
+  stats_file: "agent_stats.json"
+
+  # --- Debug Logging ---
+
+  # Save comprehensive debug log with all prompts, responses, and parsing details
+  # (Essential for debugging - shows complete model I/O)
+  save_debug_log: true
+  debug_log_file: "log.txt"
+
+# ============================================================================
+# DEFENSE BOOST SETTINGS
+# ============================================================================
+# Mechanical strength increases for nodes that survive adversarial challenges.
+# When a node is targeted by a critique and the rebuttal wins (REBUTTAL_VALID),
+# the system automatically applies a flat strength boost.
+#
+# Formula: Each successful defense adds flat_boost to the node's strength.
+# Ceiling: min(current + flat_boost, original_strength + max_cumulative_boost, 1.0)
+#
+# The boost resets to 0 consecutive defenses when a node loses a defense
+# (CRITIQUE_VALID). Nodes not attacked in a round are unchanged.
+defense_boost:
+  enabled: true                    # Master switch — set false to disable all defense boosts
+  flat_boost: 0.02                # Constant boost per successful defense (default: 0.02)
+  max_cumulative_boost: 0.15      # Maximum total boost above original_strength (default: 0.15)
+
+# ============================================================================
+# PARALLELIZATION SETTINGS
+# ============================================================================
+# Fire independent API calls concurrently within each stage to reduce latency.
+# Requires no code changes to agents — uses ThreadPoolExecutor internally.
+# Off by default; enable to speed up stages 1, 2, 3 (rebuttal), and 4.
+#
+parallel:
+  enabled: true                      # Master switch (default: false)
+  max_workers: 5                     # Max concurrent threads (default: 5)
