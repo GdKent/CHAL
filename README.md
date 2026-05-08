@@ -7,9 +7,9 @@
 </h1>
 
 <p align="center">
+  <a href="https://arxiv.org/abs/XXXX.XXXXX"><img src="https://img.shields.io/badge/arXiv-XXXX.XXXXX-b31b1b?logo=arxiv&logoColor=white" alt="arXiv Paper"/></a>
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" alt="Python 3.10+"/>
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License: MIT"/>
-  <img src="https://img.shields.io/badge/Tests-1890_passed-brightgreen" alt="Tests: 1890 passed"/>
 </p>
 
 **CHAL** (pronounced "kal") is a framework for orchestrating structured philosophical debates between multiple LLM agents. Each agent embodies a distinct epistemological position, engaging in multi-stage debates with cross-examination, rebuttals, independent adjudication, and formal belief revision. The system tracks beliefs as dependency graphs with confidence propagation, structural validation, and patch-based updates via the CBS (CHAL Belief Schema). CHAL ships with an interactive CLI wizard, debate history with replay, and comprehensive output generation.
@@ -224,6 +224,17 @@ MIT — see [LICENSE](LICENSE).
 ## Citation
 
 If you use CHAL in your research, click **"Cite this repository"** on the GitHub sidebar, or see [CITATION.cff](CITATION.cff).
+## Contributing
+
+We welcome contributions, suggestions, and critiques.
+
+To get started:
+1. Fork this repository
+2. Create a new branch
+3. Make your changes
+4. Submit a pull request
+
+---
 
 ## Contact
 
