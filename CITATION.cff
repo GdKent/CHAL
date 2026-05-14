@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: "CHAL: Council of Hierarchical Agentic Language"
+message: "If you use this software, please cite the associated paper."
+type: software
+authors:
+  - given-names: Tommaso
+    family-names: Giovannelli
+    email: giovanto@ucmail.uc.edu
+  - given-names: Griffin
+    name-particle: D.
+    family-names: Kent
+    email: g.hal.dkent@gmail.com
+repository-code: "https://github.com/GdKent/CHAL"
+license: MIT
+version: 0.1.0
+preferred-citation:
+  type: article
+  title: "CHAL: Council of Hierarchical Agentic Language"
+  authors:
+    - given-names: Tommaso
+      family-names: Giovannelli
+    - given-names: Griffin
+      name-particle: D.
+      family-names: Kent
+  year: 2026
+  doi: "10.48550/arXiv.2605.12718"
+  url: "https://arxiv.org/abs/2605.12718"

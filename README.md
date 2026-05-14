@@ -7,7 +7,7 @@
 </h1>
 
 <p align="center">
-  <a href="https://arxiv.org/abs/XXXX.XXXXX"><img src="https://img.shields.io/badge/arXiv-XXXX.XXXXX-b31b1b?logo=arxiv&logoColor=white" alt="arXiv Paper"/></a>
+  <a href="https://arxiv.org/abs/2605.12718"><img src="https://img.shields.io/badge/arXiv-2605.12718-b31b1b?logo=arxiv&logoColor=white" alt="arXiv Paper"/></a>
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white" alt="Python 3.10+"/>
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License: MIT"/>
 </p>
@@ -210,22 +210,6 @@ See the [test suite documentation](docs/documentation.md#23-test-suite) for cove
 
 ## Contributing
 
-1. Fork & create a feature branch
-2. Make changes
-3. Run tests: `poetry run pytest`
-4. Submit PR with description
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
-## Citation
-
-If you use CHAL in your research, click **"Cite this repository"** on the GitHub sidebar, or see [CITATION.cff](CITATION.cff).
-## Contributing
-
 We welcome contributions, suggestions, and critiques.
 
 To get started:
@@ -233,6 +217,18 @@ To get started:
 2. Create a new branch
 3. Make your changes
 4. Submit a pull request
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+## Citation
+
+If you use CHAL in your research, click **"Cite this repository"** on the GitHub sidebar, or see [CITATION.cff](CITATION.cff).
 
 ---
 
